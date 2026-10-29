@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "preserve",
+    "moduleDetection": "legacy",
+    "outDir": "app/static",
+    "rootDir": "frontend/src",
+    "strict": true,
+    "noImplicitAny": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "skipLibCheck": true,
+    "removeComments": false,
+    "newLine": "lf"
+  },
+  "include": ["frontend/src/**/*.ts"]
+}

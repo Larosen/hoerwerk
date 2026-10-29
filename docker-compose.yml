@@ -1,0 +1,32 @@
+services:
+  better-renamer:
+    build: .
+    image: ghcr.io/larosen/rename_merge:latest
+    container_name: better-renamer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true     # nothing in the container can gain privileges
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID] # only for switching to PUID/PGID at start
+    ports:
+      - "8080:8080"
+    volumes:
+      - /pfad/zu/medien:/data              # <- anpassen: Ordner für den Umbenenner
+      - /pfad/zu/hoerbuch-eingang:/inbox   # <- neue Hörbücher hier hineinlegen
+      - /pfad/zu/hoerbuecher:/audiobooks   # <- fertige Bibliothek (Audiobookshelf/Plex)
+      - ./config:/config
+    environment:
+      PUID: "1000"                   # Besitzer deiner Dateien (`id` zeigt sie), Unraid: 99
+      PGID: "1000"                   # Unraid: 100
+      UMASK: "002"                   # Unraid: 000
+      AUDIBLE_REGION: "de"           # de, us, uk, fr, it, es, ca, au, in, jp
+      MATCH_MODE: "auto"             # auto | review | off
+      INBOX_ORIGINALS: "archive"     # archive (nach _fertig) | delete
+      # CPU_CORES: "2"               # parallele ffmpeg-Prozesse (Standard: halbe Kernzahl)
+      # ENCODE_WORKERS: "1"          # Bücher gleichzeitig kodieren
+      # METADATA_FALLBACK: "true"    # Audnexus / Apple Books / Open Library, wenn Audible nichts findet
+      # WRITE_ABS_METADATA: "true"   # metadata.json für Audiobookshelf
+      # FFMPEG_SANDBOX: "auto"       # ffmpeg im Landlock-Käfig: auto | require | off
+      # AUTH_USER: "admin"           # empfohlen: Passwortschutz
+      # AUTH_PASS: "geheim"
+      # ALLOWED_HOSTS: "tower,192.168.1.10"   # optional: nur unter diesen Namen antworten

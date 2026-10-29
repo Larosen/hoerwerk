@@ -1,0 +1,14 @@
+{
+  "name": "better-renamer-frontend",
+  "private": true,
+  "description": "TypeScript sources of the web UI (compiled to app/static) and the click-through tests",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "typescript": "7.0.2"
+  }
+}

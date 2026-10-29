@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Better Renamer</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <meta name="color-scheme" content="light dark">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="/static/icon.svg" width="26" height="26" alt="">
+    <span>Better Renamer</span>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Bereich">
+    <button class="tab" role="tab" data-view="rename" aria-selected="true">Umbenennen</button>
+    <button class="tab" role="tab" data-view="books" aria-selected="false">Hörbücher <span id="reviewBadge" class="pill" hidden></span></button>
+    <button class="tab" role="tab" data-view="search" aria-selected="false">Suchen</button>
+  </nav>
+  <div class="topbar-actions">
+    <button id="undoBtn" class="btn ghost" title="Letzte Umbenennung rückgängig machen (⌘/Strg+Z)">↶ <span class="lbl">Rückgängig</span></button>
+    <button id="historyBtn" class="btn ghost" title="Verlauf">🕘 <span class="lbl">Verlauf</span></button>
+    <button id="themeBtn" class="btn ghost" title="Design">◐ <span class="lbl">Design</span></button>
+    <button id="settingsBtn" class="btn ghost" title="Einstellungen">⚙︎ <span class="lbl">Einstellungen</span></button>
+  </div>
+</header>
+
+<main class="layout" id="viewRename">
+  <aside class="sidebar">
+    <section class="panel folders">
+      <div class="panel-head">
+        <h2>Ordner</h2>
+        <button id="refreshBtn" class="icon-btn" title="Neu laden">⟳</button>
+      </div>
+      <nav id="crumbs" class="crumbs" aria-label="Pfad"></nav>
+      <ul id="dirList" class="dir-list"></ul>
+      <div id="mp3Box" class="mp3-box" hidden>
+        <span id="mp3Info"></span>
+        <span class="row gap">
+          <button id="convertNowBtn" class="btn small" title="MP3s dieses Ordners hier im Ordner zu einer M4B zusammenfügen">Jetzt zu M4B</button>
+          <button id="importBookBtn" class="btn small" title="Konvertieren, bei Audible erkennen, taggen und in die Hörbuch-Bibliothek ablegen (Originale bleiben unverändert)">→ Bibliothek</button>
+        </span>
+      </div>
+    </section>
+
+    <section class="panel jobs">
+      <div class="panel-head">
+        <h2>Konvertierungen</h2>
+        <button id="clearJobsBtn" class="icon-btn" title="Beendete entfernen">✕</button>
+      </div>
+      <ul id="jobList" class="job-list"><li class="empty">Keine Jobs</li></ul>
+    </section>
+  </aside>
+
+  <div class="content">
+    <section class="panel rules-panel">
+      <div class="panel-head wrap">
+        <h2>Regeln <span id="ruleCount" class="count"></span></h2>
+        <div class="row gap wrap">
+          <select id="presetSelect" aria-label="Voreinstellung laden"><option value="">Voreinstellungen …</option></select>
+          <button id="savePresetBtn" class="btn ghost small">Speichern</button>
+          <button id="deletePresetBtn" class="btn ghost small">Löschen</button>
+          <button id="exportPresetBtn" class="btn ghost small" title="Alle Voreinstellungen als JSON herunterladen">Export</button>
+          <label class="btn ghost small file-btn" title="Voreinstellungen aus JSON importieren">Import<input id="importPresetInput" type="file" accept="application/json,.json" hidden></label>
+        </div>
+      </div>
+      <ol id="ruleList" class="rule-list"></ol>
+      <div class="add-rule">
+        <select id="addRuleSelect" aria-label="Regel hinzufügen"></select>
+        <button id="collapseRulesBtn" class="btn ghost small">Alle einklappen</button>
+        <button id="clearRulesBtn" class="btn ghost small">Alle entfernen</button>
+      </div>
+    </section>
+
+    <section class="panel preview-panel">
+      <div class="panel-head wrap">
+        <h2>Vorschau</h2>
+        <div class="row gap wrap">
+          <input id="filterInput" type="search" placeholder="Filter (Name enthält …)" aria-label="Dateien filtern">
+          <select id="sortSelect" aria-label="Sortierung">
+            <option value="name">Name (natürlich)</option>
+            <option value="name-desc">Name absteigend</option>
+            <option value="mtime">Änderungsdatum</option>
+            <option value="mtime-desc">Änderungsdatum absteigend</option>
+            <option value="size">Größe</option>
+            <option value="kind">Typ</option>
+          </select>
+        </div>
+      </div>
+      <div class="options-bar">
+        <div id="kindChips" class="chips" role="group" aria-label="Dateityp"></div>
+        <div class="opts">
+          <label class="check" title="Dateien in allen Unterordnern anzeigen und umbenennen"><input type="checkbox" id="optRecursive"> Unterordner</label>
+          <label class="check" title="Ordner selbst auch umbenennen"><input type="checkbox" id="optDirs"> Ordnernamen</label>
+          <label class="check" title="Untertitel, .xmp, .nfo usw. mit gleichem Namen mitnehmen"><input type="checkbox" id="optSidecars"> Begleitdateien</label>
+          <label class="check" title="„/“ im neuen Namen legt Unterordner an (z. B. {year}/{name})"><input type="checkbox" id="optSubdirs"> „/“ = Ordner</label>
+          <label class="check" title="Bei gleichem Zielnamen automatisch „(2)“, „(3)“ … anhängen"><input type="checkbox" id="optConflict"> Konflikte nummerieren</label>
+          <label class="check" title="Nur Zeilen zeigen, die sich ändern"><input type="checkbox" id="optChangedOnly"> Nur Änderungen</label>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="preview">
+          <thead>
+            <tr>
+              <th class="c-check"><input type="checkbox" id="checkAll" aria-label="Alle auswählen" checked></th>
+              <th>Original</th>
+              <th class="c-arrow"></th>
+              <th>Neuer Name</th>
+              <th class="c-info"></th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+      <footer class="apply-bar">
+        <div id="summary" class="summary"></div>
+        <label class="check"><input type="checkbox" id="convertCheck"> Danach MP3 → M4B</label>
+        <button id="applyBtn" class="btn primary" disabled title="⌘/Strg+Enter">Umbenennen</button>
+      </footer>
+    </section>
+  </div>
+</main>
+
+<main class="books-layout" id="viewBooks" hidden>
+  <aside class="sidebar">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Eingang</h2>
+        <button id="scanBtn" class="btn small ghost" title="Eingangsordner jetzt prüfen">⟳ Prüfen</button>
+      </div>
+      <div class="inbox-info" id="inboxInfo"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Bibliothek</h2>
+        <button id="libraryScanBtn" class="btn small ghost" title="Bibliothek neu einlesen (passiert sonst automatisch alle paar Stunden)">⟳ Einlesen</button>
+      </div>
+      <div class="inbox-info" id="libraryInfo"></div>
+    </section>
+    <section class="panel how">
+      <div class="panel-head"><h2>So funktioniert's</h2></div>
+      <ol class="steps">
+        <li>Hörbuch-Ordner oder einzelne Dateien in den <b>Eingang</b> legen (MP3, M4A, M4B, FLAC, OGG …, auch mit CD1/CD2-Unterordnern).</li>
+        <li>Sobald nichts mehr kopiert wird, entsteht daraus <b>eine M4B mit Kapiteln</b>.</li>
+        <li>Das Buch wird bei <b>Audible</b> gesucht. Eindeutige Treffer werden getaggt (Titel, Autor, Sprecher, Serie, Cover, Beschreibung) und in die <b>Bibliothek</b> einsortiert.</li>
+        <li>Unsichere Fälle landen unter <b>Zu prüfen</b> – Treffer wählen oder bearbeiten, neu suchen, einen Link von <b>Audible, BookBeat oder Thalia</b> einfügen oder alles selbst eintragen. Falsch einsortiert? <b>Korrigieren</b> holt ein fertiges Buch zurück.</li>
+      </ol>
+      <p class="muted small">Eigene Kapitel: <code>chapters.txt</code> in den Buchordner legen. Bücher, die es nicht bei Audible gibt: <code>metadata.yml</code> (wie bei beets-audible).</p>
+    </section>
+  </aside>
+  <section class="panel books-panel">
+    <div class="panel-head wrap">
+      <h2>Hörbücher</h2>
+      <div class="row gap wrap">
+        <div id="bookFilter" class="chips" role="group" aria-label="Status-Filter"></div>
+        <button id="clearBooksBtn" class="btn small ghost" title="Fertige aus der Liste entfernen">Fertige ausblenden</button>
+      </div>
+    </div>
+    <ul id="bookList" class="book-list"></ul>
+  </section>
+</main>
+
+<main class="books-layout" id="viewSearch" hidden>
+  <aside class="sidebar">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Quellen</h2>
+        <button id="sourcesBtn" class="btn small ghost">Einrichten</button>
+      </div>
+      <div id="sourcesInfo" class="inbox-info"></div>
+    </section>
+    <section class="panel how">
+      <div class="panel-head"><h2>So funktioniert's</h2></div>
+      <ol class="steps">
+        <li>Newznab-Indexer (oder Prowlarr) und SABnzbd unter <b>Einrichten</b> eintragen.</li>
+        <li>In SABnzbd eine Kategorie (z. B. <code>audiobooks</code>) anlegen, deren Ordner der <b>Hörbuch-Eingang</b> ist.</li>
+        <li>Suchen, <b>Download</b> klicken – nach dem Download übernimmt der Eingang: M4B, Audible-Tags, Bibliothek. Der Suchbegriff hilft dabei der Erkennung.</li>
+        <li>Deutsche Titel: Umlaute werden in allen Schreibweisen gesucht (ä / ae / a). Noch sicherer: <b>Bei Audible nachschlagen</b>, Buch wählen – dann wird mit Titel und Autor aus dem deutschen Shop gesucht.</li>
+      </ol>
+    </section>
+  </aside>
+  <div class="content">
+    <section class="panel search-panel">
+      <div class="panel-head wrap">
+        <h2>Indexer durchsuchen</h2>
+      </div>
+      <form id="searchForm" class="search-row pad">
+        <input id="searchQuery" type="search" placeholder="Autor Titel, z. B. Fitzek Insasse" aria-label="Suchbegriff">
+        <select id="searchLang" aria-label="Sprache bevorzugen">
+          <option value="de">Deutsch bevorzugen</option>
+          <option value="en">Englisch bevorzugen</option>
+          <option value="">Sprache egal</option>
+        </select>
+        <button class="btn primary" type="submit" id="searchGo">Suchen</button>
+        <button class="btn" type="button" id="bookLookupBtn" title="Erst bei Audible nachschlagen – dann wird mit deutschem Titel und Autor gesucht, und die ASIN hilft später beim Taggen">Bei Audible nachschlagen</button>
+      </form>
+      <div id="bookPick" class="book-pick pad-x" hidden></div>
+      <div id="searchNote" class="muted small pad-x"></div>
+      <div class="table-wrap">
+        <table class="results">
+          <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">Grabs</th><th class="c-act"></th></tr></thead>
+          <tbody id="searchResults"><tr><td colspan="5" class="empty-row">Noch nicht gesucht.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel dl-panel">
+      <div class="panel-head">
+        <h2>Downloads (SABnzbd)</h2>
+        <span id="dlSpeed" class="muted small"></span>
+      </div>
+      <ul id="dlList" class="job-list"><li class="empty">–</li></ul>
+    </section>
+  </div>
+</main>
+
+<dialog id="sourcesDialog">
+  <form method="dialog" class="dialog-body" id="sourcesForm">
+    <h2>Indexer, SABnzbd &amp; Audiobookshelf</h2>
+    <fieldset>
+      <legend>Newznab-Indexer</legend>
+      <p class="muted small">URL des Indexers (z. B. <code>https://api.nzbgeek.info</code>) oder bei Prowlarr die Newznab-URL des Indexers (<code>http://prowlarr:9696/1/</code> mit dem Prowlarr-API-Key). Kategorie 3030 = Hörbuch.</p>
+      <div id="indexerRows" class="indexer-rows"></div>
+      <button type="button" id="addIndexerBtn" class="btn small">+ Indexer</button>
+    </fieldset>
+    <fieldset>
+      <legend>SABnzbd</legend>
+      <div class="grid2">
+        <label>Adresse <input name="sab_url" type="text" placeholder="http://192.168.1.10:8080" spellcheck="false"></label>
+        <label>API-Key <input name="sab_apikey" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>Kategorie <small>deren Ordner = Hörbuch-Eingang</small><input name="sab_category" type="text" placeholder="audiobooks"></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Audiobookshelf <small class="muted">optional</small></legend>
+      <p class="muted small">Nach dem Ablegen neuer Bücher wird die Bibliothek in Audiobookshelf neu eingelesen – nötig, wenn dessen
+        Ordnerüberwachung auf Netzwerk-Shares nichts mitbekommt. API-Token: Audiobookshelf → Einstellungen → Benutzer → Admin → API-Token.</p>
+      <div class="grid2">
+        <label>Adresse <input name="abs_url" type="text" placeholder="http://192.168.1.10:13378" spellcheck="false"></label>
+        <label>API-Token <input name="abs_token" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>Bibliothek <small>leer = wird beim Testen gewählt</small><input name="abs_library" type="text" list="absLibraries" spellcheck="false"></label>
+      </div>
+      <datalist id="absLibraries"></datalist>
+    </fieldset>
+    <p class="muted small">API-Keys und Token werden nur auf dem Server gespeichert (Datenbank in <code>/config</code>) und nie wieder angezeigt. Feld leer lassen = gespeicherten Key behalten.</p>
+    <div class="dialog-actions">
+      <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
+      <button value="save" class="btn primary">Speichern &amp; testen</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="tracksDialog">
+  <div class="dialog-body">
+    <h2>Kapitel &amp; Namen: <span id="tracksTitle"></span></h2>
+    <p class="muted small"><code id="tracksPath"></code> – jede Datei wird ein Kapitel. Namen anpassen, dann zu M4B.
+      Danach wird das Buch bei Audible erkannt (oder kommt zur Prüfung), getaggt und ersetzt die alte Fassung.</p>
+    <div class="row gap wrap">
+      <span class="muted small">Vorlage:</span>
+      <button type="button" class="btn small" data-preset="auto">automatisch</button>
+      <button type="button" class="btn small" data-preset="tag">aus Tags</button>
+      <button type="button" class="btn small" data-preset="filename">Dateinamen</button>
+      <button type="button" class="btn small" data-preset="strip">ohne Nummer</button>
+      <button type="button" class="btn small" data-preset="numbered">Kapitel 1, 2, 3 …</button>
+    </div>
+    <div class="table-wrap tracks-wrap">
+      <table class="results tracks">
+        <thead><tr><th class="c-num">#</th><th>Datei</th><th class="c-num">Länge</th><th>Kapitelname</th></tr></thead>
+        <tbody id="tracksBody"></tbody>
+      </table>
+    </div>
+    <label class="check"><input type="checkbox" id="tracksRename"> Dateien vorher auch so umbenennen („01 - Kapitelname.mp3“)</label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" data-close>Abbrechen</button>
+      <button type="button" class="btn primary" id="tracksGo">Zu M4B</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="manualDialog">
+  <form method="dialog" class="dialog-body" id="manualForm">
+    <h2 id="manualTitle">Selbst eintragen</h2>
+    <label>Link von Audible, BookBeat oder Thalia <small>füllt die Felder automatisch</small>
+      <span class="row gap">
+        <input id="manualLink" name="link" type="text" placeholder="https://www.bookbeat.com/de/book/…" spellcheck="false">
+        <button type="button" id="manualLinkBtn" class="btn small">Daten holen</button>
+      </span>
+    </label>
+    <div id="manualSource" class="manual-source" hidden></div>
+    <div class="grid2">
+      <label>Titel <input name="title" type="text"></label>
+      <label>Untertitel <input name="subtitle" type="text"></label>
+      <label>Autor(en) <small>kommagetrennt</small><input name="authors" type="text"></label>
+      <label>Sprecher <small>kommagetrennt</small><input name="narrators" type="text"></label>
+      <label>Serie <input name="series" type="text"></label>
+      <label>Band / Folge <input name="series_position" type="text"></label>
+      <label>Erscheinungsdatum <small>JJJJ-MM-TT</small><input name="release_date" type="text"></label>
+      <label>Verlag <input name="publisher" type="text"></label>
+    </div>
+    <label>Genres <small>kommagetrennt</small><input name="genres" type="text"></label>
+    <label>Beschreibung <textarea name="description" rows="4"></textarea></label>
+    <p class="muted small">Ohne Vorlage werden leere Felder aus den Tags der Dateien übernommen.</p>
+    <div class="dialog-actions">
+      <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
+      <button value="save" class="btn primary">Taggen &amp; ablegen</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="settingsDialog">
+  <form method="dialog" class="dialog-body" id="settingsForm">
+    <h2>Einstellungen</h2>
+    <fieldset>
+      <legend>M4B-Konvertierung</legend>
+      <p class="muted small">Gilt für „Jetzt zu M4B“ und für den Hörbuch-Eingang.</p>
+      <label class="check"><input type="checkbox" name="auto_convert"> „Danach MP3 → M4B“ standardmäßig an</label>
+      <div class="grid2">
+        <label>AAC-Bitrate
+          <select name="bitrate">
+            <option value="auto">automatisch (wie Quelle, max. 128k)</option>
+            <option>48k</option><option>64k</option><option>96k</option><option>128k</option><option>160k</option><option>192k</option>
+          </select>
+        </label>
+        <label>Kapitelnamen
+          <select name="chapter_titles">
+            <option value="auto">automatisch (Tag, sonst Dateiname)</option>
+            <option value="filename">aus Dateinamen</option>
+            <option value="tag">aus ID3-Titel</option>
+          </select>
+        </label>
+        <label>Hörbuch-Titel
+          <select name="title_source">
+            <option value="folder">Ordnername</option>
+            <option value="album">ID3-Album</option>
+          </select>
+        </label>
+        <label>MP3-Originale danach
+          <select name="originals">
+            <option value="keep">behalten</option>
+            <option value="move">in Unterordner</option>
+            <option value="delete">löschen</option>
+          </select>
+        </label>
+        <label>Dateiname der M4B <small>{folder} {album} {artist}</small>
+          <input name="output_name" type="text">
+        </label>
+        <label>Unterordner für Originale
+          <input name="originals_folder" type="text">
+        </label>
+      </div>
+      <label class="check"><input type="checkbox" name="force_mono"> In Mono umwandeln (kleinere Datei)</label>
+    </fieldset>
+    <fieldset>
+      <legend>Hörbücher: Eingang → Bibliothek</legend>
+      <p class="muted small" id="abPaths"></p>
+      <label class="check"><input type="checkbox" name="ab_watch"> Eingangsordner automatisch überwachen</label>
+      <div class="grid2">
+        <label>Audible-Shop
+          <select name="ab_region">
+            <option value="de">Deutschland (audible.de)</option><option value="us">USA (audible.com)</option>
+            <option value="uk">Großbritannien</option><option value="fr">Frankreich</option>
+            <option value="it">Italien</option><option value="es">Spanien</option>
+            <option value="ca">Kanada</option><option value="au">Australien</option>
+            <option value="in">Indien</option><option value="jp">Japan</option>
+          </select>
+        </label>
+        <label>Erkennung
+          <select name="ab_match">
+            <option value="auto">automatisch, unsichere prüfen</option>
+            <option value="review">immer selbst prüfen</option>
+            <option value="off">aus (nur konvertieren &amp; ablegen)</option>
+          </select>
+        </label>
+        <label>Mindest-Sicherheit <small>0.5 – 1.0</small>
+          <input name="ab_threshold" type="number" min="0.5" max="1" step="0.01">
+        </label>
+        <label>Kapitel
+          <select name="ab_chapters">
+            <option value="auto">Audible, wenn eigene nur „Track 1, 2 …“</option>
+            <option value="audible">Audible, wenn Laufzeit passt</option>
+            <option value="files">immer aus den Dateien</option>
+          </select>
+        </label>
+        <label>Cover
+          <select name="ab_cover_source">
+            <option value="audible">aus dem Shop (Audible/BookBeat, volle Auflösung)</option>
+            <option value="local">aus dem Ordner / der Datei</option>
+          </select>
+        </label>
+        <label>Schon in der Bibliothek
+          <select name="ab_duplicates">
+            <option value="ask">nachfragen</option>
+            <option value="skip">überspringen (nicht ablegen)</option>
+            <option value="keep">trotzdem zusätzlich ablegen</option>
+          </select>
+        </label>
+        <label>Alte Fassung beim Umwandeln der Bibliothek
+          <select name="ab_library_originals">
+            <option value="archive">nach _ersetzt im Eingang verschieben</option>
+            <option value="delete">löschen</option>
+          </select>
+        </label>
+        <label>Originale im Eingang danach
+          <select name="ab_originals">
+            <option value="archive">nach _fertig verschieben</option>
+            <option value="delete">löschen</option>
+          </select>
+        </label>
+      </div>
+      <label>Ordner in der Bibliothek <small>{author} {series} {series_position:2} {title} {year} {narrator} {asin} – [ … ] entfällt, wenn leer. Vorhandene Ordner werden auch bei anderer Schreibweise wiederverwendet.</small>
+        <input name="ab_folder_template" type="text" spellcheck="false">
+      </label>
+      <label>Dateiname <small>ohne .m4b</small>
+        <input name="ab_file_template" type="text" spellcheck="false">
+      </label>
+      <div class="path-preview" id="pathPreview"></div>
+      <div class="grid2">
+        <label class="check"><input type="checkbox" name="write_desc"> desc.txt (Beschreibung)</label>
+        <label class="check"><input type="checkbox" name="write_reader"> reader.txt (Sprecher)</label>
+        <label class="check"><input type="checkbox" name="write_cover"> cover.jpg</label>
+        <label class="check"><input type="checkbox" name="write_abs"> metadata.json (Audiobookshelf)</label>
+        <label class="check"><input type="checkbox" name="ab_fallback"> Apple Books / Open Library, wenn Audible nichts findet</label>
+        <label class="check"><input type="checkbox" name="narrator_in_artist"> Sprecher im Interpreten-Tag</label>
+        <label class="check"><input type="checkbox" name="keep_series_in_title"> „, Band 3“ im Titel lassen</label>
+        <label class="check"><input type="checkbox" name="keep_series_in_subtitle"> Serien-Untertitel behalten</label>
+      </div>
+      <label>Wartezeit, bis ein Ordner fertig kopiert gilt <small>Sekunden ohne Änderung</small>
+        <input name="ab_settle" type="number" min="0" step="1">
+      </label>
+    </fieldset>
+    <fieldset>
+      <legend>Umbenennen – Standardwerte</legend>
+      <label class="check"><input type="checkbox" name="sidecars"> Begleitdateien mitnehmen</label>
+      <label>Endungen von Begleitdateien
+        <input name="sidecar_exts" type="text">
+      </label>
+      <label class="check"><input type="checkbox" name="allow_subdirs"> „/“ im neuen Namen legt Unterordner an</label>
+      <label>Bei Namenskonflikten
+        <select name="conflict">
+          <option value="error">anzeigen und blockieren</option>
+          <option value="number">automatisch nummerieren</option>
+        </select>
+      </label>
+    </fieldset>
+    <p class="muted small" id="systemInfo"></p>
+    <div class="dialog-actions">
+      <button value="cancel" formnovalidate class="btn ghost">Abbrechen</button>
+      <button value="save" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="historyDialog">
+  <div class="dialog-body">
+    <h2>Verlauf</h2>
+    <p class="muted">Rückgängig machen geht immer nur für den jüngsten Eintrag – danach ist der nächste dran.</p>
+    <ul id="historyList" class="history-list"></ul>
+    <div class="dialog-actions">
+      <button class="btn ghost" data-close>Schließen</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="metaDialog">
+  <div class="dialog-body">
+    <h2 id="metaTitle">Platzhalter</h2>
+    <p class="muted">Klick auf einen Platzhalter kopiert ihn – einfügen in eine „Vorlage“-Regel.</p>
+    <div id="metaBody" class="meta-grid"></div>
+    <div class="dialog-actions">
+      <button class="btn ghost" data-close>Schließen</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="presetDialog">
+  <form method="dialog" class="dialog-body">
+    <h2>Voreinstellung speichern</h2>
+    <label>Name <input id="presetName" type="text" required></label>
+    <div class="dialog-actions">
+      <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
+      <button value="save" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="confirmDialog">
+  <form method="dialog" class="dialog-body">
+    <p id="confirmText"></p>
+    <div class="dialog-actions">
+      <button value="cancel" formnovalidate class="btn ghost">Abbrechen</button>
+      <button value="ok" class="btn primary" id="confirmOk">OK</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="/static/core.js"></script>
+<script src="/static/live.js"></script>
+<script src="/static/rules-ui.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/books.js"></script>
+<script src="/static/search.js"></script>
+</body>
+</html>

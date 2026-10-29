@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.DS_Store
+/config/
+/data/
+*.part
+.env
+node_modules/
+# compiled from frontend/src (npm run build)
+app/static/*.js
+test-results/
+playwright-report/
+e2e/.run/

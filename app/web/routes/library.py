@@ -1,0 +1,80 @@
+"""The library: stats, rescan, books that are not one M4B yet and their conversion."""
+from __future__ import annotations
+
+import os
+import threading
+
+import encoder
+from meta import cache as meta_cache
+from rules import natural_key
+from web.router import HTTPException, Req, route
+from web.routes.common import library_path
+
+
+@route("GET", "/api/library")
+def stats(req: Req):
+    return req.app.library_index.stats()
+
+
+@route("POST", "/api/library/scan")
+def scan(req: Req):
+    threading.Thread(target=req.app.library_index.scan, daemon=True).start()
+    return {"ok": True}
+
+
+@route("GET", "/api/library/unconverted")
+def unconverted(req: Req):
+    """Books in the library that are still MP3 & co. instead of one M4B."""
+    app = req.app
+    active = {j["source"]: j for j in app.pipeline.status()["jobs"]
+              if j["status"] not in ("done", "failed", "cancelled")}
+    root = os.path.realpath(app.config.library)
+    index = app.library_index
+    with index.lock:
+        entries = [e for e in index.entries.values() if e.get("format") != "m4b"]
+    out = []
+    for e in sorted(entries, key=lambda e: [natural_key(p) for p in e["path"].split(os.sep)]):
+        job = active.get(os.path.join(root, e["path"]))
+        out.append({k: e.get(k) for k in ("path", "title", "authors", "series", "series_position", "files", "format")}
+                   | {"job": {"id": job["id"], "status": job["status"]} if job else None})
+    return {"books": out, "scanning": index.scanning}
+
+
+@route("GET", "/api/library/tracks")
+def tracks(req: Req):
+    """Tracks of an unconverted book with name suggestions for the chapters."""
+    folder = library_path(req.app, req.query.get("path", ""))
+    out = []
+    for rel in encoder.collect_audio(folder):
+        info = meta_cache.probe(os.path.join(folder, rel))
+        tags = info.get("tags", {})
+        out.append({
+            "file": rel, "duration": info.get("duration") or 0,
+            "auto": encoder.chapter_title(rel, tags, "auto"),
+            "filename": encoder.chapter_title(rel, tags, "filename"),
+            "tag": (tags.get("title") or "").strip(),
+        })
+    return {"path": os.path.relpath(folder, os.path.realpath(req.app.config.library)), "tracks": out}
+
+
+@route("POST", "/api/library/convert")
+def convert(req: Req):
+    """Queue library books for conversion: [{path, chapter_names?, rename_files?}]."""
+    items = req.get("items") or []
+    if not isinstance(items, list) or not items:
+        raise HTTPException(400, "Keine Bücher ausgewählt")
+    jobs = []
+    for it in items[:200]:
+        if not isinstance(it, dict):
+            continue
+        folder = library_path(req.app, str(it.get("path") or ""))
+        names = it.get("chapter_names")
+        if names is not None:
+            if not isinstance(names, list) or not all(isinstance(n, str) for n in names):
+                raise HTTPException(400, "chapter_names muss eine Liste von Texten sein")
+            if len(names) != len(encoder.collect_audio(folder)):
+                raise HTTPException(409, "Die Tracks haben sich geändert – bitte neu laden")
+            names = [n.strip()[:200] for n in names]
+        jobs.append(req.app.pipeline.add(folder, origin="library", chapter_names=names,
+                                         rename_files=bool(it.get("rename_files")) and bool(names)).to_dict(full=False))
+    return {"jobs": jobs}

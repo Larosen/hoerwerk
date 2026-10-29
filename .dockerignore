@@ -1,0 +1,17 @@
+__pycache__/
+**/__pycache__
+*.pyc
+config/
+data/
+.git
+.github
+.gitignore
+README.md
+tests/
+unraid/
+# frontend: only package*.json, tsconfig.json and frontend/ are needed; app/static/*.js is built in the image
+node_modules
+e2e/
+test-results
+playwright-report
+app/static/*.js
