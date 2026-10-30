@@ -333,6 +333,27 @@ details.how[open] > summary .ico { transform: rotate(90deg); }
 .thumb { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex: none; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--border); }
 .thumb.none { display: grid; place-items: center; color: var(--faint); }
 .thumb.none .ico { width: 24px; height: 24px; stroke-width: 1.4; }
+/* generated cover: tinted by the title, a serif initial like a book spine label */
+.thumb.gen {
+  position: relative; overflow: hidden; display: grid; place-items: center;
+  background: linear-gradient(160deg, hsl(var(--h) 32% 86%), hsl(var(--h) 26% 76%));
+  color: hsl(var(--h) 35% 26%); box-shadow: inset 3px 0 0 hsl(var(--h) 30% 64%), inset 0 0 0 1px hsl(var(--h) 20% 70% / .6);
+}
+.gen-initial { font: 600 26px/1 Georgia, "Iowan Old Style", "Palatino Linotype", serif; letter-spacing: -.02em; margin-top: -4px; }
+.gen-author { position: absolute; left: 6px; right: 4px; bottom: 4px; font-size: 8px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; opacity: .7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+.gen-tag { position: absolute; top: 4px; right: 4px; font-size: 8px; font-weight: 700; letter-spacing: .04em; padding: 0 3px; border-radius: 3px; background: hsl(var(--h) 35% 26% / .85); color: hsl(var(--h) 40% 92%); }
+:root[data-theme="dark"] .thumb.gen {
+  background: linear-gradient(160deg, hsl(var(--h) 22% 30%), hsl(var(--h) 20% 22%));
+  color: hsl(var(--h) 40% 86%); box-shadow: inset 3px 0 0 hsl(var(--h) 28% 42%), inset 0 0 0 1px hsl(var(--h) 20% 36% / .6);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .thumb.gen {
+    background: linear-gradient(160deg, hsl(var(--h) 22% 30%), hsl(var(--h) 20% 22%));
+    color: hsl(var(--h) 40% 86%); box-shadow: inset 3px 0 0 hsl(var(--h) 28% 42%), inset 0 0 0 1px hsl(var(--h) 20% 36% / .6);
+  }
+}
+.pick .thumb.gen .gen-initial, .picked .thumb.gen .gen-initial, .manual-source .thumb.gen .gen-initial { font-size: 18px; }
+.pick .gen-author, .picked .gen-author, .manual-source .gen-author { display: none; }
 .book-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .book-title { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
 .book-title .name { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -435,7 +456,6 @@ dialog#sourcesDialog { width: min(760px, calc(100vw - 32px)); }
 .books-layout .sidebar > .panel { flex: none; }
 .uc-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 6px 4px; }
 .uc-bar .muted { flex: 1; min-width: 200px; }
-.book.uc .thumb.none { font-size: 11px; font-weight: 700; letter-spacing: .03em; }
 .uc-check { display: flex; align-items: center; padding-top: 18px; }
 dialog#tracksDialog { width: min(860px, calc(100vw - 32px)); }
 .tracks-wrap { max-height: 50vh; border: 1px solid var(--border); border-radius: 8px; }

@@ -146,7 +146,7 @@ async function lookupBooks(): Promise<void> {
     box.replaceChildren(
       el("div", { class: "muted small" }, res.books.length ? t("Welches Buch? ({shop})", { shop: `audible.${res.region === "us" ? "com" : res.region}` }) : t("Bei Audible nichts gefunden – einfach direkt suchen.")),
       el("div", { class: "pick-list" }, res.books.map((b) => el("button", { type: "button", class: "pick", onclick: () => pickBook(b) },
-        b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "", loading: "lazy" }) : el("span", { class: "thumb none" }, "?"),
+        b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, (b.authors || [])[0]),
         el("span", { class: "pick-text" },
           el("b", {}, b.title),
           el("span", {}, (b.authors || []).join(", ")),

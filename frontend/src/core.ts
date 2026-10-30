@@ -186,6 +186,19 @@ function icon(name: string, label?: string): SVGSVGElement {
   return svg;
 }
 
+/** Stand-in cover for books without artwork: a calm tile coloured by the title, with its initial. */
+function coverArt(title: string, author = "", tag = ""): HTMLDivElement {
+  const clean = title.replace(/^[\s\d._-]+/, "").replace(/^(der|die|das|ein|eine|the|a|an|le|la|les|el|il)\s+/i, "") || title;
+  let h = 0;
+  for (const ch of clean.toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const initial = (clean.match(/\p{L}|\p{N}/u) || ["?"])[0].toUpperCase();
+  const last = author.split(/[,\s]+/).filter(Boolean).pop() || "";
+  return el("div", { class: "thumb gen", style: `--h:${h % 360}`, "aria-hidden": "true" },
+    el("span", { class: "gen-initial" }, initial),
+    last ? el("span", { class: "gen-author" }, last) : null,
+    tag ? el("span", { class: "gen-tag" }, tag) : null);
+}
+
 const collator = new Intl.Collator(LANG, { numeric: true, sensitivity: "base" });
 
 async function api<T = unknown>(method: string, url: string, body?: unknown): Promise<T> {

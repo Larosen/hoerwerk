@@ -137,7 +137,7 @@ function renderUnconverted(list: HTMLElement): void {
     list.append(el("li", { class: "book uc" },
       el("div", { class: "book-head" },
         el("label", { class: "uc-check" }, cb),
-        el("div", { class: "thumb none" }, (b.format || "?").toUpperCase()),
+        coverArt(b.title || b.path, (b.authors || [])[0], (b.format || "").toUpperCase()),
         el("div", { class: "book-main" },
           el("div", { class: "book-title" }, el("span", { class: "name" }, b.title || b.path),
             b.job ? el("span", { class: "badge " + b.job.status }, BOOK_STATUS[b.job.status] || b.job.status) : null),
@@ -257,13 +257,20 @@ function renderFilter(jobs: AudiobookJob[]): void {
   }, `${label} ${counts[k] || ""}`.trim())));
 }
 
+/** Title and author for the stand-in cover: the match, else "Author - Title" from the folder name. */
+function jobCoverText(j: AudiobookJob): [string, string] {
+  if (j.match?.title) return [j.match.title, (j.match.authors || [])[0] || ""];
+  const [first, ...rest] = (j.name || j.rel).split(" - ");
+  return rest.length ? [rest.join(" - "), first] : [first, ""];
+}
+
 function bookCard(j: AudiobookJob): HTMLLIElement {
   const pct = Math.round((j.progress || 0) * 100);
   const isOpen = books.open.has(j.id) || j.status === "review";
   const li = el("li", { class: "book " + j.status });
   const m = j.match;
   const head = el("div", { class: "book-head" },
-    m?.cover_url ? el("img", { class: "thumb", src: m.cover_url, alt: "", loading: "lazy" }) : el("div", { class: "thumb none" }, icon("headphones")),
+    m?.cover_url ? el("img", { class: "thumb", src: m.cover_url, alt: "", loading: "lazy" }) : coverArt(...jobCoverText(j)),
     el("div", { class: "book-main" },
       el("div", { class: "book-title" },
         el("span", { class: "name", title: j.source }, m?.title ? m.title : j.rel),
@@ -393,7 +400,7 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
   const score = Math.round((c.match?.score || 0) * 100);
   const narrators = c.narrators || [];
   return el("li", { class: "cand" },
-    c.cover_url ? el("img", { class: "thumb", src: c.cover_url, alt: "", loading: "lazy" }) : el("div", { class: "thumb none" }, icon("book")),
+    c.cover_url ? el("img", { class: "thumb", src: c.cover_url, alt: "", loading: "lazy" }) : coverArt(c.title, (c.authors || [])[0]),
     el("div", { class: "cand-main" },
       el("div", { class: "cand-title" }, c.title, c.subtitle ? el("span", { class: "muted" }, " – " + c.subtitle) : null),
       el("div", { class: "cand-sub" }, [
