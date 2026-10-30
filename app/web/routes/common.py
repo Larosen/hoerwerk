@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 
+from i18n import t
 from web.router import HTTPException
 
 
@@ -11,7 +12,7 @@ def resolve(app, rel: str) -> str:
     root = app.config.data_root
     path = os.path.realpath(os.path.join(root, (rel or "").strip("/")))
     if os.path.commonpath([path, root]) != root:
-        raise HTTPException(400, "Pfad außerhalb des Datenordners")
+        raise HTTPException(400, t("Pfad außerhalb des Datenordners"))
     return path
 
 
@@ -25,7 +26,7 @@ def library_path(app, rel: str) -> str:
     root = os.path.realpath(app.config.library)
     path = os.path.realpath(os.path.join(root, (rel or "").strip("/")))
     if path == root or os.path.commonpath([path, root]) != root or not os.path.isdir(path):
-        raise HTTPException(404, "Ordner nicht in der Bibliothek gefunden")
+        raise HTTPException(404, t("Ordner nicht in der Bibliothek gefunden"))
     return path
 
 

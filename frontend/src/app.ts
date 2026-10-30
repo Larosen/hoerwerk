@@ -4,7 +4,7 @@
 // State
 // ------------------------------------------------------------------------- //
 type Kind = "all" | "audio" | "video" | "image" | "folder" | "other";
-const KINDS: [Kind, string][] = [["all", "Alle"], ["audio", "Audio"], ["video", "Video"], ["image", "Bilder"], ["folder", "Ordner"], ["other", "Andere"]];
+const KINDS: [Kind, string][] = [["all", t("Alle")], ["audio", t("Audio")], ["video", t("Video")], ["image", t("Bilder")], ["folder", t("Ordner")], ["other", t("Andere")]];
 interface ListOpts { recursive: boolean; dirs: boolean; changedOnly: boolean }
 interface RenameOpts { sidecars: boolean; allow_subdirs: boolean; conflict: string; sidecar_exts?: unknown }
 
@@ -53,7 +53,7 @@ async function openFolder(path: string, keepSelection = false): Promise<void> {
 
 function renderFolder(f: Folder): void {
   const crumbs = $("#crumbs");
-  crumbs.replaceChildren(el("a", { href: "#", onclick: (e) => { e.preventDefault(); openFolder(""); } }, "Daten"));
+  crumbs.replaceChildren(el("a", { href: "#", onclick: (e) => { e.preventDefault(); openFolder(""); } }, t("Daten")));
   let acc = "";
   for (const part of f.path ? f.path.split("/") : []) {
     acc = acc ? acc + "/" + part : part;
@@ -63,16 +63,16 @@ function renderFolder(f: Folder): void {
   const list = $("#dirList");
   list.replaceChildren();
   const parent = f.parent;
-  if (parent !== null) list.append(el("li", {}, el("button", { onclick: () => openFolder(parent) }, "↩︎ ..")));
+  if (parent !== null) list.append(el("li", {}, el("button", { onclick: () => openFolder(parent) }, icon("up"), "..")));
   for (const d of f.dirs) {
     const p = f.path ? f.path + "/" + d.name : d.name;
-    list.append(el("li", {}, el("button", { onclick: () => openFolder(p), title: d.name }, "📁 " + d.name)));
+    list.append(el("li", {}, el("button", { onclick: () => openFolder(p), title: d.name }, icon("folder"), d.name)));
   }
-  if (!f.dirs.length && f.parent === null) list.append(el("li", { class: "empty" }, "Keine Unterordner"));
+  if (!f.dirs.length && f.parent === null) list.append(el("li", { class: "empty" }, t("Keine Unterordner")));
   const audio = f.files.filter((x) => x.kind === "audio" && !x.name.includes("/")).length;
   $("#mp3Box").hidden = !f.mp3_count && !audio;
   $("#convertNowBtn").hidden = !f.mp3_count;
-  $("#mp3Info").textContent = f.mp3_count ? `${f.mp3_count} MP3 in diesem Ordner` : `${audio} Audiodatei(en)`;
+  $("#mp3Info").textContent = f.mp3_count ? t("{n} MP3 in diesem Ordner", { n: f.mp3_count }) : t("{n} Audiodatei(en)", { n: audio });
 }
 
 function renderChips(): void {
@@ -121,13 +121,13 @@ function renderFiles(): void {
   const files = sortedFiles().filter(visible);
   if (!files.length) {
     body.append(el("tr", {}, el("td", { colspan: 5, class: "empty-row" },
-      state.folder?.files.length ? "Keine Einträge für diesen Filter" : "Keine Dateien in diesem Ordner")));
+      state.folder?.files.length ? t("Keine Einträge für diesen Filter") : t("Keine Dateien in diesem Ordner"))));
   }
   files.forEach((f, i) => {
-    const cb = el("input", { type: "checkbox", "aria-label": "Auswählen" });
+    const cb = el("input", { type: "checkbox", "aria-label": t("Auswählen") });
     cb.checked = !state.unchecked.has(f.name);
     cb.addEventListener("click", (ev) => toggleFile(files, i, cb.checked, ev.shiftKey));
-    const info = f.dir ? null : el("button", { class: "icon-btn", title: "Metadaten & Platzhalter", onclick: () => showMeta(f.name) }, "ⓘ");
+    const info = f.dir ? null : el("button", { class: "icon-btn", title: t("Metadaten & Platzhalter"), onclick: () => showMeta(f.name) }, icon("info"));
     body.append(el("tr", { "data-name": f.name, class: f.dir ? "is-dir" : "" },
       el("td", { class: "c-check" }, cb),
       el("td", { class: "old" }, nameCell(f)),
@@ -136,7 +136,7 @@ function renderFiles(): void {
       el("td", { class: "c-info" }, info)));
   });
   if (state.folder?.truncated) {
-    body.append(el("tr", {}, el("td", { colspan: 5, class: "empty-row" }, "Liste gekürzt – zu viele Dateien. Engeren Ordner wählen.")));
+    body.append(el("tr", {}, el("td", { colspan: 5, class: "empty-row" }, t("Liste gekürzt – zu viele Dateien. Engeren Ordner wählen."))));
   }
   updateRows();
 }
@@ -145,7 +145,8 @@ function nameCell(f: FileEntry): DocumentFragment {
   const frag = document.createDocumentFragment();
   const slash = f.name.lastIndexOf("/");
   if (slash >= 0) frag.append(el("span", { class: "dirpart" }, f.name.slice(0, slash + 1)));
-  frag.append((f.dir ? "📁 " : "") + f.name.slice(slash + 1));
+  if (f.dir) frag.append(icon("folder"), " ");
+  frag.append(f.name.slice(slash + 1));
   if (f.kind === "audio" && f.name.toLowerCase().endsWith(".mp3")) frag.append(el("span", { class: "tag" }, "MP3"));
   return frag;
 }
@@ -195,8 +196,8 @@ function updateRows(): void {
     if (item) {
       cell.append(item.changed ? diffNode(item.old, item.new) : item.new);
       if (item.changed) changed++; else tr.classList.add("unchanged");
-      if (item.resolved) cell.append(el("span", { class: "note" }, "automatisch nummeriert"));
-      if (item.sidecar) cell.append(el("span", { class: "note" }, "Begleitdatei – folgt " + (item.of || "").split("/").pop()));
+      if (item.resolved) cell.append(el("span", { class: "note" }, t("automatisch nummeriert")));
+      if (item.sidecar) cell.append(el("span", { class: "note" }, t("Begleitdatei – folgt {file}", { file: (item.of || "").split("/").pop() || "" })));
       if (item.error) { tr.classList.add("conflict"); cell.append(el("span", { class: "err" }, item.error)); errors++; }
     } else {
       cell.append(on ? "…" : name);
@@ -209,7 +210,7 @@ function updateRows(): void {
     const anchor = body.querySelector(`tr[data-name="${CSS.escape(item.of || "")}"]`);
     const tr = el("tr", { class: "sidecar" + (item.error ? " conflict" : "") },
       el("td", { class: "c-check" }),
-      el("td", { class: "old" }, el("span", { class: "tag soft" }, "Begleitdatei"), item.old),
+      el("td", { class: "old" }, el("span", { class: "tag soft" }, t("Begleitdatei")), item.old),
       el("td", { class: "c-arrow" }, "→"),
       el("td", { class: "new" }, diffNode(item.old, item.new), item.error ? el("span", { class: "err" }, item.error) : null),
       el("td", { class: "c-info" }));
@@ -224,9 +225,9 @@ function updateRows(): void {
   all.indeterminate = selected > 0 && selected < visibleRows;
 
   const s = $("#summary");
-  s.replaceChildren(el("b", {}, String(changed)), ` von ${selected + state.extraRows.length} Einträgen werden umbenannt`);
-  if (state.extraRows.length) s.append(` (inkl. ${state.extraRows.length} nicht ausgewählter Begleitdateien)`);
-  if (errors) s.append(" · ", el("span", { class: "bad" }, `${errors} Konflikt${errors > 1 ? "e" : ""}`));
+  s.replaceChildren(el("b", {}, String(changed)), " " + t("von {n} Einträgen werden umbenannt", { n: selected + state.extraRows.length }));
+  if (state.extraRows.length) s.append(" " + t("(inkl. {n} nicht ausgewählter Begleitdateien)", { n: state.extraRows.length }));
+  if (errors) s.append(" · ", el("span", { class: "bad" }, errors > 1 ? t("{n} Konflikte", { n: errors }) : t("1 Konflikt")));
   $<HTMLButtonElement>("#applyBtn").disabled = !state.previewOk || errors > 0 || changed === 0;
   const hasMp3 = selectedFiles().some((n) => n.toLowerCase().endsWith(".mp3"));
   $("#convertCheck").parentElement?.classList.toggle("dim", !hasMp3);
@@ -252,16 +253,16 @@ function renderRules(): void {
 
 function ruleCard(rule: Rule, idx: number): HTMLLIElement {
   const def = RULE_TYPES[rule.type];
-  if (!def) return el("li", { class: "rule" }, `Unbekannte Regel: ${rule.type}`);
+  if (!def) return el("li", { class: "rule" }, t("Unbekannte Regel: {type}", { type: rule.type }));
   const li = el("li", { class: "rule" + (rule.enabled === false ? " disabled" : "") + (rule.collapsed ? " collapsed" : ""), draggable: "false" });
 
-  const enabled = el("input", { type: "checkbox", title: "Regel aktiv", "aria-label": "Regel aktiv" });
+  const enabled = el("input", { type: "checkbox", title: t("Regel aktiv"), "aria-label": t("Regel aktiv") });
   enabled.checked = rule.enabled !== false;
   enabled.addEventListener("change", () => { rule.enabled = enabled.checked; li.classList.toggle("disabled", !enabled.checked); saveRules(); });
 
   const summary = el("span", { class: "rule-summary" }, def.summary?.(rule) || "");
-  const cond = rule.only ? el("span", { class: "tag soft" }, "bedingt") : null;
-  const handle = el("span", { class: "handle", title: "Ziehen zum Sortieren", "aria-hidden": "true" }, "⋮⋮");
+  const cond = rule.only ? el("span", { class: "tag soft" }, t("bedingt")) : null;
+  const handle = el("span", { class: "handle", title: t("Ziehen zum Sortieren"), "aria-hidden": "true" }, icon("grip"));
   handle.addEventListener("mousedown", () => li.setAttribute("draggable", "true"));
   handle.addEventListener("touchstart", () => li.setAttribute("draggable", "true"), { passive: true });
 
@@ -271,10 +272,10 @@ function ruleCard(rule: Rule, idx: number): HTMLLIElement {
       `${idx + 1}. ${def.label}`),
     summary, cond,
     el("div", { class: "rule-tools" },
-      el("button", { class: "icon-btn", title: "Nach oben", disabled: idx === 0, onclick: () => moveRule(idx, idx - 1) }, "↑"),
-      el("button", { class: "icon-btn", title: "Nach unten", disabled: idx === state.rules.length - 1, onclick: () => moveRule(idx, idx + 1) }, "↓"),
-      el("button", { class: "icon-btn", title: "Duplizieren", onclick: () => { state.rules.splice(idx + 1, 0, structuredClone(rule)); renderRules(); saveRules(); } }, "⧉"),
-      el("button", { class: "icon-btn", title: "Entfernen", onclick: () => { state.rules.splice(idx, 1); renderRules(); saveRules(); } }, "✕")));
+      el("button", { class: "icon-btn", title: t("Nach oben"), disabled: idx === 0, onclick: () => moveRule(idx, idx - 1) }, icon("up-arrow")),
+      el("button", { class: "icon-btn", title: t("Nach unten"), disabled: idx === state.rules.length - 1, onclick: () => moveRule(idx, idx + 1) }, icon("down-arrow")),
+      el("button", { class: "icon-btn", title: t("Duplizieren"), onclick: () => { state.rules.splice(idx + 1, 0, structuredClone(rule)); renderRules(); saveRules(); } }, icon("copy")),
+      el("button", { class: "icon-btn", title: t("Entfernen"), onclick: () => { state.rules.splice(idx, 1); renderRules(); saveRules(); } }, icon("x"))));
 
   const fields = el("div", { class: "rule-fields" });
   const refresh = (): void => {
@@ -282,7 +283,7 @@ function ruleCard(rule: Rule, idx: number): HTMLLIElement {
     for (const f of def.fields) if (!f.show || f.show(rule)) fields.append(fieldInput(rule, f, refresh));
     if (def.hint) fields.append(el("div", { class: "hint", html: def.hint }));
     const condBox = el("details", { class: "cond", open: rule.only ? true : null },
-      el("summary", {}, "Bedingung"),
+      el("summary", {}, t("Bedingung")),
       el("div", { class: "rule-fields" }, CONDITION_FIELDS.map((f) => fieldInput(rule, f, refresh))));
     fields.append(condBox);
     summary.textContent = def.summary?.(rule) || "";
@@ -346,7 +347,7 @@ function fieldInput(rule: Rule, f: FieldDef, refresh: () => void): HTMLLabelElem
 }
 
 function addRuleOptions(): void {
-  $("#addRuleSelect").replaceChildren(el("option", { value: "" }, "+ Regel hinzufügen …"),
+  $("#addRuleSelect").replaceChildren(el("option", { value: "" }, t("+ Regel hinzufügen …")),
     ...RULE_GROUPS.map(([g, types]) => el("optgroup", { label: g }, types.map((t) => el("option", { value: t }, RULE_TYPES[t].label)))));
 }
 
@@ -402,8 +403,8 @@ async function apply(): Promise<void> {
       path: state.path, files: selectedFiles(), rules: state.rules,
       options: renameOptions(), convert: $<HTMLInputElement>("#convertCheck").checked,
     });
-    let msg = `${res.renamed} Einträge umbenannt`;
-    if (res.jobs?.length) msg += ` · ${res.jobs.length} M4B-Konvertierung${res.jobs.length > 1 ? "en" : ""} gestartet`;
+    let msg = t("{n} Einträge umbenannt", { n: res.renamed });
+    if (res.jobs?.length) msg += " · " + t("{n} M4B-Konvertierung(en) gestartet", { n: res.jobs.length });
     toast(msg);
     if (res.jobs?.length) pollJobs(true);
     await openFolder(state.path, true);
@@ -416,7 +417,7 @@ async function apply(): Promise<void> {
 async function undo(): Promise<void> {
   try {
     const res = await api<{ restored: number; folder: string }>("POST", "/api/undo");
-    toast(`${res.restored} Einträge zurückbenannt`);
+    toast(t("{n} Einträge zurückbenannt", { n: res.restored }));
     await openFolder(res.folder, true);
     if ($<HTMLDialogElement>("#historyDialog").open) showHistory();
   } catch (e) { toast(errMsg(e), true); }
@@ -425,18 +426,18 @@ async function undo(): Promise<void> {
 async function showHistory(): Promise<void> {
   const list = $("#historyList");
   const dialog = $<HTMLDialogElement>("#historyDialog");
-  list.replaceChildren(el("li", { class: "muted" }, "Lade …"));
+  list.replaceChildren(el("li", { class: "muted" }, t("Lade …")));
   if (!dialog.open) dialog.showModal();
   try {
     const hist = await api<HistoryEntry[]>("GET", "/api/history");
     list.replaceChildren();
-    if (!hist.length) list.append(el("li", { class: "muted" }, "Noch keine Umbenennungen."));
+    if (!hist.length) list.append(el("li", { class: "muted" }, t("Noch keine Umbenennungen.")));
     hist.forEach((h, i) => {
-      const when = new Date(h.time * 1000).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+      const when = new Date(h.time * 1000).toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short" });
       list.append(el("li", { class: "hist" },
         el("div", { class: "hist-top" },
-          el("b", {}, `${h.count} Einträge`), el("span", { class: "muted" }, ` in /${h.folder} · ${when}`),
-          i === 0 ? el("button", { class: "btn small", onclick: undo }, "Rückgängig") : null),
+          el("b", {}, t("{n} Einträge", { n: h.count })), el("span", { class: "muted" }, " " + t("in /{folder} · {when}", { folder: h.folder, when })),
+          i === 0 ? el("button", { class: "btn small", onclick: undo }, t("Rückgängig")) : null),
         el("ul", { class: "hist-sample" }, (h.sample || []).map(([o, n]) => el("li", {}, `${o} → ${n}`)))));
     });
   } catch (e) { list.replaceChildren(el("li", { class: "err" }, errMsg(e))); }
@@ -451,7 +452,7 @@ async function showMeta(file: string): Promise<void> {
   const d = $<HTMLDialogElement>("#metaDialog");
   $("#metaTitle").textContent = file.split("/").pop() || file;
   const body = $("#metaBody");
-  body.replaceChildren(el("p", { class: "muted" }, "Lese Metadaten …"));
+  body.replaceChildren(el("p", { class: "muted" }, t("Lese Metadaten …")));
   d.showModal();
   try {
     const res = await api<FileMeta>("GET", "/api/meta?" + new URLSearchParams({ path: state.path, file }));
@@ -464,21 +465,21 @@ async function showMeta(file: string): Promise<void> {
       const code = "{" + k + "}";
       return el("div", { class: "meta-row" },
         el("button", {
-          class: "ph", title: "Kopieren",
+          class: "ph", title: t("Kopieren"),
           onclick: async () => {
-            try { await navigator.clipboard.writeText(code); toast(`${code} kopiert`); } catch { toast(code); }
+            try { await navigator.clipboard.writeText(code); toast(t("{code} kopiert", { code })); } catch { toast(code); }
           },
         }, code),
         el("span", {}, String(v)));
     }));
-    if (!Object.keys(res.meta).length) body.append(el("p", { class: "muted" }, "Keine Tags in dieser Datei gefunden."));
+    if (!Object.keys(res.meta).length) body.append(el("p", { class: "muted" }, t("Keine Tags in dieser Datei gefunden.")));
   } catch (e) { body.replaceChildren(el("p", { class: "err" }, errMsg(e))); }
 }
 
 // ------------------------------------------------------------------------- //
 // Jobs („Jetzt zu M4B“)
 // ------------------------------------------------------------------------- //
-const STATUS: Record<ConvertStatus, string> = { queued: "wartet", running: "läuft", done: "fertig", error: "Fehler", cancelled: "abgebrochen" };
+const STATUS: Record<ConvertStatus, string> = { queued: t("wartet"), running: t("läuft"), done: t("fertig"), error: t("Fehler"), cancelled: t("abgebrochen") };
 let jobTimer: number | undefined, lastJobsJson = "", hadRunning = false;
 
 function applyJobs(jobs: ConvertJob[], force = false): boolean {
@@ -502,7 +503,7 @@ document.addEventListener("livechange", (e) => { if ((e as CustomEvent<boolean>)
 function renderJobs(jobs: ConvertJob[]): void {
   const list = $("#jobList");
   list.replaceChildren();
-  if (!jobs.length) { list.append(el("li", { class: "empty" }, "Keine Jobs")); return; }
+  if (!jobs.length) { list.append(el("li", { class: "empty" }, t("Keine Jobs"))); return; }
   for (const j of jobs) {
     const pct = Math.round(j.progress * 100);
     const li = el("li", { class: "job " + j.status },
@@ -512,9 +513,9 @@ function renderJobs(jobs: ConvertJob[]): void {
       el("div", { class: "job-msg" }, j.message));
     if (j.status === "running" || j.status === "queued") {
       li.append(el("div", { class: "bar" }, el("i", { style: `width:${pct}%` })));
-      li.append(el("button", { class: "btn small ghost", onclick: () => cancelJob(j.id) }, "Abbrechen"));
+      li.append(el("button", { class: "btn small ghost", onclick: () => cancelJob(j.id) }, t("Abbrechen")));
     }
-    if (j.log?.length) li.append(el("details", {}, el("summary", {}, "Log"), el("pre", {}, j.log.join("\n"))));
+    if (j.log?.length) li.append(el("details", {}, el("summary", {}, t("Log")), el("pre", {}, j.log.join("\n"))));
     list.append(li);
   }
 }
@@ -552,9 +553,10 @@ function openSettings(): void {
   $<HTMLDialogElement>("#settingsDialog").showModal();
   api<SystemInfo>("GET", "/api/system").then((s) => {
     const sb = s.sandbox;
-    const jail = !sb.active ? (sb.mode === "off" ? "ffmpeg ohne Sandbox (FFMPEG_SANDBOX=off)" : "ffmpeg ohne Sandbox – Kernel/Docker erlaubt kein Landlock")
-      : `ffmpeg abgeschottet (Landlock ABI ${sb.landlock_abi}${sb.network_blocked ? ", ohne Netz" : ""})`;
-    $("#systemInfo").textContent = `Version ${s.version} · ffmpeg ${s.ffmpeg} · ${jail}`;
+    const jail = !sb.active ? (sb.mode === "off" ? t("ffmpeg ohne Sandbox (FFMPEG_SANDBOX=off)") : t("ffmpeg ohne Sandbox – Kernel/Docker erlaubt kein Landlock"))
+      : sb.network_blocked ? t("ffmpeg abgeschottet (Landlock ABI {abi}, ohne Netz)", { abi: sb.landlock_abi })
+        : t("ffmpeg abgeschottet (Landlock ABI {abi})", { abi: sb.landlock_abi });
+    $("#systemInfo").textContent = t("Version {version} · ffmpeg {ffmpeg} · {jail}", { version: s.version, ffmpeg: s.ffmpeg, jail });
   }).catch(() => { /* optional */ });
 }
 
@@ -564,11 +566,14 @@ async function saveSettings(): Promise<void> {
     data[k] = input instanceof HTMLInputElement && input.type === "checkbox" ? input.checked : input.value;
   }
   try {
+    await saveNotify();
+    const langChanged = data.language !== undefined && data.language !== state.settings.language;
     state.settings = await api<Settings>("PUT", "/api/settings", data);
+    if (langChanged) { location.reload(); return; }   // all texts come from /i18n.js
     store.set("renameOpts", null);
     await loadSettings();
     schedulePreview(0);
-    toast("Einstellungen gespeichert");
+    toast(t("Einstellungen gespeichert"));
   } catch (e) { toast(errMsg(e), true); }
 }
 
@@ -576,7 +581,7 @@ async function loadPresets(): Promise<void> {
   try { state.presets = await api<Record<string, Rule[]>>("GET", "/api/presets"); } catch { state.presets = {}; }
   const sel = $<HTMLSelectElement>("#presetSelect");
   const current = sel.value;
-  sel.replaceChildren(el("option", { value: "" }, "Voreinstellungen …"),
+  sel.replaceChildren(el("option", { value: "" }, t("Voreinstellungen …")),
     ...Object.keys(state.presets).sort(collator.compare).map((n) => el("option", { value: n }, n)));
   if (state.presets[current]) sel.value = current;
 }
@@ -589,13 +594,13 @@ function savePreset(): void {
   d.addEventListener("close", async () => {
     const name = nameInput.value.trim();
     if (d.returnValue !== "save" || !name) return;
-    if (state.presets[name] && !(await confirmBox(`„${name}“ überschreiben?`, "Überschreiben"))) return;
+    if (state.presets[name] && !(await confirmBox(t("„{name}“ überschreiben?", { name }), t("Überschreiben")))) return;
     state.presets[name] = structuredClone(state.rules).map((r) => { delete r.collapsed; return r; });
     try {
       await api("PUT", "/api/presets", state.presets);
       await loadPresets();
       $<HTMLSelectElement>("#presetSelect").value = name;
-      toast(`„${name}“ gespeichert`);
+      toast(t("„{name}“ gespeichert", { name }));
     } catch (e) { toast(errMsg(e), true); }
   }, { once: true });
   d.showModal();
@@ -603,8 +608,8 @@ function savePreset(): void {
 
 async function deletePreset(): Promise<void> {
   const name = $<HTMLSelectElement>("#presetSelect").value;
-  if (!name) { toast("Erst eine Voreinstellung auswählen"); return; }
-  if (!(await confirmBox(`Voreinstellung „${name}“ löschen?`, "Löschen"))) return;
+  if (!name) { toast(t("Erst eine Voreinstellung auswählen")); return; }
+  if (!(await confirmBox(t("Voreinstellung „{name}“ löschen?", { name }), t("Löschen")))) return;
   delete state.presets[name];
   await api("PUT", "/api/presets", state.presets);
   await loadPresets();
@@ -619,12 +624,12 @@ function exportPresets(): void {
 async function importPresets(file: File): Promise<void> {
   try {
     const data: unknown = JSON.parse(await file.text());
-    if (typeof data !== "object" || data === null || Array.isArray(data)) throw new Error("Erwartet ein Objekt { Name: [Regeln] }");
+    if (typeof data !== "object" || data === null || Array.isArray(data)) throw new Error(t("Erwartet ein Objekt { Name: [Regeln] }"));
     const merged = { ...state.presets, ...(data as Record<string, Rule[]>) };
     await api("PUT", "/api/presets", merged);
     await loadPresets();
-    toast(`${Object.keys(data).length} Voreinstellung(en) importiert`);
-  } catch (e) { toast("Import fehlgeschlagen: " + errMsg(e), true); }
+    toast(t("{n} Voreinstellung(en) importiert", { n: Object.keys(data).length }));
+  } catch (e) { toast(t("Import fehlgeschlagen: {error}", { error: errMsg(e) }), true); }
 }
 
 // ------------------------------------------------------------------------- //
@@ -642,13 +647,13 @@ function init(): void {
     $("#ruleList").lastElementChild?.scrollIntoView({ block: "nearest" });
   });
   $("#clearRulesBtn").addEventListener("click", async () => {
-    if (state.rules.length && !(await confirmBox("Alle Regeln entfernen?", "Entfernen"))) return;
+    if (state.rules.length && !(await confirmBox(t("Alle Regeln entfernen?"), t("Entfernen")))) return;
     state.rules = []; renderRules(); saveRules();
   });
   $("#collapseRulesBtn").addEventListener("click", () => {
     const collapse = state.rules.some((r) => !r.collapsed);
     state.rules.forEach((r) => (r.collapsed = collapse));
-    $("#collapseRulesBtn").textContent = collapse ? "Alle ausklappen" : "Alle einklappen";
+    $("#collapseRulesBtn").textContent = collapse ? t("Alle ausklappen") : t("Alle einklappen");
     renderRules(); store.set("rules", state.rules);
   });
 
@@ -700,7 +705,7 @@ function init(): void {
   $("#historyBtn").addEventListener("click", showHistory);
   $("#refreshBtn").addEventListener("click", () => openFolder(state.path, true));
   $("#convertNowBtn").addEventListener("click", async () => {
-    try { await api("POST", "/api/jobs", { path: state.path }); toast("M4B-Konvertierung gestartet"); pollJobs(true); }
+    try { await api("POST", "/api/jobs", { path: state.path }); toast(t("M4B-Konvertierung gestartet")); pollJobs(true); }
     catch (e) { toast(errMsg(e), true); }
   });
   $("#clearJobsBtn").addEventListener("click", async () => { await api("DELETE", "/api/jobs"); pollJobs(true); });

@@ -13,6 +13,8 @@ import threading
 import time
 from typing import Callable, Dict, Iterator, List, Optional
 
+from i18n import t
+
 
 class EventBus:
     def __init__(self, interval: float = 0.5, max_clients: int = 32) -> None:
@@ -71,7 +73,7 @@ class EventBus:
         """One SSE connection (raises OverflowError when too many are open)."""
         with self.cond:
             if self.clients >= self.max_clients:
-                raise OverflowError("Zu viele offene Verbindungen")
+                raise OverflowError(t("Zu viele offene Verbindungen"))
             self.clients += 1
         return Stream(self, topics, heartbeat)
 

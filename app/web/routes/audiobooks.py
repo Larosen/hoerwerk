@@ -6,6 +6,7 @@ import os
 import audible
 import library
 import links
+from i18n import t
 from web.router import HTTPException, Req, route
 from web.routes.common import resolve
 
@@ -14,13 +15,13 @@ def _job(req: Req, job_id: str):
     try:
         return req.app.pipeline.get(job_id)
     except KeyError:
-        raise HTTPException(404, "Hörbuch nicht gefunden")
+        raise HTTPException(404, t("Hörbuch nicht gefunden"))
 
 
 def _region(req: Req) -> str:
     region = req.get("region") or req.app.settings()["ab_region"]
     if region not in audible.REGIONS:
-        raise HTTPException(400, "Unbekannte Region")
+        raise HTTPException(400, t("Unbekannte Region"))
     return region
 
 
@@ -47,7 +48,7 @@ def scan(req: Req):
 def import_(req: Req):
     path = resolve(req.app, req.get("path", ""))
     if not os.path.exists(path):
-        raise HTTPException(404, "Nicht gefunden")
+        raise HTTPException(404, t("Nicht gefunden"))
     return req.app.pipeline.add(path, origin="manual").to_dict(full=False)
 
 
@@ -62,7 +63,7 @@ def search(req: Req, job_id: str):
     _job(req, job_id)
     query = (req.get("query") or "").strip()
     if not query:
-        raise HTTPException(400, "Suchbegriff fehlt")
+        raise HTTPException(400, t("Suchbegriff fehlt"))
     region = _region(req)
     try:
         return req.app.pipeline.search(job_id, query, region).to_dict(full=False)
@@ -78,7 +79,7 @@ def link(req: Req, job_id: str):
     _job(req, job_id)
     url = (req.get("url") or "").strip()
     if not links.is_link(url):
-        raise HTTPException(400, "Bitte einen Link von Audible, BookBeat oder Thalia einfügen")
+        raise HTTPException(400, t("Bitte einen Link von Audible, BookBeat oder Thalia einfügen"))
     try:
         job, _book = req.app.pipeline.add_link(job_id, url)
     except links.LinkError as e:
@@ -97,7 +98,7 @@ def duplicate(req: Req, job_id: str):
     except ValueError as e:
         raise HTTPException(400, str(e))
     except OSError as e:
-        raise HTTPException(500, f"Konnte die alte Fassung nicht verschieben: {e}")
+        raise HTTPException(500, t("Konnte die alte Fassung nicht verschieben: {error}", error=e))
 
 
 @route("POST", "/api/audiobooks/{job_id}/reopen")
@@ -108,7 +109,7 @@ def reopen(req: Req, job_id: str):
     except ValueError as e:
         raise HTTPException(409, str(e))
     except OSError as e:
-        raise HTTPException(500, f"Konnte nicht aus der Bibliothek holen: {e}")
+        raise HTTPException(500, t("Konnte nicht aus der Bibliothek holen: {error}", error=e))
 
 
 @route("POST", "/api/audiobooks/{job_id}/choose")
@@ -117,12 +118,12 @@ def choose(req: Req, job_id: str):
     cand_id = str(req.get("id") or "").strip()
     asin = (req.get("asin") or "").strip().upper()
     if not cand_id and not audible.ASIN_RX.fullmatch(asin):
-        raise HTTPException(400, "Ungültige ASIN")
+        raise HTTPException(400, t("Ungültige ASIN"))
     try:
         return req.app.pipeline.choose(job_id, cand_id, asin,
                                        req.get("region") or req.app.settings()["ab_region"]).to_dict(full=False)
     except KeyError:
-        raise HTTPException(404, "Treffer nicht gefunden – bitte neu suchen")
+        raise HTTPException(404, t("Treffer nicht gefunden – bitte neu suchen"))
     except audible.AudibleError as e:
         raise HTTPException(502, str(e))
 
@@ -140,7 +141,7 @@ def retry(req: Req, job_id: str):
     try:
         return req.app.pipeline.retry(job_id).to_dict(full=False)
     except OSError as e:
-        raise HTTPException(500, f"Konnte nicht zurück in den Eingang verschieben: {e}")
+        raise HTTPException(500, t("Konnte nicht zurück in den Eingang verschieben: {error}", error=e))
 
 
 @route("POST", "/api/audiobooks/{job_id}/cancel")

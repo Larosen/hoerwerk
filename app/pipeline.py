@@ -24,6 +24,7 @@ import providers as prov
 import tagger
 from meta import cache as meta_cache
 from rules import natural_key
+from i18n import t
 
 TEMP_SUFFIXES = (".part", ".!qb", ".crdownload", ".tmp", ".partial", ".download", ".filepart",
                  ".aria2", ".!ut", ".opdownload")
@@ -132,7 +133,7 @@ class Job:
         self.name: str = kw.get("name") or os.path.splitext(os.path.basename(self.source))[0]
         self.origin: str = kw.get("origin", "inbox")        # inbox | manual
         self.status: str = kw.get("status", "queued")
-        self.message: str = kw.get("message", "Wartet …")
+        self.message: str = kw.get("message", t("Wartet …"))
         self.progress: float = kw.get("progress", 0.0)
         self.files: List[str] = kw.get("files") or []
         self.duration: float = kw.get("duration") or 0.0
@@ -183,8 +184,10 @@ class Pipeline:
                  hint_provider: Optional[Callable[[str], Optional[dict]]] = None, index=None,
                  engine=None, notify: Optional[Callable[[], None]] = None,
                  providers: Optional[prov.Providers] = None,
-                 on_filed: Optional[Callable[[str], None]] = None) -> None:
+                 on_filed: Optional[Callable[[str], None]] = None,
+                 on_event: Optional[Callable[["Job"], None]] = None) -> None:
         self.on_filed = on_filed               # e.g. ask Audiobookshelf to scan
+        self.on_event = on_event               # a job ended up done / review / failed (notifications)
         self.engine = engine                   # Engine: runs the stages (None: tests call process())
         self.notify = notify or (lambda: None)  # live updates for the browser
         self.hint_provider = hint_provider     # search info for folders that came from a download
@@ -232,7 +235,7 @@ class Pipeline:
                 job.stage = "finish" if job.m4b and os.path.exists(job.m4b) else "prepare"
             if job.status in ACTIVE:           # interrupted by a restart: start that step again
                 job.status = "queued"
-                job.say("Nach Neustart erneut eingereiht")
+                job.say(t("Nach Neustart erneut eingereiht"))
             self.jobs.append(job)
         self.save()
 
@@ -314,7 +317,7 @@ class Pipeline:
                  "asin": audible.find_asin(query)}
         job.candidates = self.providers.search(hints, region)[:12]
         job.region = region
-        job.say(f"{len(job.candidates)} Treffer für „{query}“ ({region})")
+        job.say(t("{n} Treffer für „{query}“ ({region})", n=len(job.candidates), query=query, region=region))
         self.save()
         return job
 
@@ -325,7 +328,7 @@ class Pipeline:
         book = audible.rank([book], job.hints)[0]
         cid = candidate_id(book)
         job.candidates = [book] + [c for c in job.candidates if candidate_id(c) != cid]
-        job.say(f"Daten aus Link: {book['title']} ({book.get('source')})")
+        job.say(t("Daten aus Link: {title} ({source})", title=book["title"], source=book.get("source")))
         self.save()
         return job, book
 
@@ -342,7 +345,7 @@ class Pipeline:
             raise KeyError(cand_id or asin)
         job.match = {k: v for k, v in book.items() if k != "match"}
         job.duplicate = job.dup_decision = None     # another book: check the library again
-        job.say(f"Ausgewählt: {book['title']} ({book.get('source') or 'audible'})")
+        job.say(t("Ausgewählt: {title} ({source})", title=book["title"], source=book.get("source") or "audible"))
         self._requeue_if_waiting(job)
         return job
 
@@ -369,7 +372,7 @@ class Pipeline:
             book["authors"] = [job.hints["author"]]
         job.match = book
         job.duplicate = job.dup_decision = None
-        job.say("Eigene Angaben" + (f" (auf Basis von {base.get('source')})" if base else ""))
+        job.say(t("Eigene Angaben (auf Basis von {source})", source=base.get("source")) if base else t("Eigene Angaben"))
         self._requeue_if_waiting(job)
         return job
 
@@ -378,7 +381,7 @@ class Pipeline:
         job = self.get(job_id)
         with self.lock:
             if job.status != "done" or not job.dest or not os.path.isfile(job.dest):
-                raise ValueError("Nur abgelegte Bücher, die noch in der Bibliothek liegen, lassen sich korrigieren")
+                raise ValueError(t("Nur abgelegte Bücher, die noch in der Bibliothek liegen, lassen sich korrigieren"))
             work = self._job_work(job)
             os.makedirs(work, exist_ok=True)
             folder = os.path.dirname(job.dest)
@@ -394,7 +397,7 @@ class Pipeline:
             job.m4b, job.dest, job.match = m4b, None, None
             job.duplicate = job.dup_decision = None
             job.status, job.stage = "review", "finish"
-            job.say("Zur Korrektur aus der Bibliothek geholt")
+            job.say(t("Zur Korrektur aus der Bibliothek geholt"))
         self.save()
         return job
 
@@ -402,20 +405,20 @@ class Pipeline:
         """The book is already in the library: keep both, replace the old one, or drop the new one."""
         job = self.get(job_id)
         if action not in ("keep", "replace", "discard"):
-            raise ValueError("Unbekannte Aktion")
+            raise ValueError(t("Unbekannte Aktion"))
         if not job.duplicate:
-            raise ValueError("Für dieses Buch gibt es keinen Treffer in der Bibliothek")
+            raise ValueError(t("Für dieses Buch gibt es keinen Treffer in der Bibliothek"))
         if action == "discard":
             with self.lock:
                 self._dispose_source(job, self.get_settings())
                 self._cleanup_work(job)
                 job.m4b = None
                 job.status = "cancelled"
-                job.say(f"Verworfen – schon in der Bibliothek: {job.duplicate['path']}")
+                job.say(t("Verworfen – schon in der Bibliothek: {path}", path=job.duplicate["path"]))
             self.save()
             return job
         job.dup_decision = action
-        job.say("Trotzdem ablegen (zusätzlich)" if action == "keep" else f"Ersetzt {job.duplicate['path']}")
+        job.say(t("Trotzdem ablegen (zusätzlich)") if action == "keep" else t("Ersetzt {path}", path=job.duplicate["path"]))
         self._requeue_if_waiting(job)
         return job
 
@@ -438,7 +441,7 @@ class Pipeline:
                 job.dest = None
             job.status, job.error, job.progress, job.stage = "queued", None, 0.0, "prepare"
             job.m4b = None
-            job.say("Erneut eingereiht")
+            job.say(t("Erneut eingereiht"))
         self.save()
         self._schedule(job)
         return job
@@ -451,7 +454,7 @@ class Pipeline:
                 job.runner.kill()
             if job.status in ("queued", "review"):
                 job.status = "cancelled"
-                job.say("Abgebrochen")
+                job.say(t("Abgebrochen"))
                 self._cleanup_work(job)
         if self.engine:
             self.engine.discard(job.id)
@@ -462,7 +465,7 @@ class Pipeline:
         with self.lock:
             job = self.get(job_id)
             if job.status in ACTIVE:
-                raise ValueError("Läuft noch – erst abbrechen")
+                raise ValueError(t("Läuft noch – erst abbrechen"))
             self._cleanup_work(job)
             self.jobs.remove(job)
         if self.engine:
@@ -516,7 +519,7 @@ class Pipeline:
                     settle = s.get("ab_settle")
                     self.scan_once(settle=120 if settle in (None, "") else int(settle))
                 except Exception as e:  # noqa: BLE001 – keep watching no matter what
-                    self.scan_note = f"Fehler beim Durchsuchen: {e}"
+                    self.scan_note = t("Fehler beim Durchsuchen: {error}", error=e)
             with self.lock:
                 if not self._force_scan:
                     self.wake.wait(timeout=interval)
@@ -526,7 +529,7 @@ class Pipeline:
         """One pass over the inbox; queues every entry that has been quiet for ``settle`` seconds."""
         self.last_scan = _now()
         if not os.path.isdir(self.inbox):
-            self.scan_note = "Eingangsordner nicht gefunden"
+            self.scan_note = t("Eingangsordner nicht gefunden")
             return []
         added = []
         present = set()
@@ -562,7 +565,7 @@ class Pipeline:
         for p in list(self.seen):
             if p not in present:
                 self.seen.pop(p, None)
-        self.scan_note = f"{len(added)} neue(s) Hörbuch/Hörbücher" if added else "Nichts Neues"
+        self.scan_note = t("{n} neue(s) Hörbuch/Hörbücher", n=len(added)) if added else t("Nichts Neues")
         self.notify()
         return added
 
@@ -585,8 +588,8 @@ class Pipeline:
                 job.stage = "finish"
                 if job.match is None:
                     job.status = "review"
-                    job.say("Bitte Treffer auswählen" if job.candidates
-                            else "Kein Treffer – bitte suchen oder Angaben eintragen")
+                    job.say(t("Bitte Treffer auswählen") if job.candidates
+                            else t("Kein Treffer – bitte suchen oder Angaben eintragen"))
                 else:
                     job.status = "queued"
             else:
@@ -594,18 +597,23 @@ class Pipeline:
                     self._finish(job)
         except encoder.Cancelled:
             job.status = "cancelled"
-            job.say("Abgebrochen")
+            job.say(t("Abgebrochen"))
             self._cleanup_work(job)
         except Exception as e:  # noqa: BLE001 – every error ends up in the UI
             if job.cancel:
                 job.status = "cancelled"
-                job.say("Abgebrochen")
+                job.say(t("Abgebrochen"))
                 self._cleanup_work(job)
             else:
                 self._fail(job, str(e) or e.__class__.__name__)
         finally:
             job.runner = None
             self.save()
+        if self.on_event and job.status in ("done", "review", "failed"):
+            try:
+                self.on_event(job)
+            except Exception as e:  # noqa: BLE001 – a notification must never break the pipeline
+                print(f"Benachrichtigung fehlgeschlagen: {e}", flush=True)
         self._schedule(job)
 
     def process(self, job: Job) -> None:
@@ -619,24 +627,24 @@ class Pipeline:
     # -- steps ---------------------------------------------------------------
     def _prepare(self, job: Job) -> None:
         if not os.path.exists(job.source):
-            raise RuntimeError("Quelle nicht mehr vorhanden: " + job.source)
+            raise RuntimeError(t("Quelle nicht mehr vorhanden: {path}", path=job.source))
         job.status = "matching"
-        job.say("Lese Dateien …", 0.0)
+        job.say(t("Lese Dateien …"), 0.0)
         if os.path.isfile(job.source):
             folder, files = os.path.dirname(job.source), [os.path.basename(job.source)]
         else:
             folder, files = job.source, encoder.collect_audio(job.source)
         if not files:
-            raise RuntimeError("Keine Audiodateien gefunden")
+            raise RuntimeError(t("Keine Audiodateien gefunden"))
         if job.rename_files and job.chapter_names and len(job.chapter_names) == len(files):
             files = rename_tracks(folder, files, job.chapter_names)
             job.rename_files = False          # done – a retry must not rename again
-            job.say(f"{len(files)} Tracks umbenannt")
+            job.say(t("{n} Tracks umbenannt", n=len(files)))
         job.files = files
         suspicious = suspicious_files(job.source)
         if suspicious:
-            job.say("⚠ Verdächtige Dateien im Download (werden weder ausgeführt noch übernommen): "
-                    + ", ".join(suspicious[:5]) + (" …" if len(suspicious) > 5 else ""))
+            job.say(t("⚠ Verdächtige Dateien im Download (werden weder ausgeführt noch übernommen): {files}",
+                      files=", ".join(suspicious[:5]) + (" …" if len(suspicious) > 5 else "")))
             job.hints["suspicious"] = suspicious[:20]
         infos = [meta_cache.probe(os.path.join(folder, f)) for f in files]
         job.duration = sum(i.get("duration") or 0 for i in infos)
@@ -670,12 +678,12 @@ class Pipeline:
             job.hints["title"] = grab.get("title") or ""
             job.hints["author"] = grab.get("author") or job.hints["author"]
             job.hints["asin"] = grab.get("asin") or job.hints["asin"]
-            job.say(f"Download aus der Suche „{grab['query']}“")
+            job.say(t("Download aus der Suche „{query}“", query=grab["query"]))
         manual_dir = job.source if os.path.isdir(job.source) else os.path.dirname(job.source)
         manual = tagger.load_manual(manual_dir) if os.path.isdir(job.source) else None
         if manual:
             job.match = manual
-            job.say(f"Angaben aus {manual['source']}")
+            job.say(t("Angaben aus {source}", source=manual["source"]))
 
     def _match(self, job: Job) -> None:
         s = self.get_settings()
@@ -684,7 +692,7 @@ class Pipeline:
             job.match = {"source": "tags"}
             return
         region = job.region or s.get("ab_region", "de")
-        job.say(f"Suche bei Audible ({region}) …")
+        job.say(t("Suche bei Audible ({region}) …", region=region))
         ranked, notes = self.providers.lookup(job.hints, region)
         for note in notes:
             job.say(note)
@@ -693,14 +701,14 @@ class Pipeline:
         best = prov.auto_match(ranked, float(s.get("ab_threshold") or 0.8)) if mode == "auto" else None
         if best:
             job.match = {k: v for k, v in best.items() if k != "match"}
-            job.say(f"Erkannt: {best['title']} – {', '.join(best['authors'])} "
-                    f"(Sicherheit {round(best['match']['score'] * 100)} %)")
+            job.say(t("Erkannt: {title} – {authors} (Sicherheit {score} %)", title=best["title"],
+                      authors=", ".join(best["authors"]), score=round(best["match"]["score"] * 100)))
         elif ranked and ranked[0].get("source") not in prov.AUTO_SOURCES:
-            job.say("Nur Treffer außerhalb von Audible – bitte prüfen (ohne Laufzeit und Sprecher)")
+            job.say(t("Nur Treffer außerhalb von Audible – bitte prüfen (ohne Laufzeit und Sprecher)"))
         elif ranked:
-            job.say(f"{len(ranked)} mögliche Treffer, keiner eindeutig")
+            job.say(t("{n} mögliche Treffer, keiner eindeutig", n=len(ranked)))
         else:
-            job.say("Kein Treffer")
+            job.say(t("Kein Treffer"))
         self.save()
 
     def _convert(self, job: Job) -> None:
@@ -722,7 +730,7 @@ class Pipeline:
         single = len(job.files) == 1 and job.files[0].lower().endswith((".m4b", ".m4a", ".mp4"))
         src_first = os.path.join(folder, job.files[0])
         if single and meta_cache.probe(src_first).get("audio_codec") == "aac":
-            job.say("M4B übernehmen (ohne Neukodierung) …", 0.2)
+            job.say(t("M4B übernehmen (ohne Neukodierung) …"), 0.2)
             encoder.remux(src_first, out, chapters_txt or None, runner=job.runner, nice=self.nice)
             tagger.copy_tags(src_first, out)
             job.converted_info = {"copied": True}
@@ -733,7 +741,7 @@ class Pipeline:
                 job.updated = _now()
                 self.notify()
 
-            job.say(f"Konvertiere {len(job.files)} Datei(en) …", 0.0)
+            job.say(t("Konvertiere {n} Datei(en) …", n=len(job.files)), 0.0)
             info = encoder.merge_to_m4b(
                 folder, job.files, out, bitrate=s.get("bitrate", "auto"),
                 mono=bool(s.get("force_mono")), jobs=self.cpu_jobs,
@@ -744,7 +752,7 @@ class Pipeline:
                 os.replace(out + ".tmp.m4b", out)
             job.converted_info = {"bitrate": info["bitrate"], "chapters": len(info["chapters"]),
                                   "copied": info["copied"]}
-            job.say(f"M4B fertig: {len(info['chapters'])} Kapitel, {info['bitrate']}", 1.0)
+            job.say(t("M4B fertig: {n} Kapitel, {bitrate}", n=len(info["chapters"]), bitrate=info["bitrate"]), 1.0)
         job.duration = meta_cache.probe(out).get("duration") or job.duration
         cover = encoder.find_cover(folder) if os.path.isdir(job.source) else None
         if not cover:
@@ -771,21 +779,22 @@ class Pipeline:
             if found:
                 d = found[0]
                 job.duplicate = {k: d.get(k) for k in ("path", "title", "authors", "asin", "format", "why")}
-                where = f"{d['path']} ({'gleiche ASIN' if d['why'] == 'asin' else 'gleicher Autor und Titel' if d['why'] == 'title' else 'gleiche Serie und Folge'})"
+                why = {"asin": t("gleiche ASIN"), "title": t("gleicher Autor und Titel")}.get(d["why"], t("gleiche Serie und Folge"))
+                where = f"{d['path']} ({why})"
                 if dup_mode == "skip":
                     self._dispose_source(job, s)
                     self._cleanup_work(job)
                     job.m4b = None
                     job.status = "cancelled"
-                    job.say(f"Übersprungen – schon in der Bibliothek: {where}")
+                    job.say(t("Übersprungen – schon in der Bibliothek: {where}", where=where))
                     return
                 job.status = "review"
-                job.say(f"Schon in der Bibliothek: {where} – bitte entscheiden")
+                job.say(t("Schon in der Bibliothek: {where} – bitte entscheiden", where=where))
                 return
         if job.dup_decision == "replace" and job.duplicate:
             self._retire_old(job)
         job.status = "tagging"
-        job.say("Schreibe Tags …", 1.0)
+        job.say(t("Schreibe Tags …"), 1.0)
 
         # Cover: Audible (full resolution) > image in folder > embedded
         cover: Optional[bytes] = None
@@ -793,9 +802,9 @@ class Pipeline:
             try:
                 cover = audible.fetch_image(book["cover_url"])
                 if cover is None:
-                    job.say("Cover aus dem Shop übersprungen (keine öffentliche Adresse oder kein JPEG/PNG)")
+                    job.say(t("Cover aus dem Shop übersprungen (keine öffentliche Adresse oder kein JPEG/PNG)"))
             except audible.AudibleError as e:
-                job.say(f"Cover-Download fehlgeschlagen: {e}")
+                job.say(t("Cover-Download fehlgeschlagen: {error}", error=e))
         if not cover and job.cover and os.path.exists(job.cover):
             with open(job.cover, "rb") as fh:
                 cover = fh.read()
@@ -809,7 +818,7 @@ class Pipeline:
         tagger.write_tags(job.m4b, book, s, cover)
         root = self.library
         if not root:
-            raise RuntimeError("Kein Bibliotheksordner (LIBRARY_DIR) eingerichtet")
+            raise RuntimeError(t("Kein Bibliotheksordner (LIBRARY_DIR) eingerichtet"))
         folder, filename = library.destination(root, book, s.get("ab_folder_template"),
                                                s.get("ab_file_template"),
                                                title=tagger.clean_title(book, s))
@@ -831,7 +840,7 @@ class Pipeline:
         self._dispose_source(job, s)
         self._cleanup_work(job)
         job.status = "done"
-        job.say(f"Abgelegt: {os.path.relpath(dest, root)}", 1.0)
+        job.say(t("Abgelegt: {path}", path=os.path.relpath(dest, root)), 1.0)
         if self.on_filed:
             self.on_filed(dest)
 
@@ -846,13 +855,13 @@ class Pipeline:
             return
         if mode == "delete":
             shutil.rmtree(old)
-            job.say(f"Alte Dateien gelöscht: {rel}")
+            job.say(t("Alte Dateien gelöscht: {path}", path=rel))
         else:
             bin_root = os.path.join(self.inbox or os.path.dirname(self.work_dir), "_ersetzt")
             target = _free_path(os.path.join(bin_root, rel))
             os.makedirs(os.path.dirname(target), exist_ok=True)
             shutil.move(old, target)
-            job.say(f"Alte Fassung verschoben nach {os.path.relpath(target, os.path.dirname(bin_root))}")
+            job.say(t("Alte Fassung verschoben nach {path}", path=os.path.relpath(target, os.path.dirname(bin_root))))
         _remove_empty_parents(os.path.dirname(old), self.library)
         if self.index:
             self.index.remove(os.path.join(old, "x"))
@@ -868,18 +877,18 @@ class Pipeline:
         diff = abs(dur - aud) / aud
         current = encoder.file_chapters(job.m4b)
         if abs(dur - aud) > max(0.02 * aud, 2.0):
-            job.say(f"Audible-Kapitel passen nicht (Laufzeit weicht {diff * 100:.1f} % ab) – behalte eigene")
+            job.say(t("Audible-Kapitel passen nicht (Laufzeit weicht {diff} % ab) – behalte eigene", diff=f"{diff * 100:.1f}"))
             return
         if mode == "auto" and not encoder.looks_generic(current):
             return
         scale = dur / aud
-        chapters = [{"start": c["start"] * scale, "title": c["title"] or f"Kapitel {i + 1}"}
+        chapters = [{"start": c["start"] * scale, "title": c["title"] or t("Kapitel {n}", n=i + 1)}
                     for i, c in enumerate(data["chapters"])]
         tmp = job.m4b + ".chapters.m4b"
         encoder.remux(job.m4b, tmp, chapters, nice=self.nice)
         tagger.copy_tags(job.m4b, tmp)
         os.replace(tmp, job.m4b)
-        job.say(f"{len(chapters)} Kapitel von Audible übernommen")
+        job.say(t("{n} Kapitel von Audible übernommen", n=len(chapters)))
 
     def _dispose_source(self, job: Job, s: dict) -> None:
         if job.origin != "inbox" or not os.path.exists(job.source):
@@ -899,7 +908,7 @@ class Pipeline:
     def _fail(self, job: Job, msg: str) -> None:
         job.status = "failed"
         job.error = msg
-        job.say("Fehler: " + msg)
+        job.say(t("Fehler: {error}", error=msg))
         self._cleanup_work(job)
         job.m4b = None
         if job.origin == "inbox" and os.path.exists(job.source):
@@ -913,7 +922,7 @@ class Pipeline:
                     with open(os.path.join(target, "FEHLER.txt"), "w", encoding="utf-8") as fh:
                         fh.write(msg + "\n\n" + "\n".join(job.log) + "\n")
             except OSError as e:
-                job.say(f"Konnte nicht nach _failed verschieben: {e}")
+                job.say(t("Konnte nicht nach _failed verschieben: {error}", error=e))
 
 
 def safe_track_name(name: str) -> str:
@@ -935,16 +944,16 @@ def rename_tracks(folder: str, files: List[str], names: List[str]) -> List[str]:
         if rel == new:
             temp.append(rel)
             continue
-        t = os.path.join(os.path.dirname(rel), f".rn-{i}-{os.getpid()}{os.path.splitext(rel)[1]}")
-        os.rename(os.path.join(folder, rel), os.path.join(folder, t))
-        temp.append(t)
+        tmp = os.path.join(os.path.dirname(rel), f".rn-{i}-{os.getpid()}{os.path.splitext(rel)[1]}")
+        os.rename(os.path.join(folder, rel), os.path.join(folder, tmp))
+        temp.append(tmp)
     out = []
-    for t, (rel, new) in zip(temp, plan):
-        if t != new:
+    for tmp, (rel, new) in zip(temp, plan):
+        if tmp != new:
             target = os.path.join(folder, new)
             if os.path.exists(target):
                 new = _free_path(target)[len(folder) + 1:]
-            os.rename(os.path.join(folder, t), os.path.join(folder, new))
+            os.rename(os.path.join(folder, tmp), os.path.join(folder, new))
         out.append(new)
     return out
 
@@ -958,7 +967,7 @@ def suspicious_files(source: str) -> List[str]:
         for name in dirs + files:
             p = os.path.join(root, name)
             if os.path.islink(p) or name.lower().endswith(SUSPICIOUS_EXTS):
-                out.append(os.path.relpath(p, source) + (" (Verknüpfung)" if os.path.islink(p) else ""))
+                out.append(os.path.relpath(p, source) + (" (" + t("Verknüpfung") + ")" if os.path.islink(p) else ""))
         dirs[:] = [d for d in dirs if not os.path.islink(os.path.join(root, d))]
     return sorted(out)
 

@@ -7,11 +7,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import audible  # noqa: E402
 
 PRODUCT = {
-    "asin": "B0054JTDOG",
-    "title": "Die Gefährten",
-    "subtitle": "Der Herr der Ringe 1",
-    "authors": [{"asin": "B000ARC6KA", "name": "J.R.R. Tolkien"}, {"name": "Wolfgang Krege — Translator"}],
-    "narrators": [{"name": "Achim Höppner"}],
+    "asin": "B0TEST0002",
+    "title": "Das Fräulein",
+    "subtitle": "Die Serapionsbrüder 1",
+    "authors": [{"asin": "B0TEST0004", "name": "E.T.A. Hoffmann"}, {"name": "Hans Muster — Translator"}],
+    "narrators": [{"name": "Erika Muster"}],
     "category_ladders": [
         {"ladder": [{"id": "1", "name": "Science Fiction & Fantasy"}, {"id": "2", "name": "Fantasy"}], "root": "Genres"},
         {"ladder": [{"id": "3", "name": "Literatur & Belletristik"}, {"id": "4", "name": "Belletristik"}], "root": "Genres"},
@@ -21,10 +21,10 @@ PRODUCT = {
     "product_images": {"1024": "https://m.media-amazon.com/images/I/91TFseitgwL._SL1024_.jpg",
                        "500": "https://m.media-amazon.com/images/I/51AoExrmwrL._SL500_.jpg"},
     "publisher_name": "der Hörverlag",
-    "publisher_summary": "Neun Gefährten machen sich auf. <p>Achim Höppner liest.</p><p><b>(Laufzeit: 22h 54)</b></p>",
+    "publisher_summary": "Ein Kriminalfall im Paris Ludwigs XIV. <p>Erika Muster liest.</p><p><b>(Laufzeit: 22h 54)</b></p>",
     "release_date": "2011-06-03",
     "runtime_length_min": 1373,
-    "series": [{"asin": "B00FYVHU6W", "sequence": "Band 1", "title": "Herr der Ringe"}],
+    "series": [{"asin": "B00FYVHU6W", "sequence": "Band 1", "title": "Serapionsbrüder"}],
 }
 
 
@@ -52,17 +52,17 @@ class FakeClient:
 class NormalizeTest(unittest.TestCase):
     def test_product(self):
         b = audible.normalize_product(PRODUCT, "de")
-        self.assertEqual(b["authors"], ["J.R.R. Tolkien"])
-        self.assertEqual(b["translators"], ["Wolfgang Krege"])
-        self.assertEqual(b["narrators"], ["Achim Höppner"])
-        self.assertEqual(b["series"], "Herr der Ringe")
+        self.assertEqual(b["authors"], ["E.T.A. Hoffmann"])
+        self.assertEqual(b["translators"], ["Hans Muster"])
+        self.assertEqual(b["narrators"], ["Erika Muster"])
+        self.assertEqual(b["series"], "Serapionsbrüder")
         self.assertEqual(b["series_position"], "1")
         self.assertEqual(b["genres"], ["Science Fiction & Fantasy", "Literatur & Belletristik"])
         self.assertEqual(b["tags"], ["Fantasy", "Belletristik"])
         self.assertEqual(b["language"], "German")
         self.assertEqual(b["cover_url"], "https://m.media-amazon.com/images/I/91TFseitgwL.jpg")
-        self.assertEqual(b["url"], "https://www.audible.de/pd/B0054JTDOG")
-        self.assertEqual(b["description"], "Neun Gefährten machen sich auf.\n\nAchim Höppner liest.\n\n(Laufzeit: 22h 54)")
+        self.assertEqual(b["url"], "https://www.audible.de/pd/B0TEST0002")
+        self.assertEqual(b["description"], "Ein Kriminalfall im Paris Ludwigs XIV.\n\nErika Muster liest.\n\n(Laufzeit: 22h 54)")
 
     def test_series_position(self):
         self.assertEqual(audible.series_position("Book 8.5"), "8.5")
@@ -75,15 +75,15 @@ class NormalizeTest(unittest.TestCase):
 class QueryTest(unittest.TestCase):
     def test_clean_query(self):
         self.assertEqual(
-            audible.clean_query("J.R.R. Tolkien - Der Herr der Ringe 01 - Die Gefährten (Ungekürzt) [2011] 64kbps"),
-            "J.R.R. Tolkien Der Herr der Ringe 01 Die Gefährten")
-        self.assertEqual(audible.clean_query("Sebastian_Fitzek_-_Der_Insasse_CD1"), "Sebastian Fitzek Der Insasse")
+            audible.clean_query("E.T.A. Hoffmann - Die Serapionsbrüder 01 - Das Fräulein (Ungekürzt) [2011] 64kbps"),
+            "E.T.A. Hoffmann Die Serapionsbrüder 01 Das Fräulein")
+        self.assertEqual(audible.clean_query("Theodor_Storm_-_Der_Schimmelreiter_CD1"), "Theodor Storm Der Schimmelreiter")
         self.assertEqual(audible.clean_query("Die Säulen der Erde (Hörbuch) [MP3]"), "Die Säulen der Erde")
-        self.assertEqual(audible.clean_query("Harry Potter (Band 1)"), "Harry Potter Band 1")
-        self.assertEqual(audible.clean_query("Buch [B0054JTDOG]"), "Buch")
+        self.assertEqual(audible.clean_query("Max und Moritz (Band 1)"), "Max und Moritz Band 1")
+        self.assertEqual(audible.clean_query("Buch [B0TEST0002]"), "Buch")
 
     def test_find_asin(self):
-        self.assertEqual(audible.find_asin("Tolkien - Gefährten [B0054JTDOG]"), "B0054JTDOG")
+        self.assertEqual(audible.find_asin("Hoffmann - Fräulein [B0TEST0002]"), "B0TEST0002")
         self.assertEqual(audible.find_asin("", "3899034677"), "3899034677")
         self.assertIsNone(audible.find_asin("Telefon 0123456789 Buch"))
         self.assertIsNone(audible.find_asin("Kein Code hier"))
@@ -91,47 +91,47 @@ class QueryTest(unittest.TestCase):
 
 class MatchTest(unittest.TestCase):
     def test_duration_decides_between_editions(self):
-        cands = [book("Der Insasse", ["Sebastian Fitzek"], 553, "A1"),
-                 book("Der Insasse", ["Sebastian Fitzek", "Josef Ulbig"], 399, "A2")]
-        ranked = audible.rank(cands, {"query": "Sebastian Fitzek Der Insasse", "duration": 399 * 60 + 30})
+        cands = [book("Der Schimmelreiter", ["Theodor Storm"], 553, "A1"),
+                 book("Der Schimmelreiter", ["Theodor Storm", "Erika Muster"], 399, "A2")]
+        ranked = audible.rank(cands, {"query": "Theodor Storm Der Schimmelreiter", "duration": 399 * 60 + 30})
         self.assertEqual(ranked[0]["asin"], "A2")
         self.assertEqual(audible.best_match(ranked, 0.8)["asin"], "A2")
 
     def test_runtime_far_off_needs_review(self):
-        ranked = audible.rank([book("Die Gefährten", ["J.R.R. Tolkien"], 1373)],
-                              {"query": "Tolkien Die Gefährten", "duration": 600})
+        ranked = audible.rank([book("Das Fräulein", ["E.T.A. Hoffmann"], 1373)],
+                              {"query": "Hoffmann Das Fräulein", "duration": 600})
         self.assertGreaterEqual(ranked[0]["match"]["score"], 0.75)
         self.assertIsNone(audible.best_match(ranked, 0.75))
 
     def test_ambiguous_without_duration(self):
-        cands = [book("Der Insasse", ["Sebastian Fitzek"], 553, "A1"),
-                 book("Der Insasse", ["Sebastian Fitzek", "Josef Ulbig"], 399, "A2")]
-        ranked = audible.rank(cands, {"query": "Sebastian Fitzek Der Insasse"})
+        cands = [book("Der Schimmelreiter", ["Theodor Storm"], 553, "A1"),
+                 book("Der Schimmelreiter", ["Theodor Storm", "Erika Muster"], 399, "A2")]
+        ranked = audible.rank(cands, {"query": "Theodor Storm Der Schimmelreiter"})
         self.assertIsNone(audible.best_match(ranked, 0.8))
 
     def test_same_book_tie_prefers_unabridged(self):
-        cands = [book("Das Jesus-Video", ["Andreas Eschbach"], 434, "AB", format_type="abridged"),
-                 book("Das Jesus-Video", ["Andreas Eschbach"], 1220, "UN", format_type="unabridged")]
-        ranked = audible.rank(cands, {"query": "Andreas Eschbach Das Jesus Video"})
+        cands = [book("West-östlicher Divan", ["Johann Wolfgang Goethe"], 434, "AB", format_type="abridged"),
+                 book("West-östlicher Divan", ["Johann Wolfgang Goethe"], 1220, "UN", format_type="unabridged")]
+        ranked = audible.rank(cands, {"query": "Johann Wolfgang Goethe West östlicher Divan"})
         self.assertEqual(audible.best_match(ranked, 0.8)["asin"], "UN")
 
     def test_wrong_title_scores_low(self):
-        ranked = audible.rank([book("Der Seelenbrecher", ["Sebastian Fitzek"], 334)],
-                              {"query": "Sebastian Fitzek Der Insasse"})
+        ranked = audible.rank([book("Immensee", ["Theodor Storm"], 334)],
+                              {"query": "Theodor Storm Der Schimmelreiter"})
         self.assertLess(ranked[0]["match"]["score"], 0.8)
 
     def test_lookup_prefers_asin(self):
-        b = book("Die Gefährten", ["J.R.R. Tolkien"], 1373, "B0054JTDOG")
-        c = FakeClient(products={"B0054JTDOG": b})
-        ranked = audible.lookup(c, {"asin": "B0054JTDOG", "query": "egal"}, "de")
-        self.assertEqual(ranked[0]["asin"], "B0054JTDOG")
-        self.assertEqual(c.calls, [("product", "B0054JTDOG")])
+        b = book("Das Fräulein", ["E.T.A. Hoffmann"], 1373, "B0TEST0002")
+        c = FakeClient(products={"B0TEST0002": b})
+        ranked = audible.lookup(c, {"asin": "B0TEST0002", "query": "egal"}, "de")
+        self.assertEqual(ranked[0]["asin"], "B0TEST0002")
+        self.assertEqual(c.calls, [("product", "B0TEST0002")])
 
     def test_lookup_title_author_then_keywords(self):
-        c = FakeClient(results=[book("Die Gefährten", ["J.R.R. Tolkien"], 1373, "X1")])
-        audible.lookup(c, {"title": "Die Gefährten", "author": "Tolkien", "query": "Die Gefährten Tolkien"}, "de")
-        self.assertEqual(c.calls[0], ("search", "", "Die Gefährten", "Tolkien"))
-        self.assertEqual(c.calls[1][1], "Die Gefährten Tolkien")
+        c = FakeClient(results=[book("Das Fräulein", ["E.T.A. Hoffmann"], 1373, "X1")])
+        audible.lookup(c, {"title": "Das Fräulein", "author": "Hoffmann", "query": "Das Fräulein Hoffmann"}, "de")
+        self.assertEqual(c.calls[0], ("search", "", "Das Fräulein", "Hoffmann"))
+        self.assertEqual(c.calls[1][1], "Das Fräulein Hoffmann")
 
     def test_html_to_text(self):
         self.assertEqual(audible.html_to_text("<p>Eins &amp; zwei</p><p></p><p>Drei<br>Vier</p>"),

@@ -13,6 +13,7 @@ from typing import List, Optional
 from urllib.parse import urlparse
 
 import audible
+from i18n import t
 
 SHOP_RX = {
     "audible": re.compile(r"(?:^|\.)audible\.(de|com|co\.uk|fr|it|es|ca|com\.au|in|co\.jp)$"),
@@ -71,7 +72,7 @@ def audible_link(url: str, client: audible.AudibleClient) -> dict:
     tld = SHOP_RX["audible"].search(host).group(1)
     asin = audible.ASIN_RX.search(parsed.path.upper() + "/" + parsed.query.upper())
     if not asin:
-        raise LinkError("Keine ASIN im Audible-Link gefunden")
+        raise LinkError(t("Keine ASIN im Audible-Link gefunden"))
     return client.product(asin.group(1), TLD_REGION.get(tld, "us"))
 
 
@@ -125,13 +126,13 @@ def _bookbeat_api_ok(url: str) -> bool:
 def bookbeat_link(url: str) -> dict:
     book_id = bookbeat_id(url)
     if not book_id:
-        raise LinkError("Keine Buch-ID im BookBeat-Link gefunden (…/book/titel-123456)")
+        raise LinkError(t("Keine Buch-ID im BookBeat-Link gefunden (…/book/titel-123456)"))
     try:
         data = json.loads(audible.http_get(BOOKBEAT_API + str(int(book_id)), allow=_bookbeat_api_ok))
     except (audible.AudibleError, ValueError) as e:
-        raise LinkError(f"BookBeat-Daten nicht abrufbar: {e}") from e
+        raise LinkError(t("BookBeat-Daten nicht abrufbar: {error}", error=e)) from e
     if not audio_edition(data):
-        raise LinkError("Bei BookBeat gibt es dieses Buch nur als E-Book, nicht als Hörbuch")
+        raise LinkError(t("Bei BookBeat gibt es dieses Buch nur als E-Book, nicht als Hörbuch"))
     return normalize_bookbeat(data, url)
 
 
@@ -220,7 +221,7 @@ def parse_product_page(html: str, url: str, source: str) -> dict:
         book["cover_url"] = book["cover_url"] or unescape(og.get("image", "")) or None
         book["description"] = book["description"] or unescape(og.get("description", ""))
     if not book["title"]:
-        raise LinkError("Auf der Seite wurden keine Buchdaten gefunden")
+        raise LinkError(t("Auf der Seite wurden keine Buchdaten gefunden"))
     # "Titel (Band 3)" / "Serie, Band 3: Titel" – take the number when no series data came along
     if not book["series"]:
         m = re.search(r"(?i)^(.*?)[,:]?\s*(?:band|folge|teil|book)\s+(\d+(?:[.,]\d+)?)\s*[:\-–]\s*(.+)$", book["title"])
@@ -242,9 +243,9 @@ def page_link(url: str, source: str) -> dict:
                                 allow=lambda u: shop_of(u) == source).decode("utf-8", "replace")
     except audible.AudibleError as e:
         if "403" in str(e) or "429" in str(e):
-            raise LinkError(f"{source.capitalize()} hat den automatischen Abruf blockiert. Daten bitte "
-                            "von Hand eintragen oder einen Audible-/BookBeat-Link verwenden.") from e
-        raise LinkError(f"Seite nicht abrufbar: {e}") from e
+            raise LinkError(t("{shop} hat den automatischen Abruf blockiert. Daten bitte von Hand eintragen oder einen Audible-/BookBeat-Link verwenden.",  # noqa: E501
+                              shop=source.capitalize())) from e
+        raise LinkError(t("Seite nicht abrufbar: {error}", error=e)) from e
     return parse_product_page(html, url, source)
 
 
@@ -253,7 +254,7 @@ def fetch(url: str, client: audible.AudibleClient) -> dict:
     if url.lower().startswith("www."):
         url = "https://" + url
     if urlparse(url).scheme not in ("http", "https") or urlparse(url).username or urlparse(url).port:
-        raise LinkError("Ungültiger Link")
+        raise LinkError(t("Ungültiger Link"))
     shop = shop_of(url)
     if shop == "audible":
         return audible_link(url, client)
@@ -261,4 +262,4 @@ def fetch(url: str, client: audible.AudibleClient) -> dict:
         return bookbeat_link(url)
     if shop == "thalia":
         return page_link(url, "thalia")
-    raise LinkError("Nur Links von Audible, BookBeat und Thalia werden unterstützt")
+    raise LinkError(t("Nur Links von Audible, BookBeat und Thalia werden unterstützt"))

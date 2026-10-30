@@ -22,28 +22,28 @@ BOOKBEAT = {
 }
 
 THALIA_HTML = """<html><head>
-<meta property="og:title" content="Der Insasse - Sebastian Fitzek | Thalia">
+<meta property="og:title" content="Der Schimmelreiter - Theodor Storm | Thalia">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[
  {"@type":"BreadcrumbList","itemListElement":[]},
- {"@type":"Book","name":"Der Insasse","author":[{"@type":"Person","name":"Sebastian Fitzek"}],
-  "image":["https://images.thalia.media/cover.jpg"],"description":"Zwei entsetzliche &amp; Kindermorde",
+ {"@type":"Book","name":"Der Schimmelreiter","author":[{"@type":"Person","name":"Theodor Storm"}],
+  "image":["https://images.thalia.media/cover.jpg"],"description":"Deich &amp; Sturmflut",
   "workExample":[{"@type":"Book","bookFormat":"https://schema.org/AudiobookFormat","isbn":"9783839816448",
    "datePublished":"2018-10-24","publisher":{"@type":"Organization","name":"Audible Studios"},
-   "readBy":[{"@type":"Person","name":"Simon Jäger"}],"duration":"PT9H13M"}]}
+   "readBy":[{"@type":"Person","name":"Max Muster"}],"duration":"PT9H13M"}]}
 ]}</script></head><body></body></html>"""
 
 
 class LinkTest(unittest.TestCase):
     def test_shops(self):
-        self.assertEqual(links.shop_of("https://www.audible.de/pd/B0054JTDOG"), "audible")
-        self.assertEqual(links.shop_of("https://www.audible.co.uk/pd/x/B0054JTDOG"), "audible")
+        self.assertEqual(links.shop_of("https://www.audible.de/pd/B0TEST0002"), "audible")
+        self.assertEqual(links.shop_of("https://www.audible.co.uk/pd/x/B0TEST0002"), "audible")
         self.assertEqual(links.shop_of("https://www.bookbeat.com/de/book/eragon-11925"), "bookbeat")
         self.assertEqual(links.shop_of("https://www.bookbeat.de/buch/x"), "bookbeat")
         self.assertEqual(links.shop_of("https://www.thalia.de/shop/home/artikeldetails/A1053789155"), "thalia")
-        self.assertIsNone(links.shop_of("https://audible.de.evil.com/pd/B0054JTDOG"))
+        self.assertIsNone(links.shop_of("https://audible.de.evil.com/pd/B0TEST0002"))
         self.assertIsNone(links.shop_of("https://example.com/"))
         self.assertTrue(links.is_link(" www.bookbeat.com/de/book/1"))
-        self.assertFalse(links.is_link("Fitzek Insasse"))
+        self.assertFalse(links.is_link("Storm Schimmelreiter"))
 
     def test_unsupported_link(self):
         with self.assertRaises(links.LinkError):
@@ -51,9 +51,9 @@ class LinkTest(unittest.TestCase):
 
     def test_audible_link(self):
         client = mock.Mock()
-        client.product.return_value = {"asin": "B0054JTDOG"}
-        links.fetch("https://www.audible.co.uk/pd/The-Fellowship-Audiobook/B0054JTDOG?ref=a", client)
-        client.product.assert_called_once_with("B0054JTDOG", "uk")
+        client.product.return_value = {"asin": "B0TEST0002"}
+        links.fetch("https://www.audible.co.uk/pd/The-Fellowship-Audiobook/B0TEST0002?ref=a", client)
+        client.product.assert_called_once_with("B0TEST0002", "uk")
 
     def test_bookbeat_id(self):
         self.assertEqual(links.bookbeat_id("https://www.bookbeat.com/de/book/eragon-das-vermachtnis-11925"), "11925")
@@ -86,14 +86,14 @@ class LinkTest(unittest.TestCase):
 
     def test_product_page(self):
         b = links.parse_product_page(THALIA_HTML, "https://www.thalia.de/x", "thalia")
-        self.assertEqual(b["title"], "Der Insasse")
-        self.assertEqual(b["authors"], ["Sebastian Fitzek"])
-        self.assertEqual(b["narrators"], ["Simon Jäger"])
+        self.assertEqual(b["title"], "Der Schimmelreiter")
+        self.assertEqual(b["authors"], ["Theodor Storm"])
+        self.assertEqual(b["narrators"], ["Max Muster"])
         self.assertEqual(b["publisher"], "Audible Studios")
         self.assertEqual(b["isbn"], "9783839816448")
         self.assertEqual(b["runtime_min"], 553)
         self.assertEqual(b["cover_url"], "https://images.thalia.media/cover.jpg")
-        self.assertEqual(b["description"], "Zwei entsetzliche & Kindermorde")
+        self.assertEqual(b["description"], "Deich & Sturmflut")
         self.assertEqual(b["id"], "thalia:9783839816448")
 
     def test_product_page_series_from_title_and_og_fallback(self):

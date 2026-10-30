@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Tuple
 
 from meta import cache as meta_cache
 from rules import RuleError, apply_rules, needs_meta, split_name, validate_name
+from i18n import t
 
 DEFAULT_SIDECARS = "xmp,srt,ass,ssa,sub,idx,vtt,nfo,lrc,cue,aae,thm"
 
@@ -49,11 +50,11 @@ def compute_plan(base: str, items: List[str], rules: List[dict], options: dict) 
     for it in items:
         parts = it.split("/")
         if not it or it.startswith("/") or any(p in ("", ".", "..") for p in parts):
-            raise PlanError(f"Ungültiger Pfad: {it}")
+            raise PlanError(t("Ungültiger Pfad: {path}", path=it))
         # a symlinked folder on the way must not lead out of the opened folder
         parent = os.path.realpath(os.path.join(base, os.path.dirname(it)))
         if os.path.commonpath([parent, real_base]) != real_base:
-            raise PlanError(f"Pfad führt aus dem Ordner heraus: {it}")
+            raise PlanError(t("Pfad führt aus dem Ordner heraus: {path}", path=it))
 
     # Stat everything first; metadata is loaded lazily per file and in parallel
     stats: Dict[str, Optional[os.stat_result]] = {}
@@ -92,7 +93,7 @@ def compute_plan(base: str, items: List[str], rules: List[dict], options: dict) 
         fname = os.path.basename(it)
         if st is None:
             plan.append({"old": it, "new": it, "changed": False, "dir": False,
-                         "error": "Datei nicht gefunden"})
+                         "error": t("Datei nicht gefunden")})
             continue
         is_dir = os.path.isdir(os.path.join(base, it))
         fi = folder_counter.get(parent, 0)
@@ -203,7 +204,7 @@ def _check_conflicts(base: str, plan: List[dict], mode: str) -> None:
             clash = False
         if clash:
             other = taken.get(target)
-            r["error"] = "Doppelter Zielname" if other is not None else "Datei existiert bereits"
+            r["error"] = t("Doppelter Zielname") if other is not None else t("Datei existiert bereits")
             if other is not None and other["changed"] and not other["error"]:
                 other["error"] = "Doppelter Zielname"
         taken[target] = r
@@ -248,7 +249,7 @@ def run_phase(base: str, pairs: List[Pair]) -> List[str]:
             current[old] = tmp
         for old, new in pairs:
             if os.path.lexists(j(new)):
-                raise OSError(f"Ziel existiert bereits: {new}")
+                raise OSError(t("Ziel existiert bereits: {path}", path=new))
             d = _parent(new)
             if d and not os.path.isdir(j(d)):
                 os.makedirs(j(d))
@@ -309,7 +310,7 @@ def undo(base: str, phases: List[List[Pair]], created: List[str]) -> int:
     # (File paths inside renamed folders only become valid again after that.)
     gone = [n for _, n in phases[-1] if not os.path.lexists(os.path.join(base, n))]
     if gone:
-        raise PlanError(f"{len(gone)} Element(e) nicht mehr vorhanden, z. B. {gone[0]}")
+        raise PlanError(t("{n} Element(e) nicht mehr vorhanden, z. B. {example}", n=len(gone), example=gone[0]))
     execute(base, [[(new, old) for old, new in ph] for ph in reversed(phases)])
     remove_empty_dirs(base, created)
     return sum(len(ph) for ph in phases)

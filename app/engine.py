@@ -44,7 +44,7 @@ class Engine:
     def submit(self, queue: str, key: str, step: Callable[[], None]) -> bool:
         """Queue a step; a key that is already waiting is not queued twice."""
         if queue not in self.queues:
-            raise ValueError(f"Unbekannte Warteschlange: {queue}")
+            raise ValueError(f"unknown queue: {queue}")
         with self.lock:
             if any(k == key for k, _ in self.queues[queue]):
                 return False

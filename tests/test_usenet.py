@@ -45,9 +45,9 @@ class Fake(BaseHTTPRequestHandler):
                 body = f'<caps><server title="{name}"/></caps>'.encode()
             else:
                 items = [
-                    ("Sebastian_Fitzek-Der_Insasse-Ungekuerzt-DE-2018-AUDIOBOOK-GRP", 400 << 20, 50),
-                    ("Sebastian Fitzek - Der Insasse (gekuerzt) MP3 German", 200 << 20, 500),
-                    ("Sebastian.Fitzek.The.Inmate.Unabridged.English.M4B", 300 << 20, 5),
+                    ("Theodor_Storm-Der_Schimmelreiter-Ungekuerzt-DE-2018-AUDIOBOOK-GRP", 400 << 20, 50),
+                    ("Theodor Storm - Der Schimmelreiter (gekuerzt) MP3 German", 200 << 20, 500),
+                    ("Theodor.Storm.The.Dykemaster.Unabridged.English.M4B", 300 << 20, 5),
                 ]
                 body = FEED.format(name=name, items="".join(
                     ITEM.format(title=t, host=name, n=i, size=s, grabs=g) for i, (t, s, g) in enumerate(items))).encode()
@@ -135,13 +135,13 @@ class UsenetTest(unittest.TestCase):
         self.assertEqual(self.u.test("sab"), "SABnzbd 4.4.1")
 
     def test_search_merges_ranks_and_hides_links(self):
-        res = self.u.search("Fitzek Insasse", language="de")
+        res = self.u.search("Storm Schimmelreiter", language="de")
         self.assertEqual(len(res["errors"]), 1)
         self.assertIn("Kaputt", res["errors"][0])
         titles = [r["title"] for r in res["results"]]
         self.assertEqual(len(titles), 3)                     # duplicates from both indexers merged
-        self.assertTrue(titles[0].startswith("Sebastian_Fitzek-Der_Insasse-Ungekuerzt"))   # German, unabridged
-        self.assertEqual(titles[-1], "Sebastian.Fitzek.The.Inmate.Unabridged.English.M4B")
+        self.assertTrue(titles[0].startswith("Theodor_Storm-Der_Schimmelreiter-Ungekuerzt"))   # German, unabridged
+        self.assertEqual(titles[-1], "Theodor.Storm.The.Dykemaster.Unabridged.English.M4B")
         top = res["results"][0]
         self.assertEqual(top["also"], ["Zwei"])
         self.assertEqual(top["language"], "de")
@@ -151,7 +151,7 @@ class UsenetTest(unittest.TestCase):
         self.assertIn("3030,7020", cats)
 
     def test_send_to_sab_and_hint(self):
-        res = self.u.search("Fitzek Insasse", language="de")
+        res = self.u.search("Storm Schimmelreiter", language="de")
         out = self.u.send(res["results"][0]["id"])
         self.assertEqual(out["nzo_id"], "SABnzbd_nzo_abc")
         add = [q for p, q in Fake.calls if q.get("mode") == "addurl"][0]
@@ -159,8 +159,8 @@ class UsenetTest(unittest.TestCase):
         self.assertEqual(add["cat"], "audiobooks")
         self.assertEqual(add["nzbname"], res["results"][0]["title"])
         # SABnzbd names the folder after the release -> the pipeline gets the search terms back
-        hint = self.u.hint_for("Sebastian Fitzek-Der Insasse-Ungekuerzt-DE-2018-AUDIOBOOK-GRP")
-        self.assertEqual(hint["query"], "Fitzek Insasse")
+        hint = self.u.hint_for("Theodor Storm-Der Schimmelreiter-Ungekuerzt-DE-2018-AUDIOBOOK-GRP")
+        self.assertEqual(hint["query"], "Storm Schimmelreiter")
         self.assertIsNone(self.u.hint_for("Etwas anderes"))
         with self.assertRaises(usenet.UsenetError):
             self.u.send("abgelaufen")
@@ -183,33 +183,33 @@ class UsenetTest(unittest.TestCase):
         self.assertEqual((i["format"], i["language"], i["bitrate"], i["abridged"]), ("MP3", "de", 128, False))
         i = usenet.release_info("Author - Title (Abridged) English M4B 64k")
         self.assertEqual((i["format"], i["language"], i["bitrate"], i["abridged"]), ("M4B", "en", 64, True))
-        self.assertTrue(usenet.release_info("Die drei Fragezeichen Hoerspiel Folge 1")["drama"])
+        self.assertTrue(usenet.release_info("Grimms Maerchen Hoerspiel Folge 1")["drama"])
 
     def test_umlaut_spellings_are_all_searched(self):
-        res = self.u.search("Fitzek Insässe")
+        res = self.u.search("Grimm Märchen")
         sent = sorted({q["q"] for p, q in Fake.calls if q.get("t") == "search" and p.startswith("/idx1")})
-        self.assertEqual(sent, ["Fitzek Insaesse", "Fitzek Insasse", "Fitzek Insässe"])
-        self.assertEqual(res["queries"], ["Fitzek Insässe", "Fitzek Insaesse", "Fitzek Insasse"])
+        self.assertEqual(sent, ["Grimm Maerchen", "Grimm Marchen", "Grimm Märchen"])
+        self.assertEqual(res["queries"], ["Grimm Märchen", "Grimm Maerchen", "Grimm Marchen"])
         self.assertEqual(len(res["results"]), 3)           # same releases from 3 queries x 2 indexers: merged
         self.assertEqual(len(res["errors"]), 1)            # one message per broken indexer, not per query
 
     def test_extra_queries_from_audible_book(self):
-        self.u.search("Fitzek Der Insasse", extra=["Der Insasse"])
+        self.u.search("Storm Der Schimmelreiter", extra=["Der Schimmelreiter"])
         sent = {q["q"] for p, q in Fake.calls if q.get("t") == "search" and p.startswith("/idx1")}
-        self.assertEqual(sent, {"Fitzek Der Insasse", "Der Insasse"})
+        self.assertEqual(sent, {"Storm Der Schimmelreiter", "Der Schimmelreiter"})
 
     def test_rank_ignores_umlaut_spelling(self):
         def r(title, **kw):
             return {"title": title, "grabs": 0, "published": 0, **usenet.release_info(title), **kw}
-        good = r("Tolkien-Die_Gefaehrten-Ungekuerzt-DE-AUDIOBOOK")
-        other = r("Tolkien-Der_Hobbit-DE-AUDIOBOOK", grabs=999)
-        key = lambda x: usenet.Usenet._rank(x, "Tolkien Die Gefährten", "de")  # noqa: E731
+        good = r("Hoffmann-Das_Fraeulein-Ungekuerzt-DE-AUDIOBOOK")
+        other = r("Hoffmann-Der_Sandmann-DE-AUDIOBOOK", grabs=999)
+        key = lambda x: usenet.Usenet._rank(x, "Hoffmann Das Fräulein", "de")  # noqa: E731
         self.assertGreater(key(good), key(other))
-        self.assertEqual(usenet.match_words("Die Gefährten"), usenet.match_words("DIE.GEFAHRTEN"))
+        self.assertEqual(usenet.match_words("Das Fräulein"), usenet.match_words("DAS.FRAULEIN"))
         self.assertEqual(usenet.match_words("Großvater"), usenet.match_words("Grossvater"))
 
     def test_api_url(self):
-        self.assertEqual(usenet.api_url("api.nzbgeek.info"), "http://api.nzbgeek.info/api")
+        self.assertEqual(usenet.api_url("api.indexer.example"), "http://api.indexer.example/api")
         self.assertEqual(usenet.api_url("http://prowlarr:9696/1/"), "http://prowlarr:9696/1/api")
         self.assertEqual(usenet.api_url("https://x/api"), "https://x/api")
 

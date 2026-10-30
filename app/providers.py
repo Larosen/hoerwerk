@@ -16,6 +16,7 @@ from typing import Callable, List, Optional, Tuple
 from urllib import parse
 
 import audible
+from i18n import t
 
 AUTO_SOURCES = ("audible", "audnexus")
 ITUNES = "https://itunes.apple.com/search"
@@ -34,7 +35,7 @@ def get_json(url: str) -> dict:
     try:
         return json.loads(audible.http_get(url, timeout=15, retries=2, allow=_host_ok))
     except ValueError as e:
-        raise audible.AudibleError(f"Ungültige Antwort von {parse.urlparse(url).hostname}") from e
+        raise audible.AudibleError(t("Ungültige Antwort von {url}", url=parse.urlparse(url).hostname)) from e
 
 
 def _book(source: str, **kw) -> dict:
@@ -133,20 +134,24 @@ class Providers:
 
     def lookup(self, hints: dict, region: str) -> Tuple[List[dict], List[str]]:
         """Ranked candidates and notes for the job log (which source failed or helped)."""
+        ranked, notes, _failed = self._lookup(hints, region)
+        return ranked, notes
+
+    def _lookup(self, hints: dict, region: str) -> Tuple[List[dict], List[str], bool]:
         notes: List[str] = []
         failed = False
         try:
             ranked = audible.lookup(self.client, hints, region)
         except audible.AudibleError as e:
             ranked, failed = [], True
-            notes.append(str(e) if str(e).startswith("Audible") else f"Audible nicht erreichbar: {e}")
+            notes.append(str(e) if str(e).startswith("Audible") else t("Audible nicht erreichbar: {error}", error=e))
         if ranked or not self.enabled():
-            return ranked, notes
+            return ranked, notes, failed
         found: List[dict] = []
         if failed and hints.get("asin") and "audnexus" in self.fallbacks:
             try:
                 found.append(self.audnexus(hints["asin"], region))
-                notes.append("Daten von Audnexus (Audible-Spiegel)")
+                notes.append(t("Daten von Audnexus (Audible-Spiegel)"))
             except audible.AudibleError as e:
                 notes.append(f"Audnexus: {e}")
         if not found:
@@ -161,14 +166,14 @@ class Providers:
                     notes.append(f"{name}: {e}")
                     continue
                 if hits:
-                    notes.append(f"{len(hits)} Treffer bei {name}")
+                    notes.append(t("{n} Treffer bei {source}", n=len(hits), source=name))
                 found += hits
-        return audible.rank(found, hints), notes
+        return audible.rank(found, hints), notes, failed
 
     def search(self, hints: dict, region: str) -> List[dict]:
         """Manual search in the review: Audible errors are reported, the other shops fill gaps."""
-        ranked, notes = self.lookup(hints, region)
-        if not ranked and notes and notes[0].startswith("Audible nicht erreichbar"):
+        ranked, notes, failed = self._lookup(hints, region)
+        if not ranked and failed:
             raise audible.AudibleError(notes[0])
         return ranked
 

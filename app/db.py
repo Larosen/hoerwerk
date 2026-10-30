@@ -113,7 +113,7 @@ class Database:
     def _migrate(self) -> None:
         version = self.conn.execute("PRAGMA user_version").fetchone()[0]
         if version > len(MIGRATIONS):
-            raise RuntimeError(f"Datenbank ist neuer (Version {version}) als dieses Programm – bitte aktualisieren")
+            raise RuntimeError(f"Database is newer (version {version}) than this program – please update / Datenbank ist neuer als dieses Programm")
         for n, script in enumerate(MIGRATIONS[version:], version + 1):
             with self.tx():
                 for stmt in (s.strip() for s in script.split(";")):

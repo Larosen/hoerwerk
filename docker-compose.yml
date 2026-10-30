@@ -19,6 +19,7 @@ services:
       PUID: "1000"                   # Besitzer deiner Dateien (`id` zeigt sie), Unraid: 99
       PGID: "1000"                   # Unraid: 100
       UMASK: "002"                   # Unraid: 000
+      APP_LANGUAGE: "de"             # de | en – UI and notifications (also under ⚙︎ Settings)
       AUDIBLE_REGION: "de"           # de, us, uk, fr, it, es, ca, au, in, jp
       MATCH_MODE: "auto"             # auto | review | off
       INBOX_ORIGINALS: "archive"     # archive (nach _fertig) | delete

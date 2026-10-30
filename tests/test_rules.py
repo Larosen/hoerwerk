@@ -39,8 +39,8 @@ class TextRules(unittest.TestCase):
 
     def test_case_title_small_words(self):
         r = {"type": "case", "mode": "title"}
-        self.assertEqual(run("der herr der ringe - die gefährten.mkv", r), "Der Herr der Ringe - Die Gefährten.mkv")
-        self.assertEqual(run("the lord of the rings.mkv", r), "The Lord of the Rings.mkv")
+        self.assertEqual(run("die serapionsbrüder - das fräulein.mkv", r), "Die Serapionsbrüder - Das Fräulein.mkv")
+        self.assertEqual(run("the cabinet of dr caligari.mkv", r), "The Cabinet of Dr Caligari.mkv")
 
     def test_case_keep_words(self):
         r = {"type": "case", "mode": "title", "keep": "MP3, McCartney"}
@@ -83,8 +83,8 @@ class TextRules(unittest.TestCase):
 
 class PositionAndNumbers(unittest.TestCase):
     def test_move_and_swap(self):
-        self.assertEqual(run("Matrix (1999).mkv", {"type": "move", "find": r"\(\d{4}\)", "regex": True, "to": "start"}),
-                         "(1999) Matrix.mkv")
+        self.assertEqual(run("Nosferatu (1922).mkv", {"type": "move", "find": r"\(\d{4}\)", "regex": True, "to": "start"}),
+                         "(1922) Nosferatu.mkv")
         self.assertEqual(run("Artist - Title.mp3", {"type": "swap", "separator": " - "}), "Title - Artist.mp3")
         self.assertEqual(run("a - b - c.mp3", {"type": "swap", "separator": " - ", "occurrence": "last"}), "c - a - b.mp3")
 

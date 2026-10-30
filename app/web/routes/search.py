@@ -6,6 +6,7 @@ from typing import List, Optional
 import audible
 from abs import AbsError
 from usenet import UsenetError
+from i18n import t
 from web.router import HTTPException, Req, route
 
 
@@ -25,7 +26,7 @@ def sources(req: Req):
 @route("PUT", "/api/sources")
 def write_sources(req: Req):
     if not isinstance(req.body, dict):
-        raise HTTPException(400, "Ungültige Daten")
+        raise HTTPException(400, t("Ungültige Daten"))
     if isinstance(req.body.get("abs"), dict):
         req.app.abs.update_config(req.body["abs"])
     return req.app.usenet.update_config(req.body) | {"abs": req.app.abs.public_config()}
@@ -40,14 +41,14 @@ def test_source(req: Req):
     except (UsenetError, AbsError) as e:
         return {"ok": False, "message": str(e)}
     except Exception as e:  # noqa: BLE001 – unexpected answers (HTML instead of XML …)
-        return {"ok": False, "message": f"Unerwartete Antwort: {e}"}
+        return {"ok": False, "message": t("Unerwartete Antwort: {error}", error=e)}
 
 
 @route("POST", "/api/search")
 def search_indexers(req: Req):
     query = (req.get("query") or "").strip()
     if len(query) < 2:
-        raise HTTPException(400, "Suchbegriff fehlt")
+        raise HTTPException(400, t("Suchbegriff fehlt"))
     extra = [str(x) for x in (req.get("extra") or []) if isinstance(x, str)][:3]
     try:
         res = req.app.usenet.search(query, req.get("language") or "", extra)
@@ -63,10 +64,10 @@ def search_books(req: Req):
     """Look the book up at Audible first – German title and author as the shop lists them."""
     query = (req.get("query") or "").strip()
     if len(query) < 2:
-        raise HTTPException(400, "Suchbegriff fehlt")
+        raise HTTPException(400, t("Suchbegriff fehlt"))
     region = req.get("region") or req.app.settings()["ab_region"]
     if region not in audible.REGIONS:
-        raise HTTPException(400, "Unbekannte Region")
+        raise HTTPException(400, t("Unbekannte Region"))
     try:
         hints = {"query": audible.clean_query(query) or query, "asin": audible.find_asin(query)}
         books = req.app.pipeline.providers.search(hints, region)[:8]
@@ -82,9 +83,12 @@ def search_books(req: Req):
 def send_to_sab(req: Req):
     hints = {k: req.get(k) for k in ("title", "author", "asin") if req.get(k)}
     try:
-        return req.app.usenet.send(req.get("id", ""), hints)
+        res = req.app.usenet.send(req.get("id", ""), hints)
     except UsenetError as e:
         raise HTTPException(400, str(e))
+    n = req.app.notifier
+    n.send("download_sent", t("Download an SABnzbd geschickt"), res["title"])
+    return res
 
 
 @route("GET", "/api/downloads")

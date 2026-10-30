@@ -1,7 +1,7 @@
 """Search Newznab indexers and send NZBs to SABnzbd – the Readarr part.
 
-Indexers are plain Newznab APIs (NZBgeek, DrunkenSlug, NZBFinder, … or
-Prowlarr's per-indexer endpoints).  SABnzbd downloads into a category whose
+Indexers are plain Newznab APIs and optional – without one only the search is
+missing, SABnzbd and the inbox work the same.  SABnzbd downloads into a category whose
 folder is the audiobook inbox, so finished downloads flow straight into the
 pipeline.  API keys stay on the server: the UI only ever sees whether one is
 set, and NZB links (which embed the indexer key) never leave the backend.
@@ -22,6 +22,7 @@ from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
 import db as dbm
+from i18n import t
 
 NEWZNAB_NS = "{http://www.newznab.com/DTD/2010/feeds/attributes/}"
 DEFAULT_CATEGORIES = "3030"          # Newznab: Audio > Audiobook
@@ -41,12 +42,12 @@ def _get(url: str, timeout: float = 25) -> bytes:
         with request.urlopen(req, timeout=timeout) as resp:
             data = resp.read(MAX_RESPONSE + 1)
             if len(data) > MAX_RESPONSE:
-                raise UsenetError("Antwort zu groß")
+                raise UsenetError(t("Antwort zu groß"))
             return data
     except HTTPError as e:
         raise UsenetError(f"HTTP {e.code}") from e
     except (URLError, TimeoutError, OSError) as e:
-        raise UsenetError(f"nicht erreichbar ({getattr(e, 'reason', e)})") from e
+        raise UsenetError(t("nicht erreichbar ({reason})", reason=getattr(e, "reason", e))) from e
 
 
 def _redact(text: str) -> str:
@@ -85,7 +86,7 @@ _PLAIN = str.maketrans({"ä": "a", "ö": "o", "ü": "u", "Ä": "A", "Ö": "O", "
 
 
 def query_variants(query: str) -> List[str]:
-    """Release names spell "Gefährten" as "Gefährten", "Gefaehrten" or "Gefahrten" – search all three."""
+    """Release names spell "Fräulein" as "Fräulein", "Fraeulein" or "Fraulein" – search all three."""
     q = " ".join(query.split())
     out = [q]
     if re.search(r"[äöüÄÖÜß]", q):
@@ -95,7 +96,7 @@ def query_variants(query: str) -> List[str]:
 
 
 def match_words(text: str) -> List[str]:
-    """Spelling-insensitive words: "Gefährten", "Gefaehrten", "Gefahrten" and "GEFAHRTEN" all become "gefahrten"."""
+    """Spelling-insensitive words: "Fräulein", "Fraeulein", "Fraulein" and "FRAULEIN" all become "fraulein"."""
     s = text.lower().replace("ß", "ss").translate(_PLAIN)
     s = re.sub(r"([aou])e", r"\1", s)
     s = unicodedata.normalize("NFKD", s)
@@ -116,13 +117,13 @@ def api_url(base: str) -> str:
 
 def _check_error(root: ET.Element) -> None:
     if root.tag == "error":
-        raise UsenetError(root.get("description") or f"Fehler {root.get('code')}")
+        raise UsenetError(root.get("description") or t("Fehler {code}", code=root.get("code")))
 
 
 def _xml(data: bytes) -> ET.Element:
     """Parse an indexer answer; DTDs/entities are refused (entity-expansion bombs, XXE)."""
     if re.search(rb"<!(DOCTYPE|ENTITY)", data[:4096], re.I) or b"<!ENTITY" in data:
-        raise UsenetError("Antwort enthält eine DTD – abgelehnt")
+        raise UsenetError(t("Antwort enthält eine DTD – abgelehnt"))
     return ET.fromstring(data)
 
 
@@ -140,7 +141,7 @@ def parse_results(xml: bytes, indexer: str) -> List[dict]:
     try:
         root = _xml(xml)
     except ET.ParseError as e:
-        raise UsenetError("Antwort ist kein Newznab-XML") from e
+        raise UsenetError(t("Antwort ist kein Newznab-XML")) from e
     _check_error(root)
     out = []
     for item in root.iter("item"):
@@ -219,7 +220,7 @@ class Sabnzbd:
         except UsenetError as e:
             raise UsenetError(f"SABnzbd: {_redact(str(e))}") from e
         except ValueError as e:
-            raise UsenetError("SABnzbd: unerwartete Antwort") from e
+            raise UsenetError(t("SABnzbd: unerwartete Antwort")) from e
         if isinstance(data, dict) and data.get("status") is False and data.get("error"):
             raise UsenetError(f"SABnzbd: {data['error']}")
         return data
@@ -228,14 +229,14 @@ class Sabnzbd:
         version = self._call(mode="version").get("version")
         cats = self._call(mode="get_cats").get("categories") or []
         if self.category and self.category not in cats:
-            raise UsenetError(f"SABnzbd: Kategorie „{self.category}“ gibt es nicht (vorhanden: {', '.join(cats)})")
+            raise UsenetError(t("SABnzbd: Kategorie „{category}“ gibt es nicht (vorhanden: {available})", category=self.category, available=", ".join(cats)))
         return f"SABnzbd {version}"
 
     def add(self, nzb_url: str, name: str) -> str:
         data = self._call(mode="addurl", name=nzb_url, nzbname=name, cat=self.category or None)
         ids = data.get("nzo_ids") or []
         if not data.get("status") or not ids:
-            raise UsenetError("SABnzbd hat den Download nicht angenommen")
+            raise UsenetError(t("SABnzbd hat den Download nicht angenommen"))
         return ids[0]
 
     def activity(self, limit: int = 15) -> dict:
@@ -345,7 +346,7 @@ class Usenet:
     def _sab(self) -> Sabnzbd:
         s = self._load()["sab"]
         if not s.get("url") or not s.get(SECRET):
-            raise UsenetError("SABnzbd ist noch nicht eingerichtet")
+            raise UsenetError(t("SABnzbd ist noch nicht eingerichtet"))
         return Sabnzbd(s["url"], s[SECRET], s.get("category", ""), self._get)
 
     def test(self, kind: str, index_id: str = "") -> str:
@@ -354,14 +355,14 @@ class Usenet:
         for i in self._load()["indexers"]:
             if i.get("id") == index_id:
                 return Newznab(i["name"], i["url"], i.get(SECRET, ""), i.get("categories"), self._get).test()
-        raise UsenetError("Indexer nicht gefunden")
+        raise UsenetError(t("Indexer nicht gefunden"))
 
     # -- search ------------------------------------------------------------
     def search(self, query: str, language: str = "", extra: Optional[List[str]] = None) -> dict:
         """Search every indexer for the query (plus ``extra`` queries), in all umlaut spellings."""
         indexers = self._indexers()
         if not indexers:
-            raise UsenetError("Noch kein Indexer eingerichtet")
+            raise UsenetError(t("Noch kein Indexer eingerichtet"))
         queries: List[str] = []
         for q in [query] + [e for e in extra or [] if e and e.strip()]:
             queries += query_variants(q)
@@ -409,7 +410,7 @@ class Usenet:
         with self._lock:
             r = self._results.get(result_id)
         if not r:
-            raise UsenetError("Suchergebnis abgelaufen – bitte neu suchen")
+            raise UsenetError(t("Suchergebnis abgelaufen – bitte neu suchen"))
         name = safe_release_name(r["title"])
         nzo = self._sab().add(r["link"], name)
         self._remember(name, {"query": r.get("query"), **(hints or {}), "nzo_id": nzo, "time": time.time()})
