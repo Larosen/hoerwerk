@@ -18,6 +18,7 @@ from html.parser import HTMLParser
 from typing import Callable, Dict, List, Optional, Sequence
 from urllib import parse, request
 from urllib.error import HTTPError, URLError
+from i18n import t
 
 REGIONS = {
     "de": "de", "us": "com", "uk": "co.uk", "au": "com.au", "ca": "ca",
@@ -77,7 +78,7 @@ class _CheckedRedirects(request.HTTPRedirectHandler):
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if not self.allow(newurl):
-            raise AudibleError(f"Weiterleitung zu {parse.urlparse(newurl).hostname or newurl} abgelehnt")
+            raise AudibleError(t("Weiterleitung zu {host} abgelehnt", host=parse.urlparse(newurl).hostname or newurl))
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
@@ -88,9 +89,9 @@ def http_get(url: str, *, timeout: float = 20, retries: int = 3, accept_json: bo
     ``allow`` checks the URL and every redirect target; responses are capped at ``max_bytes``.
     """
     if parse.urlparse(url).scheme not in ("http", "https"):
-        raise AudibleError("Nur http(s)-Adressen erlaubt")
+        raise AudibleError(t("Nur http(s)-Adressen erlaubt"))
     if allow and not allow(url):
-        raise AudibleError(f"Adresse nicht erlaubt: {parse.urlparse(url).hostname}")
+        raise AudibleError(t("Adresse nicht erlaubt: {host}", host=parse.urlparse(url).hostname))
     opener = request.build_opener(_CheckedRedirects(allow or (lambda u: parse.urlparse(u).scheme in ("http", "https"))))
     delay = 1.5
     last: Optional[Exception] = None
@@ -103,12 +104,12 @@ def http_get(url: str, *, timeout: float = 20, retries: int = 3, accept_json: bo
             with opener.open(req, timeout=timeout) as resp:
                 data = resp.read(max_bytes + 1)
                 if len(data) > max_bytes:
-                    raise AudibleError(f"Antwort zu groß (> {max_bytes // (1 << 20)} MB)")
+                    raise AudibleError(t("Antwort zu groß (> {mb} MB)", mb=max_bytes // (1 << 20)))
                 return data
         except HTTPError as e:
             last = e
             if e.code in (400, 403, 404):
-                raise AudibleError(f"HTTP {e.code} für {url.split('?')[0]}") from e
+                raise AudibleError(t("HTTP {code} für {url}", code=e.code, url=url.split("?")[0])) from e
             retry_after = e.headers.get("Retry-After") if e.headers else None
             if retry_after and retry_after.isdigit():
                 delay = min(int(retry_after) + 1, 30)
@@ -117,7 +118,7 @@ def http_get(url: str, *, timeout: float = 20, retries: int = 3, accept_json: bo
         if attempt < retries - 1:
             time.sleep(delay)
             delay *= 2
-    raise AudibleError(f"Audible nicht erreichbar: {last}")
+    raise AudibleError(t("Audible nicht erreichbar: {error}", error=last))
 
 
 def fetch_image(url: str) -> Optional[bytes]:
@@ -134,7 +135,7 @@ def _json(url: str) -> dict:
     try:
         return json.loads(http_get(url))
     except ValueError as e:
-        raise AudibleError(f"Ungültige Antwort von {url.split('?')[0]}") from e
+        raise AudibleError(t("Ungültige Antwort von {url}", url=url.split("?")[0])) from e
 
 
 # --------------------------------------------------------------------------- #
@@ -301,7 +302,7 @@ class AudibleClient:
         data = self._cached(f"{api_host(region)}/1.0/catalog/products/{asin}?{parse.urlencode(params)}")
         p = data.get("product")
         if not p or not p.get("title"):
-            raise AudibleError(f"ASIN {asin} im Audible-Shop ({region}) nicht gefunden")
+            raise AudibleError(t("ASIN {asin} im Audible-Shop ({region}) nicht gefunden", asin=asin, region=region))
         return normalize_product(p, region)
 
     def chapters(self, asin: str, region: str) -> Optional[dict]:
@@ -355,9 +356,9 @@ def clean_query(s: str) -> str:
 
 
 def find_asin(*texts: str) -> Optional[str]:
-    for t in texts:
-        m = ASIN_RX.search((t or "").upper())
-        if m and (m.group(1).startswith("B0") or "ASIN" in (t or "").upper() or len(t) <= 12):
+    for text in texts:
+        m = ASIN_RX.search((text or "").upper())
+        if m and (m.group(1).startswith("B0") or "ASIN" in (text or "").upper() or len(text) <= 12):
             return m.group(1)
     return None
 

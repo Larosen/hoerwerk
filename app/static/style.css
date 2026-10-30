@@ -213,6 +213,7 @@ dialog { border: 1px solid var(--border); border-radius: 12px; background: var(-
 dialog::backdrop { background: var(--backdrop); }
 .dialog-body { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .dialog-body h2 { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--text); }
+.dialog-body label.lang-pick { flex-direction: row; align-items: center; gap: 8px; align-self: flex-start; }
 .dialog-body p { margin: 0; }
 .dialog-body label:not(.check) { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
 .dialog-body small { font-weight: 400; }

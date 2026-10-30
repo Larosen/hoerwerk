@@ -26,6 +26,7 @@ from typing import Callable, Dict, List, Optional, Sequence
 import sandbox
 from meta import AUDIO_DEMUXERS, cache as meta_cache
 from rules import natural_key
+from i18n import t
 
 AUDIO_EXTS = {"mp3", "m4a", "m4b", "mp4", "aac", "flac", "ogg", "oga", "opus", "wav", "wma",
               "aif", "aiff", "mka", "ape", "alac"}
@@ -138,7 +139,7 @@ def parse_chapters_txt(text: str) -> List[dict]:
                     for _, v in sorted(ogm.items(), key=lambda kv: int(kv[0])) if "start" in v]
     chapters.sort(key=lambda c: c["start"])
     for i, c in enumerate(chapters):
-        c["title"] = c["title"] or f"Kapitel {i + 1}"
+        c["title"] = c["title"] or t("Kapitel {n}", n=i + 1)
     return chapters
 
 
@@ -241,7 +242,7 @@ class Runner:
             except subprocess.TimeoutExpired:
                 proc.kill()
                 proc.communicate()
-                raise EncodeError(f"ffmpeg hat nach {self.timeout // 3600} h nicht geantwortet – abgebrochen")
+                raise EncodeError(t("ffmpeg hat nach {hours} h nicht geantwortet – abgebrochen", hours=self.timeout // 3600))
         finally:
             with self._lock:
                 self._procs.discard(proc)
@@ -273,7 +274,7 @@ def _adts_seconds(path: str, rate: int) -> float:
 
 def _err_tail(stderr: str) -> str:
     lines = [ln.strip() for ln in (stderr or "").splitlines() if ln.strip()]
-    return lines[-1] if lines else "unbekannter Fehler"
+    return lines[-1] if lines else t("unbekannter Fehler")
 
 
 def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
@@ -289,13 +290,13 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
     only appears once everything succeeded.
     """
     if not files:
-        raise EncodeError("Keine Audiodateien gefunden")
+        raise EncodeError(t("Keine Audiodateien gefunden"))
     runner = runner or Runner(cancelled)
     paths = [os.path.join(folder, f) for f in files]
     infos = [meta_cache.probe(p) for p in paths]
     bad = [f for f, i in zip(files, infos) if not i.get("sample_rate")]
     if bad:
-        raise EncodeError(f"Keine Tonspur in: {', '.join(bad[:3])}")
+        raise EncodeError(t("Keine Tonspur in: {files}", files=", ".join(bad[:3])))
 
     channels = 1 if mono else min(max((i.get("channels") or 2) for i in infos), 2)
     rate = pick_rate(infos)
@@ -327,10 +328,12 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
             with lock:
                 done_src[0] += infos[n].get("duration") or 0
                 progress(0.95 * done_src[0] / total_src,
-                         f"{'Kopiere' if copy else 'Kodiere'} Datei {n + 1}/{len(paths)}")
+                         t("Kopiere Datei {n}/{total}", n=n + 1, total=len(paths)) if copy
+                         else t("Kodiere Datei {n}/{total}", n=n + 1, total=len(paths)))
 
-        progress(0.0, f"{len(paths)} Datei(en), {'AAC kopieren' if copy else f'AAC {br}'}, "
-                      f"{rate} Hz, {'Mono' if channels == 1 else 'Stereo'}")
+        progress(0.0, t("{n} Datei(en), {codec}, {rate} Hz, {channels}", n=len(paths),
+                        codec=t("AAC kopieren") if copy else f"AAC {br}", rate=rate,
+                        channels="Mono" if channels == 1 else "Stereo"))
         with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
             futures = [pool.submit(encode, n) for n in range(len(paths))]
             try:
@@ -362,7 +365,7 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
             fh.write(ffmetadata(chapters, total, {"genre": "Audiobook", **(tags or {})}))
         concat = "concat:" + "|".join(segs)
         part = os.path.join(work, "out.m4b")
-        progress(0.96, "Erzeuge M4B …")
+        progress(0.96, t("Erzeuge M4B …"))
         res = runner.run(sandbox.ffmpeg(["-nostdin", "-hide_banner", "-v", "error", "-y",
                                          "-protocol_whitelist", "file,concat", "-f", "aac", "-i", concat,
                                          *OWN_METADATA, "-i", meta_path,
@@ -370,9 +373,9 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
                                          "-c", "copy", "-movflags", "+faststart", "-f", "mp4", part],
                                         read=[work], write=[work], nice=nice))
         if res.returncode != 0:
-            raise EncodeError("Zusammenfügen fehlgeschlagen: " + _err_tail(res.stderr))
+            raise EncodeError(t("Zusammenfügen fehlgeschlagen: {error}", error=_err_tail(res.stderr)))
         shutil.move(part, out_path)
-        progress(1.0, "Fertig")
+        progress(1.0, t("Fertig"))
         return {"duration": total, "chapters": chapters, "bitrate": "copy" if copy else br,
                 "copied": copy}
     finally:
@@ -390,7 +393,7 @@ def file_chapters(path: str) -> List[dict]:
         return []
     res = []
     for i, c in enumerate(data.get("chapters", [])):
-        title = ((c.get("tags") or {}).get("title") or "").strip() or f"Kapitel {i + 1}"
+        title = ((c.get("tags") or {}).get("title") or "").strip() or t("Kapitel {n}", n=i + 1)
         res.append({"start": float(c.get("start_time") or 0), "title": title})
     return res
 

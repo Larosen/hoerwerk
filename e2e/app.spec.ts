@@ -123,6 +123,25 @@ test("Einstellungen zeigen ffmpeg und Sandbox, Design bleibt nach Neuladen", asy
   expect(errors).toEqual([]);
 });
 
+test("Oberfläche auf Englisch und zurück", async ({ page }) => {
+  const errors = await open(page);
+  await page.locator("#settingsBtn").click();
+  await page.locator("#settingsDialog select[name=language]").selectOption("en");
+  await page.locator("#settingsDialog button[value=save]").click();
+  await expect(page.getByRole("tab", { name: /Audiobooks/ })).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("#settingsBtn")).toContainText("Settings");
+  // nothing German left in the visible chrome of the page
+  const text = await page.locator("header.topbar").innerText();
+  expect(text).not.toMatch(/Einstellungen|Hörbücher|Umbenennen|Suchen/);
+  await page.locator("#settingsBtn").click();
+  await expect(page.locator("#settingsDialog legend").first()).toHaveText("M4B conversion");
+  await page.locator("#settingsDialog select[name=language]").selectOption("de");
+  await page.locator("#settingsDialog button[value=save]").click();
+  await expect(page.getByRole("tab", { name: /Hörbücher/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("Fremde Seiten dürfen nichts ändern (CSRF)", async ({ page, request }) => {
   await open(page);
   const res = await request.post("/api/rename", {

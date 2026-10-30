@@ -10,6 +10,7 @@ from config import RENAME_OPTION_KEYS
 from converter import list_mp3s
 from meta import cache as meta_cache, kind_of
 from rules import natural_key
+from i18n import t
 from web.router import HTTPException, Req, route
 from web.routes.common import busy, relpath, resolve
 
@@ -24,7 +25,7 @@ def browse(req: Req):
     app = req.app
     folder = resolve(app, req.query.get("path", ""))
     if not os.path.isdir(folder):
-        raise HTTPException(404, "Ordner nicht gefunden")
+        raise HTTPException(404, t("Ordner nicht gefunden"))
     visible = lambda name: app.config.show_hidden or not name.startswith(".")  # noqa: E731
     recursive = req.query.get("recursive") == "1"
     include_dirs = req.query.get("dirs") == "1"
@@ -32,7 +33,7 @@ def browse(req: Req):
     try:
         entries = sorted(os.scandir(folder), key=lambda e: natural_key(e.name))
     except PermissionError:
-        raise HTTPException(403, "Keine Berechtigung für diesen Ordner")
+        raise HTTPException(403, t("Keine Berechtigung für diesen Ordner"))
     for e in entries:
         if visible(e.name):
             try:
@@ -89,7 +90,7 @@ def file_meta(req: Req):
     folder = resolve(req.app, req.query.get("path", ""))
     full = resolve(req.app, os.path.join(relpath(req.app, folder), req.query.get("file", "")))
     if not os.path.isfile(full):
-        raise HTTPException(404, "Datei nicht gefunden")
+        raise HTTPException(404, t("Datei nicht gefunden"))
     st = os.stat(full)
     m = meta_cache.meta(full)
     out = {k: (v.strftime("%Y-%m-%d %H:%M:%S") if hasattr(v, "strftime") else v)
@@ -110,7 +111,7 @@ def _plan_from(req: Req):
     folder = resolve(req.app, req.get("path", ""))
     items = req.get("files") or []
     if not isinstance(items, list) or not all(isinstance(i, str) for i in items):
-        raise HTTPException(400, "files muss eine Liste von Dateinamen sein")
+        raise HTTPException(400, t("files muss eine Liste von Dateinamen sein"))
     settings = req.app.settings()
     options = {**{k: settings[k] for k in RENAME_OPTION_KEYS}, **(req.get("options") or {})}
     try:
@@ -133,18 +134,18 @@ def preview(req: Req):
 def rename(req: Req):
     app = req.app
     if busy(app, resolve(app, req.get("path", ""))):
-        raise HTTPException(409, "In diesem Ordner läuft gerade eine Konvertierung")
+        raise HTTPException(409, t("In diesem Ordner läuft gerade eine Konvertierung"))
     folder, plan = _plan_from(req)
     bad = [p for p in plan if p["error"]]
     if bad:
-        raise HTTPException(400, f"{len(bad)} Konflikt(e) – bitte Vorschau prüfen")
+        raise HTTPException(400, t("{n} Konflikt(e) – bitte Vorschau prüfen", n=len(bad)))
     phases = planner.build_phases(plan)
     created: List[str] = []
     if phases:
         try:
             created = planner.execute(folder, phases)
         except OSError as e:
-            raise HTTPException(500, f"Umbenennen fehlgeschlagen, alles zurückgesetzt: {e}")
+            raise HTTPException(500, t("Umbenennen fehlgeschlagen, alles zurückgesetzt: {error}", error=e))
         app.history.add(relpath(app, folder), phases, created)
 
     # Automatic MP3 -> M4B for every folder whose MP3s were part of the batch
@@ -161,7 +162,7 @@ def rename(req: Req):
                     dirs.append(d)
         for d in dirs:
             if list_mp3s(d):
-                jobs.append(app.converter.enqueue(d, relpath(app, d), "Nach Umbenennen").to_dict())
+                jobs.append(app.converter.enqueue(d, relpath(app, d), t("Nach Umbenennen")).to_dict())
     return {"renamed": sum(1 for p in plan if p["changed"]), "jobs": jobs,
             "job": jobs[0] if jobs else None}
 
@@ -189,17 +190,17 @@ def undo(req: Req):
     with app.history.lock:
         last = app.history.last()
         if not last:
-            raise HTTPException(404, "Nichts rückgängig zu machen")
+            raise HTTPException(404, t("Nichts rückgängig zu machen"))
         folder = resolve(app, last["folder"])
         if busy(app, folder):
-            raise HTTPException(409, "In diesem Ordner läuft gerade eine Konvertierung")
+            raise HTTPException(409, t("In diesem Ordner läuft gerade eine Konvertierung"))
         phases = [[tuple(p) for p in ph] for ph in _phases_of(last)]
         try:
             n = planner.undo(folder, phases, last.get("created") or [])
         except planner.PlanError as e:
             raise HTTPException(409, str(e))
         except OSError as e:
-            raise HTTPException(500, f"Rückgängig fehlgeschlagen: {e}")
+            raise HTTPException(500, t("Rückgängig fehlgeschlagen: {error}", error=e))
         app.history.remove(last["id"])
     return {"restored": n, "folder": last["folder"]}
 
@@ -213,5 +214,5 @@ def read_presets(req: Req):
 def write_presets(req: Req):
     data = req.body if isinstance(req.body, dict) else {}
     if not all(isinstance(v, list) for v in data.values()):
-        raise HTTPException(400, "Voreinstellungen müssen Regel-Listen sein")
+        raise HTTPException(400, t("Voreinstellungen müssen Regel-Listen sein"))
     return req.app.presets.replace(data)

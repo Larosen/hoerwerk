@@ -13,9 +13,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional
 from urllib.parse import parse_qs, unquote, urlparse
 
+import i18n
 from events import Stream
 from web import router
 from web.router import HTTPException, Req
+from i18n import t
 
 STATIC_DIR = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static"))
 MAX_BODY = 4 * 1024 * 1024
@@ -131,12 +133,18 @@ class Handler(BaseHTTPRequestHandler):
         name = "index.html" if path == "/" else path[len("/static/"):]
         full = os.path.realpath(os.path.join(STATIC_DIR, unquote(name)))
         if os.path.commonpath([full, STATIC_DIR]) != STATIC_DIR or not os.path.isfile(full):
-            return self._json(404, {"error": "Nicht gefunden"})
+            return self._json(404, {"error": t("Nicht gefunden")})
         ctype = mimetypes.guess_type(full)[0] or "application/octet-stream"
         if ctype.startswith("text/") or ctype.endswith("javascript"):
             ctype += "; charset=utf-8"
         with open(full, "rb") as fh:
             self._send(200, fh.read(), ctype)
+
+    def _i18n(self) -> None:
+        """Language and catalog for the page (a script, so it is there before anything renders)."""
+        lang = i18n.language()
+        data = json.dumps({"lang": lang, "text": i18n.catalog(lang)}, ensure_ascii=False)
+        self._send(200, f"const I18N = {data};\n".encode(), "text/javascript; charset=utf-8")
 
     def _stream(self, stream: Stream) -> None:
         """Server-Sent Events: the connection stays open and carries every change."""
@@ -159,33 +167,34 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(421, b"Unbekannter Host", "text/plain")
         public = url.path in PUBLIC_PATHS
         if not self._client_ok() and not public:
-            return self._send(403, ("Zugriff von öffentlichen Adressen nur mit Passwort (AUTH_USER/AUTH_PASS). "
-                               "Bei IPv6 im Heimnetz ggf. ALLOW_PUBLIC=true setzen.").encode(),
+            return self._send(403, t("Zugriff von öffentlichen Adressen nur mit Passwort (AUTH_USER/AUTH_PASS). Bei IPv6 im Heimnetz ggf. ALLOW_PUBLIC=true setzen.").encode(),  # noqa: E501
                               "text/plain; charset=utf-8")
         if not self._authorized() and not public:
             time.sleep(1)   # slows down password guessing
             return self._send(401, b"", "text/plain", {"WWW-Authenticate": 'Basic realm="Better Renamer"'})
+        if self.command in ("GET", "HEAD") and url.path == "/i18n.js":
+            return self._i18n()
         if self.command in ("GET", "HEAD") and (url.path == "/" or url.path.startswith("/static/")):
             return self._static(url.path)
         if self.command not in ("GET", "HEAD") and not self._same_origin():
-            return self._json(403, {"error": "Anfrage von fremder Seite abgelehnt"})
+            return self._json(403, {"error": t("Anfrage von fremder Seite abgelehnt")})
         body = None
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
-            return self._json(400, {"error": "Ungültige Länge"})
+            return self._json(400, {"error": t("Ungültige Länge")})
         if length > MAX_BODY:
-            return self._json(413, {"error": "Anfrage zu groß"})
+            return self._json(413, {"error": t("Anfrage zu groß")})
         self.close_connection = False
         if length:
             try:
                 body = json.loads(self.rfile.read(length))
             except (json.JSONDecodeError, UnicodeDecodeError):
-                return self._json(400, {"error": "Ungültiges JSON"})
+                return self._json(400, {"error": t("Ungültiges JSON")})
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         found = router.match(self.command, url.path)
         if not found:
-            return self._json(404, {"error": "Nicht gefunden"})
+            return self._json(404, {"error": t("Nicht gefunden")})
         fn, params = found
         try:
             result = fn(Req(self.server.app, body, query), **params)
@@ -196,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(e.status_code, {"error": e.detail})
         except Exception as e:  # noqa: BLE001
             self.log_error("Fehler in %s: %r", url.path, e)
-            return self._json(500, {"error": f"Interner Fehler: {e}"})
+            return self._json(500, {"error": t("Interner Fehler: {error}", error=e)})
 
     do_GET = do_POST = do_PUT = do_DELETE = do_HEAD = _dispatch
 

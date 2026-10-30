@@ -74,7 +74,7 @@ class PipelineEngineTest(unittest.TestCase):
         self.engine.start()
         self.p = pipeline.Pipeline(lambda: self.settings, self.db, self.inbox, self.lib,
                                    os.path.join(self.inbox, ".work"), engine=self.engine, client=FakeClient([
-                                       product("B0INSASSE1", "Der Insasse", ["Sebastian Fitzek"], 2.0),
+                                       product("B0STORM001", "Der Schimmelreiter", ["Theodor Storm"], 2.0),
                                        product("B0RAETSEL1", "Das Rätsel", ["Max Muster"], 2.0),
                                        product("B0RAETSEL2", "Das Rätsel", ["Eva Andere"], 2.0)]))
 
@@ -83,16 +83,16 @@ class PipelineEngineTest(unittest.TestCase):
         shutil.rmtree(self.root, ignore_errors=True)
 
     def test_inbox_to_library_through_the_queues(self):
-        tone(os.path.join(self.inbox, "Sebastian Fitzek - Der Insasse", "01.mp3"), 1.0)
-        tone(os.path.join(self.inbox, "Sebastian Fitzek - Der Insasse", "02.mp3"), 1.0)
+        tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "01.mp3"), 1.0)
+        tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "02.mp3"), 1.0)
         [job] = self.p.scan_once(settle=0)
         self.assertTrue(self.engine.wait_idle(30))
         self.assertEqual(job.status, "done", job.log)
-        self.assertEqual(tree(self.lib)[0], "Sebastian Fitzek/Der Insasse/Der Insasse.m4b")
+        self.assertEqual(tree(self.lib)[0], "Theodor Storm/Der Schimmelreiter/Der Schimmelreiter.m4b")
         # Audiobookshelf reads metadata.json next to the book
-        with open(os.path.join(self.lib, "Sebastian Fitzek", "Der Insasse", "metadata.json"), encoding="utf-8") as fh:
+        with open(os.path.join(self.lib, "Theodor Storm", "Der Schimmelreiter", "metadata.json"), encoding="utf-8") as fh:
             meta = json.load(fh)
-        self.assertEqual((meta["title"], meta["authors"], meta["asin"]), ("Der Insasse", ["Sebastian Fitzek"], "B0INSASSE1"))
+        self.assertEqual((meta["title"], meta["authors"], meta["asin"]), ("Der Schimmelreiter", ["Theodor Storm"], "B0STORM001"))
         self.assertEqual(len(meta["chapters"]), 2)
         self.assertAlmostEqual(meta["chapters"][-1]["end"], 2.0, delta=0.2)
 
@@ -130,7 +130,7 @@ class PipelineEngineTest(unittest.TestCase):
         release = threading.Event()
         self.engine.submit("io", "block1", lambda: release.wait(10))
         self.engine.submit("io", "block2", lambda: release.wait(10))
-        tone(os.path.join(self.inbox, "Der Insasse.mp3"), 1.0)
+        tone(os.path.join(self.inbox, "Der Schimmelreiter.mp3"), 1.0)
         [job] = self.p.scan_once(settle=0)
         self.assertTrue(self.engine.is_waiting(job.id))
         self.p.cancel(job.id)

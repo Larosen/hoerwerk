@@ -23,9 +23,9 @@ function fmtAge(ts: number | null): string {
   if (!ts) return "–";
   const d = (Date.now() / 1000 - ts) / 86400;
   if (d < 1) return `${Math.max(1, Math.round(d * 24))} h`;
-  if (d < 60) return `${Math.round(d)} T`;
-  if (d < 730) return `${Math.round(d / 30)} M`;
-  return `${Math.round(d / 365)} J`;
+  if (d < 60) return t("{n} T", { n: Math.round(d) });
+  if (d < 730) return t("{n} M", { n: Math.round(d / 30) });
+  return t("{n} J", { n: Math.round(d / 365) });
 }
 
 async function loadSources(): Promise<void> {
@@ -33,31 +33,31 @@ async function loadSources(): Promise<void> {
   try { s = search.sources = await api<Sources>("GET", "/api/sources"); } catch (e) { toast(errMsg(e), true); return; }
   const box = $("#sourcesInfo");
   box.replaceChildren();
-  if (!s.indexers.length) box.append(el("div", { class: "muted" }, "Noch kein Indexer eingerichtet."));
+  if (!s.indexers.length) box.append(el("div", { class: "muted" }, t("Noch kein Indexer eingerichtet.")));
   for (const i of s.indexers) {
-    box.append(el("div", { class: "kv" }, el("span", {}, "Indexer"),
-      el("span", { title: i.url }, (i.name || "") + (i.enabled ? "" : " (aus)")),
-      el("span", { class: i.apikey_set ? "ok" : "err", title: i.apikey_set ? "API-Key gespeichert" : "API-Key fehlt" }, i.apikey_set ? "✓" : "✗")));
+    box.append(el("div", { class: "kv" }, el("span", {}, t("Indexer")),
+      el("span", { title: i.url }, (i.name || "") + (i.enabled ? "" : " " + t("(aus)"))),
+      el("span", { class: i.apikey_set ? "ok" : "err", title: i.apikey_set ? t("API-Key gespeichert") : t("API-Key fehlt") }, i.apikey_set ? "✓" : "✗")));
   }
   box.append(el("div", { class: "kv" }, el("span", {}, "SABnzbd"),
-    el("span", { title: s.sab.url || "" }, s.sab.url ? `${s.sab.url}${s.sab.category ? " · " + s.sab.category : ""}` : "nicht eingerichtet"),
+    el("span", { title: s.sab.url || "" }, s.sab.url ? `${s.sab.url}${s.sab.category ? " · " + s.sab.category : ""}` : t("nicht eingerichtet")),
     el("span", { class: s.configured.sab ? "ok" : "err" }, s.configured.sab ? "✓" : "✗")));
   const abs = s.abs;
   if (abs?.url) {
     box.append(el("div", { class: "kv" }, el("span", {}, "Audiobookshelf"),
-      el("span", { title: abs.last || abs.url }, abs.library_name || abs.library || "Bibliothek fehlt"),
+      el("span", { title: abs.last || abs.url }, abs.library_name || abs.library || t("Bibliothek fehlt")),
       el("span", { class: abs.configured ? "ok" : "err" }, abs.configured ? "✓" : "✗")));
   }
 }
 
 function indexerRow(i: Indexer = {}): HTMLDivElement {
   const row = el("div", { class: "indexer-row" },
-    el("input", { name: "name", type: "text", placeholder: "Name", value: i.name || "" }),
+    el("input", { name: "name", type: "text", placeholder: t("Name"), value: i.name || "" }),
     el("input", { name: "url", type: "text", placeholder: "https://indexer.example/api", value: i.url || "", spellcheck: "false" }),
-    el("input", { name: "apikey", type: "password", autocomplete: "off", placeholder: i.apikey_set ? "gespeichert – leer lassen" : "API-Key" }),
-    el("input", { name: "categories", type: "text", value: i.categories || "3030", title: "Newznab-Kategorien, kommagetrennt", class: "cat" }),
-    el("label", { class: "check", title: "aktiv" }, el("input", { name: "enabled", type: "checkbox", checked: i.enabled !== false })),
-    el("button", { type: "button", class: "icon-btn", title: "Entfernen", onclick: () => row.remove() }, "✕"));
+    el("input", { name: "apikey", type: "password", autocomplete: "off", placeholder: i.apikey_set ? t("gespeichert – leer lassen") : "API-Key" }),
+    el("input", { name: "categories", type: "text", value: i.categories || "3030", title: t("Newznab-Kategorien, kommagetrennt"), class: "cat" }),
+    el("label", { class: "check", title: t("aktiv") }, el("input", { name: "enabled", type: "checkbox", checked: i.enabled !== false })),
+    el("button", { type: "button", class: "icon-btn", title: t("Entfernen"), onclick: () => row.remove() }, "✕"));
   row.dataset.id = i.id || "";
   return row;
 }
@@ -70,13 +70,13 @@ function openSources(): void {
   field(f, "sab_category").value = s.sab.category || "";
   const sabKey = field(f, "sab_apikey");
   sabKey.value = "";
-  sabKey.placeholder = s.sab.apikey_set ? "gespeichert – leer lassen" : "API-Key (SABnzbd → Config → General)";
+  sabKey.placeholder = s.sab.apikey_set ? t("gespeichert – leer lassen") : t("API-Key (SABnzbd → Config → General)");
   const abs = s.abs;
   field(f, "abs_url").value = abs?.url || "";
   field(f, "abs_library").value = abs?.library || "";
   const token = field(f, "abs_token");
   token.value = "";
-  token.placeholder = abs?.token_set ? "gespeichert – leer lassen" : "API-Token";
+  token.placeholder = abs?.token_set ? t("gespeichert – leer lassen") : "API-Token";
   $<HTMLDialogElement>("#sourcesDialog").showModal();
 }
 
@@ -138,23 +138,23 @@ async function lookupBooks(): Promise<void> {
   if (!q) { input.focus(); return; }
   const btn = $<HTMLButtonElement>("#bookLookupBtn");
   btn.disabled = true;
-  btn.textContent = "Schlage nach …";
+  btn.textContent = t("Schlage nach …");
   try {
     const res = await api<{ books: Book[]; region: string }>("POST", "/api/search/books", { query: q });
     const box = $("#bookPick");
     box.hidden = false;
     box.replaceChildren(
-      el("div", { class: "muted small" }, res.books.length ? `Welches Buch? (audible.${res.region === "us" ? "com" : res.region})` : "Bei Audible nichts gefunden – einfach direkt suchen."),
+      el("div", { class: "muted small" }, res.books.length ? t("Welches Buch? ({shop})", { shop: `audible.${res.region === "us" ? "com" : res.region}` }) : t("Bei Audible nichts gefunden – einfach direkt suchen.")),
       el("div", { class: "pick-list" }, res.books.map((b) => el("button", { type: "button", class: "pick", onclick: () => pickBook(b) },
         b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "", loading: "lazy" }) : el("span", { class: "thumb none" }, "?"),
         el("span", { class: "pick-text" },
           el("b", {}, b.title),
           el("span", {}, (b.authors || []).join(", ")),
           el("span", { class: "muted" }, [b.series ? `${b.series} ${b.series_position || ""}`.trim() : "",
-            b.runtime_min ? fmtDuration(b.runtime_min * 60) : "", b.format_type === "abridged" ? "gekürzt" : "",
-            b.source && b.source !== "audible" ? `via ${SOURCE_NAMES[b.source] || b.source}` : ""].filter(Boolean).join(" · ")),
-          b.owned ? el("span", { class: "owned", title: b.owned.path }, "✓ schon in der Bibliothek") : null)))));
-  } catch (err) { toast(errMsg(err), true); } finally { btn.disabled = false; btn.textContent = "Bei Audible nachschlagen"; }
+            b.runtime_min ? fmtDuration(b.runtime_min * 60) : "", b.format_type === "abridged" ? t("gekürzt") : "",
+            b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : ""].filter(Boolean).join(" · ")),
+          b.owned ? el("span", { class: "owned", title: b.owned.path }, t("✓ schon in der Bibliothek")) : null)))));
+  } catch (err) { toast(errMsg(err), true); } finally { btn.disabled = false; btn.textContent = t("Bei Audible nachschlagen"); }
 }
 
 function pickBook(b: Book): void {
@@ -163,9 +163,9 @@ function pickBook(b: Book): void {
   $<HTMLInputElement>("#searchQuery").value = query;
   $("#bookPick").replaceChildren(el("div", { class: "picked" },
     b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "" }) : null,
-    el("span", {}, "Gesucht wird: ", el("b", {}, `${(b.authors || []).join(", ")} – ${b.title}`),
-      el("span", { class: "muted" }, ` · ASIN ${b.asin} wird beim Download mitgegeben`)),
-    el("button", { type: "button", class: "icon-btn", title: "Auswahl aufheben", onclick: clearBook }, "✕")));
+    el("span", {}, t("Gesucht wird:") + " ", el("b", {}, `${(b.authors || []).join(", ")} – ${b.title}`),
+      el("span", { class: "muted" }, " · " + t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin || "–" }))),
+    el("button", { type: "button", class: "icon-btn", title: t("Auswahl aufheben"), onclick: clearBook }, "✕")));
   runSearch();
 }
 
@@ -186,7 +186,7 @@ async function runSearch(e?: Event): Promise<void> {
   if (search.book && q !== bookQueries(search.book).query) clearBook();
   const go = $<HTMLButtonElement>("#searchGo");
   go.disabled = true;
-  go.textContent = "Suche …";
+  go.textContent = t("Suche …");
   const lang = $<HTMLSelectElement>("#searchLang").value;
   store.set("searchLang", lang);
   try {
@@ -195,54 +195,54 @@ async function runSearch(e?: Event): Promise<void> {
     search.results = res.results;
     renderResults();
     const queries = res.queries || [];
-    $("#searchNote").textContent = `${res.results.length} Treffer` +
-      (queries.length > 1 ? ` · gesucht als: ${queries.map((x) => `„${x}“`).join(", ")}` : "") +
-      (res.errors.length ? ` · Fehler: ${res.errors.join("; ")}` : "");
+    $("#searchNote").textContent = t("{n} Treffer", { n: res.results.length }) +
+      (queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: queries.map((x) => `„${x}“`).join(", ") }) : "") +
+      (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "");
   } catch (err) {
     toast(errMsg(err), true);
     $("#searchNote").textContent = errMsg(err);
-  } finally { go.disabled = false; go.textContent = "Suchen"; }
+  } finally { go.disabled = false; go.textContent = t("Suchen"); }
 }
 
 function renderResults(): void {
   const body = $("#searchResults");
   body.replaceChildren();
   if (!search.results.length) {
-    body.append(el("tr", {}, el("td", { colspan: "5", class: "empty-row" }, "Keine Treffer – anders formulieren (weniger Wörter, ohne Band-Nummer).")));
+    body.append(el("tr", {}, el("td", { colspan: "5", class: "empty-row" }, t("Keine Treffer – anders formulieren (weniger Wörter, ohne Band-Nummer)."))));
     return;
   }
   for (const r of search.results) {
     const tags = [
-      r.format, r.language === "de" ? "Deutsch" : r.language === "en" ? "Englisch" : null,
-      r.bitrate ? r.bitrate + " kbps" : null, r.abridged ? "gekürzt" : null, r.drama ? "Hörspiel" : null,
+      r.format, r.language === "de" ? t("Deutsch") : r.language === "en" ? t("Englisch") : null,
+      r.bitrate ? r.bitrate + " kbps" : null, r.abridged ? t("gekürzt") : null, r.drama ? t("Hörspiel") : null,
     ].filter((t): t is string => !!t);
-    const btn: HTMLButtonElement = el("button", { class: "btn small primary", onclick: () => sendResult(r, btn) }, "Download");
+    const btn: HTMLButtonElement = el("button", { class: "btn small primary", onclick: () => sendResult(r, btn) }, t("Download"));
     body.append(el("tr", {},
       el("td", { class: "rel" },
         el("div", { class: "rel-title", title: r.title }, r.title),
         el("div", { class: "rel-meta" },
           r.owned ? el("span", { class: "owned", title: r.owned.path },
-            `✓ vorhanden: ${(r.owned.authors || [])[0] || ""} – ${r.owned.title}${r.owned.count > 1 ? ` (+${r.owned.count - 1})` : ""}`) : null,
+            t("✓ vorhanden: {book}", { book: `${(r.owned.authors || [])[0] || ""} – ${r.owned.title}${r.owned.count > 1 ? ` (+${r.owned.count - 1})` : ""}` })) : null,
           tags.map((t) => el("span", { class: "tag" }, t)),
           el("span", { class: "muted" }, [r.indexer, ...(r.also || [])].join(", ")),
-          r.details ? el("a", { href: r.details, target: "_blank", rel: "noopener noreferrer" }, "Details") : null)),
+          r.details ? el("a", { href: r.details, target: "_blank", rel: "noopener noreferrer" }, t("Details")) : null)),
       el("td", { class: "c-num" }, fmtSize(r.size)),
-      el("td", { class: "c-num", title: r.published ? new Date(r.published * 1000).toLocaleString("de-DE") : "" }, fmtAge(r.published)),
+      el("td", { class: "c-num", title: r.published ? new Date(r.published * 1000).toLocaleString(LOCALE) : "" }, fmtAge(r.published)),
       el("td", { class: "c-num" }, r.grabs ?? "–"),
       el("td", { class: "c-act" }, btn)));
   }
 }
 
 async function sendResult(r: Release, btn: HTMLButtonElement): Promise<void> {
-  if (!search.sources?.configured.sab) { toast("Erst SABnzbd einrichten", true); openSources(); return; }
+  if (!search.sources?.configured.sab) { toast(t("Erst SABnzbd einrichten"), true); openSources(); return; }
   const owned = r.owned || search.book?.owned;
-  if (owned && !(await confirmBox(`Sieht aus, als wäre das schon in der Bibliothek: „${owned.path}“. Trotzdem herunterladen?`, "Trotzdem laden"))) return;
+  if (owned && !(await confirmBox(t("Sieht aus, als wäre das schon in der Bibliothek: „{path}“. Trotzdem herunterladen?", { path: owned.path }), t("Trotzdem laden")))) return;
   btn.disabled = true;
   try {
     const b = search.book;
     await api("POST", "/api/search/send", b ? { id: r.id, asin: b.asin, title: b.title, author: (b.authors || [])[0] } : { id: r.id });
-    btn.textContent = "✓ gesendet";
-    toast(`An SABnzbd geschickt: ${r.title}`);
+    btn.textContent = t("✓ gesendet");
+    toast(t("An SABnzbd geschickt: {title}", { title: r.title }));
     pollDownloads(true);
   } catch (e) { btn.disabled = false; toast(errMsg(e), true); }
 }
@@ -252,13 +252,13 @@ async function pollDownloads(force = false): Promise<void> {
   const visible = !$("#viewSearch").hidden;
   if (!visible && !force) return;
   let data: Downloads;
-  try { data = await api<Downloads>("GET", "/api/downloads"); } catch { data = { items: [], error: "Server nicht erreichbar" }; }
+  try { data = await api<Downloads>("GET", "/api/downloads"); } catch { data = { items: [], error: t("Server nicht erreichbar") }; }
   const list = $("#dlList");
   list.replaceChildren();
-  $("#dlSpeed").textContent = data.speed && data.speed !== "0 " ? `${data.speed}B/s${data.paused ? " · pausiert" : ""}` : data.paused ? "pausiert" : "";
-  if (!data.configured) list.append(el("li", { class: "empty" }, "SABnzbd ist nicht eingerichtet."));
+  $("#dlSpeed").textContent = data.speed && data.speed !== "0 " ? `${data.speed}B/s${data.paused ? " · " + t("pausiert") : ""}` : data.paused ? t("pausiert") : "";
+  if (!data.configured) list.append(el("li", { class: "empty" }, t("SABnzbd ist nicht eingerichtet.")));
   else if (data.error) list.append(el("li", { class: "empty err" }, data.error));
-  else if (!data.items.length) list.append(el("li", { class: "empty" }, "Keine Downloads in dieser Kategorie."));
+  else if (!data.items.length) list.append(el("li", { class: "empty" }, t("Keine Downloads in dieser Kategorie.")));
   for (const d of data.items || []) {
     const pct = Math.round((d.progress || 0) * 100);
     const failed = d.status === "Failed";
@@ -266,9 +266,9 @@ async function pollDownloads(force = false): Promise<void> {
       el("div", { class: "job-top" },
         el("span", { class: "job-name", title: d.name }, d.name),
         el("span", { class: "badge " + (failed ? "error" : d.done ? "done" : "running") },
-          d.done ? (failed ? "fehlgeschlagen" : "fertig → Eingang") : `${d.status} ${pct}%`)),
+          d.done ? (failed ? t("fehlgeschlagen") : t("fertig → Eingang")) : `${d.status} ${pct}%`)),
       d.error ? el("div", { class: "job-msg" }, d.error)
-        : el("div", { class: "job-msg" }, [d.size, d.left && !d.done ? `noch ${d.left}` : "", d.finished ? fmtAgo(d.finished) : ""].filter(Boolean).join(" · ")),
+        : el("div", { class: "job-msg" }, [d.size, d.left && !d.done ? t("noch {time}", { time: d.left }) : "", d.finished ? fmtAgo(d.finished) : ""].filter(Boolean).join(" · ")),
       !d.done ? el("div", { class: "bar" }, el("i", { style: `width:${pct}%` })) : null));
   }
   const busy = (data.items || []).some((d) => !d.done);

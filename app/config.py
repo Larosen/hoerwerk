@@ -8,7 +8,7 @@ from typing import FrozenSet, Mapping
 import library
 import planner
 
-VERSION = "4.0.0"
+VERSION = "4.1.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
@@ -73,6 +73,7 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
     """Settings the UI can change; the environment only provides the starting values."""
     b = lambda key, default: _bool(env, key, default)  # noqa: E731
     return {
+        "language": env.get("APP_LANGUAGE", "de").lower(),  # de|en
         "auto_convert": b("AUTO_CONVERT", True),
         "bitrate": env.get("AAC_BITRATE", "auto"),          # auto|64k|96k|…
         "force_mono": b("FORCE_MONO", False),
@@ -118,5 +119,6 @@ CHOICES = {
     "ab_duplicates": ("ask", "skip", "keep"), "ab_library_originals": ("archive", "delete"),
     "ab_chapters": ("auto", "audible", "files"), "ab_originals": ("archive", "delete"),
     "ab_cover_source": ("audible", "local"), "chapter_titles": ("auto", "filename", "tag"),
+    "language": ("de", "en"),
 }
 RENAME_OPTION_KEYS = ("conflict", "sidecars", "sidecar_exts", "allow_subdirs")

@@ -11,6 +11,7 @@ import re
 from typing import Dict, List, Optional
 
 from mutagen.mp4 import MP4, MP4Cover, MP4FreeForm
+from i18n import t
 
 FREEFORM = "----:com.apple.iTunes:"
 OWN_KEYS = ("©nam", "©alb", "©ART", "aART", "©wrt", "©gen", "©day", "©cmt", "desc", "ldes",
@@ -52,7 +53,7 @@ def album_sort(book: dict, title: str, subtitle: Optional[str]) -> str:
 def build_tags(book: dict, settings: dict) -> Dict[str, list]:
     title = clean_title(book, settings)
     subtitle = clean_subtitle(book, settings)
-    authors = ", ".join(book.get("authors") or []) or "Unbekannt"
+    authors = ", ".join(book.get("authors") or []) or t("Unbekannt")
     narrators = ", ".join(book.get("narrators") or [])
     artist = ", ".join(filter(None, [authors, narrators])) if settings.get("narrator_in_artist") else authors
     desc = book.get("description") or ""
@@ -152,12 +153,12 @@ def read_cover(path: str) -> Optional[bytes]:
 def read_book(path: str) -> dict:
     """Existing tags of an M4B as a book dict (for "ohne Audible ablegen")."""
     try:
-        t = MP4(path).tags or {}
+        tags = MP4(path).tags or {}
     except Exception:  # noqa: BLE001
-        t = {}
+        tags = {}
 
     def one(key: str) -> str:
-        v = t.get(key)
+        v = tags.get(key)
         if not v:
             return ""
         v = v[0]
@@ -218,7 +219,7 @@ def load_manual(folder: str) -> Optional[dict]:
         if not os.path.isfile(path) or os.path.islink(path):
             continue
         if os.path.getsize(path) > 512 * 1024:
-            raise ValueError(f"{name} ist zu groß")
+            raise ValueError(t("{file} ist zu groß", file=name))
         with open(path, encoding="utf-8") as fh:
             text = fh.read()
         if name.endswith(".json"):
@@ -228,10 +229,10 @@ def load_manual(folder: str) -> Optional[dict]:
             # YAML anchors/aliases allow "billion laughs" memory bombs – a metadata file needs none
             for event in yaml.parse(text, Loader=yaml.SafeLoader):
                 if isinstance(event, yaml.AliasEvent) or getattr(event, "anchor", None):
-                    raise ValueError(f"{name}: YAML-Anker (& / *) werden aus Sicherheitsgründen nicht unterstützt")
+                    raise ValueError(t("{file}: YAML-Anker (& / *) werden aus Sicherheitsgründen nicht unterstützt", file=name))
             data = yaml.safe_load(text)
         if not isinstance(data, dict) or not data.get("title"):
-            raise ValueError(f"{name}: Feld „title“ fehlt")
+            raise ValueError(t("{file}: Feld „title“ fehlt", file=name))
 
         def lst(v) -> List[str]:
             if not v:

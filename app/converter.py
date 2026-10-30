@@ -16,6 +16,7 @@ import encoder
 import tagger
 from meta import cache as meta_cache
 from rules import natural_key
+from i18n import t
 
 COVER_NAMES = ("cover", "folder", "front", "albumart")
 COVER_EXTS = (".jpg", ".jpeg", ".png")
@@ -27,7 +28,7 @@ COVER_EXTS = (".jpg", ".jpeg", ".png")
 
 def _safe_filename(s: str) -> str:
     s = re.sub(r'[/\\:*?"<>|\x00-\x1f]', "-", s).strip(" .")
-    return s or "Hörbuch"
+    return s or t("Hörbuch")
 
 
 def list_mp3s(folder: str) -> List[str]:
@@ -68,7 +69,7 @@ class Job:
         self.reason = reason
         self.status = kw.get("status") or "queued"        # queued|running|done|error|cancelled
         self.progress = float(kw.get("progress") or 0.0)
-        self.message = kw.get("message") or "Wartet …"
+        self.message = kw.get("message") or t("Wartet …")
         self.output: Optional[str] = kw.get("output")
         self.created = kw.get("created") or time.time()
         self.finished: Optional[float] = kw.get("finished")
@@ -93,8 +94,10 @@ class Converter:
     """MP3 folder -> M4B in the same folder. Runs in the engine's ``encode`` queue."""
 
     def __init__(self, get_settings: Callable[[], dict], db: Optional[dbm.Database] = None, engine=None,
-                 jobs: int = 1, nice: str = "10", notify: Optional[Callable[[], None]] = None) -> None:
+                 jobs: int = 1, nice: str = "10", notify: Optional[Callable[[], None]] = None,
+                 on_finished: Optional[Callable[["Job"], None]] = None) -> None:
         self.get_settings = get_settings
+        self.on_finished = on_finished             # done / error (notifications)
         self.notify = notify or (lambda: None)   # live updates for the browser
         self.db = db
         self.engine = engine
@@ -115,7 +118,7 @@ class Converter:
             job = Job(d["path"], d.get("folder") or "", d.get("reason") or "",
                       **{k: v for k, v in d.items() if k not in ("path", "folder", "reason")})
             if job.status == "running":       # interrupted by a restart
-                job.status, job.progress, job.message = "queued", 0.0, "Nach Neustart erneut eingereiht"
+                job.status, job.progress, job.message = "queued", 0.0, t("Nach Neustart erneut eingereiht")
             self.jobs.append(job)
 
     def _save(self, job: Job) -> None:
@@ -163,7 +166,7 @@ class Converter:
                 if j.id == job_id and j.status in ("queued", "running"):
                     j._cancel = True
                     if j.status == "queued":
-                        j.status, j.message = "cancelled", "Abgebrochen"
+                        j.status, j.message = "cancelled", t("Abgebrochen")
                         j.finished = time.time()
                         if self.engine:
                             self.engine.discard(j.id)
@@ -204,32 +207,37 @@ class Converter:
         with self._lock:
             if job.status != "queued" or job not in self.jobs:
                 return
-            job.status, job.message = "running", "Analysiere Dateien …"
+            job.status, job.message = "running", t("Analysiere Dateien …")
         self._save(job)
         try:
             self._run(job)
             if job._cancel:
-                job.status, job.message = "cancelled", "Abgebrochen"
+                job.status, job.message = "cancelled", t("Abgebrochen")
             else:
                 job.status, job.progress = "done", 1.0
         except Exception as e:  # noqa: BLE001 – report everything to the UI
             if job._cancel:
-                job.status, job.message = "cancelled", "Abgebrochen"
+                job.status, job.message = "cancelled", t("Abgebrochen")
             else:
                 job.status, job.message = "error", str(e)
         job.finished = time.time()
         job._runner = None
         self._save(job)
+        if self.on_finished and job.status in ("done", "error"):
+            try:
+                self.on_finished(job)
+            except Exception as e:  # noqa: BLE001
+                print(f"Benachrichtigung fehlgeschlagen: {e}", flush=True)
 
     def _run(self, job: Job) -> None:
         s = self.get_settings()
         folder = job.folder
         files = list_mp3s(folder)
         if not files:
-            raise RuntimeError("Keine MP3-Dateien im Ordner gefunden")
+            raise RuntimeError(t("Keine MP3-Dateien im Ordner gefunden"))
 
         first_tags = meta_cache.probe(os.path.join(folder, files[0])).get("tags", {})
-        folder_name = os.path.basename(folder.rstrip("/")) or "Hörbuch"
+        folder_name = os.path.basename(folder.rstrip("/")) or t("Hörbuch")
         title = (first_tags.get("album") if s.get("title_source") == "album" else None) or folder_name
         artist = first_tags.get("album_artist") or first_tags.get("artist") or ""
         out_name = _safe_filename(
@@ -282,9 +290,9 @@ class Converter:
             os.makedirs(dest, exist_ok=True)
             for f in files:
                 shutil.move(os.path.join(folder, f), os.path.join(dest, f))
-            job.log.append(f"MP3s verschoben nach {os.path.basename(dest)}/")
+            job.log.append(t("MP3s verschoben nach {folder}/", folder=os.path.basename(dest)))
         elif mode == "delete":
             for f in files:
                 os.remove(os.path.join(folder, f))
-            job.log.append("MP3s gelöscht")
-        job.message = f"Fertig: {out_name} ({len(info['chapters'])} Kapitel, {info['bitrate']})"
+            job.log.append(t("MP3s gelöscht"))
+        job.message = t("Fertig: {name} ({n} Kapitel, {bitrate})", name=out_name, n=len(info["chapters"]), bitrate=info["bitrate"])

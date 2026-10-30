@@ -26,13 +26,13 @@ class IndexTest(unittest.TestCase):
         self.db = dbm.Database(self.dbfile)
         self.lib = os.path.join(self.root, "lib")
         # filed by Better Renamer: M4B with tags
-        m4b = tone(os.path.join(self.lib, "Sebastian Fitzek", "Der Insasse", "Der Insasse.m4b"), 1.0)
-        tagger.write_tags(m4b, {"title": "Der Insasse", "authors": ["Sebastian Fitzek"], "asin": "B07HFT61QM"}, {})
+        m4b = tone(os.path.join(self.lib, "Theodor Storm", "Der Schimmelreiter", "Der Schimmelreiter.m4b"), 1.0)
+        tagger.write_tags(m4b, {"title": "Der Schimmelreiter", "authors": ["Theodor Storm"], "asin": "B0TEST0001"}, {})
         # older collection: MP3 folder with tags …
-        tone(os.path.join(self.lib, "Tolkien", "Herr der Ringe", "01 - Die Gefährten", "01.mp3"), 0.5,
-             tags={"album": "Die Gefährten", "artist": "J. R. R. Tolkien"})
+        tone(os.path.join(self.lib, "Hoffmann", "Serapionsbrüder", "01 - Das Fräulein", "01.mp3"), 0.5,
+             tags={"album": "Das Fräulein", "artist": "E. T. A. Hoffmann"})
         # … and one without any tags: folder names only
-        tone(os.path.join(self.lib, "Eschbach, Andreas", "Das Jesus-Video", "a.mp3"), 0.5)
+        tone(os.path.join(self.lib, "Goethe, Johann Wolfgang", "West-östlicher Divan", "a.mp3"), 0.5)
         self.idx = library_index.LibraryIndex(self.lib, self.db,
                                               read_m4b=tagger.read_book, probe=meta_cache.probe)
         self.assertEqual(self.idx.scan(), 3)
@@ -41,22 +41,22 @@ class IndexTest(unittest.TestCase):
         shutil.rmtree(self.root, ignore_errors=True)
 
     def test_find(self):
-        self.assertEqual(self.idx.find({"asin": "b07hft61qm", "title": "x"})[0]["why"], "asin")
-        self.assertEqual(self.idx.find({"title": "Der Insasse", "authors": ["Fitzek, Sebastian"]})[0]["path"],
-                         "Sebastian Fitzek/Der Insasse")
-        self.assertEqual(self.idx.find({"title": "Die Gefaehrten", "authors": ["J.R.R. Tolkien"]})[0]["path"],
-                         "Tolkien/Herr der Ringe/01 - Die Gefährten")
-        self.assertEqual(self.idx.find({"title": "Das Jesus Video", "authors": ["Andreas Eschbach"]})[0]["why"], "title")
-        self.assertEqual(self.idx.find({"title": "Der Passagier 23", "authors": ["Sebastian Fitzek"]}), [])
-        self.assertEqual(self.idx.find({"title": "Der Insasse", "authors": ["Jemand Anderes"]}), [])
+        self.assertEqual(self.idx.find({"asin": "b0test0001", "title": "x"})[0]["why"], "asin")
+        self.assertEqual(self.idx.find({"title": "Der Schimmelreiter", "authors": ["Storm, Theodor"]})[0]["path"],
+                         "Theodor Storm/Der Schimmelreiter")
+        self.assertEqual(self.idx.find({"title": "Das Fraeulein", "authors": ["E.T.A. Hoffmann"]})[0]["path"],
+                         "Hoffmann/Serapionsbrüder/01 - Das Fräulein")
+        self.assertEqual(self.idx.find({"title": "West östlicher Divan", "authors": ["Johann Wolfgang Goethe"]})[0]["why"], "title")
+        self.assertEqual(self.idx.find({"title": "Pole Poppenspäler", "authors": ["Theodor Storm"]}), [])
+        self.assertEqual(self.idx.find({"title": "Der Schimmelreiter", "authors": ["Jemand Anderes"]}), [])
 
     def test_release_names(self):
-        hit = self.idx.match_release("Sebastian_Fitzek-Der_Insasse-Ungekuerzt-DE-2018-AUDIOBOOK-GRP")
-        self.assertEqual([h["path"] for h in hit], ["Sebastian Fitzek/Der Insasse"])
-        self.assertEqual(self.idx.match_release("J.R.R.Tolkien-Die.Gefaehrten.Hoerbuch"), self.idx.match_release(
-            "Tolkien - Die Gefährten (Lesung)"))
-        self.assertEqual(len(self.idx.match_release("Tolkien - Die Gefährten")), 1)
-        self.assertEqual(self.idx.match_release("Sebastian Fitzek - Passagier 23"), [])
+        hit = self.idx.match_release("Theodor_Storm-Der_Schimmelreiter-Ungekuerzt-DE-2018-AUDIOBOOK-GRP")
+        self.assertEqual([h["path"] for h in hit], ["Theodor Storm/Der Schimmelreiter"])
+        self.assertEqual(self.idx.match_release("E.T.A.Hoffmann-Das.Fraeulein.Hoerbuch"), self.idx.match_release(
+            "Hoffmann - Das Fräulein (Lesung)"))
+        self.assertEqual(len(self.idx.match_release("Hoffmann - Das Fräulein")), 1)
+        self.assertEqual(self.idx.match_release("Theodor Storm - Pole Poppenspäler"), [])
 
     def test_cache_and_incremental(self):
         again = library_index.LibraryIndex(self.lib, dbm.Database(self.dbfile))
@@ -79,8 +79,8 @@ class DuplicatePipelineTest(unittest.TestCase):
         self.inbox = os.path.join(self.root, "inbox")
         self.lib = os.path.join(self.root, "lib")
         os.makedirs(self.inbox)
-        old = tone(os.path.join(self.lib, "Sebastian Fitzek", "Der Insasse", "Der Insasse.m4b"), 1.0)
-        tagger.write_tags(old, {"title": "Der Insasse", "authors": ["Sebastian Fitzek"], "asin": "B0INSASSE1"}, {})
+        old = tone(os.path.join(self.lib, "Theodor Storm", "Der Schimmelreiter", "Der Schimmelreiter.m4b"), 1.0)
+        tagger.write_tags(old, {"title": "Der Schimmelreiter", "authors": ["Theodor Storm"], "asin": "B0STORM001"}, {})
         self.settings = {"ab_region": "de", "ab_match": "auto", "ab_threshold": 0.8, "ab_chapters": "files",
                          "ab_originals": "archive", "ab_duplicates": "ask"}
         self.idx = library_index.LibraryIndex(self.lib, self.db,
@@ -88,13 +88,13 @@ class DuplicatePipelineTest(unittest.TestCase):
         self.idx.scan()
         self.p = pipeline.Pipeline(lambda: self.settings, self.db, self.inbox,
                                    self.lib, os.path.join(self.inbox, ".work"), start=False, index=self.idx,
-                                   client=FakeClient([product("B0INSASSE1", "Der Insasse", ["Sebastian Fitzek"], 4.0)]))
+                                   client=FakeClient([product("B0STORM001", "Der Schimmelreiter", ["Theodor Storm"], 4.0)]))
 
     def tearDown(self):
         shutil.rmtree(self.root, ignore_errors=True)
 
     def new_download(self):
-        tone(os.path.join(self.inbox, "Sebastian Fitzek - Der Insasse", "01.mp3"), 4.0)
+        tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "01.mp3"), 4.0)
         jobs = self.p.scan_once(settle=0)
         self.p.process(jobs[0])
         return jobs[0]
@@ -102,32 +102,32 @@ class DuplicatePipelineTest(unittest.TestCase):
     def test_asks_instead_of_adding_a_copy(self):
         j = self.new_download()
         self.assertEqual(j.status, "review", j.log)
-        self.assertEqual(j.duplicate["path"], "Sebastian Fitzek/Der Insasse")
+        self.assertEqual(j.duplicate["path"], "Theodor Storm/Der Schimmelreiter")
         self.assertEqual(j.duplicate["why"], "asin")
-        self.assertEqual(tree(self.lib), ["Sebastian Fitzek/Der Insasse/Der Insasse.m4b"])
+        self.assertEqual(tree(self.lib), ["Theodor Storm/Der Schimmelreiter/Der Schimmelreiter.m4b"])
 
     def test_keep_both(self):
         j = self.new_download()
         self.p.resolve_duplicate(j.id, "keep")
         self.p.process(j)
         self.assertEqual(j.status, "done", j.log)
-        self.assertIn("Sebastian Fitzek/Der Insasse (2)/Der Insasse.m4b", tree(self.lib))
+        self.assertIn("Theodor Storm/Der Schimmelreiter (2)/Der Schimmelreiter.m4b", tree(self.lib))
 
     def test_replace_moves_old_out_of_the_library(self):
         j = self.new_download()
         self.p.resolve_duplicate(j.id, "replace")
         self.p.process(j)
         self.assertEqual(j.status, "done", j.log)
-        self.assertIn("Sebastian Fitzek/Der Insasse/Der Insasse.m4b", tree(self.lib))
-        self.assertNotIn("Sebastian Fitzek/Der Insasse (2)/Der Insasse.m4b", tree(self.lib))
-        self.assertIn("_ersetzt/Sebastian Fitzek/Der Insasse/Der Insasse.m4b", tree(self.inbox))
+        self.assertIn("Theodor Storm/Der Schimmelreiter/Der Schimmelreiter.m4b", tree(self.lib))
+        self.assertNotIn("Theodor Storm/Der Schimmelreiter (2)/Der Schimmelreiter.m4b", tree(self.lib))
+        self.assertIn("_ersetzt/Theodor Storm/Der Schimmelreiter/Der Schimmelreiter.m4b", tree(self.inbox))
 
     def test_discard(self):
         j = self.new_download()
         self.p.resolve_duplicate(j.id, "discard")
         self.assertEqual(j.status, "cancelled")
-        self.assertEqual(tree(self.lib), ["Sebastian Fitzek/Der Insasse/Der Insasse.m4b"])
-        self.assertIn("_fertig/Sebastian Fitzek - Der Insasse/01.mp3", tree(self.inbox))
+        self.assertEqual(tree(self.lib), ["Theodor Storm/Der Schimmelreiter/Der Schimmelreiter.m4b"])
+        self.assertIn("_fertig/Theodor Storm - Der Schimmelreiter/01.mp3", tree(self.inbox))
         self.assertEqual(self.p.scan_once(settle=0), [])       # not picked up again
 
     def test_skip_setting(self):
@@ -160,7 +160,7 @@ class ConvertLibraryTest(unittest.TestCase):
         self.inbox = os.path.join(self.root, "inbox")
         self.lib = os.path.join(self.root, "lib")
         os.makedirs(self.inbox)
-        self.book = os.path.join(self.lib, "Sebastian Fitzek", "Der Insasse")
+        self.book = os.path.join(self.lib, "Theodor Storm", "Der Schimmelreiter")
         tone(os.path.join(self.book, "CD1", "Track 01.mp3"), 2.0)
         tone(os.path.join(self.book, "CD1", "Track 02.mp3"), 1.0)
         tone(os.path.join(self.book, "CD2", "Track 01.mp3"), 1.0)
@@ -173,40 +173,40 @@ class ConvertLibraryTest(unittest.TestCase):
         self.idx.scan()
         # CD1/CD2 are one book, not two
         self.assertEqual([(e["path"], e["files"], e["format"]) for e in self.idx.entries.values()],
-                         [("Sebastian Fitzek/Der Insasse", 3, "mp3")])
+                         [("Theodor Storm/Der Schimmelreiter", 3, "mp3")])
         self.p = pipeline.Pipeline(lambda: self.settings, self.db, self.inbox,
                                    self.lib, os.path.join(self.inbox, ".work"), start=False, index=self.idx,
-                                   client=FakeClient([product("B0INSASSE1", "Der Insasse", ["Sebastian Fitzek"], 4.0)]))
+                                   client=FakeClient([product("B0STORM001", "Der Schimmelreiter", ["Theodor Storm"], 4.0)]))
 
     def tearDown(self):
         shutil.rmtree(self.root, ignore_errors=True)
 
     def test_convert_with_own_chapter_names_and_renamed_tracks(self):
-        names = ["Prolog", "Die Klinik", "Epilog"]
+        names = ["Prolog", "Der Deich", "Epilog"]
         j = self.p.add(self.book, origin="library", chapter_names=names, rename_files=True)
-        self.assertEqual(j.rel, os.path.join("Sebastian Fitzek", "Der Insasse"))
+        self.assertEqual(j.rel, os.path.join("Theodor Storm", "Der Schimmelreiter"))
         self.p.process(j)
         self.assertEqual(j.status, "done", j.log)       # not flagged as a duplicate of itself
-        self.assertEqual(tree(self.lib), ["Sebastian Fitzek/Der Insasse/Der Insasse.m4b",
-                                          "Sebastian Fitzek/Der Insasse/cover.jpg",   # the old folder.jpg
-                                          "Sebastian Fitzek/Der Insasse/desc.txt",
-                                          "Sebastian Fitzek/Der Insasse/metadata.json",
-                                          "Sebastian Fitzek/Der Insasse/reader.txt"])
+        self.assertEqual(tree(self.lib), ["Theodor Storm/Der Schimmelreiter/Der Schimmelreiter.m4b",
+                                          "Theodor Storm/Der Schimmelreiter/cover.jpg",   # the old folder.jpg
+                                          "Theodor Storm/Der Schimmelreiter/desc.txt",
+                                          "Theodor Storm/Der Schimmelreiter/metadata.json",
+                                          "Theodor Storm/Der Schimmelreiter/reader.txt"])
         import encoder
         self.assertEqual([c["title"] for c in encoder.file_chapters(j.dest)], names)
         old = sorted(f for f in tree(self.inbox) if f.startswith("_ersetzt/"))
-        self.assertEqual(old, ["_ersetzt/Sebastian Fitzek/Der Insasse/CD1/01 - Prolog.mp3",
-                               "_ersetzt/Sebastian Fitzek/Der Insasse/CD1/02 - Die Klinik.mp3",
-                               "_ersetzt/Sebastian Fitzek/Der Insasse/CD2/03 - Epilog.mp3",
-                               "_ersetzt/Sebastian Fitzek/Der Insasse/folder.jpg"])
+        self.assertEqual(old, ["_ersetzt/Theodor Storm/Der Schimmelreiter/CD1/01 - Prolog.mp3",
+                               "_ersetzt/Theodor Storm/Der Schimmelreiter/CD1/02 - Der Deich.mp3",
+                               "_ersetzt/Theodor Storm/Der Schimmelreiter/CD2/03 - Epilog.mp3",
+                               "_ersetzt/Theodor Storm/Der Schimmelreiter/folder.jpg"])
         entries = list(self.idx.entries.values())
-        self.assertEqual([(e["path"], e["format"]) for e in entries], [("Sebastian Fitzek/Der Insasse", "m4b")])
+        self.assertEqual([(e["path"], e["format"]) for e in entries], [("Theodor Storm/Der Schimmelreiter", "m4b")])
 
     def test_query_from_library_path_and_delete_mode(self):
         self.settings["ab_library_originals"] = "delete"
         j = self.p.add(self.book, origin="library")
         self.p.process(j)
-        self.assertEqual(j.hints["query"], "Sebastian Fitzek Der Insasse")
+        self.assertEqual(j.hints["query"], "Theodor Storm Der Schimmelreiter")
         self.assertEqual(j.status, "done", j.log)
         self.assertFalse(any(f.startswith("_ersetzt") for f in tree(self.inbox)))
 

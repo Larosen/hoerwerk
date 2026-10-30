@@ -7,6 +7,7 @@
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <meta name="color-scheme" content="light dark">
   <link rel="stylesheet" href="/static/style.css">
+  <script src="/i18n.js"></script>
   <script src="/static/theme.js"></script>
 </head>
 <body>
@@ -175,7 +176,7 @@
     <section class="panel how">
       <div class="panel-head"><h2>So funktioniert's</h2></div>
       <ol class="steps">
-        <li>Newznab-Indexer (oder Prowlarr) und SABnzbd unter <b>Einrichten</b> eintragen.</li>
+        <li>SABnzbd unter <b>Einrichten</b> eintragen. Für die Suche hier zusätzlich einen Newznab-Indexer – ohne Indexer kümmert sich der Eingang trotzdem um alles, was SABnzbd lädt.</li>
         <li>In SABnzbd eine Kategorie (z. B. <code>audiobooks</code>) anlegen, deren Ordner der <b>Hörbuch-Eingang</b> ist.</li>
         <li>Suchen, <b>Download</b> klicken – nach dem Download übernimmt der Eingang: M4B, Audible-Tags, Bibliothek. Der Suchbegriff hilft dabei der Erkennung.</li>
         <li>Deutsche Titel: Umlaute werden in allen Schreibweisen gesucht (ä / ae / a). Noch sicherer: <b>Bei Audible nachschlagen</b>, Buch wählen – dann wird mit Titel und Autor aus dem deutschen Shop gesucht.</li>
@@ -188,7 +189,7 @@
         <h2>Indexer durchsuchen</h2>
       </div>
       <form id="searchForm" class="search-row pad">
-        <input id="searchQuery" type="search" placeholder="Autor Titel, z. B. Fitzek Insasse" aria-label="Suchbegriff">
+        <input id="searchQuery" type="search" placeholder="Autor Titel, z. B. Storm Schimmelreiter" aria-label="Suchbegriff">
         <select id="searchLang" aria-label="Sprache bevorzugen">
           <option value="de">Deutsch bevorzugen</option>
           <option value="en">Englisch bevorzugen</option>
@@ -221,7 +222,7 @@
     <h2>Indexer, SABnzbd &amp; Audiobookshelf</h2>
     <fieldset>
       <legend>Newznab-Indexer</legend>
-      <p class="muted small">URL des Indexers (z. B. <code>https://api.nzbgeek.info</code>) oder bei Prowlarr die Newznab-URL des Indexers (<code>http://prowlarr:9696/1/</code> mit dem Prowlarr-API-Key). Kategorie 3030 = Hörbuch.</p>
+      <p class="muted small">Optional, nur für die Suche: Newznab-Adresse deines Indexers (z. B. <code>https://indexer.example/api</code>) und dessen API-Key. Kategorie 3030 = Hörbuch.</p>
       <div id="indexerRows" class="indexer-rows"></div>
       <button type="button" id="addIndexerBtn" class="btn small">+ Indexer</button>
     </fieldset>
@@ -312,6 +313,12 @@
 <dialog id="settingsDialog">
   <form method="dialog" class="dialog-body" id="settingsForm">
     <h2>Einstellungen</h2>
+    <label class="lang-pick">Sprache / Language
+      <select name="language">
+        <option value="de">Deutsch</option>
+        <option value="en">English</option>
+      </select>
+    </label>
     <fieldset>
       <legend>M4B-Konvertierung</legend>
       <p class="muted small">Gilt für „Jetzt zu M4B“ und für den Hörbuch-Eingang.</p>
@@ -444,6 +451,27 @@
         </select>
       </label>
     </fieldset>
+    <fieldset id="notifyBox">
+      <legend>Benachrichtigungen (ntfy)</legend>
+      <p class="muted small">Push-Nachrichten aufs Handy über <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a> – ntfy.sh oder ein eigener Server. Token bzw. Passwort bleiben auf dem Server.</p>
+      <div class="grid2">
+        <label>Server <input name="ntfy_url" type="text" placeholder="https://ntfy.sh" spellcheck="false"></label>
+        <label>Topic <input name="ntfy_topic" type="text" placeholder="hoerbuecher-1234" spellcheck="false"></label>
+        <label>Access-Token <small>oder Benutzer + Passwort</small><input name="ntfy_token" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>Priorität
+          <select name="ntfy_priority">
+            <option value="1">1 – minimal</option><option value="2">2 – niedrig</option><option value="3">3 – normal</option>
+            <option value="4">4 – hoch</option><option value="5">5 – dringend</option>
+          </select>
+        </label>
+        <label>Benutzer <input name="ntfy_user" type="text" autocomplete="off" spellcheck="false"></label>
+        <label>Passwort <input name="ntfy_password" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>Adresse dieser Oberfläche <small>Tippen auf die Nachricht öffnet sie</small><input name="ntfy_app_url" type="text" placeholder="http://tower:8080" spellcheck="false"></label>
+      </div>
+      <div class="small">Benachrichtigen bei:</div>
+      <div class="grid2" id="notifyEvents"></div>
+      <div class="row gap"><button type="button" class="btn small" id="notifyTestBtn">Testnachricht senden</button><span class="muted small" id="notifyState"></span></div>
+    </fieldset>
     <p class="muted small" id="systemInfo"></p>
     <div class="dialog-actions">
       <button value="cancel" formnovalidate class="btn ghost">Abbrechen</button>
@@ -502,5 +530,6 @@
 <script src="/static/app.js"></script>
 <script src="/static/books.js"></script>
 <script src="/static/search.js"></script>
+<script src="/static/notify.js"></script>
 </body>
 </html>

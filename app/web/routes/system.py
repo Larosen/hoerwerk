@@ -7,6 +7,7 @@ import subprocess
 import audible
 import sandbox
 from config import CHOICES, VERSION
+from i18n import t
 from web.router import HTTPException, Req, route
 
 
@@ -27,10 +28,10 @@ def write_settings(req: Req):
         try:
             clean[k] = v if kind is str or isinstance(v, kind) and kind is not int else kind(v)
         except (TypeError, ValueError):
-            raise HTTPException(400, f"Ungültiger Wert für {k}")
+            raise HTTPException(400, t("Ungültiger Wert für {key}", key=k))
     for k, allowed in {**CHOICES, "ab_region": tuple(audible.REGIONS)}.items():
         if clean.get(k) not in (None,) + allowed:
-            raise HTTPException(400, f"Ungültiger Wert für {k}")
+            raise HTTPException(400, t("Ungültiger Wert für {key}", key=k))
     return req.app.update_settings(clean)
 
 
@@ -41,7 +42,7 @@ def events(req: Req):
     wanted = (req.query.get("topics") or ",".join(bus.providers)).split(",")
     topics = [t for t in wanted if t in bus.providers]
     if not topics:
-        raise HTTPException(400, "Unbekanntes Thema")
+        raise HTTPException(400, t("Unbekanntes Thema"))
     try:
         return bus.stream(topics)
     except OverflowError as e:
@@ -54,9 +55,9 @@ def _ffmpeg_version() -> str:
         out = subprocess.run(sandbox.ffmpeg(["-hide_banner", "-version"]), capture_output=True, text=True,
                              timeout=20).stdout
     except (OSError, subprocess.SubprocessError):
-        return "nicht gefunden"
+        return t("nicht gefunden")
     first = (out.splitlines() or [""])[0]
-    return first.replace("ffmpeg version ", "").split(" Copyright")[0] or "nicht gefunden"
+    return first.replace("ffmpeg version ", "").split(" Copyright")[0] or t("nicht gefunden")
 
 
 @route("GET", "/api/system")

@@ -18,6 +18,7 @@ import re
 import unicodedata
 from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple
+from i18n import t
 
 Name = Tuple[str, str]  # (stem, ext without dot)
 
@@ -72,7 +73,7 @@ def _compile(pattern: str, regex: bool, case_sensitive: bool, whole_word: bool =
     try:
         return re.compile(src, flags)
     except re.error as e:
-        raise RuleError(f"Ungültiger regulärer Ausdruck „{pattern}“: {e}")
+        raise RuleError(t("Ungültiger regulärer Ausdruck „{pattern}“: {error}", pattern=pattern, error=e))
 
 
 def _expand_repl(repl: str, regex: bool):
@@ -108,7 +109,7 @@ def rule_replace(name: Name, r: dict, ctx: dict) -> Name:
         else:
             text = rx.sub(repl, text)
     except (re.error, IndexError) as e:
-        raise RuleError(f"Ersetzung fehlerhaft: {e}")
+        raise RuleError(t("Ersetzung fehlerhaft: {error}", error=e))
     return _target_set(name, target, text)
 
 
@@ -465,7 +466,7 @@ def rule_date(name: Name, r: dict, ctx: dict) -> Name:
     try:
         text = d.strftime(fmt)
     except ValueError as e:
-        raise RuleError(f"Ungültiges Datumsformat: {e}")
+        raise RuleError(t("Ungültiges Datumsformat: {error}", error=e))
     sep = r.get("separator", " ")
     pos = r.get("position", "start")
     if pos == "start":
@@ -659,7 +660,7 @@ def _rule_applies(r: dict, current: str) -> bool:
         try:
             hit = re.search(cond, current, re.IGNORECASE) is not None
         except re.error as e:
-            raise RuleError(f"Ungültige Bedingung „{cond}“: {e}")
+            raise RuleError(t("Ungültige Bedingung „{condition}“: {error}", condition=cond, error=e))
     elif mode == "ext":
         exts = {e.strip().lstrip(".").lower() for e in cond.split(",") if e.strip()}
         hit = split_name(current)[1].lower() in exts
@@ -713,9 +714,9 @@ def validate_name(new: str) -> Optional[str]:
     parts = new.split("/")
     for p in parts:
         if not p or p in (".", ".."):
-            return "Leerer oder ungültiger Name"
+            return t("Leerer oder ungültiger Name")
         if len(p.encode("utf-8")) > 255:
-            return "Name zu lang (max. 255 Byte)"
+            return t("Name zu lang (max. 255 Byte)")
     if new.startswith("/") or ".." in parts:
-        return "Ungültiger Pfad"
+        return t("Ungültiger Pfad")
     return None

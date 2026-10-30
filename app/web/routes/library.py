@@ -7,6 +7,7 @@ import threading
 import encoder
 from meta import cache as meta_cache
 from rules import natural_key
+from i18n import t
 from web.router import HTTPException, Req, route
 from web.routes.common import library_path
 
@@ -62,7 +63,7 @@ def convert(req: Req):
     """Queue library books for conversion: [{path, chapter_names?, rename_files?}]."""
     items = req.get("items") or []
     if not isinstance(items, list) or not items:
-        raise HTTPException(400, "Keine Bücher ausgewählt")
+        raise HTTPException(400, t("Keine Bücher ausgewählt"))
     jobs = []
     for it in items[:200]:
         if not isinstance(it, dict):
@@ -71,9 +72,9 @@ def convert(req: Req):
         names = it.get("chapter_names")
         if names is not None:
             if not isinstance(names, list) or not all(isinstance(n, str) for n in names):
-                raise HTTPException(400, "chapter_names muss eine Liste von Texten sein")
+                raise HTTPException(400, t("chapter_names muss eine Liste von Texten sein"))
             if len(names) != len(encoder.collect_audio(folder)):
-                raise HTTPException(409, "Die Tracks haben sich geändert – bitte neu laden")
+                raise HTTPException(409, t("Die Tracks haben sich geändert – bitte neu laden"))
             names = [n.strip()[:200] for n in names]
         jobs.append(req.app.pipeline.add(folder, origin="library", chapter_names=names,
                                          rename_files=bool(it.get("rename_files")) and bool(names)).to_dict(full=False))

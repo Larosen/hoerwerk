@@ -21,21 +21,21 @@ from test_pipeline import FakeClient, product  # noqa: E402
 
 # trimmed real answers (October 2026)
 ITUNES = {"resultCount": 1, "results": [{
-    "wrapperType": "audiobook", "collectionId": 1436685726, "artistName": "Sebastian Fitzek",
-    "collectionName": "Der Insasse (Ungekürzt)", "releaseDate": "2018-10-24T07:00:00Z",
-    "primaryGenreName": "Krimis und Thriller", "description": "Zwei <b>entsetzliche</b> Kindermorde …",
+    "wrapperType": "audiobook", "collectionId": 1436685726, "artistName": "Theodor Storm",
+    "collectionName": "Der Schimmelreiter (Ungekürzt)", "releaseDate": "2018-10-24T07:00:00Z",
+    "primaryGenreName": "Klassiker", "description": "Ein <b>Deichgraf</b> an der Nordsee …",
     "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/bd/rm_image.jpg/100x100bb.jpg",
     "collectionViewUrl": "https://books.apple.com/de/audiobook/der-insasse/id1436685726?uo=4"}]}
-OPENLIBRARY = {"numFound": 1, "docs": [{"author_name": ["Sebastian Fitzek"], "cover_i": 10249865,
+OPENLIBRARY = {"numFound": 1, "docs": [{"author_name": ["Theodor Storm"], "cover_i": 10249865,
                                        "first_publish_year": 2018, "key": "/works/OL20368308W",
-                                       "title": "Der Insasse"}]}
-AUDNEXUS = {"asin": "B07HFT61QM", "authors": [{"asin": "B001JSF77S", "name": "Sebastian Fitzek"}],
-            "narrators": [{"name": "Simon Jäger"}], "formatType": "unabridged",
+                                       "title": "Der Schimmelreiter"}]}
+AUDNEXUS = {"asin": "B0TEST0001", "authors": [{"asin": "B0TEST0003", "name": "Theodor Storm"}],
+            "narrators": [{"name": "Max Muster"}], "formatType": "unabridged",
             "genres": [{"name": "Krimis & Thriller", "type": "genre"}, {"name": "Psychothriller", "type": "tag"}],
             "image": "https://m.media-amazon.com/images/I/71iXCQYKQ2L.jpg", "language": "german",
             "publisherName": "Audible Studios", "releaseDate": "2018-10-24T00:00:00.000Z",
             "runtimeLengthMin": 512, "seriesPrimary": {"name": "Thriller", "position": "3"},
-            "summary": "<p>Zwei entsetzliche Kindermorde …</p>", "title": "Der Insasse"}
+            "summary": "<p>Ein Deichgraf an der Nordsee …</p>", "title": "Der Schimmelreiter"}
 
 
 class FakeGet:
@@ -67,7 +67,7 @@ class BrokenClient(FakeClient):
 class NormaliseTest(unittest.TestCase):
     def test_itunes(self):
         b = providers.from_itunes(ITUNES["results"][0])
-        self.assertEqual((b["title"], b["authors"], b["source"]), ("Der Insasse", ["Sebastian Fitzek"], "apple"))
+        self.assertEqual((b["title"], b["authors"], b["source"]), ("Der Schimmelreiter", ["Theodor Storm"], "apple"))
         self.assertTrue(b["cover_url"].endswith("/1400x1400bb.jpg"))
         self.assertEqual(b["url"], "https://books.apple.com/de/audiobook/der-insasse/id1436685726")
         self.assertEqual(b["release_date"], "2018-10-24")
@@ -81,26 +81,26 @@ class NormaliseTest(unittest.TestCase):
     def test_audnexus(self):
         b = providers.from_audnexus(AUDNEXUS, "de")
         self.assertEqual((b["narrators"], b["series"], b["series_position"], b["runtime_min"]),
-                         (["Simon Jäger"], "Thriller", "3", 512))
+                         (["Max Muster"], "Thriller", "3", 512))
         self.assertEqual((b["genres"], b["tags"], b["language"]), (["Krimis & Thriller"], ["Psychothriller"], "German"))
 
 
 class LookupTest(unittest.TestCase):
-    hints = {"query": "Fitzek Der Insasse", "title": "Der Insasse", "author": "Sebastian Fitzek", "duration": 512 * 60}
+    hints = {"query": "Storm Der Schimmelreiter", "title": "Der Schimmelreiter", "author": "Theodor Storm", "duration": 512 * 60}
 
     def test_audible_first_no_other_calls(self):
         get = FakeGet()
-        p = providers.Providers(FakeClient([product("B07HFT61QM", "Der Insasse", ["Sebastian Fitzek"], 512 * 60)]), get)
+        p = providers.Providers(FakeClient([product("B0TEST0001", "Der Schimmelreiter", ["Theodor Storm"], 512 * 60)]), get)
         ranked, notes = p.lookup(self.hints, "de")
         self.assertEqual(ranked[0]["source"], "audible")
         self.assertEqual(get.calls, [])
 
     def test_audible_down_asin_from_audnexus_is_accepted(self):
         p = providers.Providers(BrokenClient([]), FakeGet())
-        ranked, notes = p.lookup({**self.hints, "asin": "B07HFT61QM"}, "de")
+        ranked, notes = p.lookup({**self.hints, "asin": "B0TEST0001"}, "de")
         self.assertEqual(ranked[0]["source"], "audnexus")
         self.assertIn("Audnexus", " ".join(notes))
-        self.assertEqual(providers.auto_match(ranked, 0.8)["asin"], "B07HFT61QM")
+        self.assertEqual(providers.auto_match(ranked, 0.8)["asin"], "B0TEST0001")
 
     def test_other_shops_only_for_review(self):
         get = FakeGet(fail=("openlibrary.org",))
@@ -133,8 +133,8 @@ class LookupTest(unittest.TestCase):
 
 class AbsMetadataTest(unittest.TestCase):
     def test_metadata_json_and_roundtrip(self):
-        book = {"title": "Der Insasse", "authors": ["Sebastian Fitzek"], "narrators": ["Simon Jäger"],
-                "series": "Thriller", "series_position": "3", "release_date": "2018-10-24", "asin": "B07HFT61QM",
+        book = {"title": "Der Schimmelreiter", "authors": ["Theodor Storm"], "narrators": ["Max Muster"],
+                "series": "Thriller", "series_position": "3", "release_date": "2018-10-24", "asin": "B0TEST0001",
                 "genres": ["Krimi"], "description": "Text", "language": "German", "format_type": "unabridged"}
         meta = absm.metadata(book, [{"start": 0, "title": "Eins"}, {"start": 10.5, "title": ""}], 20.0)
         self.assertEqual(meta["series"], ["Thriller #3"])
@@ -147,7 +147,7 @@ class AbsMetadataTest(unittest.TestCase):
             absm.write_metadata(d, book, [], 0)
             back = tagger.load_manual(d)       # a book that already has one is recognised from it
             self.assertEqual((back["title"], back["series"], back["series_position"], back["narrators"]),
-                             ("Der Insasse", "Thriller", "3", ["Simon Jäger"]))
+                             ("Der Schimmelreiter", "Thriller", "3", ["Max Muster"]))
             self.assertEqual(back["release_date"], "2018-10-24")
         finally:
             shutil.rmtree(d)

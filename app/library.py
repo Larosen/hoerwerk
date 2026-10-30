@@ -5,7 +5,7 @@ Template syntax: ``{field}`` or ``{field:2}`` (zero-pad numbers) and
 
     {author}/[{series}/][{series_position:2} - ]{title}
 
-gives ``Tolkien/Herr der Ringe/01 - Die Gefährten`` or ``Fitzek/Der Insasse``.
+gives ``Hoffmann/Serapionsbrüder/01 - Das Fräulein`` or ``Storm/Der Schimmelreiter``.
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ import re
 import shutil
 import unicodedata
 from typing import Dict, List, Optional, Tuple
+from i18n import t
 
 DEFAULT_FOLDER = "{author}/[{series}/][{series_position:2} - ]{title}"
 OLD_DEFAULT_FOLDER = "{author}/[{series}/][{series_position} - ]{title}"   # v3.0
@@ -27,13 +28,13 @@ def fields(book: dict, title: Optional[str] = None) -> Dict[str, str]:
     authors = book.get("authors") or []
     narrators = book.get("narrators") or []
     return {
-        "author": authors[0] if authors else "Unbekannt",
-        "authors": ", ".join(authors) or "Unbekannt",
+        "author": authors[0] if authors else t("Unbekannt"),
+        "authors": ", ".join(authors) or t("Unbekannt"),
         "narrator": narrators[0] if narrators else "",
         "narrators": ", ".join(narrators),
         "series": book.get("series") or "",
         "series_position": book.get("series_position") or "",
-        "title": title or book.get("title") or "Unbenannt",
+        "title": title or book.get("title") or t("Unbenannt"),
         "subtitle": book.get("subtitle") or "",
         "year": (book.get("release_date") or "")[:4],
         "asin": book.get("asin") or "",
@@ -92,15 +93,15 @@ def destination(root: str, book: dict, folder_tpl: str, file_tpl: str,
                 title: Optional[str] = None) -> Tuple[str, str]:
     values = fields(book, title)
     folder = render(folder_tpl or DEFAULT_FOLDER, values) or sanitize(values["title"])
-    name = render(file_tpl or DEFAULT_FILE, values).replace("/", "-") or "Hörbuch"
+    name = render(file_tpl or DEFAULT_FILE, values).replace("/", "-") or t("Hörbuch")
     return os.path.join(root, folder), name + ".m4b"
 
 
 def folder_keys(name: str) -> Tuple[str, str]:
     """Spelling-insensitive keys for a folder name.
 
-    "J.R.R. Tolkien", "J. R. R. Tolkien" and "j r r tolkien" share the first key;
-    "Tolkien, J. R. R." shares the second (word order ignored). Umlauts count as
+    "E.T.A. Hoffmann", "E. T. A. Hoffmann" and "e t a hoffmann" share the first key;
+    "Hoffmann, E. T. A." shares the second (word order ignored). Umlauts count as
     ae/oe/ue, accents and punctuation are ignored, "01" equals "1".
     """
     s = name.casefold().replace("ß", "ss").replace("ä", "ae").replace("ö", "oe").replace("ü", "ue")
@@ -112,8 +113,8 @@ def folder_keys(name: str) -> Tuple[str, str]:
 def reuse_existing(root: str, folder: str) -> str:
     """Walk ``folder`` below ``root`` and swap in folders that already exist under another spelling.
 
-    So a new book by "J.R.R. Tolkien" lands in an existing "J. R. R. Tolkien" folder, and
-    "Der Herr der Ringe" finds "der herr der ringe" – instead of creating a second one.
+    So a new book by "E.T.A. Hoffmann" lands in an existing "E. T. A. Hoffmann" folder, and
+    "Die Serapionsbrüder" finds "die serapionsbrüder" – instead of creating a second one.
     """
     rel = os.path.relpath(folder, root)
     if rel.startswith(".."):
@@ -166,10 +167,11 @@ def place(src_m4b: str, folder: str, filename: str, extras: Optional[Dict[str, s
 def example(folder_tpl: str, file_tpl: str) -> List[str]:
     """Preview for the settings dialog."""
     samples = [
-        {"title": "Die Gefährten", "authors": ["J.R.R. Tolkien"], "narrators": ["Achim Höppner"],
-         "series": "Herr der Ringe", "series_position": "1", "release_date": "2011-06-03"},
-        {"title": "Der Insasse", "authors": ["Sebastian Fitzek"], "narrators": ["Simon Jäger"],
-         "release_date": "2018-10-24"},
+        # public-domain works (no rights of third parties in the examples)
+        {"title": "Eine Studie in Scharlachrot", "authors": ["Arthur Conan Doyle"], "narrators": ["Erika Muster"],
+         "series": "Sherlock Holmes", "series_position": "1", "release_date": "1887-11-01"},
+        {"title": "Die Verwandlung", "authors": ["Franz Kafka"], "narrators": ["Max Muster"],
+         "release_date": "1915-10-01"},
     ]
     out = []
     for b in samples:

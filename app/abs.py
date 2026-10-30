@@ -16,6 +16,7 @@ from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
 import db as dbm
+from i18n import t
 
 METADATA_FILE = "metadata.json"
 
@@ -35,7 +36,7 @@ def metadata(book: dict, chapters: List[dict], duration: float = 0.0) -> dict:
     for i, c in enumerate(chapters):
         end = chapters[i + 1]["start"] if i + 1 < len(chapters) else (c.get("end") or duration or c["start"])
         chs.append({"id": i, "start": round(float(c["start"]), 3), "end": round(float(end), 3),
-                    "title": c.get("title") or f"Kapitel {i + 1}"})
+                    "title": c.get("title") or t("Kapitel {n}", n=i + 1)})
     return {
         "tags": list(book.get("tags") or []),
         "chapters": chs,
@@ -102,13 +103,13 @@ def _call(method: str, url: str, token: str, timeout: float = 15) -> dict:
             body = resp.read(2 * 1024 * 1024)
     except HTTPError as e:
         if e.code in (401, 403):
-            raise AbsError("Audiobookshelf: API-Token ungültig oder ohne Admin-Rechte") from e
+            raise AbsError(t("Audiobookshelf: API-Token ungültig oder ohne Admin-Rechte")) from e
         raise AbsError(f"Audiobookshelf: HTTP {e.code}") from e
     except (URLError, OSError) as e:
         reason = getattr(e, "reason", e)
         if isinstance(e, TimeoutError) or isinstance(reason, TimeoutError):
-            raise AbsTimeout("Audiobookshelf antwortet nicht rechtzeitig") from e
-        raise AbsError(f"Audiobookshelf nicht erreichbar: {reason}") from e
+            raise AbsTimeout(t("Audiobookshelf antwortet nicht rechtzeitig")) from e
+        raise AbsError(t("Audiobookshelf nicht erreichbar: {reason}", reason=reason)) from e
     try:
         return json.loads(body) if body.strip() else {}
     except ValueError:
@@ -119,8 +120,10 @@ class Audiobookshelf:
     """Connection settings (in the database; the token never goes to the browser)."""
     SECRET = "token"
 
-    def __init__(self, db: dbm.Database, call: Callable[..., dict] = _call, delay: float = 30.0) -> None:
+    def __init__(self, db: dbm.Database, call: Callable[..., dict] = _call, delay: float = 30.0,
+                 on_error: Optional[Callable[[str], None]] = None) -> None:
         self.db = db
+        self.on_error = on_error         # scan failed (notifications)
         self._call = call
         self.delay = delay              # several books in a row: one scan after the last one
         self._timer: Optional[threading.Timer] = None
@@ -153,7 +156,7 @@ class Audiobookshelf:
     def libraries(self) -> List[dict]:
         c = self._load()
         if not c.get("url") or not c.get(self.SECRET):
-            raise AbsError("Audiobookshelf ist noch nicht eingerichtet")
+            raise AbsError(t("Audiobookshelf ist noch nicht eingerichtet"))
         data = self._call("GET", f"{_base(c['url'])}/api/libraries", c[self.SECRET])
         libs = data.get("libraries") if isinstance(data, dict) else data
         return [{"id": str(lib.get("id")), "name": str(lib.get("name") or ""), "type": lib.get("mediaType")}
@@ -165,13 +168,13 @@ class Audiobookshelf:
         c = self._load()
         if not c.get("library") and len(libs) == 1:
             self.db.put("abs", {**c, "library": libs[0]["id"], "library_name": libs[0]["name"]})
-            return f"verbunden, Bibliothek „{libs[0]['name']}“ gewählt"
+            return t("verbunden, Bibliothek „{name}“ gewählt", name=libs[0]["name"])
         chosen = next((lib for lib in libs if lib["id"] == c.get("library")), None)
         if chosen:
             self.db.put("abs", {**c, "library_name": chosen["name"]})
-            return f"verbunden, Bibliothek „{chosen['name']}“"
+            return t("verbunden, Bibliothek „{name}“", name=chosen["name"])
         names = ", ".join(f"{lib['name']} ({lib['id']})" for lib in libs) or "keine"
-        return f"verbunden – bitte Bibliothek wählen: {names}"
+        return t("verbunden – bitte Bibliothek wählen: {names}", names=names)
 
     def scan_now(self) -> None:
         c = self._load()
@@ -181,12 +184,14 @@ class Audiobookshelf:
             # Audiobookshelf answers when the scan is finished – a big library takes minutes
             self._call("POST", f"{_base(c['url'])}/api/libraries/{parse.quote(c['library'])}/scan", c[self.SECRET],
                        timeout=self.scan_timeout)
-            self.last = "Scan abgeschlossen"
+            self.last = t("Scan abgeschlossen")
         except AbsTimeout:
-            self.last = "Scan läuft"
+            self.last = t("Scan läuft")
         except AbsError as e:
             self.last = str(e)
             print(e, flush=True)
+            if self.on_error:
+                self.on_error(str(e))
 
     def request_scan(self) -> None:
         """A book was filed: scan once things have calmed down."""

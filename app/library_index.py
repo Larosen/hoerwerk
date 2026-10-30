@@ -25,7 +25,7 @@ def _surname(name: str) -> str:
     words = match_words(name or "")
     if not words:
         return ""
-    # "Fitzek, Sebastian" -> fitzek; "Sebastian Fitzek" -> fitzek
+    # "Storm, Theodor" -> storm; "Theodor Storm" -> storm
     return words[0] if "," in (name or "") else words[-1]
 
 

@@ -2,8 +2,10 @@
 // never flashes in the wrong colours.
 (() => {
   type Mode = "auto" | "light" | "dark";
+  // runs before core.js: its own lookup in the catalog of /i18n.js
+  const t = (text: string): string => (typeof I18N !== "undefined" && I18N.text[text]) || text;
   const KEY = "br:theme";
-  const MODES: Record<Mode, [string, string]> = { auto: ["◐", "Automatisch (wie System)"], light: ["☀︎", "Hell"], dark: ["☾", "Dunkel"] };
+  const MODES: Record<Mode, [string, string]> = { auto: ["◐", t("Automatisch (wie System)")], light: ["☀︎", t("Hell")], dark: ["☾", t("Dunkel")] };
   const read = (): Mode => {
     try {
       const v: unknown = JSON.parse(localStorage.getItem(KEY) ?? "null");
@@ -16,7 +18,7 @@
     const btn = document.getElementById("themeBtn");
     if (btn && btn.firstChild) {
       btn.firstChild.textContent = MODES[mode][0] + " ";
-      btn.title = "Design: " + MODES[mode][1] + " – klicken zum Wechseln";
+      btn.title = t("Design: {mode} – klicken zum Wechseln").replace("{mode}", MODES[mode][1]);
       btn.setAttribute("aria-label", btn.title);
     }
   };

@@ -3,6 +3,49 @@
 // Loaded right after theme.js; the other scripts share these globals (classic scripts, no bundler).
 
 // ------------------------------------------------------------------------- //
+// Language: German is the source, /i18n.js brings the catalog of the chosen language
+// ------------------------------------------------------------------------- //
+declare const I18N: { lang: string; text: Record<string, string> } | undefined;
+const LANG = typeof I18N === "undefined" ? "de" : I18N.lang;
+const LOCALE = LANG === "en" ? "en-GB" : "de-DE";
+
+/** Translate a German UI text; ``{name}`` placeholders are filled from ``values``. */
+function t(text: string, values: Record<string, string | number> = {}): string {
+  let out = (typeof I18N !== "undefined" && I18N.text[text]) || text;
+  for (const [k, v] of Object.entries(values)) out = out.split("{" + k + "}").join(String(v));
+  return out;
+}
+
+const TRANSLATED_ATTRS = ["placeholder", "title", "aria-label"];
+
+/** The fixed texts of index.html: every text node and label attribute that has a translation. */
+function translateDom(root: ParentNode): void {
+  if (typeof I18N === "undefined" || !Object.keys(I18N.text).length) return;
+  const norm = (s: string): string => s.replace(/\s+/g, " ").trim();
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const parent = node.parentElement;
+    if (!parent || parent.closest("code, script, style")) continue;
+    const key = norm(node.nodeValue || "");
+    const hit = key && I18N.text[key];
+    if (hit) {
+      const raw = node.nodeValue || "";
+      // "<b>Inbox</b> legen." -> "<b>Inbox</b>." : no space before a translation that starts with punctuation
+      const lead = /^\s/.test(raw) && !/^[.,;:!?)]/.test(hit) ? " " : "";
+      node.nodeValue = lead + hit + (/\s$/.test(raw) ? " " : "");
+    }
+  }
+  for (const elem of root.querySelectorAll<HTMLElement>("[placeholder], [title], [aria-label]")) {
+    for (const attr of TRANSLATED_ATTRS) {
+      const v = elem.getAttribute(attr);
+      const hit = v && I18N.text[norm(v)];
+      if (hit) elem.setAttribute(attr, hit);
+    }
+  }
+  document.documentElement.lang = LANG;
+}
+
+// ------------------------------------------------------------------------- //
 // API data
 // ------------------------------------------------------------------------- //
 type Settings = Record<string, string | number | boolean>;
@@ -130,7 +173,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ..
   return n;
 }
 
-const collator = new Intl.Collator("de", { numeric: true, sensitivity: "base" });
+const collator = new Intl.Collator(LANG, { numeric: true, sensitivity: "base" });
 
 async function api<T = unknown>(method: string, url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -176,17 +219,19 @@ function fmtDuration(sec: number | null | undefined): string {
 }
 
 function fmtAgo(ts: number | null | undefined): string {
-  if (!ts) return "nie";
+  if (!ts) return t("nie");
   const s = Math.round(Date.now() / 1000 - ts);
-  if (s < 60) return "gerade eben";
-  if (s < 3600) return `vor ${Math.round(s / 60)} min`;
-  return new Date(ts * 1000).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+  if (s < 60) return t("gerade eben");
+  if (s < 3600) return t("vor {n} min", { n: Math.round(s / 60) });
+  return new Date(ts * 1000).toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short" });
 }
 
 const SOURCE_NAMES: Record<string, string> = {
   audible: "Audible", audnexus: "Audnexus", bookbeat: "BookBeat", thalia: "Thalia",
   apple: "Apple Books", openlibrary: "Open Library",
 };
+
+translateDom(document.body);
 
 for (const btn of document.querySelectorAll<HTMLElement>("dialog [data-close]")) {
   btn.addEventListener("click", () => btn.closest("dialog")?.close());
