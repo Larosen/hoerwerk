@@ -63,10 +63,10 @@ function renderFolder(f: Folder): void {
   const list = $("#dirList");
   list.replaceChildren();
   const parent = f.parent;
-  if (parent !== null) list.append(el("li", {}, el("button", { onclick: () => openFolder(parent) }, "↩︎ ..")));
+  if (parent !== null) list.append(el("li", {}, el("button", { onclick: () => openFolder(parent) }, icon("up"), "..")));
   for (const d of f.dirs) {
     const p = f.path ? f.path + "/" + d.name : d.name;
-    list.append(el("li", {}, el("button", { onclick: () => openFolder(p), title: d.name }, "📁 " + d.name)));
+    list.append(el("li", {}, el("button", { onclick: () => openFolder(p), title: d.name }, icon("folder"), d.name)));
   }
   if (!f.dirs.length && f.parent === null) list.append(el("li", { class: "empty" }, t("Keine Unterordner")));
   const audio = f.files.filter((x) => x.kind === "audio" && !x.name.includes("/")).length;
@@ -127,7 +127,7 @@ function renderFiles(): void {
     const cb = el("input", { type: "checkbox", "aria-label": t("Auswählen") });
     cb.checked = !state.unchecked.has(f.name);
     cb.addEventListener("click", (ev) => toggleFile(files, i, cb.checked, ev.shiftKey));
-    const info = f.dir ? null : el("button", { class: "icon-btn", title: t("Metadaten & Platzhalter"), onclick: () => showMeta(f.name) }, "ⓘ");
+    const info = f.dir ? null : el("button", { class: "icon-btn", title: t("Metadaten & Platzhalter"), onclick: () => showMeta(f.name) }, icon("info"));
     body.append(el("tr", { "data-name": f.name, class: f.dir ? "is-dir" : "" },
       el("td", { class: "c-check" }, cb),
       el("td", { class: "old" }, nameCell(f)),
@@ -145,7 +145,8 @@ function nameCell(f: FileEntry): DocumentFragment {
   const frag = document.createDocumentFragment();
   const slash = f.name.lastIndexOf("/");
   if (slash >= 0) frag.append(el("span", { class: "dirpart" }, f.name.slice(0, slash + 1)));
-  frag.append((f.dir ? "📁 " : "") + f.name.slice(slash + 1));
+  if (f.dir) frag.append(icon("folder"), " ");
+  frag.append(f.name.slice(slash + 1));
   if (f.kind === "audio" && f.name.toLowerCase().endsWith(".mp3")) frag.append(el("span", { class: "tag" }, "MP3"));
   return frag;
 }
@@ -261,7 +262,7 @@ function ruleCard(rule: Rule, idx: number): HTMLLIElement {
 
   const summary = el("span", { class: "rule-summary" }, def.summary?.(rule) || "");
   const cond = rule.only ? el("span", { class: "tag soft" }, t("bedingt")) : null;
-  const handle = el("span", { class: "handle", title: t("Ziehen zum Sortieren"), "aria-hidden": "true" }, "⋮⋮");
+  const handle = el("span", { class: "handle", title: t("Ziehen zum Sortieren"), "aria-hidden": "true" }, icon("grip"));
   handle.addEventListener("mousedown", () => li.setAttribute("draggable", "true"));
   handle.addEventListener("touchstart", () => li.setAttribute("draggable", "true"), { passive: true });
 
@@ -271,10 +272,10 @@ function ruleCard(rule: Rule, idx: number): HTMLLIElement {
       `${idx + 1}. ${def.label}`),
     summary, cond,
     el("div", { class: "rule-tools" },
-      el("button", { class: "icon-btn", title: t("Nach oben"), disabled: idx === 0, onclick: () => moveRule(idx, idx - 1) }, "↑"),
-      el("button", { class: "icon-btn", title: t("Nach unten"), disabled: idx === state.rules.length - 1, onclick: () => moveRule(idx, idx + 1) }, "↓"),
-      el("button", { class: "icon-btn", title: t("Duplizieren"), onclick: () => { state.rules.splice(idx + 1, 0, structuredClone(rule)); renderRules(); saveRules(); } }, "⧉"),
-      el("button", { class: "icon-btn", title: t("Entfernen"), onclick: () => { state.rules.splice(idx, 1); renderRules(); saveRules(); } }, "✕")));
+      el("button", { class: "icon-btn", title: t("Nach oben"), disabled: idx === 0, onclick: () => moveRule(idx, idx - 1) }, icon("up-arrow")),
+      el("button", { class: "icon-btn", title: t("Nach unten"), disabled: idx === state.rules.length - 1, onclick: () => moveRule(idx, idx + 1) }, icon("down-arrow")),
+      el("button", { class: "icon-btn", title: t("Duplizieren"), onclick: () => { state.rules.splice(idx + 1, 0, structuredClone(rule)); renderRules(); saveRules(); } }, icon("copy")),
+      el("button", { class: "icon-btn", title: t("Entfernen"), onclick: () => { state.rules.splice(idx, 1); renderRules(); saveRules(); } }, icon("x"))));
 
   const fields = el("div", { class: "rule-fields" });
   const refresh = (): void => {

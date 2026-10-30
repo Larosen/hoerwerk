@@ -173,6 +173,19 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ..
   return n;
 }
 
+/** An icon from the sprite in index.html (``<symbol id="i-…">``). */
+function icon(name: string, label?: string): SVGSVGElement {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "ico");
+  if (label) { svg.setAttribute("role", "img"); svg.setAttribute("aria-label", label); }
+  else svg.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS(NS, "use");
+  use.setAttribute("href", "#i-" + name);
+  svg.append(use);
+  return svg;
+}
+
 const collator = new Intl.Collator(LANG, { numeric: true, sensitivity: "base" });
 
 async function api<T = unknown>(method: string, url: string, body?: unknown): Promise<T> {

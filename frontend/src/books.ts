@@ -221,7 +221,7 @@ function renderLibraryStats(st: LibraryStats): void {
 }
 
 function renderInbox(d: AudiobooksStatus): void {
-  const ok = (flag: boolean): HTMLSpanElement => el("span", { class: flag ? "ok" : "err" }, flag ? "✓" : "✗");
+  const ok = (flag: boolean): HTMLSpanElement => el("span", { class: flag ? "ok" : "err" }, icon(flag ? "check" : "alert", flag ? "OK" : t("Fehler")));
   const box = $("#inboxInfo");
   box.replaceChildren(
     el("div", { class: "kv" }, el("span", {}, t("Eingang")), el("code", { title: d.inbox }, d.inbox || "–"), ok(d.inbox_ok)),
@@ -263,7 +263,7 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
   const li = el("li", { class: "book " + j.status });
   const m = j.match;
   const head = el("div", { class: "book-head" },
-    m?.cover_url ? el("img", { class: "thumb", src: m.cover_url, alt: "", loading: "lazy" }) : el("div", { class: "thumb none" }, "🎧"),
+    m?.cover_url ? el("img", { class: "thumb", src: m.cover_url, alt: "", loading: "lazy" }) : el("div", { class: "thumb none" }, icon("headphones")),
     el("div", { class: "book-main" },
       el("div", { class: "book-title" },
         el("span", { class: "name", title: j.source }, m?.title ? m.title : j.rel),
@@ -271,7 +271,7 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
       m?.title ? el("div", { class: "book-sub" }, [
         (m.authors || []).join(", "),
         m.series ? `${m.series}${m.series_position ? " " + m.series_position : ""}` : "",
-        m.narrators?.length ? "gelesen von " + m.narrators.join(", ") : "",
+        m.narrators?.length ? t("gelesen von {names}", { names: m.narrators.join(", ") }) : "",
       ].filter(Boolean).join(" · ")) : null,
       el("div", { class: "book-msg" }, j.status === "failed" ? j.error || j.message : j.message),
       isActive(j.status) ? el("div", { class: "bar" }, el("i", { style: `width:${pct}%` })) : null,
@@ -324,7 +324,7 @@ function bookDetails(j: AudiobookJob): HTMLDivElement {
   if (j.status === "review" || (j.candidates?.length && j.status !== "done")) {
     box.append(searchForm(j));
     if (j.candidates?.length) {
-      box.append(el("ul", { class: "cands" }, j.candidates.map((c) => candidate(j, c))));
+      box.append(el("ul", { class: "cands" }, j.candidates.map((c, i) => candidate(j, c, i === 0))));
     } else {
       box.append(el("p", { class: "muted" }, t("Keine Treffer. Anders suchen, einen Link von Audible, BookBeat oder Thalia einfügen – oder die Angaben selbst eintragen.")));
     }
@@ -387,13 +387,13 @@ function searchForm(j: AudiobookJob): HTMLFormElement {
   return form;
 }
 
-function candidate(j: AudiobookJob, c: Book): HTMLLIElement {
+function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
   const runtime = c.runtime_min ? c.runtime_min * 60 : 0;
   const diff = runtime && j.duration ? Math.abs(j.duration - runtime) / runtime : null;
   const score = Math.round((c.match?.score || 0) * 100);
   const narrators = c.narrators || [];
   return el("li", { class: "cand" },
-    c.cover_url ? el("img", { class: "thumb", src: c.cover_url, alt: "", loading: "lazy" }) : el("div", { class: "thumb none" }, "?"),
+    c.cover_url ? el("img", { class: "thumb", src: c.cover_url, alt: "", loading: "lazy" }) : el("div", { class: "thumb none" }, icon("book")),
     el("div", { class: "cand-main" },
       el("div", { class: "cand-title" }, c.title, c.subtitle ? el("span", { class: "muted" }, " – " + c.subtitle) : null),
       el("div", { class: "cand-sub" }, [
@@ -412,10 +412,10 @@ function candidate(j: AudiobookJob, c: Book): HTMLLIElement {
       ),
     ),
     el("div", { class: "cand-side" },
-      el("span", { class: "score " + (score >= 80 ? "hi" : score >= 60 ? "mid" : "lo"), title: t("Übereinstimmung mit den Dateien") }, score + " %"),
+      el("span", { class: "score " + (score >= 80 ? "hi" : score >= 60 ? "mid" : "lo"), style: `--p:${score}%`, title: t("Übereinstimmung mit den Dateien") }, score + " %"),
       el("div", { class: "row gap" },
         el("button", { class: "btn small ghost", title: t("Angaben vor dem Übernehmen ändern"), onclick: () => manualBook(j, c) }, t("Bearbeiten …")),
-        el("button", { class: "btn small primary", onclick: () => chooseBook(j, c) }, t("Übernehmen")))));
+        el("button", { class: best ? "btn small primary" : "btn small accent", onclick: () => chooseBook(j, c) }, t("Übernehmen")))));
 }
 
 async function chooseBook(j: AudiobookJob, c: Book): Promise<void> {

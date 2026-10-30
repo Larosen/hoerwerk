@@ -43,7 +43,7 @@ test.describe.configure({ mode: "serial" });
 
 test("Umbenennen mit Vorschau und Rückgängig", async ({ page }) => {
   const errors = await open(page);
-  await page.getByRole("button", { name: "📁 Umbenennen" }).click();
+  await page.locator("#dirList").getByRole("button", { name: "Umbenennen", exact: true }).click();
   // the default rule "Aufräumen" turns underscores into spaces
   await expect(page.locator("#previewBody tr[data-name='Erste_Datei.txt'] td.new")).toHaveText("Erste Datei.txt");
   await expect(page.locator("#summary")).toContainText("2 von 2");
@@ -58,7 +58,7 @@ test("Umbenennen mit Vorschau und Rückgängig", async ({ page }) => {
 
 test("„Jetzt zu M4B“ erscheint live in den Konvertierungen", async ({ page }) => {
   const errors = await open(page);
-  await page.getByRole("button", { name: "📁 Hörbuch Ordner" }).click();
+  await page.locator("#dirList").getByRole("button", { name: "Hörbuch Ordner", exact: true }).click();
   await page.locator("#convertNowBtn").click();
   // no reload, no polling: the job list updates through the live connection
   await expect(page.locator("#jobList .job.done")).toContainText("Hörbuch Ordner.m4b");
@@ -119,7 +119,7 @@ test("Einstellungen zeigen ffmpeg und Sandbox, Design bleibt nach Neuladen", asy
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bg).toBe("rgb(16, 18, 22)");
+  expect(bg).toBe("rgb(19, 20, 18)");
   expect(errors).toEqual([]);
 });
 

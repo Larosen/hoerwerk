@@ -199,6 +199,7 @@
  "Eingangsordner jetzt prüfen": "Check the inbox folder now",
  "Eingangsordner nicht gefunden": "Inbox folder not found",
  "Eingelesen": "Scanned",
+ "Einlesen": "Scan",
  "Einrichten": "Set up",
  "Einstellungen": "Settings",
  "Einstellungen gespeichert": "Settings saved",
@@ -421,6 +422,7 @@
  "Position": "Position",
  "Priorität": "Priority",
  "Protokoll": "Log",
+ "Prüfen": "Check",
  "Push-Nachrichten aufs Handy über": "Push messages to your phone via",
  "Quelle": "Source",
  "Quelle nicht mehr vorhanden: {path}": "Source no longer exists: {path}",
@@ -656,6 +658,7 @@
  "füllt die Felder automatisch": "fills in the fields automatically",
  "ganzer Name": "whole name",
  "gekürzt": "abridged",
+ "gelesen von {names}": "read by {names}",
  "gerade eben": "just now",
  "gespeichert – leer lassen": "saved – leave empty",
  "gesucht als: {queries}": "searched as: {queries}",
@@ -819,7 +822,5 @@
  "⚠ Verdächtige Dateien im Download (werden weder ausgeführt noch übernommen): {files}": "⚠ Suspicious files in the download (neither executed nor taken over): {files}",
  "✓ gesendet": "✓ sent",
  "✓ schon in der Bibliothek": "✓ already in the library",
- "✓ vorhanden: {book}": "✓ owned: {book}",
- "⟳ Einlesen": "⟳ Scan",
- "⟳ Prüfen": "⟳ Check"
+ "✓ vorhanden: {book}": "✓ owned: {book}"
 }

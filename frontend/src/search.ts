@@ -37,16 +37,16 @@ async function loadSources(): Promise<void> {
   for (const i of s.indexers) {
     box.append(el("div", { class: "kv" }, el("span", {}, t("Indexer")),
       el("span", { title: i.url }, (i.name || "") + (i.enabled ? "" : " " + t("(aus)"))),
-      el("span", { class: i.apikey_set ? "ok" : "err", title: i.apikey_set ? t("API-Key gespeichert") : t("API-Key fehlt") }, i.apikey_set ? "✓" : "✗")));
+      el("span", { class: i.apikey_set ? "ok" : "err", title: i.apikey_set ? t("API-Key gespeichert") : t("API-Key fehlt") }, icon(i.apikey_set ? "check" : "alert"))));
   }
   box.append(el("div", { class: "kv" }, el("span", {}, "SABnzbd"),
     el("span", { title: s.sab.url || "" }, s.sab.url ? `${s.sab.url}${s.sab.category ? " · " + s.sab.category : ""}` : t("nicht eingerichtet")),
-    el("span", { class: s.configured.sab ? "ok" : "err" }, s.configured.sab ? "✓" : "✗")));
+    el("span", { class: s.configured.sab ? "ok" : "err" }, icon(s.configured.sab ? "check" : "alert"))));
   const abs = s.abs;
   if (abs?.url) {
     box.append(el("div", { class: "kv" }, el("span", {}, "Audiobookshelf"),
       el("span", { title: abs.last || abs.url }, abs.library_name || abs.library || t("Bibliothek fehlt")),
-      el("span", { class: abs.configured ? "ok" : "err" }, abs.configured ? "✓" : "✗")));
+      el("span", { class: abs.configured ? "ok" : "err" }, icon(abs.configured ? "check" : "alert"))));
   }
 }
 
@@ -57,7 +57,7 @@ function indexerRow(i: Indexer = {}): HTMLDivElement {
     el("input", { name: "apikey", type: "password", autocomplete: "off", placeholder: i.apikey_set ? t("gespeichert – leer lassen") : "API-Key" }),
     el("input", { name: "categories", type: "text", value: i.categories || "3030", title: t("Newznab-Kategorien, kommagetrennt"), class: "cat" }),
     el("label", { class: "check", title: t("aktiv") }, el("input", { name: "enabled", type: "checkbox", checked: i.enabled !== false })),
-    el("button", { type: "button", class: "icon-btn", title: t("Entfernen"), onclick: () => row.remove() }, "✕"));
+    el("button", { type: "button", class: "icon-btn", title: t("Entfernen"), onclick: () => row.remove() }, icon("x")));
   row.dataset.id = i.id || "";
   return row;
 }
@@ -165,7 +165,7 @@ function pickBook(b: Book): void {
     b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "" }) : null,
     el("span", {}, t("Gesucht wird:") + " ", el("b", {}, `${(b.authors || []).join(", ")} – ${b.title}`),
       el("span", { class: "muted" }, " · " + t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin || "–" }))),
-    el("button", { type: "button", class: "icon-btn", title: t("Auswahl aufheben"), onclick: clearBook }, "✕")));
+    el("button", { type: "button", class: "icon-btn", title: t("Auswahl aufheben"), onclick: clearBook }, icon("x"))));
   runSearch();
 }
 
