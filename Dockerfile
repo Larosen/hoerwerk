@@ -15,7 +15,7 @@ RUN git clone --quiet --depth 1 --branch "n${FFMPEG_VERSION}" https://github.com
 
 # Stage 2: the web UI – TypeScript (frontend/src) compiled to plain scripts. Runs on the build
 # machine's own platform: the output is the same JavaScript for every image architecture.
-FROM --platform=$BUILDPLATFORM node:24-slim AS web
+FROM --platform=$BUILDPLATFORM node:26-slim AS web
 WORKDIR /src
 COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund

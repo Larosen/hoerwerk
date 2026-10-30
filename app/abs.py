@@ -73,6 +73,10 @@ class AbsError(Exception):
     pass
 
 
+class AbsTimeout(AbsError):
+    """No answer in time – for a scan that is normal: Audiobookshelf answers only when it is done."""
+
+
 def _host(url: str) -> str:
     p = parse.urlparse(url if re.match(r"(?i)^https?://", url or "") else "http://" + (url or ""))
     return f"{p.scheme}://{(p.hostname or '').lower()}:{p.port or ''}"
@@ -101,7 +105,10 @@ def _call(method: str, url: str, token: str, timeout: float = 15) -> dict:
             raise AbsError("Audiobookshelf: API-Token ungültig oder ohne Admin-Rechte") from e
         raise AbsError(f"Audiobookshelf: HTTP {e.code}") from e
     except (URLError, OSError) as e:
-        raise AbsError(f"Audiobookshelf nicht erreichbar: {getattr(e, 'reason', e)}") from e
+        reason = getattr(e, "reason", e)
+        if isinstance(e, TimeoutError) or isinstance(reason, TimeoutError):
+            raise AbsTimeout("Audiobookshelf antwortet nicht rechtzeitig") from e
+        raise AbsError(f"Audiobookshelf nicht erreichbar: {reason}") from e
     try:
         return json.loads(body) if body.strip() else {}
     except ValueError:
@@ -119,6 +126,7 @@ class Audiobookshelf:
         self._timer: Optional[threading.Timer] = None
         self._lock = threading.Lock()
         self.last: Optional[str] = None  # last scan result for the UI
+        self.scan_timeout = 10.0
 
     def _load(self) -> dict:
         data = self.db.get("abs") or {}
@@ -170,8 +178,12 @@ class Audiobookshelf:
         if not self.configured():
             return
         try:
-            self._call("POST", f"{_base(c['url'])}/api/libraries/{parse.quote(c['library'])}/scan", c[self.SECRET])
-            self.last = "Scan angestoßen"
+            # Audiobookshelf answers when the scan is finished – a big library takes minutes
+            self._call("POST", f"{_base(c['url'])}/api/libraries/{parse.quote(c['library'])}/scan", c[self.SECRET],
+                       timeout=self.scan_timeout)
+            self.last = "Scan abgeschlossen"
+        except AbsTimeout:
+            self.last = "Scan läuft"
         except AbsError as e:
             self.last = str(e)
             print(e, flush=True)

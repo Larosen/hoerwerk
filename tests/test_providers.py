@@ -166,6 +166,8 @@ class FakeAbs(http.server.BaseHTTPRequestHandler):
             self.send_header("Location", "http://evil.example/steal")
             self.end_headers()
             return
+        if self.path.endswith("/slow/scan"):
+            time.sleep(1.0)                     # Audiobookshelf answers when the scan is done
         if self.headers.get("Authorization") != "Bearer TOKEN":
             self.send_response(401)
             self.end_headers()
@@ -212,6 +214,12 @@ class AudiobookshelfTest(unittest.TestCase):
         time.sleep(0.4)
         scans = [c for c in FakeAbs.calls if c[0] == "POST"]
         self.assertEqual(scans, [("POST", "/api/libraries/lib1/scan", "Bearer TOKEN")])   # … one scan
+
+    def test_long_scan_is_not_an_error(self):
+        self.abs.update_config({"url": self.url, "token": "TOKEN", "library": "slow"})
+        self.abs.scan_timeout = 0.3
+        self.abs.scan_now()
+        self.assertEqual(self.abs.last, "Scan läuft")
 
     def test_wrong_token(self):
         self.abs.update_config({"url": self.url, "token": "WRONG"})
