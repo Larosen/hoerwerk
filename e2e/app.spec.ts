@@ -138,3 +138,25 @@ test("Fremde Seiten dürfen nichts ändern (CSRF)", async ({ page, request }) =>
   expect(res.status()).toBe(403);
   await expect(page.getByRole("tab", { name: /Hörbücher/ })).toBeVisible();   // still German
 });
+
+test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
+  const suggestion = {
+    asin: "B0TEST0001", title: "Das stille Haus", authors: ["Anna Autorin"], narrators: ["Sam Sprecher"],
+    rating: 4.7, ratings: 1234, runtime_min: 600, release_date: "2026-03-01", cover_url: null,
+    url: "https://www.audible.de/pd/B0TEST0001", because: ["Altes Buch"], source: "audible",
+  };
+  await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
+  await page.route("**/api/search", (r) => r.fulfill({ json: { results: [], errors: [], queries: ["Autorin Das stille Haus"] } }));
+  const errors = await open(page);
+  await page.getByRole("tab", { name: "Entdecken" }).click();
+  const card = page.locator(".suggestion");
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("Das stille Haus");
+  await expect(card).toContainText("★ 4.7");
+  await expect(card).toContainText("Altes Buch");
+  await card.getByRole("button", { name: "Suchen" }).click();
+  await expect(page.getByRole("tab", { name: "Suchen" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#searchQuery")).toHaveValue("Autorin Das stille Haus");
+  await expect(page.locator("#bookPick")).toContainText("B0TEST0001");
+  expect(errors).toEqual([]);
+});

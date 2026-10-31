@@ -25,7 +25,7 @@ REGIONS = {
     "fr": "fr", "it": "it", "es": "es", "in": "in", "jp": "co.jp",
 }
 RESPONSE_GROUPS = ("contributors,product_attrs,product_desc,product_extended_attrs,"
-                   "series,media,category_ladders")
+                   "series,media,category_ladders,rating")
 AUDNEXUS = "https://api.audnex.us"
 USER_AGENT = "Hoerwerk/5 (+https://github.com/Larosen/rename_merge)"
 ASIN_RX = re.compile(r"(?<![A-Z0-9])(B0[0-9A-Z]{8}|\d{9}[\dX])(?![A-Z0-9])")
@@ -251,6 +251,8 @@ def normalize_product(p: dict, region: str) -> dict:
         "region": region,
         "url": store_url(p.get("asin", ""), region),
         "is_adult": bool(p.get("is_adult_product")),
+        "rating": float(((p.get("rating") or {}).get("overall_distribution") or {}).get("display_average_rating") or 0),
+        "ratings": int(((p.get("rating") or {}).get("overall_distribution") or {}).get("num_ratings") or 0),
         "source": "audible",
     }
 
@@ -285,9 +287,14 @@ class AudibleClient:
         if author:
             params["author"] = author
         data = self._cached(f"{api_host(region)}/1.0/catalog/products?{parse.urlencode(params)}")
+        return self._products(data.get("products"), region)
+
+    @staticmethod
+    def _products(products, region: str) -> List[dict]:
+        """Released audiobooks only – no pre-orders, podcasts or magazines."""
         today = date.today().isoformat()
         out = []
-        for p in data.get("products") or []:
+        for p in products or []:
             if not p.get("asin") or not p.get("title"):
                 continue
             if (p.get("release_date") or "0") > today:
@@ -296,6 +303,25 @@ class AudibleClient:
                 continue
             out.append(normalize_product(p, region))
         return out
+
+    def genres(self, region: str) -> List[dict]:
+        """The store's top-level genres: [{id, name}]."""
+        data = self._cached(f"{api_host(region)}/1.0/catalog/categories?root=Genres")
+        return [{"id": str(c["id"]), "name": c.get("name") or ""} for c in data.get("categories") or [] if c.get("id")]
+
+    def genre_products(self, region: str, genre_id: str, sort: str = "BestSellers", limit: int = 50) -> List[dict]:
+        """Books of one genre, sorted by Audible (BestSellers, -ReleaseDate, AvgRating)."""
+        params = {"response_groups": RESPONSE_GROUPS, "image_sizes": "500", "num_results": limit,
+                  "products_sort_by": sort, "category_id": genre_id}
+        data = self._cached(f"{api_host(region)}/1.0/catalog/products?{parse.urlencode(params)}")
+        return self._products(data.get("products"), region)
+
+    def similar(self, asin: str, region: str, limit: int = 20) -> List[dict]:
+        """Books that Audible's listeners connect with this one."""
+        params = {"response_groups": RESPONSE_GROUPS, "image_sizes": "500", "num_results": limit,
+                  "similarity_type": "RawSimilarities"}
+        data = self._cached(f"{api_host(region)}/1.0/catalog/products/{asin}/sims?{parse.urlencode(params)}")
+        return self._products(data.get("similar_products"), region)
 
     def product(self, asin: str, region: str) -> dict:
         params = {"response_groups": RESPONSE_GROUPS, "image_sizes": "500,1024"}

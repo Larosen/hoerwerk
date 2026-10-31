@@ -26,11 +26,12 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 2. [Schnellstart](#schnellstart)
 3. [Hörbücher](#hörbücher)
 4. [Downloads mit SABnzbd](#downloads-mit-sabnzbd)
-5. [Benachrichtigungen (ntfy)](#benachrichtigungen-ntfy)
-6. [Protokoll](#protokoll)
-7. [Konfiguration](#konfiguration)
-8. [Sicherheit](#sicherheit)
-9. [Entwicklung](#entwicklung)
+5. [Entdecken](#entdecken)
+6. [Benachrichtigungen (ntfy)](#benachrichtigungen-ntfy)
+7. [Protokoll](#protokoll)
+8. [Konfiguration](#konfiguration)
+9. [Sicherheit](#sicherheit)
+10. [Entwicklung](#entwicklung)
 
 ---
 
@@ -43,6 +44,7 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 | Tags & Dateien | Titel, Autor, Sprecher, Serie + Band, Genre, Verlag, Datum, Beschreibung, ASIN, Cover in voller Größe; `metadata.json` für Audiobookshelf |
 | Bibliothek | Alle Bücher durchsuchen, Ordner-Vorlage, nutzt vorhandene Autoren-/Serienordner, erkennt Doppelte, macht alte MP3-Bücher zu M4B und räumt die MP3s sicher weg |
 | Downloads | Schickt NZBs an SABnzbd, beobachtet die Kategorie, nach dem Download übernimmt der Eingang; Newznab-Suche optional |
+| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik von Deutschlandfunk Kultur – nur gut bewertet, ungekürzt, noch nicht vorhanden; ein Klick sucht das Buch |
 | Medienserver | Audiobookshelf und Plex lesen ihre Bibliothek nach dem Ablegen neu ein; Plex leert auf Wunsch den Papierkorb, damit ersetzte MP3s verschwinden |
 | Benachrichtigungen | ntfy-Push-Nachrichten, neun Ereignisse, jedes einzeln an oder aus |
 | Protokoll | Alles, was passiert ist – filterbar und als Datei herunterladbar, direkt in der App |
@@ -207,6 +209,35 @@ auf **Abbrechen** stellen.
 
 ---
 
+## Entdecken
+
+Der Reiter **Entdecken** schlägt neue Hörbücher vor:
+
+* **Für dich** – Titel, die Audible-Hörer mit den (bis zu 30 neuesten) Büchern deiner Bibliothek verbinden. Je mehr
+  deiner Bücher auf denselben Titel zeigen, desto weiter oben steht er; „Passt zu …“ nennt sie.
+* **Nach Genre** – Bestseller und Neuheiten eines Audible-Genres; das gewählte Genre wird gemerkt.
+* **Aus der Kritik** – Bücher aus dem RSS-Feed „Buchkritik“ von Deutschlandfunk Kultur, die es bei Audible als Hörbuch
+  gibt (gleicher Titel, gleicher Autor), mit Link zur Besprechung.
+
+**Suchen** auf einer Karte springt in den Reiter *Suchen*, mit dem Buch schon ausgewählt (Titel, Autor und ASIN helfen
+später beim Taggen).
+
+**Qualitätsregeln** (unter *Einstellungen → Entdecken*): Mindestbewertung (Standard 4,3 Sterne) und Mindestanzahl
+Bewertungen (50), nur ungekürzt, nur deutschsprachig, keine Erotik, nichts, was schon in der Bibliothek ist. Bei
+Büchern aus der Kritik entfällt die Bewertungsregel – sie sind oft neu und noch kaum bewertet.
+
+**Ehrlich gesagt:** Ob ein Sachbuch inhaltlich stimmt, kann keine Software zuverlässig prüfen – auch Bewertungen
+messen nur Beliebtheit. Deshalb kommen Sachbücher standardmäßig **nur aus der redaktionellen Quelle** (Kritik),
+nicht aus Bestsellerlisten; Sachbuch-Genres sind ausgeblendet, bis du sie in den Einstellungen erlaubst.
+BookBeat und Perlentaucher sind nicht angebunden: BookBeat hat keine offene Schnittstelle, Perlentaucher keinen Feed,
+dessen Nutzung erlaubt wäre.
+
+Die Listen werden im Hintergrund zusammengestellt, höchstens einmal am Tag erneuert (oder mit **Aktualisieren**) und
+in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-API des gewählten Shops und
+`www.deutschlandfunkkultur.de` (HTTPS).
+
+---
+
 ## Benachrichtigungen (ntfy)
 
 Push-Nachrichten aufs Handy über [ntfy](https://ntfy.sh) – ntfy.sh oder ein eigener Server.
@@ -271,6 +302,9 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `NARRATOR_IN_ARTIST` | `false` | Sprecher zusätzlich im Interpreten-Tag |
 | `KEEP_SERIES_IN_TITLE` | `true` | „…, Band 3“ im Titel lassen |
 | `WRITE_DESC` / `WRITE_READER` / `WRITE_COVER` | `true` | `desc.txt`, `reader.txt`, `cover.jpg` schreiben |
+| `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Entdecken: Mindestbewertung und -anzahl Bewertungen |
+| `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Entdecken: nur ungekürzt / nur deutschsprachig |
+| `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: Sachbücher auch aus Audible-Listen |
 | `CPU_CORES` | halbe Kernzahl | Parallele ffmpeg-Prozesse pro Buch |
 | `ENCODE_WORKERS` | `1` | Bücher, die gleichzeitig kodiert werden |
 | `IO_WORKERS` | `2` | Gleichzeitige Erkennungs-, Tag- und Ablageschritte |
@@ -330,6 +364,7 @@ Typprüfung, Durchklick-Tests gegen den Quelltext und gegen das fertig gebaute D
 | Bibliothek & Downloads | `app/library.py`, `app/library_index.py`, `app/usenet.py` |
 | Benachrichtigungen & Protokoll | `app/notify.py`, `app/applog.py` |
 | Medienserver | `app/abs.py`, `app/plex.py` |
+| Entdecken | `app/discover.py`, `frontend/src/discover.ts` |
 | Sprache | `app/i18n.py`, `app/static/i18n/en.json` |
 | Oberfläche | `frontend/src/*.ts`, `app/static/index.html`, `style.css`; Durchklick-Tests in `e2e/` |
 

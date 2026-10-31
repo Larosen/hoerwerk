@@ -32,6 +32,7 @@
   <nav class="tabs" role="tablist" aria-label="Bereich">
     <button class="tab" role="tab" data-view="books" aria-selected="true">Hörbücher <span id="reviewBadge" class="pill" hidden></span></button>
     <button class="tab" role="tab" data-view="search" aria-selected="false">Suchen</button>
+    <button class="tab" role="tab" data-view="discover" aria-selected="false">Entdecken</button>
   </nav>
   <div class="topbar-actions">
     <button id="logBtn" class="btn ghost" title="Protokoll"><svg class="ico" aria-hidden="true"><use href="#i-log"/></svg><span class="lbl">Protokoll</span></button>
@@ -131,6 +132,40 @@
       <ul id="dlList" class="job-list"><li class="empty">–</li></ul>
     </section>
   </div>
+</main>
+
+<main class="books-layout" id="viewDiscover" hidden>
+  <aside class="sidebar">
+    <section class="panel">
+      <div class="panel-head"><h2>Vorschläge</h2></div>
+      <nav id="discoverSections" class="side-nav" aria-label="Vorschläge">
+        <button type="button" data-section="foryou">Für dich <small>passend zur Bibliothek</small></button>
+        <button type="button" data-section="genre">Nach Genre <small>Bestseller &amp; Neuheiten</small></button>
+        <button type="button" data-section="critics">Aus der Kritik <small>Deutschlandfunk Kultur</small></button>
+      </nav>
+    </section>
+    <details class="panel how">
+      <summary class="panel-head"><h2>Was gezeigt wird</h2><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+      <ul class="steps">
+        <li><b>Für dich</b>: Titel, die Audible-Hörer mit Büchern aus deiner Bibliothek verbinden – je öfter, desto weiter oben.</li>
+        <li><b>Nach Genre</b>: Bestseller und Neuheiten eines Audible-Genres.</li>
+        <li><b>Aus der Kritik</b>: Bücher, die Deutschlandfunk Kultur besprochen hat und die es als Hörbuch gibt.</li>
+        <li>Nur gut bewertete, ungekürzte deutsche Hörbücher, die noch nicht in der Bibliothek sind (einstellbar unter <b>Einstellungen</b>).</li>
+        <li>Ob ein Sachbuch inhaltlich stimmt, kann keine Software prüfen. Deshalb kommen Sachbücher standardmäßig nur aus der Kritik, nicht aus Bestsellerlisten.</li>
+      </ul>
+    </details>
+  </aside>
+  <section class="panel discover-panel">
+    <div class="panel-head wrap">
+      <h2 id="discoverTitle">Für dich</h2>
+      <div class="row gap wrap">
+        <label class="inline-setting" id="discoverGenreWrap" hidden>Genre <select id="discoverGenre"></select></label>
+        <span id="discoverState" class="muted small"></span>
+        <button id="discoverRefresh" class="btn small ghost" title="Liste neu laden"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Aktualisieren</button>
+      </div>
+    </div>
+    <ul id="discoverList" class="discover-grid"></ul>
+  </section>
 </main>
 
 <dialog id="sourcesDialog">
@@ -344,6 +379,20 @@
         <input name="ab_settle" type="number" min="0" step="1">
       </label>
     </fieldset>
+    <fieldset>
+      <legend>Entdecken</legend>
+      <div class="grid2">
+        <label>Mindestbewertung <small>Sterne, 0 – 5</small>
+          <input name="discover_min_rating" type="number" min="0" max="5" step="0.1">
+        </label>
+        <label>Mindestanzahl Bewertungen
+          <input name="discover_min_count" type="number" min="0" step="1">
+        </label>
+        <label class="check"><input type="checkbox" name="discover_unabridged"> nur ungekürzte Hörbücher</label>
+        <label class="check"><input type="checkbox" name="discover_german"> nur deutschsprachige</label>
+        <label class="check"><input type="checkbox" name="discover_nonfiction_store"> Sachbücher auch aus Audible-Listen</label>
+      </div>
+    </fieldset>
     <fieldset id="notifyBox">
       <legend>Benachrichtigungen (ntfy)</legend>
       <p class="muted small">Push-Nachrichten aufs Handy über <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a> – ntfy.sh oder ein eigener Server. Token bzw. Passwort bleiben auf dem Server.</p>
@@ -423,6 +472,7 @@
 <script src="/static/app.js"></script>
 <script src="/static/books.js"></script>
 <script src="/static/search.js"></script>
+<script src="/static/discover.js"></script>
 <script src="/static/notify.js"></script>
 <script src="/static/logs.js"></script>
 </body>

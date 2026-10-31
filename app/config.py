@@ -7,7 +7,7 @@ from typing import FrozenSet, Mapping
 
 import library
 
-VERSION = "5.0.0"
+VERSION = "5.1.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
@@ -94,6 +94,13 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
         "write_reader": b("WRITE_READER", True),
         "write_cover": b("WRITE_COVER", True),
         "write_abs": b("WRITE_ABS_METADATA", True),             # metadata.json for Audiobookshelf
+        # Entdecken (suggestions)
+        "discover_min_rating": float(env.get("DISCOVER_MIN_RATING", "4.3")),
+        "discover_min_count": int(env.get("DISCOVER_MIN_COUNT", "50")),
+        "discover_unabridged": b("DISCOVER_UNABRIDGED", True),
+        "discover_german": b("DISCOVER_GERMAN", True),
+        "discover_nonfiction_store": b("DISCOVER_NONFICTION_STORE", False),
+        "discover_genre": env.get("DISCOVER_GENRE", ""),
     }
 
 

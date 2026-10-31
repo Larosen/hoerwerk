@@ -34,9 +34,10 @@ function isActive(status: BookStatus): boolean {
 }
 
 function setView(view: string): void {
-  if (!["books", "search"].includes(view)) view = "books";
+  if (!["books", "search", "discover"].includes(view)) view = "books";
   $("#viewBooks").hidden = view !== "books";
   $("#viewSearch").hidden = view !== "search";
+  $("#viewDiscover").hidden = view !== "discover";
   for (const t of document.querySelectorAll<HTMLElement>(".tab")) t.setAttribute("aria-selected", String(t.dataset.view === view));
   store.set("view", view);
   if (view === "books") pollBooks(true);
