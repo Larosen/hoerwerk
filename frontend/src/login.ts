@@ -10,12 +10,23 @@ function showError(text: string): void {
   box.hidden = !text;
 }
 
+let ticket = "";
+
 async function submitForm(form: HTMLFormElement, url: string, body: Record<string, unknown>): Promise<void> {
   const btn = form.querySelector<HTMLButtonElement>("button[type=submit]");
   if (btn) btn.disabled = true;
   showError("");
   try {
-    await api("POST", url, body);
+    const res = await api<{ ok: boolean; totp?: boolean; ticket?: string }>("POST", url, body);
+    if (res.totp && res.ticket) {
+      // password right – now the code from the authenticator app
+      ticket = res.ticket;
+      form.hidden = true;
+      const totp = $<HTMLFormElement>("#totpForm");
+      totp.hidden = false;
+      field(totp, "code").focus();
+      return;
+    }
     location.replace("/");
   } catch (e) {
     showError(errMsg(e));
@@ -40,6 +51,11 @@ async function initLogin(): Promise<void> {
     submitForm(login, "/api/auth/login", {
       name: field(login, "name").value, password: field(login, "password").value, remember: field(login, "remember").checked,
     });
+  });
+  const totp = $<HTMLFormElement>("#totpForm");
+  totp.addEventListener("submit", (e) => {
+    e.preventDefault();
+    submitForm(totp, "/api/auth/login/totp", { ticket, code: field(totp, "code").value.replace(/\s/g, "") });
   });
   setup.addEventListener("submit", (e) => {
     e.preventDefault();

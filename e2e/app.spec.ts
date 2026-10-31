@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
+import { createHmac } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readdirSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
 const ROOT = process.env.E2E_ROOT || "e2e/.run";   // prepared by e2e/setup.mjs
@@ -161,18 +162,9 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
   await expect(card).toContainText("Das stille Haus");
   await expect(card).toContainText("★ 4.7");
   await expect(card).toContainText("Altes Buch");
-  await card.getByRole("button", { name: "Merken" }).click();
-  await expect(card.getByRole("button", { name: "Gemerkt" })).toBeDisabled();
-  await page.locator("#discoverSections").getByRole("button", { name: /Gesucht/ }).click();
-  await expect(page.locator("#wantedCount")).toHaveText("1");
-  await expect(page.locator(".suggestion")).toContainText("Noch nicht gesucht");   // no indexer in the test setup
-  await expect(page.locator("#discoverState")).toContainText("Kein Indexer");
-  await page.locator(".suggestion").getByRole("button", { name: "Von der Liste nehmen" }).click();
-  await expect(page.locator(".discover-grid .empty")).toBeVisible();
-  await page.locator("#discoverSections").getByRole("button", { name: /Für dich/ }).click();
   await card.getByRole("button", { name: "Suchen" }).click();
   await expect(page.getByRole("tab", { name: "Suchen" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#searchQuery")).toHaveValue("Autorin Das stille Haus");
+  await expect(page.locator("#releaseQuery")).toHaveValue("Autorin Das stille Haus");
   await expect(page.locator("#bookPick")).toContainText("B0TEST0001");
   expect(errors).toEqual([]);
 });
@@ -218,4 +210,96 @@ test("Konten: Admin legt Familienkonto an, das sieht nur Entdecken", async ({ pa
   expect((await eva.request.put("/api/settings", { headers: OWN, data: { language: "en" } })).status()).toBe(403);
   expect(evaErrors.filter((e) => !e.includes("403"))).toEqual([]);
   await eva.close();
+});
+
+/** RFC 6238 code for a base32 secret (what an authenticator app shows). */
+function totp(secret: string, offset = 0): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const c of secret.replace(/=+$/, "")) bits += alphabet.indexOf(c.toUpperCase()).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)));
+  const step = Buffer.alloc(8);
+  step.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000) + offset));
+  const h = createHmac("sha1", key).update(step).digest();
+  const o = h[h.length - 1] & 15;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1_000_000).padStart(6, "0");
+}
+
+test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", async ({ page, browser }) => {
+  const admin = await open(page);
+  // a family account (created through the API of the admin session)
+  expect((await page.request.post("/api/users", { headers: OWN, data: { name: "Mia", password: "mias-passwort-123" } })).status()).toBe(200);
+  const mia = await browser.newPage();
+  const suggestion = { asin: "B0TEST0002", title: "Die leise Stadt", authors: ["Bea Beispiel"], narrators: [], rating: 4.6,
+    ratings: 500, runtime_min: 480, cover_url: null, url: null, because: [], source: "audible", requested: null };
+  await mia.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
+  const miaErrors = await open(mia, { name: "mia", password: "mias-passwort-123" });
+  await mia.getByRole("tab", { name: "Entdecken" }).click();
+  await mia.locator(".suggestion").getByRole("button", { name: "Anfragen" }).click();
+  await expect(mia.locator(".suggestion")).toContainText("Wartet auf Freigabe");
+  await mia.getByRole("tab", { name: /Anfragen/ }).click();
+  await expect(mia.locator(".request")).toContainText("Die leise Stadt");
+  await expect(mia.locator("#requestQuota")).toContainText("noch 4 von 5");
+  await expect(mia.locator(".request").getByRole("button", { name: "Releases" })).toHaveCount(0);   // no right for that
+
+  // the admin sees the badge, approves; without an indexer the request then waits in "searching"
+  await page.reload();
+  await expect(page.locator("#requestBadge")).toHaveText("1");
+  await page.getByRole("tab", { name: /Anfragen/ }).click();
+  await page.locator("#requestScope").check();
+  const req = page.locator(".request", { hasText: "Die leise Stadt" });
+  await expect(req).toContainText("von Mia");
+  await req.getByRole("button", { name: "Freigeben" }).click();
+  await expect(req).toContainText("Wird gesucht");
+
+  // interactive search: every release with its verdict (indexer answer simulated)
+  await page.route("**/api/requests/*/releases", (r) => r.fulfill({ json: { query: "Beispiel Die leise Stadt", queries: [], errors: [], results: [
+    { id: "a", title: "Bea.Beispiel-Die.leise.Stadt.German.M4B", size: 300 << 20, indexer: "X", format: "M4B", language: "de",
+      verdict: { ok: true, score: 40, reason: null, notes: ["M4B", "Sprache passt"], kbps: 87 } },
+    { id: "b", title: "Bea.Beispiel-Die.leise.Stadt.GEKUERZT", size: 90 << 20, indexer: "Y",
+      verdict: { ok: false, score: 0, reason: "gekürzte Fassung", notes: [], kbps: 26 } }] } }));
+  await req.getByRole("button", { name: "Releases" }).click();
+  const rows = page.locator("#releasesRows tr");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.first()).toContainText("Sprache passt");
+  await expect(rows.nth(1)).toContainText("gekürzte Fassung");
+  await expect(page.locator("#releasesNote")).toContainText("2 Releases, davon 1 passend");
+  await page.locator("#releasesDialog button[value=cancel]").click();
+
+  // Mia sees the new state – and can't see other people's requests
+  await mia.reload();
+  await expect(mia.locator(".request")).toContainText("Wird gesucht");
+  expect((await mia.request.get("/api/requests?scope=all")).status()).toBe(200);
+  expect(admin.concat(miaErrors).filter((e) => !/40[34]/.test(e))).toEqual([]);
+  await mia.close();
+});
+
+test("Zweitfaktor: einrichten, dann Anmeldung nur mit Code", async ({ page, browser }) => {
+  const errors = await open(page);
+  expect((await page.request.post("/api/users", { headers: OWN, data: { name: "Ole", password: "oles-passwort-123" } })).status()).toBe(200);
+  const ole = await browser.newPage();
+  await open(ole, { name: "ole", password: "oles-passwort-123" });
+  await ole.locator("#accountBtn").click();
+  await ole.locator("#totpBox").getByRole("button", { name: "Einrichten" }).click();
+  const secret = (await ole.locator("code.secret").innerText()).replace(/\s/g, "");
+  await ole.locator("#totpBox input.code").fill(totp(secret));
+  await ole.locator("#totpBox").getByRole("button", { name: "Bestätigen" }).click();
+  await expect(ole.locator("#totpBox")).toContainText("Aktiv");
+  await ole.locator("#logoutBtn").click();
+  await expect(ole).toHaveURL(/\/login$/);
+  const form = ole.locator("#loginForm");
+  await form.getByLabel("Name").fill("ole");
+  await form.getByLabel("Passwort").fill("oles-passwort-123");
+  await form.getByRole("button", { name: "Anmelden" }).click();
+  const code = ole.locator("#totpForm");
+  await expect(code).toBeVisible();
+  await code.getByLabel("Code").fill("000000");
+  await code.getByRole("button", { name: "Bestätigen" }).click();
+  await expect(ole.locator("#loginError")).toHaveText("Code falsch");
+  await code.getByLabel("Code").fill(totp(secret, 1));          // the next code (the current one was used)
+  await code.getByRole("button", { name: "Bestätigen" }).click();
+  await expect(ole).toHaveURL(/\/$/);
+  await expect(ole.locator("#accountName")).toHaveText("Ole");
+  expect(errors).toEqual([]);
+  await ole.close();
 });

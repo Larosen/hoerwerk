@@ -68,6 +68,11 @@ This page explains what the program protects against, what was tested and what y
 | Stolen session | 256-bit token, stored only as SHA-256; cookie `HttpOnly`, `SameSite=Lax`, `Secure` behind HTTPS. Password change, locking an account and "sign out all other devices" end sessions immediately. |
 | Forged IP in `X-Forwarded-For` | The header only counts from addresses in `TRUSTED_PROXIES` and is read from the right – made-up addresses prepended by a client have no effect. |
 | Privilege escalation | Only an admin changes roles and rights (server check); the last admin can't be demoted, locked or deleted. |
+| Viewing or changing other people's requests (IDOR) | Every request route checks whether the account may see it; foreign and non-existent ids answer the same 404 – numbers can't be probed. Owner and status are set by the server only (fields from the browser are ignored). Tested. |
+| Getting around the quota | Check and insert in one database transaction under a lock – parallel requests can't exceed the limit either. |
+| Family account downloads anything | Users only request books; Hörwerk picks releases by fixed rules. The interactive search (releases by hand) needs its own right, indexer links (containing the API key) never reach the browser. |
+| Stolen password | Optional second factor (TOTP per RFC 6238, standard library): each code works once (no replay), ±30 s clock drift, sign-in ticket 5 minutes / 5 tries, failures count for the IP brake and go to `auth.log`. Can be required for admins. |
+| Unnoticed changes through an admin login | Admin log in the database: every changing admin action with time, account and IP (approvals, accounts, settings, sources …), visible under *Accounts*. |
 | DNS rebinding / foreign host names | `ALLOWED_HOSTS`; besides, every data request needs a login. |
 | Paths outside the library | Book paths from the browser are resolved (incl. symlinks) and must lie inside the library; static files only from `app/static`. |
 | Huge requests | max. 4 MB per request. |

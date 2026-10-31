@@ -152,19 +152,22 @@ function bookQueries(b: Book): { query: string; extra: string[] } {
   return { query: `${author} ${b.title}`.trim(), extra };
 }
 
-async function lookupBooks(): Promise<void> {
+async function lookupBooks(e?: Event): Promise<void> {
+  e?.preventDefault();
   const input = $<HTMLInputElement>("#searchQuery");
   const q = input.value.trim();
   if (!q) { input.focus(); return; }
+  clearBook();
   const btn = $<HTMLButtonElement>("#bookLookupBtn");
   btn.disabled = true;
-  btn.textContent = t("Schlage nach …");
+  btn.textContent = t("Suche …");
   try {
     const res = await api<{ books: Book[]; region: string }>("POST", "/api/search/books", { query: q });
     const box = $("#bookPick");
     box.hidden = false;
     box.replaceChildren(
-      el("div", { class: "muted small" }, res.books.length ? t("Welches Buch? ({shop})", { shop: `audible.${res.region === "us" ? "com" : res.region}` }) : t("Bei Audible nichts gefunden – einfach direkt suchen.")),
+      el("div", { class: "muted small" }, res.books.length ? t("Welches Hörbuch? Auswählen – dann sucht Hörwerk die Releases dazu.")
+        : t("Weder bei Audible noch bei BookBeat gefunden. Anders schreiben, einen Shop-Link einfügen oder direkt bei den Indexern suchen.")),
       el("div", { class: "pick-list" }, res.books.map((b) => el("button", { type: "button", class: "pick", onclick: () => pickBook(b) },
         b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, (b.authors || [])[0]),
         el("span", { class: "pick-text" },
@@ -174,20 +177,23 @@ async function lookupBooks(): Promise<void> {
             b.runtime_min ? fmtDuration(b.runtime_min * 60) : "", b.format_type === "abridged" ? t("gekürzt") : "",
             b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : ""].filter(Boolean).join(" · ")),
           b.owned ? el("span", { class: "owned", title: b.owned.path }, t("✓ schon in der Bibliothek")) : null)))));
-  } catch (err) { toast(errMsg(err), true); } finally { btn.disabled = false; btn.textContent = t("Bei Audible nachschlagen"); }
+  } catch (err) { toast(errMsg(err), true); } finally { btn.disabled = false; btn.textContent = t("Suchen"); }
 }
 
 function pickBook(b: Book): void {
   search.book = b;
-  const { query } = bookQueries(b);
-  $<HTMLInputElement>("#searchQuery").value = query;
-  $("#bookPick").replaceChildren(el("div", { class: "picked" },
+  $<HTMLInputElement>("#releaseQuery").value = bookQueries(b).query;
+  $("#releaseForm").hidden = !IS_ADMIN;
+  const box = $("#bookPick");
+  box.hidden = false;
+  box.replaceChildren(el("div", { class: "picked" },
     b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "" }) : null,
-    el("span", {}, t("Gesucht wird:") + " ", el("b", {}, `${(b.authors || []).join(", ")} – ${b.title}`),
-      el("span", { class: "muted" }, " · " + t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin || "–" }))),
-    typeof rememberButton === "function" ? rememberButton(b) : null,
+    el("span", {}, el("b", {}, `${(b.authors || []).join(", ")} – ${b.title}`),
+      el("span", { class: "muted" }, " · " + (b.asin ? t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin })
+        : t("Titel und Autor werden beim Download mitgegeben")))),
+    typeof requestButton === "function" ? requestButton(b) : null,
     el("button", { type: "button", class: "icon-btn", title: t("Auswahl aufheben"), onclick: clearBook }, icon("x"))));
-  runSearch();
+  if (IS_ADMIN) runSearch();                 // family accounts ask for the book; releases are Hörwerk's job
 }
 
 function clearBook(): void {
@@ -195,36 +201,39 @@ function clearBook(): void {
   const box = $("#bookPick");
   box.hidden = true;
   box.replaceChildren();
+  $("#releaseForm").hidden = true;
 }
 
 interface LibraryHit { path: string; title: string; authors: string[]; format: string }
 interface SearchAnswer { results: Release[]; errors: string[]; queries?: string[]; library?: LibraryHit[] }
 
-async function runSearch(e?: Event): Promise<void> {
+/** Releases at the indexers: for the picked book (term changeable), or – without a book – for the typed text. */
+async function runSearch(e?: Event, free = false): Promise<void> {
   e?.preventDefault();
-  const q = $<HTMLInputElement>("#searchQuery").value.trim();
+  const q = (free ? $<HTMLInputElement>("#searchQuery") : $<HTMLInputElement>("#releaseQuery")).value.trim();
   if (!q) return;
-  // typed something else since picking a book: that book no longer applies
-  if (search.book && q !== bookQueries(search.book).query) clearBook();
+  if (free) clearBook();
   const go = $<HTMLButtonElement>("#searchGo");
   go.disabled = true;
   go.textContent = t("Suche …");
   const lang = $<HTMLSelectElement>("#searchLang").value;
   store.set("searchLang", lang);
   try {
-    const extra = search.book ? bookQueries(search.book).extra : [];
+    // the book's title (and series) as extra searches – only while the term is still the suggested one
+    const extra = search.book && q === bookQueries(search.book).query ? bookQueries(search.book).extra : [];
     const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, extra });
     search.results = res.results;
     renderResults();
     const queries = res.queries || [];
-    $("#searchNote").textContent = t("{n} Treffer", { n: res.results.length }) +
+    $("#searchNote").textContent = (res.results.length ? t("{n} Treffer", { n: res.results.length })
+      : t("Keine Releases gefunden – oben den Suchbegriff ändern (z. B. nur Titel oder nur Nachname) und erneut suchen.")) +
       (queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: queries.map((x) => `„${x}“`).join(", ") }) : "") +
       (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "");
     renderOwnedNote(res.library || []);
   } catch (err) {
     toast(errMsg(err), true);
     $("#searchNote").textContent = errMsg(err);
-  } finally { go.disabled = false; go.textContent = t("Suchen"); }
+  } finally { go.disabled = false; go.textContent = t("Releases suchen"); }
 }
 
 /** The search term itself matches books in the library: say so above the results. */
@@ -365,16 +374,17 @@ async function pollDownloads(force = false): Promise<void> {
 function initSearch(): void {
   const lang = $<HTMLSelectElement>("#searchLang");
   lang.value = store.get("searchLang", "de");
-  $("#searchForm").addEventListener("submit", runSearch);
+  $("#searchForm").addEventListener("submit", lookupBooks);
+  $("#releaseForm").addEventListener("submit", (e) => runSearch(e));
+  $("#freeSearchBtn").addEventListener("click", () => runSearch(undefined, true));
   $("#sourcesBtn").addEventListener("click", openSources);
-  $("#bookLookupBtn").addEventListener("click", lookupBooks);
   $("#addIndexerBtn").addEventListener("click", () => $("#indexerRows").append(indexerRow()));
   const dialog = $<HTMLDialogElement>("#sourcesDialog");
   dialog.addEventListener("close", () => { if (dialog.returnValue === "save") saveSources(); });
   document.addEventListener("viewchange", (e) => {
-    if ((e as CustomEvent<string>).detail === "search") { loadSources(); pollDownloads(true); }
+    if ((e as CustomEvent<string>).detail === "search" && IS_ADMIN) { loadSources(); pollDownloads(true); }
   });
-  if (!$("#viewSearch").hidden) { loadSources(); pollDownloads(true); }
+  if (!$("#viewSearch").hidden && IS_ADMIN) { loadSources(); pollDownloads(true); }
 }
 
 initSearch();

@@ -26,7 +26,8 @@ EVENTS: Dict[str, tuple] = {
     "review": (True, ["mag"]),
     "duplicate": (True, ["twisted_rightwards_arrows"]),
     "failed": (True, ["warning"]),
-    "wanted_found": (True, ["dart"]),
+    "request_new": (True, ["raising_hand"]),
+    "request_failed": (True, ["x"]),
     "download_sent": (False, ["inbox_tray"]),
     "download_done": (False, ["white_check_mark"]),
     "download_failed": (True, ["x"]),
@@ -159,6 +160,22 @@ class Notifier:
         self._post(c["url"], body, self._headers(c))
         self.sent += 1
 
+    def send_to(self, topic: str, title: str, message: str) -> None:
+        """A message to another topic on the same ntfy server (a family member's own topic)."""
+        if not self.configured() or not re.fullmatch(r"[-_A-Za-z0-9]{1,64}", topic or ""):
+            return
+        c = self._load()
+
+        def run() -> None:
+            try:
+                body = {"topic": topic, "title": title[:250], "message": message[:3500], "tags": ["books"]}
+                if c.get("app_url"):
+                    body["click"] = c["app_url"]
+                self._post(c["url"], body, self._headers(c))
+            except Exception as e:  # noqa: BLE001 – a message must never break anything
+                applog.warn(f"ntfy ({topic}): {e}", "Benachrichtigungen")
+        threading.Thread(target=run, daemon=True).start()
+
     def send(self, event: str, title: str, message: str, priority: Optional[int] = None) -> None:
         """Send in the background if this event is switched on."""
         if not self.wants(event):
@@ -184,12 +201,17 @@ class Notifier:
 class DownloadWatcher:
     """Tells about finished/failed SABnzbd downloads that were sent from the search."""
 
-    def __init__(self, usenet, notifier: Notifier, db: dbm.Database, interval: float = 120.0) -> None:
+    def __init__(self, usenet, notifier: Notifier, db: dbm.Database, interval: float = 30.0,
+                 on_done=None) -> None:
         self.usenet, self.notifier, self.db, self.interval = usenet, notifier, db, interval
+        self.on_done = on_done or (lambda name: None)     # e.g. look at the inbox right away
 
     def check_once(self) -> List[str]:
         n = self.notifier
-        if not (n.wants("download_done") or n.wants("download_failed")) or not self.usenet.configured()["sab"]:
+        if not self.usenet.configured()["sab"]:
+            return []
+        rows = self.db.all("SELECT 1 FROM grabs WHERE time > ? LIMIT 1", (time.time() - 14 * 86400,))
+        if not rows:
             return []
         rows = self.db.all("SELECT data FROM grabs WHERE time > ?", (time.time() - 14 * 86400,))
         ours = {dbm.loads(r["data"], {}).get("nzo_id") for r in rows} - {None}
@@ -204,6 +226,8 @@ class DownloadWatcher:
                        f"{item.get('name')}\n{item.get('error') or ''}".strip(), priority=4)
             else:
                 n.send("download_done", t("Download fertig"), str(item.get("name")))
+                applog.info(t("SABnzbd ist fertig – der Eingang übernimmt"), str(item.get("name")))
+                self.on_done(str(item.get("name")))
             told.add(item["id"])
             new.append(item["id"])
         if new:

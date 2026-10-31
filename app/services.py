@@ -24,7 +24,7 @@ from pipeline import Pipeline
 from providers import Providers
 from stores import Settings
 from usenet import Usenet
-from wanted import Wanted
+from bookrequests import Requests
 import i18n
 import applog
 from i18n import t
@@ -67,11 +67,12 @@ class App:
                                             enabled=lambda: bool(self.settings().get("ab_fallback", True)))
         self.discover = Discover(self.db, self.pipeline.client, self.library_index, self.settings,
                                  pending=self._pending_asins)
-        self.wanted = Wanted(self.db, self.usenet, self.library_index, self.notifier, self.settings,
-                             pending=self._pending_asins)
+        self.requests = Requests(self.db, self.accounts, self.usenet, self.library_index, self.notifier, self.settings,
+                                 jobs=lambda: list(self.pipeline.jobs))
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
         self.events.provide("library", self.library_index.stats)
-        self.downloads = DownloadWatcher(self.usenet, self.notifier, self.db)
+        self.downloads = DownloadWatcher(self.usenet, self.notifier, self.db,
+                                         on_done=lambda name: self.pipeline.scan_now())
         self._started = False
 
     def _pending_asins(self) -> set:
@@ -81,6 +82,14 @@ class App:
         for row in self.db.all("SELECT data FROM grabs WHERE time > ?", (time.time() - 30 * 86400,)):
             out.add((dbm.loads(row["data"]) or {}).get("asin"))
         return {a for a in out if a}
+
+    def audit(self, req, action: str, detail: str = "") -> None:
+        """Admin actions for the audit log (who changed what, from where)."""
+        user = (req.user or {}).get("name", "–") if req is not None else "–"
+        ip = getattr(req, "ip", "") or ""
+        self.db.run("INSERT INTO audit(time, user, ip, action, detail) VALUES(?,?,?,?,?)",
+                    (time.time(), user, ip, action[:80], str(detail)[:300]))
+        self.db.run("DELETE FROM audit WHERE id <= (SELECT MAX(id) - 5000 FROM audit)")
 
     def _first_account(self) -> None:
         """AUTH_USER/AUTH_PASS of older versions become the admin; without any account a setup code is shown."""
@@ -111,6 +120,10 @@ class App:
 
     # -- notifications -----------------------------------------------------
     def _book_event(self, job) -> None:
+        try:
+            self.requests.on_job(job)                   # a request waiting for this book hears about it
+        except Exception as e:  # noqa: BLE001 – a request must never stop the pipeline
+            applog.warn(t("Anfragen: {error}", error=e), "Anfragen")
         n = self.notifier
         m = job.match or {}
         name = m.get("title") or job.name
@@ -139,7 +152,7 @@ class App:
         self.pipeline.start()
         threading.Thread(target=self._library_rescanner, daemon=True, name="library-index").start()
         threading.Thread(target=self.downloads.run, daemon=True, name="download-watch").start()
-        threading.Thread(target=self._wanted_searcher, daemon=True, name="wanted").start()
+        threading.Thread(target=self._request_worker, daemon=True, name="requests").start()
         return self
 
     def _library_rescanner(self) -> None:
@@ -152,15 +165,21 @@ class App:
             time.sleep(max(1, int(self.settings().get("library_rescan_hours") or 6)) * 3600)
 
 
-    def _wanted_searcher(self) -> None:
-        """Search the wanted books again when their interval is up (checked every quarter of an hour)."""
-        time.sleep(120)                                     # let the library index load first
+    def _request_worker(self) -> None:
+        """Requests: search again when due, follow downloads and imports (every two minutes)."""
+        time.sleep(60)                                      # let the library index load first
+        try:
+            n = self.requests.import_wanted()
+            if n:
+                applog.info(t("{n} Bücher aus „Gesucht“ als Anfragen übernommen", n=n), "Anfragen")
+        except Exception as e:  # noqa: BLE001
+            applog.error(t("Anfragen: {error}", error=e), "Anfragen")
         while True:
             try:
-                self.wanted.run_due()
+                self.requests.tick()
             except Exception as e:  # noqa: BLE001 – keep the thread alive
-                applog.error(t("Gesucht: Suche fehlgeschlagen: {error}", error=e), "Gesucht")
-            time.sleep(900)
+                applog.error(t("Anfragen: {error}", error=e), "Anfragen")
+            time.sleep(120)
 
 
 def create_app(config: Optional[Config] = None, start: bool = True) -> App:

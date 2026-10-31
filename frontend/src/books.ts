@@ -34,11 +34,12 @@ function isActive(status: BookStatus): boolean {
 }
 
 function setView(view: string): void {
-  if (!["books", "search", "discover"].includes(view)) view = "books";
-  if (!IS_ADMIN) view = "discover";
+  if (!["books", "search", "discover", "requests"].includes(view)) view = "books";
+  if (!IS_ADMIN && view === "books") view = "discover";
   $("#viewBooks").hidden = view !== "books";
   $("#viewSearch").hidden = view !== "search";
   $("#viewDiscover").hidden = view !== "discover";
+  $("#viewRequests").hidden = view !== "requests";
   for (const t of document.querySelectorAll<HTMLElement>(".tab")) t.setAttribute("aria-selected", String(t.dataset.view === view));
   store.set("view", view);
   if (view === "books") pollBooks(true);
@@ -58,7 +59,7 @@ async function pollBooks(force = false): Promise<void> {
   clearTimeout(books.timer);
   try { applyBooks(await api<AudiobooksStatus>("GET", "/api/audiobooks"), force); } catch { /* keep the last state, try again */ }
   if (live.ok) return;                       // live updates bring every change
-  const busy = books.data?.jobs.some((j) => isActive(j.status));
+  const busy = books.data?.jobs.some((j) => isActive(j.status)) || !!books.data?.waiting.length;
   const visible = !$("#viewBooks").hidden;
   books.timer = setTimeout(pollBooks, busy && visible ? 1500 : visible ? 5000 : 15000);
 }
@@ -94,7 +95,19 @@ function renderBooks(): void {
   const jobs = d.jobs.filter((j) => books.filter === "all"
     || (books.filter === "active" ? isActive(j.status)
       : books.filter === "failed" ? ["failed", "cancelled"].includes(j.status) : j.status === books.filter));
-  if (!jobs.length) {
+  // new in the inbox, not started yet: visible right away, so nobody wonders whether the download arrived
+  if (["all", "active"].includes(books.filter)) {
+    for (const w of d.waiting) {
+      list.append(el("li", { class: "book waiting-card" },
+        el("div", { class: "thumb none" }, icon("refresh")),
+        el("div", { class: "book-main" },
+          el("b", {}, w.name),
+          el("span", { class: "muted small" }, w.ready_in > 0
+            ? t("Im Eingang – startet in ca. {n} s, sobald der Download fertig kopiert ist", { n: w.ready_in })
+            : t("Im Eingang – startet gleich")))));
+    }
+  }
+  if (!jobs.length && !(d.waiting.length && ["all", "active"].includes(books.filter))) {
     list.append(el("li", { class: "empty" }, d.jobs.length ? t("Nichts in dieser Ansicht.")
       : d.inbox_ok ? t("Noch keine Hörbücher. Lege einen Ordner in den Eingang – er wird automatisch erkannt.")
         : t("Der Eingangsordner ist nicht eingebunden. In Docker/Unraid einen Pfad auf /inbox mappen.")));
@@ -615,7 +628,7 @@ function updatePathPreview(): void {
 
 function initBooks(): void {
   for (const t of document.querySelectorAll<HTMLElement>(".tab")) t.addEventListener("click", () => setView(t.dataset.view || ""));
-  if (!IS_ADMIN) { setView("discover"); return; }       // family accounts: only Entdecken for now
+  if (!IS_ADMIN) { setView(store.get("view", "discover")); return; }   // family accounts: search, discover, requests
   $("#scanBtn").addEventListener("click", async () => {
     try { await api("POST", "/api/audiobooks/scan"); toast(t("Eingang wird geprüft")); setTimeout(() => pollBooks(true), 800); }
     catch (e) { toast(errMsg(e), true); }

@@ -26,7 +26,7 @@ The interface is available in **English and German**.
 2. [Quick start](#quick-start)
 3. [Audiobooks](#audiobooks)
 4. [Downloads with SABnzbd](#downloads-with-sabnzbd)
-5. [Discover](#discover)
+5. [Discover and requests](#discover)
 6. [Notifications (ntfy)](#notifications-ntfy)
 7. [Log](#log)
 8. [Accounts and access from outside](#accounts-and-access-from-outside)
@@ -45,9 +45,9 @@ The interface is available in **English and German**.
 | Tags & files | Title, author, narrator, series + volume, genre, publisher, date, description, ASIN, full-size cover; `metadata.json` for Audiobookshelf |
 | Library | Browse and search every book, folder template, reuses existing author/series folders, detects duplicates, converts old MP3 books to M4B and removes the MP3s safely |
 | Downloads | Sends NZBs to SABnzbd, watches the category, the inbox takes over when the download is done; optional Newznab search |
-| Discover | Suggestions matching your library, by genre and from book reviews (Deutschlandfunk Kultur, Perlentaucher) – well-rated, unabridged, nothing you already have; one click searches the book; a **Wanted** list for books no indexer has yet |
+| Discover | Suggestions matching your library, by genre and from book reviews (Deutschlandfunk Kultur, Perlentaucher) – well-rated, unabridged, nothing you already have; **requests** like Overseerr: the family asks, Hörwerk gets it (with approval, quota, interactive search) |
 | Media servers | Audiobookshelf and Plex rescan their library after filing; Plex can empty its trash so replaced MP3s vanish |
-| Notifications | ntfy push messages, ten events, each one on or off |
+| Notifications | ntfy push messages, eleven events, each one on or off |
 | Log | Everything that happened, filterable and downloadable, right in the app |
 | Interface | English / German, light / dark theme, live updates without reloading |
 | Security | Own minimal ffmpeg 9 in a Landlock sandbox, CSRF protection, secrets never reach the browser ([SECURITY.md](SECURITY.md)) |
@@ -202,10 +202,15 @@ You only need SABnzbd; searching is optional.
 3. Everything SABnzbd finishes in that category flows through M4B → Audible → library automatically. The
    **Downloads** list shows progress and history of the category.
 
-**Optional search:** add a Newznab indexer (address + API key) to search directly from the **Search** tab and send
-results to SABnzbd. Results are merged, ranked (preferred language, unabridged before abridged, M4B before MP3)
-and compared with your library. Umlauts are searched in every spelling (`ä` / `ae` / `a`). **Look up on Audible**
-first searches with the store's exact title and remembers the ASIN for tagging.
+**Search** (with a Newznab indexer): you search for an **audiobook**, not a release – matches come from Audible and
+BookBeat. Only once you pick one Hörwerk searches the indexers; you can change the term for that if nothing comes up
+(e.g. title only or surname only). Releases are merged, ranked (preferred language, unabridged before abridged, M4B
+before MP3) and compared with your library; umlauts in every spelling. The ASIN (or title and author) goes along with
+the download – so the inbox recognises the book safely, whatever the release is called.
+For books that aren't in any shop: **search the indexers directly**.
+
+Finished SABnzbd downloads from the search are taken over by the inbox after a few seconds; until then they show up
+as "In the inbox – starts in about … s" at the top of the audiobook list and in the log.
 
 Tip: in SABnzbd set *Config → Switches → Unwanted extensions* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
 to **Abort**.
@@ -240,18 +245,29 @@ Lists are put together in the background, refreshed at most once a day (or with 
 Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de` and
 `www.perlentaucher.de` (HTTPS).
 
-### Wanted
+### Requests (like Overseerr/Jellyseerr)
 
-A book that exists on Audible or BookBeat but is not on any indexer yet goes on **Discover → Wanted** with **Save**. The
-button is on every card in *Discover* and in the *Search* tab once a book is picked via **Look up at Audible**.
+Family members ask for a **book**, not a release: click **Request** in *Search* (Audible, BookBeat) or *Discover*.
+Hörwerk does the rest – the **Requests** tab shows where it stands:
 
-* Hörwerk searches every saved book right away and then **every 12 hours** on all indexers (adjustable). A release only
-  counts when its name has the author's surname and nearly all words of the title.
-* New finds are announced via ntfy ("Wanted audiobook found"); the card shows the match, **View** opens the search with
-  the book and its ASIN.
-* Optional (*Settings → Discover & wanted*): **send finds to SABnzbd automatically** – unabridged releases first, each
-  book only once. Off by default so nothing wrong is downloaded unasked.
-* While downloading the card says "Downloading"; once the book is in the library it leaves the list by itself.
+`Waiting for approval → Searching → Downloading → Processing → Available` (or *Declined* with a reason, *Failed*)
+
+* **Approval:** requests from family accounts wait until an admin approves them (ntfy "New book request", count on
+  the tab). Admins and accounts with the right *no approval* start right away.
+* **Quota:** requests per calendar month (default 5, adjustable per account; declined ones don't count).
+* **Visibility:** everyone sees their own requests; with the right *see all requests* also everybody else's.
+* **Getting it automatically (like Radarr):** Hörwerk searches all indexers and judges every release – right author,
+  right title, unabridged, right language, size fitting the runtime (kbit/s), a pack with exactly this volume? The best
+  match goes to SABnzbd with the ASIN and the request number; Hörwerk then follows the download into the library. If
+  the download fails or the book doesn't fit on import, that release is blocked and the next one taken (at most 5
+  attempts). Without a match it searches again every 12 hours.
+* **Interactive search (only when needed):** admins and accounts with the right *interactive search* open
+  **Releases** on a request: every match with its verdict – the rejected ones too, with the reason ("abridged
+  edition", "too small for 9 h runtime" …). Download one by hand, block one, or search again with other words.
+* **Telling the requester:** whoever enters their own ntfy topic under *Account* hears when their audiobook has
+  arrived or was declined.
+
+A "Wanted" list from version 5.3 is taken over as the admin's requests on first start.
 
 ---
 
@@ -270,7 +286,8 @@ Push messages to your phone via [ntfy](https://ntfy.sh) – ntfy.sh or your own 
 | Audiobook needs review | on |
 | Already in the library | on |
 | Error with an audiobook | on |
-| Wanted audiobook found | on |
+| New book request | on |
+| Book request failed | on |
 | Download sent to SABnzbd | off |
 | Download finished in SABnzbd | off |
 | Download failed in SABnzbd | on |
@@ -298,9 +315,11 @@ from the home network; from outside the setup code from `docker logs hoerwerk` i
 
 * **Accounts** (top right, admins only): create family accounts (generate an initial password and pass it on), role,
   rights (*see all requests*, *no approval*, *interactive search*), monthly quota, lock, reset password, delete.
-  Family accounts see **Discover** for now; requests come with the next step
-  (plan: [docs/PLAN-mehrbenutzer.md](docs/PLAN-mehrbenutzer.md)).
-* **Account** (your name, top right, everyone): change password, see and sign out devices, sign out.
+  Family accounts see *Search*, *Discover* and *Requests* – inbox, library, settings and log stay with admins. At the
+  bottom of the dialog: the **admin log** (who changed what, when, with IP).
+* **Account** (your name, top right, everyone): change password, set up a **second factor** (authenticator app such
+  as Aegis, 2FAS, Google/Microsoft Authenticator), own ntfy topic, see and sign out devices.
+  With *Admins need a second factor* (settings) admins without one only reach their account.
 * "Stay signed in" lasts 30 days (extended while used), otherwise 12 hours.
 
 **On the internet via Pangolin:**
@@ -349,8 +368,8 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Discover: minimum rating and number of ratings |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Discover: unabridged only / German only |
 | `DISCOVER_NONFICTION_STORE` | `false` | Discover: non-fiction from Audible lists too |
-| `WANTED_INTERVAL_HOURS` | `12` | Wanted: hours between automatic searches |
-| `WANTED_AUTO_DOWNLOAD` | `false` | Wanted: send finds to SABnzbd automatically |
+| `WANTED_INTERVAL_HOURS` | `12` | Requests without a match: hours until the next search |
+| `ADMIN_TOTP_REQUIRED` | `false` | Admins need a second factor |
 | `CPU_CORES` | half the cores | Parallel ffmpeg processes per book |
 | `ENCODE_WORKERS` | `1` | Books encoded at the same time |
 | `IO_WORKERS` | `2` | Parallel matching/tagging/filing steps |

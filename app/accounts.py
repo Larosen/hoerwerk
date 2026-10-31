@@ -83,6 +83,29 @@ def check_name(name: str) -> str:
     return name
 
 
+# -- second factor (TOTP, RFC 6238: authenticator apps) ---------------------------
+TOTP_STEP = 30
+TICKET_LIFE = 300
+TICKET_TRIES = 5
+
+
+def totp_secret() -> str:
+    return base64.b32encode(secrets.token_bytes(20)).decode().rstrip("=")
+
+
+def totp_code(secret: str, step: int) -> str:
+    key = base64.b32decode(secret + "=" * (-len(secret) % 8), casefold=True)
+    digest = hmac.new(key, step.to_bytes(8, "big"), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    number = int.from_bytes(digest[offset:offset + 4], "big") & 0x7FFFFFFF
+    return f"{number % 1_000_000:06d}"
+
+
+def totp_uri(secret: str, name: str) -> str:
+    from urllib.parse import quote
+    return f"otpauth://totp/{quote('Hörwerk:' + name)}?secret={secret}&issuer={quote('Hörwerk')}&algorithm=SHA1&digits=6&period=30"
+
+
 def _token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
@@ -94,6 +117,9 @@ class Accounts:
         self.lock = threading.Lock()
         self.ip_fails: Dict[str, Deque[float]] = defaultdict(deque)
         self.user_fails: Dict[str, int] = defaultdict(int)
+        self.tickets: Dict[str, dict] = {}         # password ok, second factor still to come
+        self.totp_pending: Dict[int, str] = {}      # user id -> secret being set up
+        self.totp_used: Dict[int, int] = {}         # user id -> last accepted time step (no replay)
 
     # -- users -------------------------------------------------------------
     @staticmethod
@@ -103,7 +129,8 @@ class Accounts:
         perms = dbm.loads(row["perms"], {}) or {}
         return {"id": row["id"], "name": row["name"], "role": row["role"],
                 "perms": {p: bool(perms.get(p)) for p in PERMS}, "quota": row["quota"],
-                "disabled": bool(row["disabled"]), "created": row["created"], "last_login": row["last_login"]}
+                "disabled": bool(row["disabled"]), "created": row["created"], "last_login": row["last_login"],
+                "totp": bool(row["totp"]) if "totp" in row.keys() else False}
 
     def count(self) -> int:
         return self.db.one("SELECT COUNT(*) AS n FROM users")["n"]
@@ -186,6 +213,79 @@ class Accounts:
     def _admins(self, exclude: int = 0) -> int:
         return self.db.one("SELECT COUNT(*) AS n FROM users WHERE role='admin' AND disabled=0 AND id<>?",
                            (exclude,))["n"]
+
+    # -- second factor -----------------------------------------------------
+    def check_totp(self, uid: int, code: str) -> bool:
+        row = self.db.one("SELECT totp FROM users WHERE id=?", (uid,))
+        secret = row["totp"] if row else None
+        return bool(secret) and self._totp_ok(uid, secret, code)
+
+    def _totp_ok(self, uid: int, secret: str, code: str) -> bool:
+        code = "".join(c for c in str(code or "") if c.isdigit())
+        if len(code) != 6:
+            return False
+        now = int(self.clock() // TOTP_STEP)
+        for step in (now - 1, now, now + 1):           # a little clock drift is fine
+            if hmac.compare_digest(totp_code(secret, step), code):
+                with self.lock:
+                    if self.totp_used.get(uid, -1) >= step:
+                        return False                    # the same code twice: replay
+                    self.totp_used[uid] = step
+                return True
+        return False
+
+    def totp_begin(self, uid: int) -> dict:
+        user = self.get(uid)
+        secret = totp_secret()
+        self.totp_pending[uid] = secret
+        return {"secret": secret, "uri": totp_uri(secret, user["name"])}
+
+    def totp_confirm(self, uid: int, code: str) -> bool:
+        secret = self.totp_pending.get(uid)
+        if not secret or not self._totp_ok(uid, secret, code):
+            return False
+        self.db.run("UPDATE users SET totp=? WHERE id=?", (secret, uid))
+        self.totp_pending.pop(uid, None)
+        return True
+
+    def totp_off(self, uid: int) -> None:
+        self.db.run("UPDATE users SET totp=NULL WHERE id=?", (uid,))
+
+    def ticket(self, uid: int, persistent: bool) -> str:
+        now = self.clock()
+        with self.lock:
+            for k in [k for k, v in self.tickets.items() if v["expires"] < now]:
+                self.tickets.pop(k, None)
+            tid = secrets.token_urlsafe(24)
+            self.tickets[tid] = {"uid": uid, "persistent": persistent, "expires": now + TICKET_LIFE, "tries": 0}
+        return tid
+
+    def redeem(self, tid: str, code: str, ip: str) -> dict:
+        """Second step of a login: the code for the ticket from step one (5 tries, 5 minutes)."""
+        if self._blocked(ip):
+            raise AuthError(t("Zu viele Fehlversuche – bitte in 15 Minuten erneut versuchen"), 429, "ip_blocked")
+        with self.lock:
+            ticket = self.tickets.get(tid or "")
+            if not ticket or ticket["expires"] < self.clock() or ticket["tries"] >= TICKET_TRIES:
+                self.tickets.pop(tid or "", None)
+                raise AuthError(t("Anmeldung abgelaufen – bitte neu anmelden"), 401, "ticket_expired")
+            ticket["tries"] += 1
+        user = self.get(ticket["uid"])
+        if not user or user["disabled"] or not self.check_totp(user["id"], code):
+            self._fail(ip, user["name"] if user else "")
+            raise AuthError(t("Code falsch"), 401, "bad_totp")
+        with self.lock:
+            self.tickets.pop(tid, None)
+        return {**user, "persistent": ticket["persistent"]}
+
+    def prefs(self, uid: int) -> dict:
+        row = self.db.one("SELECT prefs FROM users WHERE id=?", (uid,))
+        return (dbm.loads(row["prefs"], {}) or {}) if row else {}
+
+    def set_prefs(self, uid: int, changes: dict) -> dict:
+        prefs = {**self.prefs(uid), **changes}
+        self.db.run("UPDATE users SET prefs=? WHERE id=?", (dbm.dumps(prefs), uid))
+        return prefs
 
     # -- login -------------------------------------------------------------
     def _blocked(self, ip: str) -> bool:

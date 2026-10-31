@@ -20,7 +20,7 @@ from typing import Optional
 import applog
 
 EVENTS = ("login_ok", "login_failed", "login_blocked", "logout", "setup", "password_changed",
-          "user_created", "user_changed", "user_deleted", "sessions_revoked", "forbidden")
+          "user_created", "user_changed", "user_deleted", "sessions_revoked", "forbidden", "totp_on", "totp_off")
 _SAFE = re.compile(r"^[A-Za-z0-9_.:/@-]{1,80}$")
 _lock = threading.Lock()
 _logger: Optional[logging.Logger] = None

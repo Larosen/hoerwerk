@@ -243,7 +243,34 @@ class PipelineTest(unittest.TestCase):
         self.p.hint_provider = lambda folder: {"query": "Theodor Storm Der Schimmelreiter"} if folder == name else None
         j = self.run_all()[0]
         self.assertEqual(j.status, "done", j.log)
-        self.assertEqual(j.hints["query"], "Theodor Storm Der Schimmelreiter")
+        self.assertEqual(j.hints["alt_query"], "Theodor Storm Der Schimmelreiter")
+
+    def test_waiting_is_visible_and_search_downloads_wait_less(self):
+        import pipeline as pl
+        tone(os.path.join(self.inbox, "Von der Platte", "a.mp3"), 1.0)
+        tone(os.path.join(self.inbox, "Aus der Suche", "a.mp3"), 1.0)
+        self.p.hint_provider = lambda folder: {"query": "x"} if folder == "Aus der Suche" else None
+        self.assertEqual(self.p.scan_once(settle=120), [])
+        waiting = {w["name"]: w["ready_in"] for w in self.p.status()["waiting"]}
+        self.assertGreater(waiting["Von der Platte"], 100)
+        self.assertLessEqual(waiting["Aus der Suche"], pl.GRAB_SETTLE)
+        self.assertTrue(any("Neu im Eingang" in e["text"] for e in pl.applog.log.since(0)))
+        real = pl._now
+        pl._now = lambda: real() + pl.GRAB_SETTLE + 1
+        try:
+            jobs = self.p.scan_once(settle=120)
+        finally:
+            pl._now = real
+        self.assertEqual([j.name for j in jobs], ["Aus der Suche"])
+
+    def test_release_name_beats_a_vague_search_term(self):
+        """Searched "Erzähl mir", downloaded a release with a clear name: the name decides."""
+        name = "Theodor.Storm-Der.Schimmelreiter.(Ungekuerzt).ABOOK"
+        tone(os.path.join(self.inbox, name, "a.mp3"), 4.0)
+        self.p.hint_provider = lambda folder: {"query": "Erzähl mir"} if folder == name else None
+        j = self.run_all()[0]
+        self.assertEqual(j.status, "done", j.log)
+        self.assertEqual(j.match["title"], "Der Schimmelreiter")
 
     def test_download_hint_with_asin(self):
         """Book picked at Audible in the search tab: the ASIN decides, even against a useless name."""

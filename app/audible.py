@@ -515,4 +515,9 @@ def lookup(client: AudibleClient, hints: dict, region: str, limit: int = 10) -> 
         if len(words) > 3:
             for b in client.search(region, keywords=" ".join(words[-3:]), limit=limit):
                 results.setdefault(b["asin"], b)
+    if not results and hints.get("alt_query"):
+        # e.g. the term typed into the search when the release name led nowhere: then it is the query
+        for b in client.search(region, keywords=hints["alt_query"], limit=limit):
+            results.setdefault(b["asin"], b)
+        hints = {**hints, "query": hints["alt_query"]}
     return rank(list(results.values()), hints)
