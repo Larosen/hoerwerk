@@ -6,9 +6,8 @@ from dataclasses import dataclass, field
 from typing import FrozenSet, Mapping
 
 import library
-import planner
 
-VERSION = "4.2.1"
+VERSION = "4.3.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
@@ -21,7 +20,6 @@ def cpu_jobs(env: Mapping[str, str] = os.environ) -> int:
 
 @dataclass(frozen=True)
 class Config:
-    data_root: str = "/data"
     config_dir: str = "/config"
     inbox: str = "/inbox"
     library: str = "/audiobooks"
@@ -29,8 +27,6 @@ class Config:
     port: int = 8080
     auth_user: str = ""
     auth_pass: str = ""
-    show_hidden: bool = False
-    max_items: int = 20000
     # Optional: only answer to these Host names (protects against DNS rebinding), e.g. "tower,192.168.1.10"
     allowed_hosts: FrozenSet[str] = field(default_factory=frozenset)
     # Without a password the UI only answers clients from private networks (LAN, VPN, Docker)
@@ -45,7 +41,6 @@ class Config:
     def from_env(cls, env: Mapping[str, str] = os.environ) -> "Config":
         inbox = env.get("INBOX_DIR", "/inbox")
         return cls(
-            data_root=os.path.realpath(env.get("DATA_DIR", "/data")),
             config_dir=env.get("CONFIG_DIR", "/config"),
             inbox=inbox,
             library=env.get("LIBRARY_DIR", "/audiobooks"),
@@ -53,8 +48,6 @@ class Config:
             port=int(env.get("PORT", "8080")),
             auth_user=env.get("AUTH_USER", ""),
             auth_pass=env.get("AUTH_PASS", ""),
-            show_hidden=env.get("SHOW_HIDDEN", "false").lower() == "true",
-            max_items=int(env.get("MAX_ITEMS", "20000")),
             allowed_hosts=frozenset(h.strip().lower() for h in env.get("ALLOWED_HOSTS", "").split(",") if h.strip()),
             allow_public=env.get("ALLOW_PUBLIC", "false").lower() == "true",
             cpu_jobs=cpu_jobs(env),
@@ -74,20 +67,11 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
     b = lambda key, default: _bool(env, key, default)  # noqa: E731
     return {
         "language": env.get("APP_LANGUAGE", "de").lower(),  # de|en
-        "auto_convert": b("AUTO_CONVERT", True),
+        # M4B encoding
         "bitrate": env.get("AAC_BITRATE", "auto"),          # auto|64k|96k|…
         "force_mono": b("FORCE_MONO", False),
-        "originals": env.get("ORIGINALS", "keep"),          # keep|move|delete
-        "originals_folder": env.get("ORIGINALS_FOLDER", "_mp3"),
         "chapter_titles": env.get("CHAPTER_TITLES", "auto"),  # auto|filename|tag
-        "output_name": env.get("OUTPUT_NAME", "{folder}"),
-        "title_source": env.get("TITLE_SOURCE", "folder"),  # folder|album
-        # Rename defaults (the UI can override them per run)
-        "conflict": env.get("CONFLICT", "error"),            # error|number
-        "sidecars": env.get("SIDECARS", "true").lower() == "true",
-        "sidecar_exts": env.get("SIDECAR_EXTS", planner.DEFAULT_SIDECARS),
-        "allow_subdirs": b("ALLOW_SUBDIRS", False),
-        # Audiobook pipeline (auto-m4b + beets-audible)
+        # Audiobook pipeline
         "ab_watch": b("AUDIOBOOK_WATCH", True),
         "ab_region": env.get("AUDIBLE_REGION", "de"),
         "ab_match": env.get("MATCH_MODE", "auto"),            # auto|review|off
@@ -115,10 +99,9 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
 
 # Allowed values of the settings that are a choice
 CHOICES = {
-    "originals": ("keep", "move", "delete"), "ab_match": ("auto", "review", "off"),
+    "ab_match": ("auto", "review", "off"),
     "ab_duplicates": ("ask", "skip", "keep"), "ab_library_originals": ("archive", "delete"),
     "ab_chapters": ("auto", "audible", "files"), "ab_originals": ("archive", "delete"),
     "ab_cover_source": ("audible", "local"), "chapter_titles": ("auto", "filename", "tag"),
     "language": ("de", "en"),
 }
-RENAME_OPTION_KEYS = ("conflict", "sidecars", "sidecar_exts", "allow_subdirs")

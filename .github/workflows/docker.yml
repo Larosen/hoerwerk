@@ -96,7 +96,7 @@ jobs:
           docker run -d --name br --network host -e PORT=8095 -e PUID="$(id -u)" -e PGID="$(id -g)" -e UMASK=002 \
             -e MATCH_MODE=off -e METADATA_FALLBACK=false -e SETTLE_SECONDS=0 -e SCAN_INTERVAL=2 -e DUPLICATES=ask \
             --security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID \
-            -v "$R/data:/data" -v "$R/config:/config" -v "$R/inbox:/inbox" -v "$R/library:/audiobooks" better-renamer:ci
+            -v "$R/config:/config" -v "$R/inbox:/inbox" -v "$R/library:/audiobooks" better-renamer:ci
           for i in $(seq 30); do curl -sf http://127.0.0.1:8095/api/health && break; sleep 1; done
           curl -s http://127.0.0.1:8095/api/system
       - name: Click-through tests against the container

@@ -66,7 +66,7 @@ class NotifierTest(unittest.TestCase):
         self.assertFalse(self.n.configured())
         events = self.n.events()
         self.assertTrue(events["failed"] and events["filed"] and events["download_failed"])
-        self.assertFalse(events["download_sent"] or events["convert_done"])
+        self.assertFalse(events["download_sent"] or events["download_done"])
         pub = self.n.update_config({"url": self.url, "topic": "hoerbuecher", "token": "tk_SECRET"})
         self.assertTrue(pub["token_set"])
         self.assertNotIn("tk_SECRET", json.dumps(pub))

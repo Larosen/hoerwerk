@@ -29,8 +29,6 @@ EVENTS: Dict[str, tuple] = {
     "download_sent": (False, ["inbox_tray"]),
     "download_done": (False, ["white_check_mark"]),
     "download_failed": (True, ["x"]),
-    "convert_done": (False, ["headphones"]),
-    "convert_failed": (True, ["warning"]),
     "abs_error": (True, ["warning"]),
     "plex_error": (True, ["warning"]),
 }

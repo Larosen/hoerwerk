@@ -23,7 +23,7 @@ import links
 import providers as prov
 import tagger
 from meta import cache as meta_cache
-from rules import natural_key
+from natsort import natural_key
 import applog
 from i18n import t
 

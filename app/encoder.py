@@ -25,7 +25,7 @@ from typing import Callable, Dict, List, Optional, Sequence
 
 import sandbox
 from meta import AUDIO_DEMUXERS, cache as meta_cache
-from rules import natural_key
+from natsort import natural_key
 from i18n import t
 
 AUDIO_EXTS = {"mp3", "m4a", "m4b", "mp4", "aac", "flac", "ogg", "oga", "opus", "wav", "wma",

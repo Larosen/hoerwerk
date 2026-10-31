@@ -6,7 +6,7 @@ import threading
 
 import encoder
 from meta import cache as meta_cache
-from rules import natural_key
+from natsort import natural_key
 from i18n import t
 from web.router import HTTPException, Req, route
 from web.routes.common import library_path

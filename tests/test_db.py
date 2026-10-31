@@ -87,14 +87,12 @@ class DatabaseTest(unittest.TestCase):
             with open(os.path.join(self.dir, name), "w", encoding="utf-8") as fh:
                 json.dump(data, fh)
         app = services.App(config.Config.from_env({
-            "CONFIG_DIR": self.dir, "DATA_DIR": self.dir, "INBOX_DIR": os.path.join(self.dir, "in"),
+            "CONFIG_DIR": self.dir, "INBOX_DIR": os.path.join(self.dir, "in"),
             "LIBRARY_DIR": os.path.join(self.dir, "lib")}), start_workers=False)
         for name in files:
             self.assertFalse(os.path.exists(os.path.join(self.dir, name)), name)
             self.assertTrue(os.path.exists(os.path.join(self.dir, name + ".migrated")), name)
         self.assertEqual(app.settings()["ab_region"], "us")
-        self.assertEqual([h["id"] for h in app.history.list()], ["h2", "h1"])
-        self.assertEqual(app.presets.get(), {"Hörbuch": [{"type": "case"}]})
         self.assertEqual(app.pipeline.get("j1").status, "review")
         self.assertEqual(app.library_index.find({"asin": "b000000001"})[0]["path"], "A/B")
         self.assertEqual(app.library_index.last_scan, 99.0)
@@ -106,17 +104,6 @@ class DatabaseTest(unittest.TestCase):
         again = services.App(app.config, start_workers=False)
         self.assertEqual(again.settings()["bitrate"], "96k")
         self.assertEqual(len(again.pipeline.jobs), 1)
-
-    def test_history_limit_and_undo_order(self):
-        d = dbm.Database(self.path)
-        h = stores.History(d)
-        for i in range(stores.History.LIMIT + 5):
-            h.add(f"f{i}", [[["a", "b"]]], [])
-        self.assertEqual(len(h.list()), stores.History.LIMIT)
-        last = h.last()
-        self.assertEqual(last["folder"], f"f{stores.History.LIMIT + 4}")
-        h.remove(last["id"])
-        self.assertEqual(h.last()["folder"], f"f{stores.History.LIMIT + 3}")
 
     def test_unknown_settings_are_ignored(self):
         d = dbm.Database(self.path)

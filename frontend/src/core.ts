@@ -50,25 +50,6 @@ function translateDom(root: ParentNode): void {
 // ------------------------------------------------------------------------- //
 type Settings = Record<string, string | number | boolean>;
 
-interface FileEntry { name: string; size: number; mtime: number; dir: boolean; kind: string }
-interface Folder {
-  path: string; parent: string | null; dirs: { name: string }[]; files: FileEntry[];
-  truncated: boolean; mp3_count: number; busy: boolean;
-}
-interface PreviewItem {
-  old: string; new: string; changed: boolean; error: string | null; dir: boolean;
-  resolved?: boolean; sidecar?: boolean; of?: string;
-}
-/** A rename rule: ``type`` plus the fields its editor defines (see rules-ui.ts). */
-interface Rule { type: string; enabled?: boolean; collapsed?: boolean; only?: string; [field: string]: any }
-interface HistoryEntry { id: string; time: number; folder: string; count: number; sample: [string, string][] }
-
-type ConvertStatus = "queued" | "running" | "done" | "error" | "cancelled";
-interface ConvertJob {
-  id: string; folder: string; reason: string; status: ConvertStatus; progress: number; message: string;
-  output: string | null; created: number; finished: number | null; log: string[];
-}
-
 interface Book {
   id?: string; asin: string | null; title: string; subtitle?: string | null; authors: string[]; narrators?: string[];
   series?: string | null; series_position?: string | null; runtime_min?: number; release_date?: string | null;

@@ -38,8 +38,7 @@ COPY docker/entrypoint.sh /entrypoint.sh
 COPY app/ /app/
 COPY --from=web /src/app/static/*.js /app/static/
 
-ENV DATA_DIR=/data \
-    CONFIG_DIR=/config \
+ENV CONFIG_DIR=/config \
     INBOX_DIR=/inbox \
     LIBRARY_DIR=/audiobooks \
     PORT=8080 \
@@ -49,12 +48,12 @@ ENV DATA_DIR=/data \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-RUN mkdir -p /data /config /inbox /audiobooks && chmod +x /entrypoint.sh
-VOLUME ["/data", "/config", "/inbox", "/audiobooks"]
+RUN mkdir -p /config /inbox /audiobooks && chmod +x /entrypoint.sh
+VOLUME ["/config", "/inbox", "/audiobooks"]
 EXPOSE 8080
 
 LABEL org.opencontainers.image.title="Better Renamer" \
-      org.opencontainers.image.description="Stapel-Umbenennen im Browser plus Hörbuch-Automatik: Eingang -> M4B mit Kapiteln -> Audible-Tags -> Bibliothek" \
+      org.opencontainers.image.description="Hörbuch-Automatik: Eingang -> M4B mit Kapiteln -> Audible-Tags -> Bibliothek (Audiobookshelf, Plex)" \
       org.opencontainers.image.source="https://github.com/Larosen/rename_merge" \
       net.unraid.docker.webui="http://[IP]:[PORT:8080]/" \
       net.unraid.docker.icon="https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/icon.png"

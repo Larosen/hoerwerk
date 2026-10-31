@@ -1,14 +1,12 @@
 """Audiobook pipeline: status, review (search, link, choose, own data), duplicates, retry."""
 from __future__ import annotations
 
-import os
 
 import audible
 import library
 import links
 from i18n import t
 from web.router import HTTPException, Req, route
-from web.routes.common import resolve
 
 
 def _job(req: Req, job_id: str):
@@ -42,14 +40,6 @@ def paths(req: Req):
 def scan(req: Req):
     req.app.pipeline.scan_now()
     return {"ok": True}
-
-
-@route("POST", "/api/audiobooks/import")
-def import_(req: Req):
-    path = resolve(req.app, req.get("path", ""))
-    if not os.path.exists(path):
-        raise HTTPException(404, t("Nicht gefunden"))
-    return req.app.pipeline.add(path, origin="manual").to_dict(full=False)
 
 
 @route("GET", "/api/audiobooks/{job_id}")

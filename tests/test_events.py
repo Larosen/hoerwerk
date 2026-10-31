@@ -73,7 +73,7 @@ class StreamTest(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.mkdtemp(prefix="sse-")
         env = {k: os.path.join(cls.tmp, v) for k, v in
-               {"DATA_DIR": "data", "CONFIG_DIR": "config", "INBOX_DIR": "inbox", "LIBRARY_DIR": "lib"}.items()}
+               {"CONFIG_DIR": "config", "INBOX_DIR": "inbox", "LIBRARY_DIR": "lib"}.items()}
         for d in env.values():
             os.makedirs(d, exist_ok=True)
         cls.app = services.App(config.Config.from_env({**env, "AUDIOBOOK_WATCH": "false"}), start_workers=False)
@@ -95,22 +95,22 @@ class StreamTest(unittest.TestCase):
         return c, c.getresponse()
 
     def test_initial_state_then_changes(self):
-        c, r = self.open("/api/events?topics=jobs,audiobooks")
+        c, r = self.open("/api/events?topics=library,audiobooks")
         try:
             self.assertEqual(r.status, 200)
             self.assertEqual(r.getheader("Content-Type"), "text/event-stream; charset=utf-8")
             self.assertEqual(r.getheader("X-Frame-Options"), "DENY")
             first = dict(read_events(r, 2))
-            self.assertEqual(first["jobs"], [])
+            self.assertEqual(first["library"]["books"], 0)
             self.assertIn("queues", first["audiobooks"])
-            # a new conversion job is pushed without asking
-            folder = os.path.join(self.tmp, "data", "Buch")
-            os.makedirs(folder, exist_ok=True)
-            open(os.path.join(folder, "a.mp3"), "wb").close()
-            self.app.converter.enqueue(folder, "Buch", "Test")
-            [(event, jobs)] = read_events(r, 1)
-            self.assertEqual(event, "jobs")
-            self.assertEqual(jobs[0]["folder"], "Buch")
+            # a newly filed book is pushed without asking
+            book = os.path.join(self.tmp, "lib", "Theodor Storm", "Immensee", "Immensee.m4b")
+            os.makedirs(os.path.dirname(book), exist_ok=True)
+            open(book, "wb").close()
+            self.app.library_index.add(book, {"title": "Immensee", "authors": ["Theodor Storm"]})
+            [(event, stats)] = read_events(r, 1)
+            self.assertEqual(event, "library")
+            self.assertEqual(stats["books"], 1)
         finally:
             c.close()
 

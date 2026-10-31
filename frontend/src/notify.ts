@@ -17,8 +17,6 @@ const NOTIFY_EVENTS: Record<string, string> = {
   download_sent: t("Download an SABnzbd geschickt"),
   download_done: t("Download in SABnzbd fertig"),
   download_failed: t("Download in SABnzbd fehlgeschlagen"),
-  convert_done: t("„Jetzt zu M4B“ fertig"),
-  convert_failed: t("„Jetzt zu M4B“ fehlgeschlagen"),
   abs_error: t("Audiobookshelf-Scan fehlgeschlagen"),
   plex_error: t("Plex-Scan fehlgeschlagen"),
 };

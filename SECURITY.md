@@ -14,7 +14,7 @@ This page explains what the program protects against, what was tested and what y
    from private networks (LAN, VPN, Docker).
 2. **Run the container with minimal rights** – the Unraid template and `docker-compose.yml` already do:
    `--security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID`.
-3. **Mount only the folders you need.** Point `/data` at the shares that should be renamed, not at `/mnt/user/`.
+3. **Mount only the folders you need:** the inbox and the library, never all of `/mnt/user/`.
 4. **In SABnzbd** set *Config → Switches → Unwanted extensions* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
    to **Abort**. Fake releases are then dropped before they reach the inbox.
 5. Set inbox originals to **delete** (`INBOX_ORIGINALS=delete`) or empty `_fertig` regularly.
@@ -57,12 +57,12 @@ This page explains what the program protects against, what was tested and what y
 
 | Attack | Protection |
 |---|---|
-| **CSRF**: a foreign web page in the same browser sends requests to `http://tower:8080` (e.g. renaming files) | Every changing request needs a custom header that browsers only send after a CORS approval (never given); additionally `Origin` and `Sec-Fetch-Site` are checked. Tested. |
+| **CSRF**: a foreign web page in the same browser sends requests to `http://tower:8080` (e.g. changing settings or taking books out of the library) | Every changing request needs a custom header that browsers only send after a CORS approval (never given); additionally `Origin` and `Sec-Fetch-Site` are checked. Tested. |
 | Clickjacking | `X-Frame-Options: DENY`, `frame-ancestors 'none'`. |
 | Accidentally exposed to the internet | Without a password only private addresses are answered (LAN, VPN/Tailscale, Docker). If devices in your home network connect via a public IPv6 address, set a password or `ALLOW_PUBLIC=true`. |
 | Password guessing | Constant-time comparison, 1 s pause after every failed attempt. |
 | DNS rebinding | Optional `ALLOWED_HOSTS`; with a password it has no effect anyway. |
-| Paths outside `/data` | All paths are resolved (incl. symlinks) and must lie inside `/data`; renaming through linked folders to the outside is refused; static files only from `app/static`. |
+| Paths outside the library | Book paths from the browser are resolved (incl. symlinks) and must lie inside the library; static files only from `app/static`. |
 | Huge requests | max. 4 MB per request. |
 | Many open live connections (`/api/events`) | At most 32 at the same time; they deliver only what the interface fetches anyway and need the same login. |
 | Language setting / translation catalog | Only `de` or `en` are accepted; `/i18n.js` serves a fixed file from the image and needs the same login as the page. |
@@ -98,8 +98,8 @@ Checked interfaces: Audiobookshelf 2.37 (`metadata.json`, library scan), SABnzbd
 
 **ffmpeg:** Up to version 3, ffmpeg 7.1.5 came from Debian stable; OSV listed 40 open CVEs for it (almost all in parts
 Better Renamer does not use). Since version 4 the image builds ffmpeg 9.0.2 itself (`docker/build-ffmpeg.sh`): only the
-audio containers and decoders that occur, AAC as the only encoder, plus video containers without decoders for the
-renamer's placeholders. Video decoders, filters other than resampling, streaming protocols (HLS, DASH, RTSP …), devices
+audio containers and decoders that occur, AAC as the only encoder; ffprobe/ffmpeg may only open the audio containers
+(whitelist). Video decoders, filters other than resampling, streaming protocols (HLS, DASH, RTSP …), devices
 and third-party libraries are not in the program at all – most ffmpeg CVEs affect exactly these parts. Because the
 package no longer comes from Debian's security maintenance, the version in the Dockerfile must be raised for ffmpeg
 security updates (tag and commit, CI checks both).

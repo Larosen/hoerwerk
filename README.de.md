@@ -2,12 +2,10 @@
 
 [English](README.md) · **Deutsch**
 
-Eine selbst gehostete Web-App für dein NAS (Unraid oder jeder andere Docker-Host) mit zwei Aufgaben:
-
-* **Hörbuch-Automatik** – Hörbücher in einen Eingangsordner legen; sie werden zu **einer M4B mit Kapiteln**,
-  bei Audible erkannt, **getaggt** und sauber in die Bibliothek für Audiobookshelf, Plex & Co. **einsortiert**.
-* **Stapel-Umbenenner** – Hunderte Dateien und Ordner im Browser umbenennen, mit Live-Vorschau, 16 kombinierbaren
-  Regeln und Metadaten-Platzhaltern (ID3, Video, EXIF).
+Eine selbst gehostete Hörbuch-Automatik für dein NAS (Unraid oder jeder andere Docker-Host): Hörbücher in einen
+Eingangsordner legen; sie werden zu **einer M4B mit Kapiteln**, bei Audible erkannt, **getaggt** und sauber in die
+Bibliothek für Audiobookshelf, Plex & Co. **einsortiert**. Ältere MP3-Bücher in der Bibliothek werden genauso
+umgewandelt – Tracks und Kapitel bekommen dabei sinnvolle Namen.
 
 Downloads laufen über **SABnzbd**, Benachrichtigungen über **ntfy** – du bestimmst, bei welchen Ereignissen.
 Die Oberfläche gibt es auf **Deutsch und Englisch**.
@@ -25,11 +23,10 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 3. [Hörbücher](#hörbücher)
 4. [Downloads mit SABnzbd](#downloads-mit-sabnzbd)
 5. [Benachrichtigungen (ntfy)](#benachrichtigungen-ntfy)
-6. [Stapel-Umbenenner](#stapel-umbenenner)
-7. [Protokoll](#protokoll)
-8. [Konfiguration](#konfiguration)
-9. [Sicherheit](#sicherheit)
-10. [Entwicklung](#entwicklung)
+6. [Protokoll](#protokoll)
+7. [Konfiguration](#konfiguration)
+8. [Sicherheit](#sicherheit)
+9. [Entwicklung](#entwicklung)
 
 ---
 
@@ -37,15 +34,14 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 
 | Bereich | Was du bekommst |
 |---|---|
-| Hörbuch-Eingang | Wartet, bis ein Ordner fertig kopiert ist, fügt MP3/M4A/FLAC/OGG/Opus/WMA (auch `CD1`/`CD2`-Unterordner) zu einer M4B mit sample-genauen Kapiteln zusammen |
+| Hörbuch-Eingang | Wartet, bis ein Ordner fertig kopiert ist, fügt MP3/M4A/FLAC/OGG/Opus/WMA (auch `CD1`/`CD2`-Unterordner) zu einer M4B mit sample-genauen, sauber benannten Kapiteln zusammen |
 | Erkennung | Audible-Suche in 10 Shops, bewertet nach Titel, Autor **und Laufzeit** (Lesung ≠ gekürzt ≠ Hörspiel); unsichere Treffer warten auf dich |
 | Tags & Dateien | Titel, Autor, Sprecher, Serie + Band, Genre, Verlag, Datum, Beschreibung, ASIN, Cover in voller Größe; `metadata.json` für Audiobookshelf |
 | Bibliothek | Alle Bücher durchsuchen, Ordner-Vorlage, nutzt vorhandene Autoren-/Serienordner, erkennt Doppelte, macht alte MP3-Bücher zu M4B und räumt die MP3s sicher weg |
 | Downloads | Schickt NZBs an SABnzbd, beobachtet die Kategorie, nach dem Download übernimmt der Eingang; Newznab-Suche optional |
 | Medienserver | Audiobookshelf und Plex lesen ihre Bibliothek nach dem Ablegen neu ein; Plex leert auf Wunsch den Papierkorb, damit ersetzte MP3s verschwinden |
-| Benachrichtigungen | ntfy-Push-Nachrichten, elf Ereignisse, jedes einzeln an oder aus |
+| Benachrichtigungen | ntfy-Push-Nachrichten, neun Ereignisse, jedes einzeln an oder aus |
 | Protokoll | Alles, was passiert ist – filterbar und als Datei herunterladbar, direkt in der App |
-| Umbenenner | Live-Vorschau, Konfliktprüfung, Rückgängig mit Verlauf, Voreinstellungen, Unterordner, Begleitdateien wandern mit |
 | Oberfläche | Deutsch / Englisch, helles / dunkles Design, Live-Updates ohne Neuladen |
 | Sicherheit | Eigenes schlankes ffmpeg 9 im Landlock-Käfig, CSRF-Schutz, Zugangsdaten erreichen nie den Browser ([SECURITY.de.md](SECURITY.de.md)) |
 
@@ -58,7 +54,6 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 1. **Docker → Add Container**, bei *Template* eintragen:
    `https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/better-renamer.xml`
 2. Pfade setzen:
-   * **Medien** (`/data`) – die Shares, die der Umbenenner anfassen darf, z. B. `/mnt/user/media/`
    * **Hörbuch-Eingang** (`/inbox`) – hier kommen neue Hörbücher an
    * **Hörbuch-Bibliothek** (`/audiobooks`) – die fertige Bibliothek (in Audiobookshelf/Plex einbinden)
 3. **Language / Sprache** wählen (`APP_LANGUAGE`: `de` oder `en`). PUID `99`, PGID `100`, UMASK `000` passen für Unraid schon.
@@ -214,70 +209,11 @@ Push-Nachrichten aufs Handy über [ntfy](https://ntfy.sh) – ntfy.sh oder ein e
 | Download an SABnzbd geschickt | aus |
 | Download in SABnzbd fertig | aus |
 | Download in SABnzbd fehlgeschlagen | an |
-| „Jetzt zu M4B“ fertig | aus |
-| „Jetzt zu M4B“ fehlgeschlagen | an |
 | Audiobookshelf-Scan fehlgeschlagen | an |
 | Plex-Scan fehlgeschlagen | an |
 
 Token und Passwort bleiben auf dem Server und werden bei geänderter Adresse nicht an einen anderen Server geschickt.
 Nachrichten kommen in der Sprache der Oberfläche.
-
----
-
-## Stapel-Umbenenner
-
-1. Links den Ordner wählen. Optionen: **Unterordner**, **Ordnernamen**, **Begleitdateien**, **„/“ = Ordner**,
-   **Konflikte nummerieren**.
-2. Regeln hinzufügen – sie wirken der Reihe nach; die Vorschau hebt jede Änderung hervor.
-3. Auswahl per Checkbox (Shift-Klick für Bereiche), Typ-Chips (Audio/Video/Bilder …) oder Filter.
-4. **Umbenennen** (⌘/Strg + Enter). **Rückgängig** (⌘/Strg + Z) oder über den **Verlauf** (die letzten 50 Vorgänge).
-
-Beispiel mit einer gemeinfreien Aufnahme: `der_schimmelreiter_kapitel1.mp3` → *Aufräumen* (`_` → Leerzeichen),
-*Groß-/Kleinschreibung* (Titel) und *Zahlen auffüllen* → `Der Schimmelreiter Kapitel01.mp3`. Mit der Vorlage-Regel
-`{track:2} - {title}` kommt der Name direkt aus den ID3-Tags.
-
-### Regeln
-
-| Gruppe | Regel | Was sie tut |
-|---|---|---|
-| Text | Text ersetzen | Suchen/Ersetzen, alle/erstes/letztes Vorkommen, ganzes Wort, Regex mit `$1`/`\1` |
-| | Text einfügen | Am Anfang, Ende, an Position oder vor/nach einem Text; Platzhalter erlaubt |
-| | Bereich entfernen | N Zeichen ab Position, oder alles vor/nach einem Text |
-| | Groß-/Kleinschreibung | Titel, Jedes Wort, Satz, GROSS, klein, umkehren; Ausnahmen wie „MP3, DJ“ |
-| | Kürzen | Auf N Zeichen, wahlweise an Wortgrenze oder vom Ende |
-| Zeichen | Aufräumen | `_ . %20` → Leerzeichen, Klammern/führende Ziffern weg, Umlaute → ae/oe/ue, Windows/SMB-sicher, trimmen |
-| | Zeichen/Wörter entfernen | Ziffern, Buchstaben, Satzzeichen, Nicht-ASCII, eigene Zeichen, Wortliste |
-| Position | Text verschieben | Treffer (auch Regex) an den Anfang/das Ende |
-| | Teile tauschen | „Künstler - Titel“ → „Titel - Künstler“ |
-| Nummern | Nummerieren | 1/a/A/I/i, Start, Schritt, Stellen, Präfix/Suffix, Position, pro Ordner neu |
-| | Zahlen auffüllen | „Track 1“ → „Track 01“ |
-| | Zahlen verschieben | Vorhandene Zahlen um ±N ändern |
-| Datum & Metadaten | Datum einfügen | Aufnahme (EXIF/Video/ID3), Änderung, Erstellung, heute – mit frei wählbarem Format |
-| | Vorlage / Metadaten | Name aus Platzhaltern bauen, z. B. `{track:2} - {title}` oder `{show} S{season:2}E{episode:2}` |
-| | Aus Liste | Eingefügte Liste: Zeile 1 für die erste Datei, Zeile 2 für die zweite … |
-| Endung | Dateiendung | klein/GROSS, vereinheitlichen (jpeg → jpg), ersetzen, anhängen, entfernen |
-
-Jede Regel kann eine **Bedingung** haben: nur anwenden, wenn der Name etwas enthält, auf eine Regex passt oder eine
-bestimmte Endung hat (auch umkehrbar).
-
-### Platzhalter
-
-| Platzhalter | Bedeutung |
-|---|---|
-| `{name}` `{original}` `{ext}` | aktueller Name, Originalname, Endung |
-| `{n}` `{n:3}` `{folder_n}` | laufende Nummer (aufgefüllt), Nummer innerhalb des Ordners |
-| `{folder}` `{parent}` | Ordner der Datei, Ordner darüber |
-| `{modified:%Y-%m-%d}` `{created:…}` `{taken:…}` `{now:…}` | Datumswerte mit beliebigem Format |
-| `{size}` `{bytes}` | Dateigröße |
-| `{title}` `{artist}` `{album}` `{album_artist}` `{track:2}` `{disc}` `{year}` `{genre}` `{composer}` `{duration}` `{bitrate}` | Audio |
-| `{resolution}` `{width}` `{height}` `{codec}` `{fps}` `{show}` `{season}` `{episode}` | Video |
-| `{camera}` `{make}` `{model}` `{lens}` `{iso}` `{fnumber}` `{exposure}` `{focal}` `{dimensions}` | Foto (JPEG, HEIC, RAW) |
-
-Formate hinter dem Doppelpunkt: Zahl = mit Nullen auffüllen, `upper` `lower` `title` `ascii`, `0-20` = Ausschnitt,
-bei Datumswerten ein strftime-Format. Das ⓘ neben einer Datei zeigt alle Platzhalter mit ihren Werten.
-
-**Jetzt zu M4B** im Umbenenner fügt die MP3s des geöffneten Ordners dort zu `<Ordner>.m4b` zusammen;
-**→ Bibliothek** schickt den Ordner durch die Hörbuch-Automatik und lässt die Originale unangetastet.
 
 ---
 
@@ -325,18 +261,9 @@ SQLite-Datenbank `/config/better-renamer.db` (Rechte 600).
 | `NICE` | `10` | CPU-Priorität von ffmpeg (0 = normal) |
 | `FFMPEG_SANDBOX` | `auto` | ffmpeg im Landlock-Käfig: `auto`, `require`, `off` |
 | `FFMPEG_MEMORY_MB` | `4096` | Speichergrenze je ffmpeg-Prozess |
-| `AUTO_CONVERT` | `true` | „Danach MP3 → M4B“ im Umbenenner standardmäßig an |
 | `AAC_BITRATE` | `auto` | `auto` (wie die Quelle, höchstens 128k) oder fester Wert |
 | `FORCE_MONO` | `false` | Mono ausgeben |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` oder `tag` |
-| `TITLE_SOURCE` | `folder` | `folder` oder `album` |
-| `OUTPUT_NAME` | `{folder}` | Name der M4B im Umbenenner, Platzhalter `{folder} {album} {artist}` |
-| `ORIGINALS` / `ORIGINALS_FOLDER` | `keep` / `_mp3` | MP3s nach „Jetzt zu M4B“: `keep`, `move`, `delete` |
-| `SIDECARS` / `SIDECAR_EXTS` | `true` / `xmp,srt,…` | Begleitdateien wandern mit ihrer Datei |
-| `CONFLICT` | `error` | `error` oder `number` („(2)“ anhängen) |
-| `ALLOW_SUBDIRS` | `false` | „/“ legt standardmäßig Ordner an |
-| `MAX_ITEMS` | `20000` | Obergrenze für Einträge in der Vorschau |
-| `SHOW_HIDDEN` | `false` | Versteckte Dateien anzeigen |
 | `AUTH_USER` / `AUTH_PASS` | – | Passwortschutz (Basic Auth) – empfohlen |
 | `ALLOW_PUBLIC` | `false` | Ohne Passwort nur Antworten an private Netze; `true` hebt das auf |
 | `ALLOWED_HOSTS` | – | Nur unter diesen Hostnamen/IPs antworten, z. B. `tower,192.168.1.10` |
@@ -366,7 +293,7 @@ npm ci && npm run build                         # TypeScript (frontend/src) -> a
 python3 -m unittest discover -s tests           # Python-Tests (brauchen ffmpeg, kein Netz)
 npm run check                                   # Typprüfung
 npx playwright install chromium && npx playwright test   # Durchklick-Tests gegen einen echten Server
-DATA_DIR=/tmp/data INBOX_DIR=/tmp/inbox LIBRARY_DIR=/tmp/lib CONFIG_DIR=/tmp/br PORT=8080 python3 app/main.py
+INBOX_DIR=/tmp/inbox LIBRARY_DIR=/tmp/lib CONFIG_DIR=/tmp/br PORT=8080 python3 app/main.py
 ```
 
 **Übersetzungen:** Deutsch ist die Ausgangssprache. Jeder Text der Oberfläche steht in `t("…")` (Python und
@@ -388,7 +315,6 @@ Typprüfung, Durchklick-Tests gegen den Quelltext und gegen das fertig gebaute D
 | Benachrichtigungen & Protokoll | `app/notify.py`, `app/applog.py` |
 | Medienserver | `app/abs.py`, `app/plex.py` |
 | Sprache | `app/i18n.py`, `app/static/i18n/en.json` |
-| Umbenennen | `app/rules.py`, `app/planner.py` |
 | Oberfläche | `frontend/src/*.ts`, `app/static/index.html`, `style.css`; Durchklick-Tests in `e2e/` |
 
 Inspiriert von den Open-Source-Projekten [auto-m4b](https://github.com/seanap/auto-m4b) und
