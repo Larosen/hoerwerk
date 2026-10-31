@@ -1,0 +1,26 @@
+# Parser for Hörwerk's security log (/config/logs/auth.log, one logfmt line per event):
+#   time=2026-10-31T17:02:03Z app=hoerwerk event=login_failed user="max" ip=203.0.113.7 reason=bad_password
+# Install on the CrowdSec agent that reads the lines:  /etc/crowdsec/parsers/s01-parse/hoerwerk-logs.yaml
+# The acquisition must set  labels: { type: hoerwerk }  (see acquis-hoerwerk.yaml).
+onsuccess: next_stage
+filter: "evt.Parsed.program == 'hoerwerk'"
+name: hoerwerk/hoerwerk-logs
+description: "Parse the Hörwerk security log (logins, account changes)"
+nodes:
+  - grok:
+      pattern: '^time=%{TIMESTAMP_ISO8601:timestamp} app=hoerwerk event=%{WORD:event}(?: user=(?:"%{DATA:user_quoted}"|%{NOTSPACE:user_plain}))?(?: ip=%{IP:source_ip})?(?: reason=%{WORD:reason})?.*$'
+      apply_on: message
+    statics:
+      - meta: log_type
+        expression: "evt.Parsed.event in ['login_failed', 'login_blocked'] ? 'hoerwerk_failed_auth' : 'hoerwerk_' + evt.Parsed.event"
+      - meta: source_ip
+        expression: "evt.Parsed.source_ip"
+      - meta: user
+        expression: "evt.Parsed.user_quoted != '' ? evt.Parsed.user_quoted : evt.Parsed.user_plain"
+      - meta: reason
+        expression: "evt.Parsed.reason"
+      - target: evt.StrTime
+        expression: "evt.Parsed.timestamp"
+statics:
+  - meta: service
+    value: hoerwerk

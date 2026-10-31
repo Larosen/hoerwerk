@@ -1,0 +1,11 @@
+# Vector on the VPS: receive the lines and write them where the CrowdSec agent reads them
+# (acquis-hoerwerk.yaml, variant B). Only listen on the tunnel address, never publicly.
+[sources.from_unraid]
+type = "vector"
+address = "TUNNEL-ADRESSE:6000"
+
+[sinks.hoerwerk_file]
+type = "file"
+inputs = ["from_unraid"]
+path = "/var/log/hoerwerk/auth.log"
+encoding.codec = "text"

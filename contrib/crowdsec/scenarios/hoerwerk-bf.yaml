@@ -1,0 +1,39 @@
+# Password guessing on the Hörwerk login: 5 failed logins from one IP within about 10 minutes.
+# (Hörwerk itself blocks an IP for 15 minutes after 5 failures – CrowdSec bans it at the edge, for longer.)
+type: leaky
+name: hoerwerk/hoerwerk-bf
+description: "Brute force on the Hörwerk login"
+filter: "evt.Meta.log_type == 'hoerwerk_failed_auth'"
+groupby: evt.Meta.source_ip
+capacity: 5
+leakspeed: 2m
+blackhole: 5m
+labels:
+  service: hoerwerk
+  confidence: 3
+  spoofable: 0
+  classification:
+    - attack.T1110
+  label: "Hörwerk brute force"
+  behavior: "http:bruteforce"
+  remediation: true
+---
+# Trying many different user names from one IP (looking for existing accounts).
+type: leaky
+name: hoerwerk/hoerwerk-user-enum
+description: "User enumeration on the Hörwerk login"
+filter: "evt.Meta.log_type == 'hoerwerk_failed_auth' && evt.Meta.reason == 'unknown_user'"
+groupby: evt.Meta.source_ip
+distinct: evt.Meta.user
+capacity: 3
+leakspeed: 10m
+blackhole: 10m
+labels:
+  service: hoerwerk
+  confidence: 3
+  spoofable: 0
+  classification:
+    - attack.T1589
+  label: "Hörwerk user enumeration"
+  behavior: "http:bruteforce"
+  remediation: true

@@ -438,3 +438,31 @@ dialog#logDialog { width: min(1000px, calc(100vw - 32px)); }
 .w-status.found { color: var(--accent); }
 .w-status.ok { color: var(--ok, var(--accent)); }
 .err-text { color: var(--err, #b42318); }
+
+/* Roles: what a family account doesn't see (the server refuses it anyway) */
+.role-user .admin-only, :root:not(.role-admin) .admin-only { display: none !important; }
+
+/* Login */
+.login-body { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--bg); }
+.login-card { width: min(380px, 100%); background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 8px 30px rgb(0 0 0 / .06); }
+.login-brand { display: flex; align-items: center; gap: 12px; }
+.login-brand h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+.login-brand p { margin: 0; }
+.login-form { display: flex; flex-direction: column; gap: 12px; }
+.login-form label:not(.check) { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.login-form input:not([type=checkbox]) { height: 38px; font-size: 15px; }
+.login-form .btn.primary { height: 40px; justify-content: center; }
+.setup-note { margin: 0; font-size: 13.5px; line-height: 1.45; }
+.login-error { margin: 0; color: var(--err); font-size: 13.5px; }
+
+/* Account & users */
+.session-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.session-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+dialog.wide { width: min(980px, calc(100vw - 32px)); }
+table.users { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.users th { text-align: left; font-weight: 550; color: var(--muted); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+table.users td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+table.users .c-check { text-align: center; }
+table.users input.quota { width: 70px; }
+table.users select { height: 28px; }

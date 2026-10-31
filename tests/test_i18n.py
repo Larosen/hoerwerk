@@ -81,7 +81,8 @@ class _Html(HTMLParser):
 
 def html_keys() -> set:
     p = _Html()
-    p.feed(open(os.path.join(ROOT, "app", "static", "index.html"), encoding="utf-8").read())
+    for page in ("index.html", "login.html"):
+        p.feed(open(os.path.join(ROOT, "app", "static", page), encoding="utf-8").read())
     return p.keys
 
 

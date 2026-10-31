@@ -32,9 +32,16 @@ function watchErrors(page: Page): string[] {
   return errors;
 }
 
-async function open(page: Page): Promise<string[]> {
+const ADMIN = { name: "admin", password: "e2e-admin-passwort" };
+const OWN = { "X-Requested-With": "Hoerwerk" };
+
+/** Sign in through the API (cookie lands in the page's context), then open the app. */
+async function open(page: Page, who: { name: string; password: string } = ADMIN): Promise<string[]> {
   const errors = watchErrors(page);
+  const res = await page.request.post("/api/auth/login", { headers: OWN, data: { ...who, remember: false } });
+  expect(res.status()).toBe(200);
   await page.goto("/");
+  if (who !== ADMIN) return errors;          // family accounts have no live connection
   await expect.poll(() => page.evaluate(() => live.ok), { message: "Live-Verbindung" }).toBe(true);
   return errors;
 }
@@ -168,4 +175,47 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
   await expect(page.locator("#searchQuery")).toHaveValue("Autorin Das stille Haus");
   await expect(page.locator("#bookPick")).toContainText("B0TEST0001");
   expect(errors).toEqual([]);
+});
+
+test("Anmeldung: falsches Passwort, dann richtig; ohne Anmeldung keine Daten", async ({ page, request }) => {
+  const errors = watchErrors(page);
+  expect((await request.get("/api/settings")).status()).toBe(401);
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/login$/);
+  const form = page.locator("#loginForm");
+  await form.getByLabel("Name").fill("admin");
+  await form.getByLabel("Passwort").fill("falsch-falsch-falsch");
+  await form.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page.locator("#loginError")).toHaveText("Name oder Passwort falsch");
+  await form.getByLabel("Passwort").fill(ADMIN.password);
+  await form.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("tab", { name: /Hörbücher/ })).toBeVisible();
+  await page.locator("#accountBtn").click();
+  await expect(page.locator("#sessionList")).toContainText("dieses Gerät");
+  await page.locator("#logoutBtn").click();
+  await expect(page).toHaveURL(/\/login$/);
+  expect(errors.filter((e) => !e.includes("401"))).toEqual([]);      // the failed login itself answers 401
+});
+
+test("Konten: Admin legt Familienkonto an, das sieht nur Entdecken", async ({ page, browser }) => {
+  const errors = await open(page);
+  await page.locator("#usersBtn").click();
+  await page.locator("#newUserName").fill("Eva");
+  await page.locator("#newUserPw").fill("evas-start-passwort");
+  await page.locator("#newUserSave").click();
+  await expect(page.locator("#userRows")).toContainText("Eva");
+  expect(errors).toEqual([]);
+
+  const eva = await browser.newPage();
+  const evaErrors = await open(eva, { name: "eva", password: "evas-start-passwort" });
+  await expect(eva.getByRole("tab", { name: "Entdecken" })).toHaveAttribute("aria-selected", "true");
+  for (const hidden of ["#settingsBtn", "#logBtn", "#usersBtn"]) await expect(eva.locator(hidden)).toBeHidden();
+  await expect(eva.getByRole("tab", { name: /Hörbücher/ })).toBeHidden();
+  await expect(eva.locator("#accountName")).toHaveText("Eva");
+  // the server refuses admin functions, whatever the page shows
+  expect((await eva.request.get("/api/sources")).status()).toBe(403);
+  expect((await eva.request.put("/api/settings", { headers: OWN, data: { language: "en" } })).status()).toBe(403);
+  expect(evaErrors.filter((e) => !e.includes("403"))).toEqual([]);
+  await eva.close();
 });
