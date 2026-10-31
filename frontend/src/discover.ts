@@ -51,11 +51,12 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
       b.rating ? el("span", { class: "rating", title: t("{n} Bewertungen bei Audible", { n: fmtCount(b.ratings || 0) }) },
         `★ ${b.rating.toFixed(1)}`, el("span", { class: "muted" }, ` (${fmtCount(b.ratings || 0)})`)) : null,
       facts ? el("span", { class: "muted small" }, facts) : null,
-      reason,
-      el("div", { class: "s-actions" },
-        el("button", { type: "button", class: "btn small primary", onclick: () => searchSuggestion(b) }, icon("search"), t("Suchen")),
-        requestButton(b),
-        b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null)));
+      reason),
+    // own row across the whole card (under cover and text), so the buttons never squeeze into the text column
+    el("div", { class: "s-actions" },
+      requestButton(b),
+      el("button", { type: "button", class: "btn small", onclick: () => searchSuggestion(b) }, icon("search"), t("Suchen")),
+      b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null));
 }
 
 /** Into the release search with this book picked (title, author and ASIN help later when tagging). */

@@ -105,8 +105,8 @@ function requestCard(r: BookRequest): HTMLLIElement {
       el("span", { class: "req-line" }, el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
         r.user && !r.mine ? el("span", { class: "muted small" }, t("von {name}", { name: r.user })) : null,
         el("span", { class: "muted small" }, fmtAgo(r.created))),
-      detail ? el("span", { class: "muted small req-detail", title: detail }, detail) : null,
-      actions.length ? el("div", { class: "s-actions" }, ...actions) : null));
+      detail ? el("span", { class: "muted small req-detail", title: detail }, detail) : null),
+    actions.length ? el("div", { class: "s-actions" }, ...actions) : null);
 }
 
 async function decide(r: BookRequest, what: "approve" | "decline" | "retry"): Promise<void> {
