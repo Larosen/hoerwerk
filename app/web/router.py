@@ -11,6 +11,12 @@ class HTTPException(Exception):
         self.status_code, self.detail = status, detail
 
 
+class File:
+    """A handler answer that is not JSON: bytes with their type (e.g. a cover image)."""
+    def __init__(self, body: bytes, ctype: str, max_age: int = 0) -> None:
+        self.body, self.ctype, self.max_age = body, ctype, max_age
+
+
 class Req:
     """What a handler gets: the app (services), parsed JSON body and query string."""
     def __init__(self, app, body, query: Dict[str, str]) -> None:

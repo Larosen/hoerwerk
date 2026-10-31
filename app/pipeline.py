@@ -20,6 +20,7 @@ import db as dbm
 import encoder
 import library
 import links
+import packs
 import providers as prov
 import tagger
 from meta import cache as meta_cache
@@ -89,6 +90,23 @@ def signature(path: str) -> Optional[tuple]:
     return (count, size, newest)
 
 
+_VOLUME_FOLDER = re.compile(r"(?i)\b(?:b(?:a|ä|ae)nde?|folgen?|vol(?:ume)?s?|books?|buch|episoden?|fall)\.?\s*\d")
+_DISC_WORD = re.compile(r"(?i)^\s*(?:cd|disc|disk|dvd|teil|part|tape|seite|side|mc|kassette)[\s_.-]*\d+\b")
+
+
+def are_discs(names: List[str]) -> bool:
+    """Subfolders that are parts of one book (CD1, CD2 / 01, 02) – not volumes of a series.
+
+    "01 - Todesurteil" and "02 - Kalte Asche" differ in more than the number: two books.
+    "Band 1"/"Folge 2" are always volumes; "CD1"/"Disc 2"/"Teil 3" are always parts of one book.
+    """
+    if any(_VOLUME_FOLDER.search(n) for n in names):
+        return False
+    if all(_DISC_WORD.match(n) for n in names):
+        return True
+    return len({re.sub(r"\d+", "#", n).strip().lower() for n in names}) == 1
+
+
 def book_units(path: str) -> List[str]:
     """Split an inbox entry into books.
 
@@ -109,7 +127,7 @@ def book_units(path: str) -> List[str]:
             and encoder.collect_audio(os.path.join(path, e))]
     if direct or not subs:
         return [path] if direct or subs else []
-    if all(DISC_RX.match(s) for s in subs):
+    if are_discs(subs):
         return [path]
     out: List[str] = []
     for s in subs:
@@ -125,7 +143,7 @@ class Job:
     KEYS = ("id", "source", "rel", "name", "origin", "status", "message", "progress", "files",
             "duration", "hints", "candidates", "match", "region", "m4b", "cover", "dest",
             "error", "log", "created", "updated", "converted_info", "duplicate", "dup_decision",
-            "chapter_names", "rename_files", "stage")
+            "chapter_names", "rename_files", "stage", "pack")
 
     def __init__(self, **kw) -> None:
         self.id = kw.get("id") or uuid.uuid4().hex[:10]
@@ -155,6 +173,7 @@ class Job:
         self.chapter_names: Optional[List[str]] = kw.get("chapter_names")  # user's names, one per file
         self.rename_files: bool = bool(kw.get("rename_files"))       # rename the tracks to them first
         self.stage: str = kw.get("stage") if kw.get("stage") in STAGES else "prepare"
+        self.pack: Optional[dict] = kw.get("pack")      # one volume of a multi-volume download
         self.cancel = False
         self.runner: Optional[encoder.Runner] = None
 
@@ -286,7 +305,7 @@ class Pipeline:
         raise KeyError(job_id)
 
     def add(self, source: str, origin: str = "manual", chapter_names: Optional[List[str]] = None,
-            rename_files: bool = False) -> Job:
+            rename_files: bool = False, pack: Optional[dict] = None) -> Job:
         """origin: inbox (watched folder), manual (from /data, originals untouched) or
         library (an older book in the library that gets converted and replaces itself)."""
         source = os.path.realpath(source)
@@ -301,7 +320,7 @@ class Pipeline:
             else:
                 rel = os.path.basename(source)
             job = Job(source=source, rel=rel, origin=origin, chapter_names=chapter_names,
-                      rename_files=rename_files)
+                      rename_files=rename_files, pack=pack)
             self.jobs.append(job)
             self._trim()
         self.save()
@@ -563,8 +582,7 @@ class Pipeline:
             units = book_units(path)
             if not units:
                 continue
-            for u in units:
-                added.append(self.add(u, origin="inbox"))
+            added += self._add_units(path, units)
             self.seen.pop(path, None)
         for p in list(self.seen):
             if p not in present:
@@ -586,7 +604,8 @@ class Pipeline:
                 self._prepare(job)
                 if job.match is None:
                     self._match(job)
-                job.stage, job.status = "convert", "queued"
+                if not self._skip_owned_volume(job):
+                    job.stage, job.status = "convert", "queued"
             elif stage == "convert":
                 self._convert(job)
                 job.stage = "finish"
@@ -675,7 +694,16 @@ class Pipeline:
             "duration": job.duration,
             "folder": name,
         }
-        grab = self.hint_provider(os.path.basename(job.source)) if self.hint_provider else None
+        if job.pack:
+            # One volume of a pack: author and series from the download, the title from this folder
+            pack = job.pack
+            title = packs.title_of(album or job.name, pack) or packs.title_of(job.name, pack)
+            author = pack.get("author") or job.hints["author"]
+            job.hints.update(title=title, author=author, series=pack.get("series") or "",
+                             series_position=pack.get("volume"),
+                             query=audible.clean_query(f"{title} {author}") or job.hints["query"])
+            job.say(t("Band {n} aus „{pack}“", n=pack.get("volume") or "?", pack=pack.get("name") or ""))
+        grab = self.hint_provider(os.path.basename(job.source)) if self.hint_provider and not job.pack else None
         if grab and grab.get("query"):
             # Downloaded via the search tab: what the user searched for beats the release name
             job.hints["query"] = audible.clean_query(grab["query"]) or grab["query"]
@@ -773,7 +801,7 @@ class Pipeline:
         book = job.match or {}
         if book.get("source") == "tags":
             # No lookup: keep what the files say, fill gaps from folder name
-            found = {k: v for k, v in tagger.read_book(job.m4b).items() if v}
+            found = {k: v for k, v in tagger.read_book(job.m4b).items() if v and not k.startswith("_")}
             book = {**book_from_hints(job), **found, "source": "tags"}
         # Already in the library? Ask (or follow the setting) instead of silently adding a "(2)"
         dup_mode = s.get("ab_duplicates", "ask")
@@ -921,19 +949,65 @@ class Pipeline:
         job.say(t("{n} Kapitel von Audible übernommen", n=len(chapters)))
 
     def _dispose_source(self, job: Job, s: dict) -> None:
-        if job.origin != "inbox" or not os.path.exists(job.source):
+        if job.origin == "inbox":
+            self._dispose_path(job.source, s)
+
+    def _dispose_path(self, path: str, s: dict) -> None:
+        """An inbox entry is done with: to ``_fertig`` (default) or deleted."""
+        if not os.path.exists(path):
             return
-        mode = s.get("ab_originals", "archive")
-        if mode == "delete":
-            if os.path.isdir(job.source):
-                shutil.rmtree(job.source, ignore_errors=True)
+        if s.get("ab_originals", "archive") == "delete":
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
             else:
-                os.remove(job.source)
+                os.remove(path)
         else:
-            target = _free_path(os.path.join(self.inbox, "_fertig", job.rel))
+            target = _free_path(os.path.join(self.inbox, "_fertig", os.path.relpath(path, self.inbox)))
             os.makedirs(os.path.dirname(target), exist_ok=True)
-            shutil.move(job.source, target)
-        _remove_empty_parents(os.path.dirname(job.source), self.inbox)
+            shutil.move(path, target)
+        _remove_empty_parents(os.path.dirname(path), self.inbox)
+
+    def _add_units(self, path: str, units: List[str]) -> List[Job]:
+        """Jobs for one inbox entry. A download with several volumes becomes one job per volume –
+        only the volumes chosen in the search, and (without a choice) none that are already owned."""
+        if units == [path]:
+            return [self.add(path, origin="inbox")]
+        name = os.path.basename(path)
+        info = packs.pack_info(name) or {}
+        grab = (self.hint_provider(name) if self.hint_provider else None) or {}
+        chosen = grab.get("volumes") if isinstance(grab.get("volumes"), list) else None
+        author = info.get("author") or grab.get("author") or ""
+        series = info.get("series") or ""
+        owned = self.index.series_owned(series, author) if self.index and series else {}
+        s = self.get_settings()
+        jobs: List[Job] = []
+        for u in units:
+            vol = packs.volume_of(os.path.basename(u), info)
+            if chosen is not None and vol is not None and vol not in chosen:
+                applog.info(t("Band {n} nicht ausgewählt – übersprungen", n=vol), name)
+                self._dispose_path(u, s)
+                continue
+            if chosen is None and vol is not None and vol in owned:
+                applog.info(t("Band {n} ist schon in der Bibliothek ({where}) – übersprungen", n=vol, where=owned[vol]), name)
+                self._dispose_path(u, s)
+                continue
+            jobs.append(self.add(u, origin="inbox", pack={
+                "name": name, "volume": vol, "series": series, "author": author, "chosen": chosen is not None}))
+        return jobs
+
+    def _skip_owned_volume(self, job: Job) -> bool:
+        """A pack volume Audible recognised as a book we already have: skip it before converting.
+        Volumes chosen in the search are processed anyway (the duplicate question comes at the end)."""
+        if not (job.pack and not job.pack.get("chosen") and job.match and job.match.get("title") and self.index):
+            return False
+        found = self.index.find(job.match)
+        if not found:
+            return False
+        self._dispose_source(job, self.get_settings())
+        self._cleanup_work(job)
+        job.status = "cancelled"
+        job.say(t("Übersprungen – schon in der Bibliothek: {where}", where=found[0]["path"]))
+        return True
 
     def _fail(self, job: Job, msg: str) -> None:
         job.status = "failed"

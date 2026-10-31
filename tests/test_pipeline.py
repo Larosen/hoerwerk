@@ -269,3 +269,79 @@ class PipelineTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg fehlt")
+class PackTest(unittest.TestCase):
+    """One download with several volumes: one book per volume, only the wanted ones."""
+    NAME = "Theodor Storm-Novellen 01 - 03-AUDIOBOOK-DE-GRP"
+
+    def setUp(self):
+        import library_index
+        import tagger
+        from meta import cache as meta_cache
+        self.root = tempfile.mkdtemp(prefix="pack-")
+        self.db = dbm.Database(os.path.join(self.root, "t.db"))
+        self.inbox = os.path.join(self.root, "inbox")
+        self.lib = os.path.join(self.root, "lib")
+        os.makedirs(self.inbox)
+        # volume 2 is already in the library (folder layout Author/Series/NN - Title)
+        tone(os.path.join(self.lib, "Theodor Storm", "Novellen", "02 - Pole Poppenspaeler", "a.mp3"), 0.5)
+        self.index = library_index.LibraryIndex(self.lib, self.db, read_m4b=tagger.read_book, probe=meta_cache.probe)
+        self.index.scan()
+        pack = os.path.join(self.inbox, self.NAME)
+        tone(os.path.join(pack, "01 - Immensee", "CD1", "a.mp3"), 2.0)        # CD folders: one book
+        tone(os.path.join(pack, "01 - Immensee", "CD2", "b.mp3"), 2.0)
+        tone(os.path.join(pack, "02 - Pole Poppenspaeler", "a.mp3"), 3.0)
+        tone(os.path.join(pack, "03 - Der Schimmelreiter", "a.mp3"), 4.0)
+        self.settings = {"ab_region": "de", "ab_match": "auto", "ab_threshold": 0.8, "bitrate": "auto",
+                         "ab_chapters": "files", "ab_originals": "archive", "ab_cover_source": "local"}
+        client = FakeClient([product("B0IMMENSEE", "Immensee", ["Theodor Storm"], 4.0),
+                             product("B0STORM001", "Der Schimmelreiter", ["Theodor Storm"], 4.0)])
+        self.p = pipeline.Pipeline(lambda: self.settings, self.db, self.inbox, self.lib,
+                                   os.path.join(self.inbox, ".work"), client=client, start=False, index=self.index)
+
+    def tearDown(self):
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def run_all(self):
+        jobs = self.p.scan_once(settle=0)
+        for j in jobs:
+            self.p.process(j)
+        return jobs
+
+    def test_each_volume_its_own_book_owned_ones_skipped(self):
+        jobs = self.run_all()
+        self.assertEqual([(j.pack["volume"], j.status) for j in jobs], [(1, "done"), (3, "done")], [j.log for j in jobs])
+        self.assertEqual(jobs[0].hints["author"], "Theodor Storm")      # from the release name, not the tags
+        self.assertEqual(jobs[0].hints["query"], "Immensee Theodor Storm")
+        books = [p for p in tree(self.lib) if p.endswith(".m4b")]
+        self.assertEqual(books, ["Theodor Storm/Der Schimmelreiter/Der Schimmelreiter.m4b",
+                                 "Theodor Storm/Immensee/Immensee.m4b"])
+        # volume 2 was not converted, only put aside with the other originals
+        self.assertIn(f"_fertig/{self.NAME}/02 - Pole Poppenspaeler/a.mp3", tree(self.inbox))
+
+    def test_only_the_volumes_chosen_in_the_search(self):
+        self.p.hint_provider = lambda folder: {"query": "Storm", "volumes": [2, 3]} if folder == self.NAME else None
+        jobs = self.run_all()
+        # 2 is owned but was chosen on purpose: it is processed (the duplicate question comes at the end)
+        self.assertEqual([j.pack["volume"] for j in jobs], [2, 3])
+        self.assertIn(f"_fertig/{self.NAME}/01 - Immensee/CD1/a.mp3", tree(self.inbox))
+
+    def test_owned_volume_recognised_by_audible_is_skipped_before_converting(self):
+        tone(os.path.join(self.lib, "Theodor Storm", "Immensee", "a.mp3"), 0.5,
+             tags={"album": "Immensee", "artist": "Theodor Storm"})
+        self.index.scan()
+        jobs = self.run_all()
+        first = jobs[0]
+        self.assertEqual((first.pack["volume"], first.status), (1, "cancelled"), first.log)
+        self.assertIn("schon in der Bibliothek", first.message)
+        self.assertIsNone(first.m4b)                                      # never converted
+
+    def test_disc_and_volume_folders(self):
+        self.assertTrue(pipeline.are_discs(["CD1", "CD2"]))
+        self.assertTrue(pipeline.are_discs(["01", "02"]))
+        self.assertTrue(pipeline.are_discs(["Teil 1", "Teil 2"]))
+        self.assertTrue(pipeline.are_discs(["Immensee CD1", "Immensee CD2"]))
+        self.assertFalse(pipeline.are_discs(["01 - Immensee", "02 - Pole Poppenspaeler"]))   # volumes, not discs
+        self.assertFalse(pipeline.are_discs(["Band 1", "Band 2"]))

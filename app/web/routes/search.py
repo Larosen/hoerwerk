@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 import audible
+import packs
 from abs import AbsError
 from plex import PlexError
 from usenet import UsenetError
@@ -65,6 +66,12 @@ def search_indexers(req: Req):
     index = req.app.library_index
     for r in res["results"]:
         r["owned"] = _owned(index.match_release(r["title"]))
+        pack = packs.pack_info(r["title"])
+        if pack:
+            # several volumes in one download: which of them are here already?
+            owned = index.series_owned(pack["series"], pack["author"])
+            r["pack"] = {**pack, "owned": {str(v): owned[v] for v in pack["volumes"] if v in owned}}
+            r["owned"] = None
     # what the user typed may already be in the library, even if no release name says so
     res["library"] = [{k: e.get(k) for k in ("path", "title", "authors", "format")}
                       for e in index.match_release(query, lenient=True)[:3]]
@@ -94,6 +101,11 @@ def search_books(req: Req):
 @route("POST", "/api/search/send")
 def send_to_sab(req: Req):
     hints = {k: req.get(k) for k in ("title", "author", "asin") if req.get(k)}
+    volumes = req.get("volumes")
+    if volumes is not None:
+        if not isinstance(volumes, list) or not volumes or not all(isinstance(v, int) and 0 <= v < 1000 for v in volumes):
+            raise HTTPException(400, t("Bitte mindestens einen Band auswählen"))
+        hints["volumes"] = sorted(set(volumes))
     try:
         res = req.app.usenet.send(req.get("id", ""), hints)
     except UsenetError as e:

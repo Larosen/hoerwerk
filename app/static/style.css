@@ -403,3 +403,12 @@ dialog#logDialog { width: min(1000px, calc(100vw - 32px)); }
 .log-line.error { background: var(--err-soft); }
 .log-line.error .log-level, .log-line.error .log-text { color: var(--err); }
 .log-empty { padding: 12px; font-family: var(--sans); }
+/* Packs (several volumes in one download) */
+.pack-note { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+.pack-note .tag { margin: 0; }
+.pack-volumes { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow: auto; }
+.pack-vol > .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pack-vol { white-space: normal; align-items: baseline; }
+.pack-vol.is-owned > span:first-of-type { color: var(--muted); }
+.thumb-wrap { position: relative; flex: none; display: inline-flex; }
+.thumb-wrap > .gen-tag { position: absolute; top: 4px; right: 4px; font-size: 8px; font-weight: 700; letter-spacing: .04em; padding: 0 3px; border-radius: 3px; background: rgba(0, 0, 0, .65); color: #fff; }

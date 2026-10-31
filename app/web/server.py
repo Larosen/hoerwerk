@@ -18,7 +18,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 import i18n
 from events import Stream
 from web import router
-from web.router import HTTPException, Req
+from web.router import File, HTTPException, Req
 import applog
 from i18n import t
 
@@ -77,7 +77,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         if length is not None:
             self.send_header("Content-Length", str(length))
-        self.send_header("Cache-Control", "no-store")
+        if "Cache-Control" not in (extra or {}):
+            self.send_header("Cache-Control", "no-store")
         for k, v in SECURITY_HEADERS.items():
             self.send_header(k, v)
         for k, v in (extra or {}).items():
@@ -214,6 +215,9 @@ class Handler(BaseHTTPRequestHandler):
             result = fn(Req(self.server.app, body, query), **params)
             if isinstance(result, Stream):
                 return self._stream(result)
+            if isinstance(result, File):
+                cache = f"private, max-age={result.max_age}" if result.max_age else "no-store"
+                return self._send(200, result.body, result.ctype, {"Cache-Control": cache})
             return self._json(200, result)
         except HTTPException as e:
             return self._json(e.status_code, {"error": e.detail})

@@ -116,7 +116,19 @@ Falsch einsortiert? **Korrigieren** holt das Buch aus der Bibliothek zurück in 
 
 **Hörbücher → Bibliothek** zeigt alle Bücher der Bibliothek, mit Suche über Titel, Autor, Serie und Ordner. Jede Zeile
 zeigt, wie das Buch gelesen wurde – Autor, weitere Namen aus Tags und Ordnern, Ordner und Format. Genau das nutzen auch
-die Doppelt-Prüfung und die Suche.
+die Doppelt-Prüfung und die Suche. Cover kommen aus `cover.jpg`/`folder.jpg` im Buchordner oder aus dem Bild in der
+Audiodatei; Bücher ohne Cover bekommen eine erzeugte Kachel.
+
+### Downloads mit mehreren Bänden
+
+Ein Download wie `Autor-Reihe 01 - 07-…` ist ein **Paket**: Jeder Band-Ordner wird ein eigenes Buch – einzeln
+zusammengefügt, erkannt und getaggt, mit Autor und Band-Nummer aus dem Release-Namen. Ordner wie `01 - Titel`,
+`02 - Titel` sind Bände; `CD1`/`CD2`, `Disc 1`, `Teil 1` oder nur `01`/`02` bleiben Teile eines Buchs.
+
+* In der **Suche** zeigt ein Paket seine Bände und welche davon du schon hast. **Download** fragt, welche Bände du
+  willst – vorhandene sind abgewählt. Nur die gewählten werden konvertiert, die anderen unkonvertiert weggeräumt.
+* Pakete, die nicht über die Suche kamen: Bände, die schon in der Bibliothek sind, werden automatisch übersprungen –
+  über Reihe und Band-Nummer, spätestens wenn Audible das Buch erkennt, immer vor dem Konvertieren.
 
 ### Doppelte vermeiden
 

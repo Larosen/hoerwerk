@@ -77,7 +77,7 @@ interface AudiobooksStatus {
 interface LibraryStats { books: number; m4b: number; other: number; last_scan: number | null; scanning: boolean }
 interface UnconvertedBook {
   path: string; title: string; authors: string[]; series: string | null; series_position: string | null;
-  files: number; format: string; job: { id: string; status: BookStatus } | null;
+  files: number; format: string; job: { id: string; status: BookStatus } | null; cover?: boolean;
 }
 interface Track { file: string; duration: number; auto: string; filename: string; tag: string }
 
@@ -94,6 +94,7 @@ interface Release {
   id: string; title: string; size: number; published: number | null; grabs: number | null; indexer: string;
   also?: string[]; details: string | null; format: string | null; language: string | null; bitrate: number | null;
   abridged: boolean; drama: boolean; owned: Owned | null;
+  pack?: { volumes: number[]; series: string; author: string; owned: Record<string, string> };
 }
 interface Download {
   name: string; status: string; progress: number; done: boolean; size: string; left: string;
@@ -181,6 +182,21 @@ function coverArt(title: string, author = "", tag = ""): HTMLDivElement {
     el("span", { class: "gen-initial" }, initial),
     last ? el("span", { class: "gen-author" }, last) : null,
     tag ? el("span", { class: "gen-tag" }, tag) : null);
+}
+
+/** The real cover of a library book (from its folder or audio file), the stand-in tile when there is none. */
+function libraryCover(path: string, title: string, author = "", tag = "", version: number | string = "",
+  hasCover = true): HTMLElement {
+  const fallback = (): HTMLDivElement => coverArt(title, author, tag);
+  if (!hasCover) return fallback();     // the library index knows: no request that can only fail
+  const img = el("img", {
+    class: "thumb", alt: "", loading: "lazy", decoding: "async",
+    src: `/api/library/cover?path=${encodeURIComponent(path)}${version ? "&v=" + encodeURIComponent(String(version)) : ""}`,
+  });
+  // MP3 & co.: keep the format visible on top of the picture
+  const node: HTMLElement = tag ? el("div", { class: "thumb-wrap" }, img, el("span", { class: "gen-tag" }, tag)) : img;
+  img.addEventListener("error", () => node.replaceWith(fallback()), { once: true });
+  return node;
 }
 
 const collator = new Intl.Collator(LANG, { numeric: true, sensitivity: "base" });
