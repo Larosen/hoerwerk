@@ -1,4 +1,4 @@
-"""Better Renamer – batch renamer plus audiobook pipeline (inbox -> M4B -> Audible tags -> library).
+"""Hörwerk – the audiobook workshop: inbox -> M4B -> Audible tags -> library.
 
 Start: ``python main.py``. The pieces:
   config.py      environment variables and default settings
@@ -23,7 +23,7 @@ def main() -> None:
     config = Config.from_env()
     app = create_app(config)
     server = make_server(app)
-    applog.info(f"Better Renamer {VERSION} läuft auf Port {config.port} – Eingang: {config.inbox}, Bibliothek: {config.library}")
+    applog.info(f"Hörwerk {VERSION} läuft auf Port {config.port} – Eingang: {config.inbox}, Bibliothek: {config.library}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

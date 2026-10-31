@@ -10,10 +10,10 @@ export UMASK
 
 if [ "$(id -u)" = "0" ]; then
     if ! getent group "$PGID" >/dev/null 2>&1; then
-        groupadd -o -g "$PGID" renamer
+        groupadd -o -g "$PGID" hoerwerk
     fi
     if ! getent passwd "$PUID" >/dev/null 2>&1; then
-        useradd -o -K UID_MIN=1 -K UID_MAX=2147483647 -u "$PUID" -g "$PGID" -d /config -M -s /usr/sbin/nologin renamer
+        useradd -o -K UID_MIN=1 -K UID_MAX=2147483647 -u "$PUID" -g "$PGID" -d /config -M -s /usr/sbin/nologin hoerwerk
     fi
     mkdir -p /config
     chown "$PUID:$PGID" /config 2>/dev/null || true
@@ -24,7 +24,7 @@ if [ "$(id -u)" = "0" ]; then
         fi
     done
     umask "$UMASK"
-    echo "Better Renamer: starte als UID $PUID / GID $PGID, umask $UMASK"
+    echo "Hörwerk: starte als UID $PUID / GID $PGID, umask $UMASK"
     exec setpriv --reuid="$PUID" --regid="$PGID" --clear-groups -- "$@"
 fi
 

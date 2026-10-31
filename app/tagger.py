@@ -59,7 +59,7 @@ def build_tags(book: dict, settings: dict) -> Dict[str, list]:
     desc = book.get("description") or ""
     tags: Dict[str, list] = {
         "©nam": [title], "©alb": [title], "©ART": [artist], "aART": [authors],
-        "stik": [2], "trkn": [(1, 1)], "disk": [(1, 1)], "©too": ["Better Renamer"],
+        "stik": [2], "trkn": [(1, 1)], "disk": [(1, 1)], "©too": ["Hörwerk"],
         "soal": [album_sort(book, title, subtitle)],
     }
     if narrators:

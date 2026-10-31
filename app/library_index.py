@@ -1,6 +1,6 @@
 """What is already in the library – so nothing gets downloaded or filed twice.
 
-The index covers the books Better Renamer filed (M4B with ASIN tags) and older
+The index covers the books Hörwerk filed (M4B with ASIN tags) and older
 collections: folders of MP3s/M4As/… are recognised by their tags or, failing
 that, by the usual "Author/Title" or "Author/Series/Title" folder layout.
 """

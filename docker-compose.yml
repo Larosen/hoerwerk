@@ -1,8 +1,8 @@
 services:
-  better-renamer:
+  hoerwerk:
     build: .
-    image: ghcr.io/larosen/rename_merge:latest
-    container_name: better-renamer
+    image: ghcr.io/larosen/hoerwerk:latest
+    container_name: hoerwerk
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true     # nothing in the container can gain privileges

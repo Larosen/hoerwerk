@@ -10,6 +10,7 @@ import db as dbm
 from abs import Audiobookshelf
 import tagger
 from config import Config, default_settings
+from discover import Discover
 from engine import Engine
 from events import EventBus
 from library_index import LibraryIndex
@@ -30,7 +31,7 @@ class App:
         self.config = config
         self.start_workers = start_workers
         os.makedirs(config.config_dir, exist_ok=True)
-        self.db = dbm.Database(os.path.join(config.config_dir, dbm.DB_NAME))
+        self.db = dbm.Database(dbm.db_path(config.config_dir))
         imported = dbm.import_legacy(self.db, config.config_dir)
         if imported:
             applog.info(f"Übernommen in die Datenbank: {', '.join(imported)}")
@@ -56,6 +57,7 @@ class App:
                                  on_filed=lambda dest: self._library_changed(), on_event=self._book_event)
         self.pipeline.providers = Providers(self.pipeline.client,
                                             enabled=lambda: bool(self.settings().get("ab_fallback", True)))
+        self.discover = Discover(self.db, self.pipeline.client, self.library_index, self.settings)
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
         self.events.provide("library", self.library_index.stats)
         self.downloads = DownloadWatcher(self.usenet, self.notifier, self.db)

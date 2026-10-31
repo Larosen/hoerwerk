@@ -205,7 +205,7 @@ async function api<T = unknown>(method: string, url: string, body?: unknown): Pr
   const res = await fetch(url, {
     method,
     // custom header = proof for the server that the request comes from this page (CSRF protection)
-    headers: { "X-Requested-With": "BetterRenamer", ...(body ? { "Content-Type": "application/json" } : {}) },
+    headers: { "X-Requested-With": "Hoerwerk", ...(body ? { "Content-Type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({})) as T & { error?: string };

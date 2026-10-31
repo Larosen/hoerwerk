@@ -1,20 +1,20 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <Name>better-renamer</Name>
-  <Repository>ghcr.io/larosen/rename_merge:latest</Repository>
-  <Registry>https://github.com/Larosen/rename_merge/pkgs/container/rename_merge</Registry>
+  <Name>hoerwerk</Name>
+  <Repository>ghcr.io/larosen/hoerwerk:latest</Repository>
+  <Registry>https://github.com/Larosen/rename_merge/pkgs/container/hoerwerk</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
   <Support>https://github.com/Larosen/rename_merge/issues</Support>
   <Project>https://github.com/Larosen/rename_merge</Project>
-  <Overview>Better Renamer – audiobook pipeline: put audiobooks into the inbox and they become one M4B with chapters (MP3, M4A, FLAC, OGG …, also CD1/CD2), are matched on Audible, tagged (title, author, narrator, series, cover, description) and filed as Author/Series/NN - Title for Audiobookshelf or Plex. Downloads via SABnzbd, push notifications via ntfy (you choose which events). UI in English or German (APP_LANGUAGE).&#xD;
+  <Overview>Hörwerk – the audiobook workshop: put audiobooks into the inbox and they become one M4B with chapters (MP3, M4A, FLAC, OGG …, also CD1/CD2), are matched on Audible, tagged (title, author, narrator, series, cover, description) and filed as Author/Series/NN - Title for Audiobookshelf or Plex. Downloads via SABnzbd, push notifications via ntfy (you choose which events). UI in English or German (APP_LANGUAGE).&#xD;
 &#xD;
-Better Renamer – Hörbuch-Automatik: Hörbücher in den Eingang legen, sie werden zu einer M4B mit Kapiteln, bei Audible erkannt, getaggt und als Autor/Serie/NN - Titel für Audiobookshelf oder Plex einsortiert. Downloads über SABnzbd, Push-Nachrichten über ntfy (Ereignisse frei wählbar). Oberfläche auf Deutsch oder Englisch (APP_LANGUAGE).</Overview>
+Hörwerk – die Hörbuch-Werkstatt: Hörbücher in den Eingang legen, sie werden zu einer M4B mit Kapiteln, bei Audible erkannt, getaggt und als Autor/Serie/NN - Titel für Audiobookshelf oder Plex einsortiert. Downloads über SABnzbd, Push-Nachrichten über ntfy (Ereignisse frei wählbar). Oberfläche auf Deutsch oder Englisch (APP_LANGUAGE).</Overview>
   <Category>MediaApp:Books MediaApp:Other Tools:</Category>
   <WebUI>http://[IP]:[PORT:8080]/</WebUI>
-  <TemplateURL>https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/better-renamer.xml</TemplateURL>
+  <TemplateURL>https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/hoerwerk.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/icon.png</Icon>
   <ExtraParams>--security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID</ExtraParams>
   <PostArgs/>
@@ -30,7 +30,7 @@ Better Renamer – Hörbuch-Automatik: Hörbücher in den Eingang legen, sie wer
   <Config Name="Erkennung" Target="MATCH_MODE" Default="auto|review|off" Mode="" Description="auto: eindeutige Treffer automatisch ablegen, unsichere prüfen · review: immer selbst prüfen · off: nur konvertieren und nach vorhandenen Tags ablegen" Type="Variable" Display="advanced" Required="false" Mask="false">auto</Config>
   <Config Name="Originale im Eingang" Target="INBOX_ORIGINALS" Default="archive|delete" Mode="" Description="Nach erfolgreicher Verarbeitung: nach _fertig verschieben oder löschen" Type="Variable" Display="advanced" Required="false" Mask="false">archive</Config>
   <Config Name="CPU-Kerne" Target="CPU_CORES" Default="" Mode="" Description="Parallele ffmpeg-Prozesse beim Konvertieren (leer = halbe Kernzahl)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
-  <Config Name="AppData" Target="/config" Default="/mnt/user/appdata/better-renamer" Mode="rw" Description="Datenbank mit Einstellungen, Verlauf, Hörbuch-Liste, Bibliotheks-Index und API-Keys (better-renamer.db)" Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/better-renamer</Config>
+  <Config Name="AppData" Target="/config" Default="/mnt/user/appdata/hoerwerk" Mode="rw" Description="Datenbank mit Einstellungen, Verlauf, Hörbuch-Liste, Bibliotheks-Index und API-Keys (hoerwerk.db)" Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/hoerwerk</Config>
   <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="Benutzer-ID für Dateizugriffe (Unraid: 99 = nobody)" Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
   <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Gruppen-ID für Dateizugriffe (Unraid: 100 = users)" Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
   <Config Name="UMASK" Target="UMASK" Default="000" Mode="" Description="Rechte neu angelegter Dateien (000 = rw für alle, wie bei Unraid-Shares üblich)" Type="Variable" Display="advanced" Required="false" Mask="false">000</Config>

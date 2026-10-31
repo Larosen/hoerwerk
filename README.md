@@ -1,4 +1,6 @@
-# Better Renamer
+# Hörwerk
+
+*The audiobook workshop for your NAS.*
 
 **English** · [Deutsch](README.de.md)
 
@@ -10,9 +12,11 @@ get sensible names along the way.
 Downloads go through **SABnzbd**, notifications through **ntfy** – you choose which events you hear about.
 The interface is available in **English and German**.
 
-> Better Renamer is a tool for organising audio files you are entitled to use – your own purchases, your own
+> Hörwerk is a tool for organising audio files you are entitled to use – your own purchases, your own
 > recordings or public-domain works (e.g. from [LibriVox](https://librivox.org)). It contains no media,
 > does not remove copy protection and is not affiliated with Audible, Amazon, Apple or any other service named here.
+
+> Formerly *Better Renamer*: up to version 4 the app also had a general batch renamer; since version 5 it is called Hörwerk and does audiobooks only. An existing database (`better-renamer.db`) is taken over automatically.
 
 ---
 
@@ -22,11 +26,12 @@ The interface is available in **English and German**.
 2. [Quick start](#quick-start)
 3. [Audiobooks](#audiobooks)
 4. [Downloads with SABnzbd](#downloads-with-sabnzbd)
-5. [Notifications (ntfy)](#notifications-ntfy)
-6. [Log](#log)
-7. [Configuration](#configuration)
-8. [Security](#security)
-9. [Development](#development)
+5. [Discover](#discover)
+6. [Notifications (ntfy)](#notifications-ntfy)
+7. [Log](#log)
+8. [Configuration](#configuration)
+9. [Security](#security)
+10. [Development](#development)
 
 ---
 
@@ -39,6 +44,7 @@ The interface is available in **English and German**.
 | Tags & files | Title, author, narrator, series + volume, genre, publisher, date, description, ASIN, full-size cover; `metadata.json` for Audiobookshelf |
 | Library | Browse and search every book, folder template, reuses existing author/series folders, detects duplicates, converts old MP3 books to M4B and removes the MP3s safely |
 | Downloads | Sends NZBs to SABnzbd, watches the category, the inbox takes over when the download is done; optional Newznab search |
+| Discover | Suggestions matching your library, by genre and from Deutschlandfunk Kultur's book reviews – well-rated, unabridged, not owned yet; one click searches the book |
 | Media servers | Audiobookshelf and Plex rescan their library after filing; Plex can empty its trash so replaced MP3s vanish |
 | Notifications | ntfy push messages, nine events, each one on or off |
 | Log | Everything that happened, filterable and downloadable, right in the app |
@@ -52,7 +58,7 @@ The interface is available in **English and German**.
 ### Unraid
 
 1. **Docker → Add Container**, enter as *Template*:
-   `https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/better-renamer.xml`
+   `https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/hoerwerk.xml`
 2. Set the paths:
    * **Hörbuch-Eingang** (`/inbox`) – where new audiobooks arrive
    * **Hörbuch-Bibliothek** (`/audiobooks`) – the finished library (add it to Audiobookshelf/Plex)
@@ -63,7 +69,7 @@ Icon: the template loads it from GitHub. If your copy of the repository is priva
 set **Icon URL** to `http://<unraid-ip>:8080/static/icon.png` instead; the container serves its own logo
 (the only file it answers without a password).
 
-Image: `ghcr.io/larosen/rename_merge:latest` (amd64 + arm64, rebuilt weekly for security updates).
+Image: `ghcr.io/larosen/hoerwerk:latest` (amd64 + arm64, rebuilt weekly for security updates).
 
 ### Any other Docker host
 
@@ -174,7 +180,7 @@ Optional, under **Search → Set up**: Plex address (e.g. `http://192.168.1.10:3
 (chosen automatically when testing if it is clear which one). After filing or converting, Plex rescans that library.
 
 **Converted books showing up twice** (M4B and the old MP3s): Plex keeps entries of removed files as “unavailable”
-until its trash is emptied. Tick **Then empty the library's trash** – after the scan Better Renamer empties the trash
+until its trash is emptied. Tick **Then empty the library's trash** – after the scan Hörwerk empties the trash
 of this one library, and the old MP3 entries disappear.
 
 Token: in Plex Web open any item → **…** → **Get Info** → **View XML**; the value after `X-Plex-Token=` in the address.
@@ -186,7 +192,7 @@ Token: in Plex Web open any item → **…** → **Get Info** → **View XML**; 
 You only need SABnzbd; searching is optional.
 
 1. In SABnzbd create a category, e.g. `audiobooks`, whose folder is the one mounted as **audiobook inbox** (`/inbox`).
-2. In Better Renamer: **Search → Set up** → SABnzbd address, API key (SABnzbd → Config → General) and category.
+2. In Hörwerk: **Search → Set up** → SABnzbd address, API key (SABnzbd → Config → General) and category.
 3. Everything SABnzbd finishes in that category flows through M4B → Audible → library automatically. The
    **Downloads** list shows progress and history of the category.
 
@@ -200,13 +206,38 @@ to **Abort**.
 
 ---
 
+## Discover
+
+The **Discover** tab suggests new audiobooks:
+
+* **For you** – titles Audible listeners connect with the (up to 30 newest) books in your library. The more of your
+  books point to the same title, the higher it ranks; "Goes with …" names them.
+* **By genre** – best sellers and new releases of an Audible genre; the chosen genre is remembered.
+* **From the critics** – books from Deutschlandfunk Kultur's "Buchkritik" RSS feed that exist as an audiobook on Audible
+  (same title, same author), with a link to the review.
+
+**Search** on a card jumps to the *Search* tab with the book already picked (title, author and ASIN help with tagging later).
+
+**Quality rules** (*Settings → Discover*): minimum rating (default 4.3 stars) and number of ratings (50), unabridged only,
+German only, no erotica, nothing already in the library. Books from the critics skip the rating rule – they are often new.
+
+**To be honest:** no software can reliably check whether a non-fiction book is accurate – ratings only measure
+popularity. So by default non-fiction comes **only from the editorial source** (the critics), never from best-seller
+lists; non-fiction genres stay hidden until you allow them in the settings. BookBeat and Perlentaucher are not
+connected: BookBeat has no open API, Perlentaucher no feed that may be used.
+
+Lists are put together in the background, refreshed at most once a day (or with **Refresh**) and cached in the database.
+Outbound connections: only the Audible API of the chosen store and `www.deutschlandfunkkultur.de` (HTTPS).
+
+---
+
 ## Notifications (ntfy)
 
 Push messages to your phone via [ntfy](https://ntfy.sh) – ntfy.sh or your own server.
 
 1. Install the ntfy app and subscribe to a topic, e.g. `audiobooks-1234`.
 2. **⚙︎ Settings → Notifications (ntfy)**: server, topic, optionally an access token (or user + password) and
-   priority. *Address of this UI* makes tapping a message open Better Renamer.
+   priority. *Address of this UI* makes tapping a message open Hörwerk.
 3. Tick the events you want and click **Send test message**.
 
 | Event | Default |
@@ -230,7 +261,7 @@ Messages use the language of the interface.
 
 **Log** in the top bar shows what happened: books found, converted, matched and filed, media server scans, warnings
 and errors. Filter by level or text, follow it live, download it as a file. The same lines are in the container log
-(`docker logs better-renamer`).
+(`docker logs hoerwerk`).
 
 ---
 
@@ -238,7 +269,7 @@ and errors. Filter by level or text, follow it live, download it as a file. The 
 
 Almost everything can be changed in **⚙︎ Settings**; the environment only provides the starting values.
 Settings, presets, history, the audiobook list, the library index and all credentials live in the SQLite database
-`/config/better-renamer.db` (permissions 600).
+`/config/hoerwerk.db` (permissions 600).
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -264,6 +295,9 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `NARRATOR_IN_ARTIST` | `false` | Narrator also in the artist tag |
 | `KEEP_SERIES_IN_TITLE` | `true` | Keep “…, Band 3” in the title |
 | `WRITE_DESC` / `WRITE_READER` / `WRITE_COVER` | `true` | Write `desc.txt`, `reader.txt`, `cover.jpg` |
+| `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Discover: minimum rating and number of ratings |
+| `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Discover: unabridged only / German only |
+| `DISCOVER_NONFICTION_STORE` | `false` | Discover: non-fiction from Audible lists too |
 | `CPU_CORES` | half the cores | Parallel ffmpeg processes per book |
 | `ENCODE_WORKERS` | `1` | Books encoded at the same time |
 | `IO_WORKERS` | `2` | Parallel matching/tagging/filing steps |
@@ -324,6 +358,7 @@ sandbox), type check, click-through tests against the source and against the bui
 | Library & downloads | `app/library.py`, `app/library_index.py`, `app/usenet.py` |
 | Notifications & log | `app/notify.py`, `app/applog.py` |
 | Media servers | `app/abs.py`, `app/plex.py` |
+| Discover | `app/discover.py`, `frontend/src/discover.ts` |
 | Language | `app/i18n.py`, `app/static/i18n/en.json` |
 | Interface | `frontend/src/*.ts`, `app/static/index.html`, `style.css`; E2E tests in `e2e/` |
 

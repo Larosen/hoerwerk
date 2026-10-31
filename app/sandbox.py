@@ -11,7 +11,7 @@ which, before it executes ffmpeg:
 * lowers the CPU priority (``NICE``).
 
 The ffmpeg built for the Docker image has no network code at all and only the audio
-formats Better Renamer reads (``docker/build-ffmpeg.sh``) – the jail is the second wall.
+formats Hörwerk reads (``docker/build-ffmpeg.sh``) – the jail is the second wall.
 
 ``FFMPEG_SANDBOX``: ``auto`` (default: jail when the kernel supports it), ``require``
 (refuse to run ffmpeg without it), ``off``.

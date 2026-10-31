@@ -69,7 +69,7 @@ class _NoRedirect(request.HTTPRedirectHandler):
 
 def _post(url: str, body: dict, headers: dict, timeout: float = 10) -> None:
     req = request.Request(url, data=json.dumps(body, ensure_ascii=False).encode(), method="POST",
-                          headers={"Content-Type": "application/json", "User-Agent": "BetterRenamer/4", **headers})
+                          headers={"Content-Type": "application/json", "User-Agent": "Hoerwerk/5", **headers})
     try:
         with request.build_opener(_NoRedirect).open(req, timeout=timeout) as resp:
             resp.read(64 * 1024)
@@ -175,7 +175,7 @@ class Notifier:
     def test(self) -> str:
         if not self.configured():
             raise NotifyError(t("ntfy ist noch nicht eingerichtet (Adresse und Topic)"))
-        self._send_now("filed", t("Better Renamer: Test"), t("Benachrichtigungen funktionieren."), priority=3)
+        self._send_now("filed", t("Hörwerk: Test"), t("Benachrichtigungen funktionieren."), priority=3)
         self.last_error = None
         return t("Testnachricht gesendet")
 

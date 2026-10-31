@@ -2,7 +2,7 @@
 
 [English](SECURITY.md) · **Deutsch**
 
-Stand: Security-Review vom 30.10.2026 (Version 4.1: ntfy-Benachrichtigungen, Deutsch/Englisch). Better Renamer verarbeitet Dateien aus fremden Quellen
+Stand: Security-Review vom 30.10.2026 (Version 4.1: ntfy-Benachrichtigungen, Deutsch/Englisch). Hörwerk verarbeitet Dateien aus fremden Quellen
 (Downloads über SABnzbd), fragt externe Dienste ab (Audible, Audnexus, BookBeat, Thalia, optional ein Indexer, SABnzbd, Audiobookshelf, ntfy)
 und hat eine Weboberfläche mit Schreibzugriff auf deine Shares. Hier steht, wovor das Programm sich
 schützt, was dafür geprüft wurde und was du selbst tun solltest.
@@ -29,9 +29,9 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 
 | Angriff | Schutz |
 |---|---|
-| Datei mit Audio-Endung, die in Wahrheit eine Playlist (HLS) oder ein Concat-Skript ist und ffmpeg lokale Dateien (z. B. `/config/better-renamer.db`) oder URLs lesen lässt | ffmpeg/ffprobe lesen Download-Dateien nur mit `-protocol_whitelist file` und `-format_whitelist` auf echte Audio-Demuxer (mp3, mov/m4a/m4b, aac, flac, ogg, wav, aiff, asf, matroska, ape, wv …). Playlists, Concat, Bildsequenzen, Netzprotokolle sind gesperrt. Getestet (`test_security.py`). |
+| Datei mit Audio-Endung, die in Wahrheit eine Playlist (HLS) oder ein Concat-Skript ist und ffmpeg lokale Dateien (z. B. `/config/hoerwerk.db`) oder URLs lesen lässt | ffmpeg/ffprobe lesen Download-Dateien nur mit `-protocol_whitelist file` und `-format_whitelist` auf echte Audio-Demuxer (mp3, mov/m4a/m4b, aac, flac, ogg, wav, aiff, asf, matroska, ape, wv …). Playlists, Concat, Bildsequenzen, Netzprotokolle sind gesperrt. Getestet (`test_security.py`). |
 | Lücke in ffmpeg | **Eigenes ffmpeg 9** mit nur den nötigen Audio-Formaten, ohne jeglichen Netzwerk-Code, ohne Fremdbibliotheken, gehärtet gebaut (PIE, RELRO, Stack-Schutz). Jeder ffmpeg/ffprobe-Aufruf läuft zusätzlich in einem **Landlock-Käfig**: lesen nur die Dateien dieses Aufrufs, schreiben nur ins Arbeitsverzeichnis, keine TCP-Verbindungen; dazu `no_new_privs`, Speicher-/Dateigrößen-Grenzen, keine Core-Dumps. Selbst ein ausgenutzter Fehler kommt so nicht an `/config` (API-Keys) oder die Bibliothek. Getestet (`test_sandbox.py`); die CI lässt die ganze Testsuite mit genau diesem ffmpeg und Pflicht-Käfig laufen. Hängende Prozesse werden nach 6 h beendet. |
-| Symlinks im Download (`cover.jpg → /config/better-renamer.db`, Ordner-Link nach `/`) | Symlinks werden beim Einlesen komplett ignoriert (Audio, Cover, `chapters.txt`, `metadata.yml`, Unterordner, Eingangs-Einträge) und im Protokoll als verdächtig gemeldet. |
+| Symlinks im Download (`cover.jpg → /config/hoerwerk.db`, Ordner-Link nach `/`) | Symlinks werden beim Einlesen komplett ignoriert (Audio, Cover, `chapters.txt`, `metadata.yml`, Unterordner, Eingangs-Einträge) und im Protokoll als verdächtig gemeldet. |
 | `.exe`, `.bat`, `.lnk`, Skripte usw. (typisch für Fake-Releases) | Werden nie ausgeführt und nie in die Bibliothek übernommen – dort landen nur die erzeugte M4B, `cover.jpg`, `desc.txt`, `reader.txt`, `metadata.json`. Der Fund steht als ⚠ im Protokoll des Buchs. |
 | Pfad-Tricks in Tags/Namen (`../../etc`, `/`, `:`) | Bibliothekspfade entstehen nur aus bereinigten Einzelteilen (keine Trenner, kein `..`, keine Steuerzeichen, max. 180 Byte); getestet. |
 | `metadata.yml`-Bombe (YAML-Anker) oder riesige Text-Dateien | `yaml.safe_load`, Anker/Aliase werden abgelehnt, `metadata.yml`/`chapters.txt` max. 512 KB. |
@@ -47,10 +47,11 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 | Indexer-XML mit DTD/Entities (Billion Laughs, XXE) | Antworten mit `<!DOCTYPE`/`<!ENTITY` werden abgelehnt; Pythons XML-Parser lädt ohnehin keine externen Entities. |
 | `javascript:`-Links aus fremden Daten (Indexer-Details, Shop-Seiten) | Server lässt nur `http(s)`-Links durch, die Oberfläche filtert `href`/`src` zusätzlich zentral. |
 | ntfy-Token/Passwort | Nur auf dem Server, nie an den Browser (die Oberfläche sieht nur „gespeichert“), bei geänderter Server-Adresse nicht mitgenommen. Weiterleitungen werden nicht verfolgt. Adresse nur `http(s)` ohne `benutzer:passwort@`, Topic nur `A–Z a–z 0–9 - _`. Nachrichten gehen als JSON (keine Header-Injection über Buchtitel); der „Öffnen“-Link ist nur die selbst eingetragene `http(s)`-Adresse. |
-| Plex-Token | Wie der Audiobookshelf-Token: nur auf dem Server, nie an den Browser, bei geänderter Adresse nicht mitgenommen, keine Weiterleitungen, kein `benutzer:passwort@` in der Adresse. Better Renamer bittet Plex nur um Neu-Einlesen und (wenn angehakt) ums Leeren des Papierkorbs der einen gewählten Mediathek. |
+| Plex-Token | Wie der Audiobookshelf-Token: nur auf dem Server, nie an den Browser, bei geänderter Adresse nicht mitgenommen, keine Weiterleitungen, kein `benutzer:passwort@` in der Adresse. Hörwerk bittet Plex nur um Neu-Einlesen und (wenn angehakt) ums Leeren des Papierkorbs der einen gewählten Mediathek. |
 | Audiobookshelf-Token | Wie die Indexer-Keys: nur auf dem Server, nie an den Browser, bei geänderter Adresse nicht mitgenommen. Weiterleitungen werden nicht verfolgt, damit der Token nie bei einem anderen Server landet. |
+| Entdecken | Nur feste Adressen über HTTPS: die Audible-API und `www.deutschlandfunkkultur.de` (RSS, max. 4 MB, keine Weiterleitung woandershin, Feeds mit DTD/Entities werden abgelehnt). Links zur Kritik werden nur als `https://` angezeigt. Vorschläge lösen nie selbst einen Download aus. |
 | Weitere Metadaten-Quellen | Nur feste Adressen über HTTPS: `api.audnex.us`, `itunes.apple.com`, `openlibrary.org` (dazu wie bisher Audible, BookBeat, Thalia). Treffer daraus werden nie automatisch übernommen. |
-| Abgreifen von API-Keys | Keys liegen nur in der Datenbank `/config/better-renamer.db` (Rechte 600), werden nie an den Browser geschickt, ebenso wenig NZB-Links (enthalten den Indexer-Key). Ändert sich die Adresse eines Indexers oder von SABnzbd, wird der gespeicherte Key **nicht** mitgenommen – er muss neu eingegeben werden. Fehlermeldungen werden von Keys bereinigt. |
+| Abgreifen von API-Keys | Keys liegen nur in der Datenbank `/config/hoerwerk.db` (Rechte 600), werden nie an den Browser geschickt, ebenso wenig NZB-Links (enthalten den Indexer-Key). Ändert sich die Adresse eines Indexers oder von SABnzbd, wird der gespeicherte Key **nicht** mitgenommen – er muss neu eingegeben werden. Fehlermeldungen werden von Keys bereinigt. |
 | Ordnername eines Downloads kollidiert mit internen Ordnern (`.work`) | Der Name, den SABnzbd bekommt, wird bereinigt (keine Pfade, keine versteckten Namen). |
 | TLS | Zertifikate werden immer geprüft (Python-Standard). SABnzbd/Indexer/ntfy im LAN dürfen `http` sein – dann gehen deren Keys unverschlüsselt durchs Heimnetz. |
 
@@ -97,7 +98,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 Geprüfte Schnittstellen: Audiobookshelf 2.37 (`metadata.json`, Bibliotheks-Scan), SABnzbd 5.1 (`addurl`, `queue`, `history`, `get_cats`), ntfy 2.35 (JSON-Publish, Token/Basic-Auth).
 
 **ffmpeg:** Bis Version 3 kam ffmpeg 7.1.5 aus Debian stable; dafür listete OSV 40 offene CVEs (fast alle in
-Teilen, die Better Renamer nicht nutzt). Seit Version 4 baut das Image ffmpeg 9.0.2 selbst
+Teilen, die Hörwerk nicht nutzt). Seit Version 4 baut das Image ffmpeg 9.0.2 selbst
 (`docker/build-ffmpeg.sh`): nur die Audio-Container und -Decoder, die vorkommen, AAC als einziger Encoder,
 ffprobe/ffmpeg dürfen nur die Audio-Container öffnen (Whitelist). Videodecoder, Filter außer
 Resampling, Streaming-Protokolle (HLS, DASH, RTSP …), Geräte und Fremdbibliotheken sind gar nicht im

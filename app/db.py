@@ -16,7 +16,22 @@ import time
 from contextlib import contextmanager
 from typing import Any, Iterator, List, Optional
 
-DB_NAME = "better-renamer.db"
+DB_NAME = "hoerwerk.db"
+OLD_DB_NAMES = ("better-renamer.db",)       # the app was called "Better Renamer" up to version 4
+
+
+def db_path(config_dir: str) -> str:
+    """Path of the database; a database from before the rename is taken over (moved, with its WAL files)."""
+    path = os.path.join(config_dir, DB_NAME)
+    if not os.path.exists(path):
+        for old in OLD_DB_NAMES:
+            old_path = os.path.join(config_dir, old)
+            if os.path.exists(old_path):
+                for suffix in ("", "-wal", "-shm"):
+                    if os.path.exists(old_path + suffix):
+                        os.replace(old_path + suffix, path + suffix)
+                break
+    return path
 
 MIGRATIONS: List[str] = [
     # 1: everything that used to be a JSON file

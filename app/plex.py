@@ -2,7 +2,7 @@
 
 Plex's own folder watcher often misses changes on network shares (Unraid user
 shares) – then a converted book shows up twice: the new M4B *and* the old MP3s,
-which are gone on disk but still in Plex. After filing, Better Renamer asks Plex
+which are gone on disk but still in Plex. After filing, Hörwerk asks Plex
 to refresh the library section; optionally it then empties Plex's trash so the
 old, no longer existing entries disappear at once.
 """
@@ -44,8 +44,8 @@ class _NoRedirect(request.HTTPRedirectHandler):
 
 def _call(method: str, url: str, token: str, timeout: float = 15) -> dict:
     req = request.Request(url, method=method, headers={
-        "X-Plex-Token": token, "Accept": "application/json", "User-Agent": "BetterRenamer/4",
-        "X-Plex-Product": "Better Renamer", "X-Plex-Client-Identifier": "better-renamer"})
+        "X-Plex-Token": token, "Accept": "application/json", "User-Agent": "Hoerwerk/5",
+        "X-Plex-Product": "Hoerwerk", "X-Plex-Client-Identifier": "hoerwerk"})
     try:
         with request.build_opener(_NoRedirect).open(req, timeout=timeout) as resp:
             body = resp.read(4 * 1024 * 1024)
