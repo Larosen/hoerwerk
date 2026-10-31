@@ -1,4 +1,4 @@
-# Stage 1: our own minimal FFmpeg 9 – only the audio formats Better Renamer reads, AAC/M4B output,
+# Stage 1: our own minimal FFmpeg 9 – only the audio formats Hörwerk reads, AAC/M4B output,
 # no network code, no external libraries, hardened toolchain (docker/build-ffmpeg.sh).
 # Source: official FFmpeg repository (GitHub mirror), release tag pinned to its commit.
 FROM debian:trixie-slim AS ffmpeg
@@ -52,7 +52,7 @@ RUN mkdir -p /config /inbox /audiobooks && chmod +x /entrypoint.sh
 VOLUME ["/config", "/inbox", "/audiobooks"]
 EXPOSE 8080
 
-LABEL org.opencontainers.image.title="Better Renamer" \
+LABEL org.opencontainers.image.title="Hörwerk" \
       org.opencontainers.image.description="Hörbuch-Automatik: Eingang -> M4B mit Kapiteln -> Audible-Tags -> Bibliothek (Audiobookshelf, Plex)" \
       org.opencontainers.image.source="https://github.com/Larosen/rename_merge" \
       net.unraid.docker.webui="http://[IP]:[PORT:8080]/" \

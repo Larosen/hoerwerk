@@ -26,7 +26,7 @@ from i18n import t
 
 NEWZNAB_NS = "{http://www.newznab.com/DTD/2010/feeds/attributes/}"
 DEFAULT_CATEGORIES = "3030"          # Newznab: Audio > Audiobook
-USER_AGENT = "BetterRenamer/3"
+USER_AGENT = "Hoerwerk/5"
 
 
 class UsenetError(Exception):

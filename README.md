@@ -1,4 +1,6 @@
-# Better Renamer
+# Hörwerk
+
+*The audiobook workshop for your NAS.*
 
 **English** · [Deutsch](README.de.md)
 
@@ -10,9 +12,11 @@ get sensible names along the way.
 Downloads go through **SABnzbd**, notifications through **ntfy** – you choose which events you hear about.
 The interface is available in **English and German**.
 
-> Better Renamer is a tool for organising audio files you are entitled to use – your own purchases, your own
+> Hörwerk is a tool for organising audio files you are entitled to use – your own purchases, your own
 > recordings or public-domain works (e.g. from [LibriVox](https://librivox.org)). It contains no media,
 > does not remove copy protection and is not affiliated with Audible, Amazon, Apple or any other service named here.
+
+> Formerly *Better Renamer*: up to version 4 the app also had a general batch renamer; since version 5 it is called Hörwerk and does audiobooks only. An existing database (`better-renamer.db`) is taken over automatically.
 
 ---
 
@@ -52,7 +56,7 @@ The interface is available in **English and German**.
 ### Unraid
 
 1. **Docker → Add Container**, enter as *Template*:
-   `https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/better-renamer.xml`
+   `https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/hoerwerk.xml`
 2. Set the paths:
    * **Hörbuch-Eingang** (`/inbox`) – where new audiobooks arrive
    * **Hörbuch-Bibliothek** (`/audiobooks`) – the finished library (add it to Audiobookshelf/Plex)
@@ -63,7 +67,7 @@ Icon: the template loads it from GitHub. If your copy of the repository is priva
 set **Icon URL** to `http://<unraid-ip>:8080/static/icon.png` instead; the container serves its own logo
 (the only file it answers without a password).
 
-Image: `ghcr.io/larosen/rename_merge:latest` (amd64 + arm64, rebuilt weekly for security updates).
+Image: `ghcr.io/larosen/hoerwerk:latest` (amd64 + arm64, rebuilt weekly for security updates).
 
 ### Any other Docker host
 
@@ -174,7 +178,7 @@ Optional, under **Search → Set up**: Plex address (e.g. `http://192.168.1.10:3
 (chosen automatically when testing if it is clear which one). After filing or converting, Plex rescans that library.
 
 **Converted books showing up twice** (M4B and the old MP3s): Plex keeps entries of removed files as “unavailable”
-until its trash is emptied. Tick **Then empty the library's trash** – after the scan Better Renamer empties the trash
+until its trash is emptied. Tick **Then empty the library's trash** – after the scan Hörwerk empties the trash
 of this one library, and the old MP3 entries disappear.
 
 Token: in Plex Web open any item → **…** → **Get Info** → **View XML**; the value after `X-Plex-Token=` in the address.
@@ -186,7 +190,7 @@ Token: in Plex Web open any item → **…** → **Get Info** → **View XML**; 
 You only need SABnzbd; searching is optional.
 
 1. In SABnzbd create a category, e.g. `audiobooks`, whose folder is the one mounted as **audiobook inbox** (`/inbox`).
-2. In Better Renamer: **Search → Set up** → SABnzbd address, API key (SABnzbd → Config → General) and category.
+2. In Hörwerk: **Search → Set up** → SABnzbd address, API key (SABnzbd → Config → General) and category.
 3. Everything SABnzbd finishes in that category flows through M4B → Audible → library automatically. The
    **Downloads** list shows progress and history of the category.
 
@@ -206,7 +210,7 @@ Push messages to your phone via [ntfy](https://ntfy.sh) – ntfy.sh or your own 
 
 1. Install the ntfy app and subscribe to a topic, e.g. `audiobooks-1234`.
 2. **⚙︎ Settings → Notifications (ntfy)**: server, topic, optionally an access token (or user + password) and
-   priority. *Address of this UI* makes tapping a message open Better Renamer.
+   priority. *Address of this UI* makes tapping a message open Hörwerk.
 3. Tick the events you want and click **Send test message**.
 
 | Event | Default |
@@ -230,7 +234,7 @@ Messages use the language of the interface.
 
 **Log** in the top bar shows what happened: books found, converted, matched and filed, media server scans, warnings
 and errors. Filter by level or text, follow it live, download it as a file. The same lines are in the container log
-(`docker logs better-renamer`).
+(`docker logs hoerwerk`).
 
 ---
 
@@ -238,7 +242,7 @@ and errors. Filter by level or text, follow it live, download it as a file. The 
 
 Almost everything can be changed in **⚙︎ Settings**; the environment only provides the starting values.
 Settings, presets, history, the audiobook list, the library index and all credentials live in the SQLite database
-`/config/better-renamer.db` (permissions 600).
+`/config/hoerwerk.db` (permissions 600).
 
 | Variable | Default | Meaning |
 |---|---|---|

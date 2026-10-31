@@ -55,7 +55,7 @@ class WebTest(unittest.TestCase):
         c.close()
         return out
 
-    OWN = {"X-Requested-With": "BetterRenamer", "Content-Type": "application/json"}
+    OWN = {"X-Requested-With": "Hoerwerk", "Content-Type": "application/json"}
 
     def test_csrf_from_foreign_page_is_refused(self):
         change = {"language": "en"}
@@ -70,7 +70,7 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.app.settings()["language"], "de")
         # our own page works
         status, _, _ = self.req("POST", "/api/audiobooks/scan", None,
-                                {"X-Requested-With": "BetterRenamer", "Origin": f"http://127.0.0.1:{self.port}",
+                                {"X-Requested-With": "Hoerwerk", "Origin": f"http://127.0.0.1:{self.port}",
                                  "Sec-Fetch-Site": "same-origin"})
         self.assertEqual(status, 200)
 

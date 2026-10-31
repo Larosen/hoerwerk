@@ -57,7 +57,7 @@ function downloadLogs(): void {
   const text = logs.entries.map((e) => `${new Date(e.time * 1000).toISOString()} ${e.level.toUpperCase().padEnd(5)}`
     + `${e.source ? ` [${e.source}]` : ""} ${e.text}`).join("\n") + "\n";
   const a = el("a", { href: URL.createObjectURL(new Blob([text], { type: "text/plain" })),
-    download: `better-renamer-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.log` });
+    download: `hoerwerk-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.log` });
   document.body.append(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);

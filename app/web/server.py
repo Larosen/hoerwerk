@@ -25,7 +25,7 @@ from i18n import t
 STATIC_DIR = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static"))
 MAX_BODY = 4 * 1024 * 1024
 CSRF_HEADER = "X-Requested-With"
-CSRF_VALUE = "BetterRenamer"
+CSRF_VALUE = "Hoerwerk"
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
@@ -57,7 +57,7 @@ class Server(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "BetterRenamer"
+    server_version = "Hoerwerk"
     protocol_version = "HTTP/1.1"
     server: Server
 
@@ -186,7 +186,7 @@ class Handler(BaseHTTPRequestHandler):
                               "text/plain; charset=utf-8")
         if not self._authorized() and not public:
             time.sleep(1)   # slows down password guessing
-            return self._send(401, b"", "text/plain", {"WWW-Authenticate": 'Basic realm="Better Renamer"'})
+            return self._send(401, b"", "text/plain", {"WWW-Authenticate": 'Basic realm="Hoerwerk"'})
         if self.command in ("GET", "HEAD") and url.path == "/i18n.js":
             return self._i18n()
         if self.command in ("GET", "HEAD") and (url.path == "/" or url.path.startswith("/static/")):

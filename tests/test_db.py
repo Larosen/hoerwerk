@@ -105,6 +105,17 @@ class DatabaseTest(unittest.TestCase):
         self.assertEqual(again.settings()["bitrate"], "96k")
         self.assertEqual(len(again.pipeline.jobs), 1)
 
+    def test_database_of_better_renamer_is_taken_over(self):
+        old = os.path.join(self.dir, "better-renamer.db")
+        d = dbm.Database(old)
+        d.put("settings", {"ab_region": "uk"})
+        d.close()
+        path = dbm.db_path(self.dir)
+        self.assertEqual(os.path.basename(path), "hoerwerk.db")
+        self.assertFalse(os.path.exists(old))
+        self.assertEqual(dbm.Database(path).get("settings"), {"ab_region": "uk"})
+        self.assertEqual(dbm.db_path(self.dir), path)           # second start: nothing to do
+
     def test_unknown_settings_are_ignored(self):
         d = dbm.Database(self.path)
         s = stores.Settings(d, {"a": 1})

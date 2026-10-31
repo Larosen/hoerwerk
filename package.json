@@ -1,5 +1,5 @@
 {
-  "name": "better-renamer-frontend",
+  "name": "hoerwerk-frontend",
   "private": true,
   "description": "TypeScript sources of the web UI (compiled to app/static) and the click-through tests",
   "scripts": {

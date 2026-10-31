@@ -26,7 +26,7 @@ class IndexTest(unittest.TestCase):
         self.dbfile = os.path.join(self.root, "t.db")
         self.db = dbm.Database(self.dbfile)
         self.lib = os.path.join(self.root, "lib")
-        # filed by Better Renamer: M4B with tags
+        # filed by Hörwerk: M4B with tags
         m4b = tone(os.path.join(self.lib, "Theodor Storm", "Der Schimmelreiter", "Der Schimmelreiter.m4b"), 1.0)
         tagger.write_tags(m4b, {"title": "Der Schimmelreiter", "authors": ["Theodor Storm"], "asin": "B0TEST0001"}, {})
         # older collection: MP3 folder with tags …

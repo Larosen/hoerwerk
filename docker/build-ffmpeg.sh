@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds a minimal FFmpeg for Better Renamer: only the audio formats it reads, AAC/M4B output,
+# Builds a minimal FFmpeg for Hörwerk: only the audio formats it reads, AAC/M4B output,
 # no network code at all, no external libraries, hardened toolchain.
 #
 #   build-ffmpeg.sh <source dir> <install prefix>
@@ -53,7 +53,7 @@ check muxers "$MUXERS"; check bsfs "$BSFS"; check filters "$FILTERS"; check prot
   --enable-encoder="$ENCODERS" --enable-muxer="$MUXERS" --enable-bsf="$BSFS" \
   --enable-filter="$FILTERS" --enable-protocol="$PROTOCOLS" \
   --enable-swresample \
-  --extra-version=better-renamer
+  --extra-version=hoerwerk
 make -j"$JOBS"
 make install
 "$PREFIX/bin/ffmpeg" -hide_banner -version | head -1

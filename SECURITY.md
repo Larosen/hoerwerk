@@ -2,7 +2,7 @@
 
 **English** · [Deutsch](SECURITY.de.md)
 
-As of the security review of 30 Oct 2026 (version 4.1: ntfy notifications, English/German). Better Renamer processes
+As of the security review of 30 Oct 2026 (version 4.1: ntfy notifications, English/German). Hörwerk processes
 files from foreign sources (downloads via SABnzbd), queries external services (Audible, Audnexus, BookBeat, Thalia,
 optionally an indexer, SABnzbd, Audiobookshelf, ntfy) and has a web interface with write access to your shares.
 This page explains what the program protects against, what was tested and what you should do yourself.
@@ -28,9 +28,9 @@ This page explains what the program protects against, what was tested and what y
 
 | Attack | Protection |
 |---|---|
-| A file with an audio extension that is really a playlist (HLS) or concat script and makes ffmpeg read local files (e.g. `/config/better-renamer.db`) or URLs | ffmpeg/ffprobe read downloaded files only with `-protocol_whitelist file` and a `-format_whitelist` of real audio demuxers (mp3, mov/m4a/m4b, aac, flac, ogg, wav, aiff, asf, matroska, ape, wv …). Playlists, concat, image sequences and network protocols are blocked. Tested (`test_security.py`). |
+| A file with an audio extension that is really a playlist (HLS) or concat script and makes ffmpeg read local files (e.g. `/config/hoerwerk.db`) or URLs | ffmpeg/ffprobe read downloaded files only with `-protocol_whitelist file` and a `-format_whitelist` of real audio demuxers (mp3, mov/m4a/m4b, aac, flac, ogg, wav, aiff, asf, matroska, ape, wv …). Playlists, concat, image sequences and network protocols are blocked. Tested (`test_security.py`). |
 | A bug in ffmpeg | **Own ffmpeg 9 build** with only the audio formats needed, no network code at all, no third-party libraries, hardened (PIE, RELRO, stack protector). Every ffmpeg/ffprobe call additionally runs in a **Landlock sandbox**: it may read only the files of this call, write only into the work directory, open no TCP connections; plus `no_new_privs`, memory/file-size limits, no core dumps. Even an exploited bug cannot reach `/config` (API keys) or the library. Tested (`test_sandbox.py`); CI runs the whole test suite with exactly this ffmpeg and a mandatory sandbox. Hanging processes are killed after 6 h. |
-| Symlinks in a download (`cover.jpg → /config/better-renamer.db`, folder link to `/`) | Symlinks are ignored completely when reading (audio, cover, `chapters.txt`, `metadata.yml`, subfolders, inbox entries) and reported as suspicious in the log. |
+| Symlinks in a download (`cover.jpg → /config/hoerwerk.db`, folder link to `/`) | Symlinks are ignored completely when reading (audio, cover, `chapters.txt`, `metadata.yml`, subfolders, inbox entries) and reported as suspicious in the log. |
 | `.exe`, `.bat`, `.lnk`, scripts etc. (typical of fake releases) | Never executed and never taken into the library – only the created M4B, `cover.jpg`, `desc.txt`, `reader.txt`, `metadata.json` end up there. The finding is shown as ⚠ in the book's log. |
 | Path tricks in tags/names (`../../etc`, `/`, `:`) | Library paths are built only from cleaned parts (no separators, no `..`, no control characters, max. 180 bytes); tested. |
 | `metadata.yml` bomb (YAML anchors) or huge text files | `yaml.safe_load`, anchors/aliases are refused, `metadata.yml`/`chapters.txt` max. 512 KB. |
@@ -46,10 +46,10 @@ This page explains what the program protects against, what was tested and what y
 | Indexer XML with DTD/entities (billion laughs, XXE) | Responses containing `<!DOCTYPE`/`<!ENTITY` are refused; Python's XML parser does not load external entities anyway. |
 | `javascript:` links from foreign data (indexer details, store pages) | The server only passes `http(s)` links, the interface filters `href`/`src` centrally as well. |
 | ntfy token/password | Only on the server, never sent to the browser (the interface only sees “saved”), not carried over when the server address changes. Redirects are not followed. Address must be `http(s)` without `user:password@`, topic only `A–Z a–z 0–9 - _`. Messages are sent as JSON (no header injection through book titles); the “open” link is only the `http(s)` address you entered. |
-| Plex token | Like the Audiobookshelf token: only on the server, never sent to the browser, not carried over when the address changes, redirects not followed, no `user:password@` in the address. Better Renamer only asks Plex to refresh and (if ticked) to empty the trash of the one chosen library. |
+| Plex token | Like the Audiobookshelf token: only on the server, never sent to the browser, not carried over when the address changes, redirects not followed, no `user:password@` in the address. Hörwerk only asks Plex to refresh and (if ticked) to empty the trash of the one chosen library. |
 | Audiobookshelf token | Like the indexer keys: only on the server, never sent to the browser, not carried over when the address changes. Redirects are not followed so the token never ends up at another server. |
 | Further metadata sources | Only fixed addresses over HTTPS: `api.audnex.us`, `itunes.apple.com`, `openlibrary.org` (plus Audible, BookBeat, Thalia). Matches from these are never filed automatically. |
-| Stealing API keys | Keys live only in the database `/config/better-renamer.db` (permissions 600), are never sent to the browser, nor are NZB links (they contain the indexer key). If the address of an indexer or SABnzbd changes, the stored key is **not** carried over – it has to be entered again. Error messages are scrubbed of keys. |
+| Stealing API keys | Keys live only in the database `/config/hoerwerk.db` (permissions 600), are never sent to the browser, nor are NZB links (they contain the indexer key). If the address of an indexer or SABnzbd changes, the stored key is **not** carried over – it has to be entered again. Error messages are scrubbed of keys. |
 | Download folder name colliding with internal folders (`.work`) | The name passed to SABnzbd is cleaned (no paths, no hidden names). |
 | TLS | Certificates are always verified (Python default). SABnzbd/indexer/ntfy in the LAN may use `http` – their keys then travel unencrypted through your home network. |
 
@@ -97,7 +97,7 @@ Checked interfaces: Audiobookshelf 2.37 (`metadata.json`, library scan), SABnzbd
 `get_cats`), ntfy 2.35 (JSON publish, token/basic auth).
 
 **ffmpeg:** Up to version 3, ffmpeg 7.1.5 came from Debian stable; OSV listed 40 open CVEs for it (almost all in parts
-Better Renamer does not use). Since version 4 the image builds ffmpeg 9.0.2 itself (`docker/build-ffmpeg.sh`): only the
+Hörwerk does not use). Since version 4 the image builds ffmpeg 9.0.2 itself (`docker/build-ffmpeg.sh`): only the
 audio containers and decoders that occur, AAC as the only encoder; ffprobe/ffmpeg may only open the audio containers
 (whitelist). Video decoders, filters other than resampling, streaming protocols (HLS, DASH, RTSP …), devices
 and third-party libraries are not in the program at all – most ffmpeg CVEs affect exactly these parts. Because the

@@ -30,7 +30,7 @@ class App:
         self.config = config
         self.start_workers = start_workers
         os.makedirs(config.config_dir, exist_ok=True)
-        self.db = dbm.Database(os.path.join(config.config_dir, dbm.DB_NAME))
+        self.db = dbm.Database(dbm.db_path(config.config_dir))
         imported = dbm.import_legacy(self.db, config.config_dir)
         if imported:
             applog.info(f"Übernommen in die Datenbank: {', '.join(imported)}")

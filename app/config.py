@@ -7,7 +7,7 @@ from typing import FrozenSet, Mapping
 
 import library
 
-VERSION = "4.4.0"
+VERSION = "5.0.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:

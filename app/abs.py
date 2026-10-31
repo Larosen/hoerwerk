@@ -3,7 +3,7 @@
 Audiobookshelf reads ``metadata.json`` in the book folder (its own format) together
 with the embedded tags, ``desc.txt``, ``reader.txt`` and ``cover.jpg``. On network
 shares (Unraid user shares) its file watcher often misses new books – so after
-filing, Better Renamer can ask Audiobookshelf to scan the library (API token).
+filing, Hörwerk can ask Audiobookshelf to scan the library (API token).
 """
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ class _NoRedirect(request.HTTPRedirectHandler):
 
 def _call(method: str, url: str, token: str, timeout: float = 15) -> dict:
     req = request.Request(url, method=method, headers={
-        "Authorization": f"Bearer {token}", "Accept": "application/json", "User-Agent": "BetterRenamer/4"})
+        "Authorization": f"Bearer {token}", "Accept": "application/json", "User-Agent": "Hoerwerk/5"})
     try:
         with request.build_opener(_NoRedirect).open(req, timeout=timeout) as resp:
             body = resp.read(2 * 1024 * 1024)
