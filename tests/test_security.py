@@ -112,6 +112,18 @@ class WebTest(unittest.TestCase):
         finally:
             self.app.config = old
 
+    def test_logo_is_public_the_rest_is_not(self):
+        """Unraid fetches the Docker icon without a password – only the logo, nothing else."""
+        old = self.app.config
+        self.app.config = dataclasses.replace(old, auth_user="u", auth_pass="p")
+        try:
+            status, headers, _ = self.req("GET", "/static/icon.png")
+            self.assertEqual(status, 200)
+            self.assertEqual(self.req("GET", "/static/style.css")[0], 401)
+            self.assertEqual(self.req("GET", "/static/icon.png/../index.html")[0], 401)
+        finally:
+            self.app.config = old
+
     def test_internet_clients_need_a_password(self):
         h = server.Handler.__new__(server.Handler)
         h.server = self.server

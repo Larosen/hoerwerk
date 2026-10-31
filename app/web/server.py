@@ -37,7 +37,8 @@ SECURITY_HEADERS = {
         "img-src 'self' data: blob: https:; connect-src 'self'; object-src 'none'; "
         "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"),
 }
-PUBLIC_PATHS = ("/api/health",)   # answered without password/network check (Docker health check)
+# answered without password/network check: Docker health check, and the logo for the Unraid Docker page
+PUBLIC_PATHS = ("/api/health", "/static/icon.png", "/static/icon.svg")
 
 
 class Server(ThreadingHTTPServer):
