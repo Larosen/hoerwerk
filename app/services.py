@@ -16,11 +16,13 @@ from events import EventBus
 from library_index import LibraryIndex
 from meta import cache as meta_cache
 from notify import DownloadWatcher, Notifier
+from plex import Plex
 from pipeline import Pipeline
 from providers import Providers
 from stores import History, Presets, Settings
 from usenet import Usenet
 import i18n
+import applog
 from i18n import t
 
 
@@ -32,7 +34,7 @@ class App:
         self.db = dbm.Database(os.path.join(config.config_dir, dbm.DB_NAME))
         imported = dbm.import_legacy(self.db, config.config_dir)
         if imported:
-            print(f"Übernommen in die Datenbank: {', '.join(imported)}", flush=True)
+            applog.info(f"Übernommen in die Datenbank: {', '.join(imported)}")
         self.defaults = default_settings(config.env or os.environ)
         self._settings = Settings(self.db, self.defaults)
         i18n.set_language(self.settings().get("language", "de"))
@@ -47,6 +49,8 @@ class App:
         self.usenet = Usenet(self.db)
         self.abs = Audiobookshelf(self.db, on_error=lambda msg: self.notifier.send(
             "abs_error", t("Audiobookshelf-Scan fehlgeschlagen"), msg))
+        self.plex = Plex(self.db, on_error=lambda msg: self.notifier.send(
+            "plex_error", t("Plex-Scan fehlgeschlagen"), msg))
         self.library_index = LibraryIndex(config.library, self.db, read_m4b=tagger.read_book, probe=meta_cache.probe,
                                           notify=self.events.notifier("library"))
         self.pipeline = Pipeline(self.settings, self.db,
@@ -54,7 +58,7 @@ class App:
                                  nice=config.nice, hint_provider=self.usenet.hint_for,
                                  index=self.library_index, engine=self.engine,
                                  notify=self.events.notifier("audiobooks"),
-                                 on_filed=lambda dest: self.abs.request_scan(), on_event=self._book_event)
+                                 on_filed=lambda dest: self._library_changed(), on_event=self._book_event)
         self.pipeline.providers = Providers(self.pipeline.client,
                                             enabled=lambda: bool(self.settings().get("ab_fallback", True)))
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
@@ -88,9 +92,15 @@ class App:
         elif job.status == "failed":
             n.send("failed", t("Fehler bei einem Hörbuch"), f"{job.name}\n{job.error or ''}".strip(), priority=4)
 
+    def _library_changed(self) -> None:
+        """Books were filed or replaced: media servers should look again (each one once things calm down)."""
+        self.abs.request_scan()
+        self.plex.request_scan()
+
     def _convert_finished(self, job) -> None:
         n = self.notifier
         if job.status == "done":
+            self._library_changed()     # the M4B may well be inside a media server's library
             n.send("convert_done", t("M4B fertig"), f"{job.rel}\n{job.message}")
         else:
             n.send("convert_failed", t("M4B fehlgeschlagen"), f"{job.rel}\n{job.message}", priority=4)
@@ -113,7 +123,7 @@ class App:
             try:
                 self.library_index.scan()
             except Exception as e:  # noqa: BLE001 – keep the thread alive
-                print(f"Bibliothek konnte nicht eingelesen werden: {e}", flush=True)
+                applog.error(t("Bibliothek konnte nicht eingelesen werden: {error}", error=e), "Bibliothek")
             time.sleep(max(1, int(self.settings().get("library_rescan_hours") or 6)) * 3600)
 
 

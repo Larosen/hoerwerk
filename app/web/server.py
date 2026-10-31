@@ -17,6 +17,7 @@ import i18n
 from events import Stream
 from web import router
 from web.router import HTTPException, Req
+import applog
 from i18n import t
 
 STATIC_DIR = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static"))
@@ -57,6 +58,9 @@ class Handler(BaseHTTPRequestHandler):
     def log_request(self, code="-", size="-"):  # quieter: only failed requests
         if str(code)[:1] in "45":
             super().log_request(code, size)
+
+    def log_message(self, format, *args):  # noqa: A002 – signature of BaseHTTPRequestHandler
+        applog.warn(f"{self.address_string()} {format % args}", "web")
 
     def _headers(self, status: int, ctype: str, extra: Optional[dict] = None, length: Optional[int] = None) -> None:
         self.send_response(status)

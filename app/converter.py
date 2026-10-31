@@ -16,6 +16,7 @@ import encoder
 import tagger
 from meta import cache as meta_cache
 from rules import natural_key
+import applog
 from i18n import t
 
 COVER_NAMES = ("cover", "folder", "front", "albumart")
@@ -209,17 +210,20 @@ class Converter:
                 return
             job.status, job.message = "running", t("Analysiere Dateien …")
         self._save(job)
+        applog.info(t("„Jetzt zu M4B“ gestartet: {folder}", folder=job.folder), "M4B")
         try:
             self._run(job)
             if job._cancel:
                 job.status, job.message = "cancelled", t("Abgebrochen")
             else:
                 job.status, job.progress = "done", 1.0
+                applog.info(f"{job.folder}: {job.message}", "M4B")
         except Exception as e:  # noqa: BLE001 – report everything to the UI
             if job._cancel:
                 job.status, job.message = "cancelled", t("Abgebrochen")
             else:
                 job.status, job.message = "error", str(e)
+                applog.error(f"{job.folder}: {e}", "M4B")
         job.finished = time.time()
         job._runner = None
         self._save(job)
@@ -227,7 +231,7 @@ class Converter:
             try:
                 self.on_finished(job)
             except Exception as e:  # noqa: BLE001
-                print(f"Benachrichtigung fehlgeschlagen: {e}", flush=True)
+                applog.warn(f"Benachrichtigung fehlgeschlagen: {e}", "ntfy")
 
     def _run(self, job: Job) -> None:
         s = self.get_settings()

@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 sys.path.insert(0, os.path.dirname(__file__))
 
 import db as dbm  # noqa: E402
+import library  # noqa: E402
 import library_index  # noqa: E402
 import pipeline  # noqa: E402
 import tagger  # noqa: E402
@@ -57,6 +58,28 @@ class IndexTest(unittest.TestCase):
             "Hoffmann - Das Fräulein (Lesung)"))
         self.assertEqual(len(self.idx.match_release("Hoffmann - Das Fräulein")), 1)
         self.assertEqual(self.idx.match_release("Theodor Storm - Pole Poppenspäler"), [])
+
+    def test_real_world_tags_and_folders(self):
+        """Narrators in the artist tag, author in the album tag, "Author - Title" as one folder."""
+        tone(os.path.join(self.lib, "Sammlung", "Das kalte Herz", "01.mp3"), 0.5,
+             tags={"album": "Wilhelm Hauff - Das kalte Herz", "artist": "Wilhelm Hauff, Max Muster"})
+        tone(os.path.join(self.lib, "Kleist, Heinrich von", "Michael Kohlhaas", "01.mp3"), 0.5,
+             tags={"album": "Michael Kohlhaas", "artist": "Erika Muster"})          # only the narrator
+        tone(os.path.join(self.lib, "Storm, Theodor - Immensee", "a.mp3"), 0.5)
+        self.assertEqual(self.idx.scan(), 6)
+        hauff = self.idx.find({"title": "Das kalte Herz", "authors": ["Wilhelm Hauff"]})
+        self.assertEqual([(h["path"], h["title"]) for h in hauff], [("Sammlung/Das kalte Herz", "Das kalte Herz")])
+        self.assertEqual(len(self.idx.find({"title": "Michael Kohlhaas", "authors": ["Heinrich von Kleist"]})), 1)
+        self.assertEqual(len(self.idx.find({"title": "Immensee", "authors": ["Theodor Storm"]})), 1)
+        # release names: with the author, or a title of two words without it
+        self.assertEqual([h["path"] for h in self.idx.match_release("Heinrich.von.Kleist-Michael.Kohlhaas-DE")],
+                         ["Kleist, Heinrich von/Michael Kohlhaas"])
+        self.assertEqual(self.idx.match_release("Michael.Kohlhaas.German.Hoerbuch")[0]["why"], "similar")
+        self.assertEqual(self.idx.match_release("Immensee.German.Hoerbuch"), [])          # one word: too vague
+        self.assertEqual(len(self.idx.match_release("Immensee", lenient=True)), 1)       # typed by the user
+        # browsing
+        self.assertEqual(self.idx.books()["total"], 6)
+        self.assertEqual([b["path"] for b in self.idx.books("kohlh")["books"]], ["Kleist, Heinrich von/Michael Kohlhaas"])
 
     def test_cache_and_incremental(self):
         again = library_index.LibraryIndex(self.lib, dbm.Database(self.dbfile))
@@ -209,6 +232,24 @@ class ConvertLibraryTest(unittest.TestCase):
         self.assertEqual(j.hints["query"], "Theodor Storm Der Schimmelreiter")
         self.assertEqual(j.status, "done", j.log)
         self.assertFalse(any(f.startswith("_ersetzt") for f in tree(self.inbox)))
+
+    def test_old_copy_survives_when_filing_fails(self):
+        """With "delete" the old MP3s go only after the new M4B is in place – a failure brings them back."""
+        self.settings["ab_library_originals"] = "delete"
+        before = tree(self.lib)
+        j = self.p.add(self.book, origin="library")
+        real_place = library.place
+
+        def broken(*args, **kwargs):
+            raise OSError("Platte voll")
+        library.place = broken
+        try:
+            self.p.process(j)
+        finally:
+            library.place = real_place
+        self.assertEqual(j.status, "failed", j.log)
+        self.assertEqual(tree(self.lib), before)            # untouched, nothing hidden left behind
+        self.assertFalse(any(".br-alt" in f for f in os.listdir(os.path.dirname(self.book))))
 
     def test_rename_tracks_swaps_safely(self):
         d = os.path.join(self.root, "swap")

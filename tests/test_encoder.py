@@ -39,6 +39,24 @@ class ChaptersTextTest(unittest.TestCase):
         self.assertEqual(encoder.chapter_title("07 Im Wald.mp3", {"title": "x"}, "filename"), "07 Im Wald")
         self.assertEqual(encoder.chapter_title("07_Im_Wald.mp3", {}, "auto"), "Im Wald")
         self.assertEqual(encoder.chapter_title("1 Kapitel.mp3", {}, "auto"), "1 Kapitel")
+
+    def test_chapter_titles_of_a_whole_book(self):
+        n = range(1, 4)
+        # the book title repeated in every track
+        self.assertEqual(encoder.chapter_titles([f"Kapitel {i} - Das Fräulein von Scuderi" for i in n], "Das Fräulein von Scuderi"),
+                         ["Kapitel 1", "Kapitel 2", "Kapitel 3"])
+        # only the title and a number: count chapters
+        self.assertEqual(encoder.chapter_titles([f"Die Verwandlung - {i:03d}" for i in n]), ["Kapitel 1", "Kapitel 2", "Kapitel 3"])
+        # the year of the recording everywhere
+        self.assertEqual(encoder.chapter_titles([f"Kapitel {i} (1912)" for i in n]), ["Kapitel 1", "Kapitel 2", "Kapitel 3"])
+        # real names stay, words are not cut ("Montag…")
+        self.assertEqual(encoder.chapter_titles(["Prolog (2021)", "Montagmorgen (2021)", "Montagmittag (2021)"]),
+                         ["Prolog", "Montagmorgen", "Montagmittag"])
+        self.assertEqual(encoder.chapter_titles(["Kapitel 1 - Der Deich", "Kapitel 2 - Die Flut"]),
+                         ["Kapitel 1 - Der Deich", "Kapitel 2 - Die Flut"])
+        # numbering of a second CD keeps its numbers
+        self.assertEqual(encoder.chapter_titles(["Track 11", "Track 12"]), ["Kapitel 11", "Kapitel 12"])
+        self.assertEqual(encoder.chapter_titles(["Der Schimmelreiter"]), ["Der Schimmelreiter"])
         self.assertTrue(encoder.looks_generic([{"title": "Track 1"}, {"title": "Track 2"}]))
         self.assertFalse(encoder.looks_generic([{"title": "Prolog"}, {"title": "Track 2"}]))
 

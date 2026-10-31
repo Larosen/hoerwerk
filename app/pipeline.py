@@ -12,7 +12,7 @@ import shutil
 import threading
 import time
 import uuid
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import abs as absm
 import audible
@@ -24,6 +24,7 @@ import providers as prov
 import tagger
 from meta import cache as meta_cache
 from rules import natural_key
+import applog
 from i18n import t
 
 TEMP_SUFFIXES = (".part", ".!qb", ".crdownload", ".tmp", ".partial", ".download", ".filepart",
@@ -157,8 +158,11 @@ class Job:
         self.cancel = False
         self.runner: Optional[encoder.Runner] = None
 
-    def say(self, msg: str, progress: Optional[float] = None) -> None:
+    def say(self, msg: str, progress: Optional[float] = None, level: str = "info") -> None:
         self.message = msg
+        if progress is None or progress <= 0 or progress >= 1 or level != "info":   # not every percent of encoding
+            if not self.log or not self.log[-1].endswith(msg):
+                applog.log.add(msg, level, self.name)
         if progress is not None:
             self.progress = progress
         self.updated = _now()
@@ -613,7 +617,7 @@ class Pipeline:
             try:
                 self.on_event(job)
             except Exception as e:  # noqa: BLE001 – a notification must never break the pipeline
-                print(f"Benachrichtigung fehlgeschlagen: {e}", flush=True)
+                applog.warn(f"Benachrichtigung fehlgeschlagen: {e}", "ntfy")
         self._schedule(job)
 
     def process(self, job: Job) -> None:
@@ -791,8 +795,9 @@ class Pipeline:
                 job.status = "review"
                 job.say(t("Schon in der Bibliothek: {where} – bitte entscheiden", where=where))
                 return
+        parked: List[Optional[Tuple[str, str, str]]] = []     # old library copies, put aside until the new one is in place
         if job.dup_decision == "replace" and job.duplicate:
-            self._retire_old(job)
+            parked.append(self._park(job, job.duplicate["path"], "archive"))
         job.status = "tagging"
         job.say(t("Schreibe Tags …"), 1.0)
 
@@ -823,14 +828,26 @@ class Pipeline:
                                                s.get("ab_file_template"),
                                                title=tagger.clean_title(book, s))
         if job.origin == "library":
-            # The new M4B replaces the old files of this very book: they leave the library first
-            self._retire(job, os.path.relpath(job.source, root), s.get("ab_library_originals", "archive"))
-        # Existing author/series folders win, even when spelled a little differently
-        folder = library.unique_folder(library.reuse_existing(root, folder))
-        os.makedirs(folder, exist_ok=True)
-        tagger.write_sidecars(folder, book, s, cover)
-        dest = library.place(job.m4b, folder, filename)
+            # The new M4B replaces the old files of this very book: they step aside first ...
+            parked.append(self._park(job, os.path.relpath(job.source, root), s.get("ab_library_originals", "archive")))
+        created = None
+        try:
+            # Existing author/series folders win, even when spelled a little differently
+            folder = library.unique_folder(library.reuse_existing(root, folder))
+            if not os.path.exists(folder):
+                created = folder
+            os.makedirs(folder, exist_ok=True)
+            tagger.write_sidecars(folder, book, s, cover)
+            dest = library.place(job.m4b, folder, filename)
+        except Exception:
+            if created and os.path.isdir(created):   # half-made new folder (cover, desc.txt) goes again ...
+                shutil.rmtree(created, ignore_errors=True)
+            for p in reversed(parked):          # ... and the old copy comes back
+                self._unpark(p)
+            raise
         job.dest = dest
+        for p in parked:                        # only now: delete or archive the old copy
+            self._settle(job, p)
         if s.get("write_abs", True):
             absm.write_metadata(os.path.dirname(dest), book, encoder.file_chapters(dest),
                                 meta_cache.probe(dest).get("duration") or job.duration)
@@ -844,27 +861,40 @@ class Pipeline:
         if self.on_filed:
             self.on_filed(dest)
 
-    def _retire_old(self, job: Job) -> None:
-        """Replace: the old copy leaves the library (into _ersetzt next to the inbox, not deleted)."""
-        self._retire(job, job.duplicate["path"], "archive")
+    def _park(self, job: Job, rel: str, mode: str) -> Optional[Tuple[str, str, str]]:
+        """Put an old book folder aside (hidden, same parent folder – a rename, no copy).
 
-    def _retire(self, job: Job, rel: str, mode: str) -> None:
-        """Take an old book folder out of the library: to ``_ersetzt`` (default) or delete it."""
+        Deleting or archiving it waits until the new M4B is filed: if that fails, the old
+        copy comes back untouched (``_unpark``)."""
         old = os.path.realpath(os.path.join(self.library, rel))
         if os.path.commonpath([old, self.library]) != self.library or old == self.library or not os.path.isdir(old):
+            return None
+        hidden = _free_path(os.path.join(os.path.dirname(old), f".br-alt-{job.id}-{os.path.basename(old)}"))
+        os.rename(old, hidden)
+        if self.index:
+            self.index.remove(os.path.join(old, "x"))
+        return hidden, old, mode
+
+    def _unpark(self, parked: Optional[Tuple[str, str, str]]) -> None:
+        if parked and os.path.isdir(parked[0]) and not os.path.exists(parked[1]):
+            os.rename(parked[0], parked[1])
+
+    def _settle(self, job: Job, parked: Optional[Tuple[str, str, str]]) -> None:
+        """The new copy is filed: the parked old one is deleted or moved to ``_ersetzt``."""
+        if not parked:
             return
+        hidden, old, mode = parked
+        rel = os.path.relpath(old, self.library)
         if mode == "delete":
-            shutil.rmtree(old)
+            shutil.rmtree(hidden)
             job.say(t("Alte Dateien gelöscht: {path}", path=rel))
         else:
             bin_root = os.path.join(self.inbox or os.path.dirname(self.work_dir), "_ersetzt")
             target = _free_path(os.path.join(bin_root, rel))
             os.makedirs(os.path.dirname(target), exist_ok=True)
-            shutil.move(old, target)
+            shutil.move(hidden, target)
             job.say(t("Alte Fassung verschoben nach {path}", path=os.path.relpath(target, os.path.dirname(bin_root))))
         _remove_empty_parents(os.path.dirname(old), self.library)
-        if self.index:
-            self.index.remove(os.path.join(old, "x"))
 
     def _audible_chapters(self, job: Job, book: dict, mode: str) -> None:
         data = self.client.chapters(book["asin"], book.get("region") or "de")
@@ -908,7 +938,7 @@ class Pipeline:
     def _fail(self, job: Job, msg: str) -> None:
         job.status = "failed"
         job.error = msg
-        job.say(t("Fehler: {error}", error=msg))
+        job.say(t("Fehler: {error}", error=msg), level="error")
         self._cleanup_work(job)
         job.m4b = None
         if job.origin == "inbox" and os.path.exists(job.source):

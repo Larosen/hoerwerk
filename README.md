@@ -26,9 +26,10 @@ The interface is available in **English and German**.
 4. [Downloads with SABnzbd](#downloads-with-sabnzbd)
 5. [Notifications (ntfy)](#notifications-ntfy)
 6. [Batch renamer](#batch-renamer)
-7. [Configuration](#configuration)
-8. [Security](#security)
-9. [Development](#development)
+7. [Log](#log)
+8. [Configuration](#configuration)
+9. [Security](#security)
+10. [Development](#development)
 
 ---
 
@@ -39,9 +40,11 @@ The interface is available in **English and German**.
 | Audiobook inbox | Waits until a folder is fully copied, merges MP3/M4A/FLAC/OGG/Opus/WMA (also `CD1`/`CD2` subfolders) into one M4B with sample-exact chapters |
 | Matching | Audible search in 10 stores, rated by title, author **and runtime** (unabridged ≠ abridged ≠ radio play); uncertain matches wait for you |
 | Tags & files | Title, author, narrator, series + volume, genre, publisher, date, description, ASIN, full-size cover; `metadata.json` for Audiobookshelf |
-| Library | Folder template, reuses existing author/series folders, detects duplicates, converts old MP3 books to M4B |
+| Library | Browse and search every book, folder template, reuses existing author/series folders, detects duplicates, converts old MP3 books to M4B and removes the MP3s safely |
 | Downloads | Sends NZBs to SABnzbd, watches the category, the inbox takes over when the download is done; optional Newznab search |
-| Notifications | ntfy push messages, ten events, each one on or off |
+| Media servers | Audiobookshelf and Plex rescan their library after filing; Plex can empty its trash so replaced MP3s vanish |
+| Notifications | ntfy push messages, eleven events, each one on or off |
+| Log | Everything that happened, filterable and downloadable, right in the app |
 | Renamer | Live preview, conflict check, undo history, presets, subfolders, companion files move along |
 | Interface | English / German, light / dark theme, live updates without reloading |
 | Security | Own minimal ffmpeg 9 in a Landlock sandbox, CSRF protection, secrets never reach the browser ([SECURITY.md](SECURITY.md)) |
@@ -111,6 +114,12 @@ docker compose up -d
 
 Filed the wrong book? **Correct** takes it back out of the library into the review list.
 
+### Library view
+
+**Audiobooks → Library** lists every book in the library with a search over title, author, series and folder. Each row
+shows how the book was read – the author, further names from tags and folders, the folder and the format – which is
+also what the duplicate check and the search use.
+
 ### Avoiding duplicates
 
 The library is scanned at start and every few hours (`LIBRARY_RESCAN_HOURS`) – including older MP3 folders, recognised
@@ -118,11 +127,22 @@ by ASIN, tags or the folder structure. If a new book is already there (same ASIN
 series + volume), you decide: **Discard**, **Replace old** (the old version moves to `_ersetzt` in the inbox) or
 **File additionally**. `DUPLICATES=skip` or `keep` decides automatically.
 
+The check is tolerant on purpose: the narrator in the artist tag, "Author - Title" album tags, "Author - Title" folder
+names and release names without the author (for titles of two words or more) all still match. In **Search**, a
+search term that matches a book you own shows “Already in your library” above the results.
+
 ### Turning old MP3 books into M4B
 
 **Audiobooks → Not an M4B** lists every library book that still consists of single files. Select books, click
 **To M4B**, optionally adjust chapter names first (**Chapters & names …**, also renames the source files to
-`01 - Chapter.mp3` if you like). The old version is moved away only after the new M4B is tagged.
+`01 - Chapter.mp3` if you like).
+
+**Old files afterwards** is chosen right next to the button: *move to `_ersetzt` in the inbox* (default) or *delete*.
+Either way nothing is touched before the new M4B is in place: the old folder is set aside (renamed, hidden) and only
+deleted or moved once the new book is filed; if filing fails, it comes back unchanged.
+
+Chapter names under *automatic* are cleaned for the whole book: text every track repeats (the book title,
+“(2012)”, “Title - ”) is dropped, and tracks that are only numbered become “Chapter 1, 2, 3 …”. Real chapter names stay.
 
 ### More metadata sources
 
@@ -136,6 +156,17 @@ automatically. Switch off with `METADATA_FALLBACK=false`.
   genres, description, ASIN, chapters) – `WRITE_ABS_METADATA=false` turns it off.
 * Optional, under **Search → Set up**: address and API token of Audiobookshelf. After new books are filed, the
   library is rescanned there – useful on network shares where its folder watcher misses changes.
+
+### Plex
+
+Optional, under **Search → Set up**: Plex address (e.g. `http://192.168.1.10:32400`), token and the audiobook library
+(chosen automatically when testing if it is clear which one). After filing or converting, Plex rescans that library.
+
+**Converted books showing up twice** (M4B and the old MP3s): Plex keeps entries of removed files as “unavailable”
+until its trash is emptied. Tick **Then empty the library's trash** – after the scan Better Renamer empties the trash
+of this one library, and the old MP3 entries disappear.
+
+Token: in Plex Web open any item → **…** → **Get Info** → **View XML**; the value after `X-Plex-Token=` in the address.
 
 ---
 
@@ -179,6 +210,7 @@ Push messages to your phone via [ntfy](https://ntfy.sh) – ntfy.sh or your own 
 | “To M4B now” done | off |
 | “To M4B now” failed | on |
 | Audiobookshelf scan failed | on |
+| Plex scan failed | on |
 
 Token and password stay on the server; they are not sent to another server if you change the address.
 Messages use the language of the interface.
@@ -242,6 +274,14 @@ strftime format. The ⓘ next to a file shows every placeholder with its value.
 
 ---
 
+## Log
+
+**Log** in the top bar shows what happened: books found, converted, matched and filed, media server scans, warnings
+and errors. Filter by level or text, follow it live, download it as a file. The same lines are in the container log
+(`docker logs better-renamer`).
+
+---
+
 ## Configuration
 
 Almost everything can be changed in **⚙︎ Settings**; the environment only provides the starting values.
@@ -294,7 +334,7 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `ALLOW_PUBLIC` | `false` | Without a password only private networks are answered; `true` lifts that |
 | `ALLOWED_HOSTS` | – | Only answer under these host names/IPs, e.g. `tower,192.168.1.10` |
 
-SABnzbd, the optional indexer, Audiobookshelf and ntfy are set up in the interface, not via variables.
+SABnzbd, the optional indexer, Audiobookshelf, Plex and ntfy are set up in the interface, not via variables.
 
 ---
 
@@ -307,7 +347,7 @@ Short version – details, tests and component versions in [SECURITY.md](SECURIT
 * Mount only the folders you need; the container runs without Linux capabilities and with `no-new-privileges`.
 * Downloaded files are never executed. ffmpeg is an own minimal build (audio only, no network code) running in a
   Landlock sandbox that can only read the book's files.
-* API keys, tokens and passwords (SABnzbd, indexer, Audiobookshelf, ntfy) stay on the server and are never sent
+* API keys, tokens and passwords (SABnzbd, indexer, Audiobookshelf, Plex, ntfy) stay on the server and are never sent
   to the browser.
 
 ---
@@ -339,7 +379,8 @@ sandbox), type check, click-through tests against the source and against the bui
 | Audio | `app/encoder.py`, `app/sandbox.py`, `app/meta.py`, `docker/build-ffmpeg.sh` |
 | Metadata | `app/audible.py`, `app/providers.py`, `app/links.py`, `app/tagger.py`, `app/abs.py` |
 | Library & downloads | `app/library.py`, `app/library_index.py`, `app/usenet.py` |
-| Notifications | `app/notify.py` |
+| Notifications & log | `app/notify.py`, `app/applog.py` |
+| Media servers | `app/abs.py`, `app/plex.py` |
 | Language | `app/i18n.py`, `app/static/i18n/en.json` |
 | Renamer | `app/rules.py`, `app/planner.py` |
 | Interface | `frontend/src/*.ts`, `app/static/index.html`, `style.css`; E2E tests in `e2e/` |

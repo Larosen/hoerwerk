@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import os
 
-from config import Config
+import applog
+from config import VERSION, Config
 from services import create_app
 from web.server import make_server
 
@@ -18,10 +19,11 @@ def main() -> None:
     # Unraid & co: files we create get these permissions (UMASK=000 -> rw for everyone)
     if os.environ.get("UMASK"):
         os.umask(int(os.environ["UMASK"], 8))
+    applog.capture_stderr()
     config = Config.from_env()
     app = create_app(config)
     server = make_server(app)
-    print(f"Better Renamer läuft auf Port {config.port} – Daten: {config.data_root}", flush=True)
+    applog.info(f"Better Renamer {VERSION} läuft auf Port {config.port} – Daten: {config.data_root}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

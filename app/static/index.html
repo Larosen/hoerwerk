@@ -32,6 +32,8 @@
   <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M4.5 15.5V12a7.5 7.5 0 0 1 15 0v3.5"/><rect x="3.5" y="14" width="4" height="6" rx="1.5"/><rect x="16.5" y="14" width="4" height="6" rx="1.5"/></symbol>
   <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 5.5A1.5 1.5 0 0 1 6.5 4H18v14H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H18v-3"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
+  <symbol id="i-log" viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
 </svg>
 <header class="topbar">
   <div class="brand">
@@ -46,6 +48,7 @@
   <div class="topbar-actions">
     <button id="undoBtn" class="btn ghost" title="Letzte Umbenennung rückgängig machen (⌘/Strg+Z)"><svg class="ico" aria-hidden="true"><use href="#i-undo"/></svg><span class="lbl">Rückgängig</span></button>
     <button id="historyBtn" class="btn ghost" title="Verlauf"><svg class="ico" aria-hidden="true"><use href="#i-history"/></svg><span class="lbl">Verlauf</span></button>
+    <button id="logBtn" class="btn ghost" title="Protokoll"><svg class="ico" aria-hidden="true"><use href="#i-log"/></svg><span class="lbl">Protokoll</span></button>
     <button id="themeBtn" class="btn ghost" title="Design"><svg class="ico" aria-hidden="true"><use href="#i-contrast"/></svg><span class="lbl">Design</span></button>
     <button id="settingsBtn" class="btn ghost" title="Einstellungen"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><span class="lbl">Einstellungen</span></button>
   </div>
@@ -221,6 +224,7 @@
         <button class="btn" type="button" id="bookLookupBtn" title="Erst bei Audible nachschlagen – dann wird mit deutschem Titel und Autor gesucht, und die ASIN hilft später beim Taggen">Bei Audible nachschlagen</button>
       </form>
       <div id="bookPick" class="book-pick pad-x" hidden></div>
+      <div id="searchOwned" class="owned-note" hidden></div>
       <div id="searchNote" class="muted small pad-x"></div>
       <div class="table-wrap">
         <table class="results">
@@ -241,7 +245,7 @@
 
 <dialog id="sourcesDialog">
   <form method="dialog" class="dialog-body" id="sourcesForm">
-    <h2>Indexer, SABnzbd &amp; Audiobookshelf</h2>
+    <h2>Indexer, SABnzbd, Audiobookshelf &amp; Plex</h2>
     <fieldset>
       <legend>Newznab-Indexer</legend>
       <p class="muted small">Optional, nur für die Suche: Newznab-Adresse deines Indexers (z. B. <code>https://indexer.example/api</code>) und dessen API-Key. Kategorie 3030 = Hörbuch.</p>
@@ -266,6 +270,18 @@
         <label>Bibliothek <small>leer = wird beim Testen gewählt</small><input name="abs_library" type="text" list="absLibraries" spellcheck="false"></label>
       </div>
       <datalist id="absLibraries"></datalist>
+    </fieldset>
+    <fieldset>
+      <legend>Plex <small class="muted">optional</small></legend>
+      <p class="muted small">Nach dem Ablegen neuer Bücher wird die Hörbuch-Mediathek in Plex neu eingelesen. Mit „Papierkorb leeren“
+        verschwinden danach auch ersetzte MP3-Fassungen, die es auf der Platte nicht mehr gibt. Token: in Plex Web bei einem Titel
+        „…“ → „Informationen abrufen“ → „XML anzeigen“ – der Wert hinter <code>X-Plex-Token=</code> in der Adresse.</p>
+      <div class="grid2">
+        <label>Adresse <input name="plex_url" type="text" placeholder="http://192.168.1.10:32400" spellcheck="false"></label>
+        <label>Token <input name="plex_token" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>Mediathek <small>leer = wird beim Testen gewählt</small><input name="plex_section" type="text" spellcheck="false"></label>
+        <label class="check"><input type="checkbox" name="plex_empty_trash"> Danach Papierkorb der Mediathek leeren</label>
+      </div>
     </fieldset>
     <p class="muted small">API-Keys und Token werden nur auf dem Server gespeichert (Datenbank in <code>/config</code>) und nie wieder angezeigt. Feld leer lassen = gespeicherten Key behalten.</p>
     <div class="dialog-actions">
@@ -513,6 +529,27 @@
   </div>
 </dialog>
 
+<dialog id="logDialog">
+  <div class="dialog-body">
+    <h2>Protokoll</h2>
+    <div class="log-tools">
+      <select id="logLevel" aria-label="Was">
+        <option value="info">Alles</option>
+        <option value="warn">Warnungen und Fehler</option>
+        <option value="error">Nur Fehler</option>
+      </select>
+      <input id="logFilter" type="search" placeholder="Filtern …" aria-label="Filtern">
+      <label class="check"><input type="checkbox" id="logFollow" checked> Live</label>
+      <button id="logDownload" class="btn small" type="button">Herunterladen</button>
+    </div>
+    <div id="logView" class="log-view" role="log" aria-live="polite"></div>
+    <p class="muted small">Die letzten 3000 Einträge seit dem Start. Alles steht zusätzlich im Container-Log (<code>docker logs better-renamer</code>).</p>
+    <div class="dialog-actions">
+      <button class="btn ghost" data-close>Schließen</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="metaDialog">
   <div class="dialog-body">
     <h2 id="metaTitle">Platzhalter</h2>
@@ -553,5 +590,6 @@
 <script src="/static/books.js"></script>
 <script src="/static/search.js"></script>
 <script src="/static/notify.js"></script>
+<script src="/static/logs.js"></script>
 </body>
 </html>

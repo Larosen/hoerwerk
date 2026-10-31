@@ -12,6 +12,7 @@ step comes next and persist their own state. The engine only schedules.
 """
 from __future__ import annotations
 
+import applog
 import threading
 import time
 from collections import deque
@@ -100,7 +101,7 @@ class Engine:
             try:
                 step()
             except Exception as e:  # noqa: BLE001 – steps report their own errors; this is a last resort
-                print(f"Fehler in Warteschlange {queue} ({key}): {e!r}", flush=True)
+                applog.error(f"Fehler in Warteschlange {queue} ({key}): {e!r}", "engine")
             finally:
                 with self.lock:
                     self.running[queue].remove(key)
