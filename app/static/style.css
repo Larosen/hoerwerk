@@ -466,3 +466,14 @@ table.users td { padding: 6px 8px; border-bottom: 1px solid var(--border); verti
 table.users .c-check { text-align: center; }
 table.users input.quota { width: 70px; }
 table.users select { height: 28px; }
+.waiting-card { flex-direction: row; align-items: center; gap: 12px; padding: 10px 14px; background: var(--panel-2); border-style: dashed; }
+.waiting-card .thumb { width: 40px; height: 40px; }
+.waiting-card .thumb .ico { animation: spin 2.4s linear infinite; }
+.waiting-card .book-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.waiting-card b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .waiting-card .thumb .ico { animation: none; } }
+.release-row { padding-top: 0; }
+.release-label { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.release-label input { flex: 1; }
+.linkish { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }

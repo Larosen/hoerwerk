@@ -206,10 +206,15 @@ Du brauchst nur SABnzbd; die Suche ist optional.
 3. Alles, was SABnzbd in dieser Kategorie fertig lädt, läuft automatisch durch M4B → Audible → Bibliothek. Die Liste
    **Downloads** zeigt Fortschritt und Verlauf der Kategorie.
 
-**Optionale Suche:** Mit einem Newznab-Indexer (Adresse + API-Key) kannst du direkt im Reiter **Suchen** suchen und
-Ergebnisse an SABnzbd schicken. Ergebnisse werden zusammengeführt, sortiert (bevorzugte Sprache, ungekürzt vor gekürzt,
-M4B vor MP3) und mit deiner Bibliothek abgeglichen. Umlaute werden in allen Schreibweisen gesucht (`ä` / `ae` / `a`).
-**Bei Audible nachschlagen** sucht vorher mit dem genauen Titel aus dem Shop und merkt sich die ASIN fürs Taggen.
+**Suchen** (mit einem Newznab-Indexer): Du suchst ein **Hörbuch**, nicht ein Release – Treffer kommen von Audible und
+BookBeat. Erst wenn du eins auswählst, sucht Hörwerk bei den Indexern; den Suchbegriff dafür kannst du ändern, wenn
+nichts kommt (z. B. nur Titel oder nur Nachname). Releases werden zusammengeführt, sortiert (bevorzugte Sprache,
+ungekürzt vor gekürzt, M4B vor MP3) und mit deiner Bibliothek abgeglichen; Umlaute in allen Schreibweisen. Beim
+Download gehen ASIN bzw. Titel und Autor mit – so erkennt der Eingang das Buch sicher, egal wie das Release heißt.
+Für Bücher, die es in keinem Shop gibt: **Direkt bei den Indexern suchen**.
+
+Fertige SABnzbd-Downloads aus der Suche übernimmt der Eingang nach wenigen Sekunden; bis dahin stehen sie als
+„Im Eingang – startet in ca. … s“ oben in der Hörbuch-Liste und im Protokoll.
 
 Tipp: In SABnzbd unter *Config → Switches → Unerwünschte Endungen* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
 auf **Abbrechen** stellen.
@@ -250,7 +255,7 @@ in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-A
 
 Ein Buch, das bei Audible oder BookBeat existiert, aber noch bei keinem Indexer zu finden ist, kommt mit **Merken** auf
 die Liste **Entdecken → Gesucht**. Den Knopf gibt es auf jeder Karte in *Entdecken* und im Reiter *Suchen*, sobald ein
-Buch über **Bei Audible nachschlagen** ausgewählt ist.
+Hörbuch ausgewählt ist.
 
 * Hörwerk sucht jedes gemerkte Buch sofort und danach **alle 12 Stunden** erneut bei allen Indexern (einstellbar).
   Ein Release zählt nur, wenn sein Name den Nachnamen des Autors und fast alle Wörter des Titels enthält.

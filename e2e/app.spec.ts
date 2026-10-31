@@ -172,7 +172,7 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
   await page.locator("#discoverSections").getByRole("button", { name: /Für dich/ }).click();
   await card.getByRole("button", { name: "Suchen" }).click();
   await expect(page.getByRole("tab", { name: "Suchen" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#searchQuery")).toHaveValue("Autorin Das stille Haus");
+  await expect(page.locator("#releaseQuery")).toHaveValue("Autorin Das stille Haus");
   await expect(page.locator("#bookPick")).toContainText("B0TEST0001");
   expect(errors).toEqual([]);
 });

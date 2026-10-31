@@ -10,7 +10,7 @@ import json
 import re
 from html import unescape
 from typing import List, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 import audible
 from i18n import t
@@ -115,6 +115,51 @@ def normalize_bookbeat(d: dict, url: str = "") -> dict:
     })
     if d.get("id"):
         book["url"] = url or f"https://www.bookbeat.com/de/book/{d['id']}"
+    return book
+
+
+BOOKBEAT_SEARCH = "https://api.bookbeat.com/api/search/books"
+BOOKBEAT_MARKETS = {"de": "Germany"}
+
+
+def bookbeat_search(query: str, region: str = "de", limit: int = 8) -> List[dict]:
+    """Audiobooks at BookBeat for a search term (its public search; one phrase – author *or* title).
+
+    Several words that are not one phrase find nothing there, so shorter versions are tried as well."""
+    market = BOOKBEAT_MARKETS.get(region)
+    words = (query or "").split()
+    if not market or not words:
+        return []
+    tries = [" ".join(words)]
+    if len(words) > 2:
+        tries += [" ".join(words[1:]), " ".join(words[:-1])]
+    for q in tries:
+        url = f"{BOOKBEAT_SEARCH}?{urlencode({'query': q, 'market': market})}"
+        try:
+            data = json.loads(audible.http_get(url, allow=_bookbeat_api_ok))
+        except (audible.AudibleError, ValueError):
+            return []
+        hits = [b for b in ((data.get("_embedded") or {}).get("books") or []) if b.get("audiobookisbn")]
+        if hits:
+            return [_bookbeat_hit(b) for b in hits[:limit]]
+    return []
+
+
+def _bookbeat_hit(d: dict) -> dict:
+    book = _empty_book("bookbeat", "")
+    image = d.get("image") or ""
+    series = d.get("series") if isinstance(d.get("series"), dict) else {}
+    book.update({
+        "title": (d.get("title") or "").strip(),
+        "authors": _split_names(d.get("author")),
+        "series": (series or {}).get("name"),
+        "language": (d.get("language") or "").lower() or None,
+        "release_date": (d.get("published") or "")[:10] or None,
+        "cover_url": re.sub(r"([?&])w=\d+", r"\1w=500", image) if image.startswith("https://") else None,
+        "isbn": d.get("audiobookisbn"),
+        "id": f"bookbeat:{d.get('id')}",
+        "url": d.get("shareurl") if str(d.get("shareurl") or "").startswith("https://") else None,
+    })
     return book
 
 

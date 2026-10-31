@@ -99,7 +99,7 @@ async function loadWanted(): Promise<void> {
   $("#discoverState").textContent = !res.indexers ? t("Kein Indexer eingerichtet (Suchen → Einrichten)")
     : t("Wird alle {n} Stunden gesucht", { n: res.interval }) + (res.auto ? " · " + t("Funde werden automatisch geladen") : "");
   $("#discoverList").replaceChildren(...(res.items.length ? res.items.map(wantedCard)
-    : [el("li", { class: "empty" }, t("Noch nichts gemerkt. „Merken“ gibt es auf den Karten in Entdecken und nach „Bei Audible nachschlagen“."))]));
+    : [el("li", { class: "empty" }, t("Noch nichts gemerkt. „Merken“ gibt es auf den Karten in Entdecken und bei einem in „Suchen“ gewählten Hörbuch."))]));
 }
 
 function fmtCount(n: number): string {

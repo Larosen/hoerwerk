@@ -28,6 +28,8 @@ from natsort import natural_key
 import applog
 from i18n import t
 
+GRAB_SETTLE = 15        # seconds of quiet for downloads SABnzbd finished (they arrive in one move)
+
 TEMP_SUFFIXES = (".part", ".!qb", ".crdownload", ".tmp", ".partial", ".download", ".filepart",
                  ".aria2", ".!ut", ".opdownload")
 DISC_RX = re.compile(r"(?i)^\s*(?:cd|disc|disk|dvd|teil|part|tape|seite|side|mc|kassette)?[\s_.-]*\d+\b")
@@ -232,6 +234,7 @@ class Pipeline:
         self._file_lock = threading.Lock()     # one book at a time is checked against and filed into the library
         self.wake = threading.Condition(self.lock)
         self.seen: Dict[str, tuple] = {}     # inbox path -> (signature, first seen)
+        self.ready_at: Dict[str, float] = {}  # inbox path -> when it counts as completely copied
         self.last_scan: Optional[float] = None
         self.scan_note = ""
         self._force_scan = False
@@ -291,7 +294,8 @@ class Pipeline:
             "inbox_ok": bool(self.inbox) and os.path.isdir(self.inbox),
             "library_ok": bool(self.library) and os.path.isdir(self.library),
             "last_scan": self.last_scan, "scan_note": self.scan_note,
-            "waiting": [{"name": os.path.relpath(p, self.inbox), "since": v[1]}
+            "waiting": [{"name": os.path.relpath(p, self.inbox), "since": v[1],
+                         "ready_in": max(0, round(self.ready_at.get(p, 0) - _now()))}
                         for p, v in list(self.seen.items()) if not self._known(p)],
             "jobs": jobs,
             "review": sum(1 for j in jobs if j["status"] == "review"),
@@ -543,9 +547,12 @@ class Pipeline:
                     self.scan_once(settle=120 if settle in (None, "") else int(settle))
                 except Exception as e:  # noqa: BLE001 – keep watching no matter what
                     self.scan_note = t("Fehler beim Durchsuchen: {error}", error=e)
+            # wake up when the next waiting download counts as complete, not a whole interval later
+            due = [at - _now() for at in list(self.ready_at.values())]
+            timeout = min([interval] + [max(1.0, d + 1) for d in due])
             with self.lock:
                 if not self._force_scan:
-                    self.wake.wait(timeout=interval)
+                    self.wake.wait(timeout=timeout)
                 self._force_scan = False
 
     def scan_once(self, settle: int = 120) -> List[Job]:
@@ -572,21 +579,30 @@ class Pipeline:
             if sig[0] == 0:
                 continue
             prev = self.seen.get(path)
+            # finished SABnzbd downloads from the search arrive in one move: a short pause is enough
+            wait = min(settle, GRAB_SETTLE) if settle and self.hint_provider and self.hint_provider(name) else settle
+            if not prev:
+                applog.info(t("Neu im Eingang – wird verarbeitet, sobald {n} s lang nichts mehr geschrieben wurde",
+                              n=wait), name)
             if not prev or prev[0] != sig:
                 self.seen[path] = (sig, _now())
-                if settle > 0:
+                self.ready_at[path] = _now() + wait
+                if wait > 0:
                     continue
             quiet_since = max(sig[2], self.seen[path][1])
-            if settle > 0 and _now() - quiet_since < settle:
+            self.ready_at[path] = quiet_since + wait
+            if wait > 0 and _now() - quiet_since < wait:
                 continue
             units = book_units(path)
             if not units:
                 continue
             added += self._add_units(path, units)
             self.seen.pop(path, None)
+            self.ready_at.pop(path, None)
         for p in list(self.seen):
             if p not in present:
                 self.seen.pop(p, None)
+                self.ready_at.pop(p, None)
         self.scan_note = t("{n} neue(s) Hörbuch/Hörbücher", n=len(added)) if added else t("Nichts Neues")
         self.notify()
         return added
@@ -704,12 +720,15 @@ class Pipeline:
                              query=audible.clean_query(f"{title} {author}") or job.hints["query"])
             job.say(t("Band {n} aus „{pack}“", n=pack.get("volume") or "?", pack=pack.get("name") or ""))
         grab = self.hint_provider(os.path.basename(job.source)) if self.hint_provider and not job.pack else None
-        if grab and grab.get("query"):
-            # Downloaded via the search tab: what the user searched for beats the release name
-            job.hints["query"] = audible.clean_query(grab["query"]) or grab["query"]
-            job.hints["title"] = grab.get("title") or ""
+        if grab and (grab.get("asin") or grab.get("title")):
+            # Downloaded for a book picked in the shop: its ASIN / title and author are the surest hint
+            job.hints["title"] = grab.get("title") or job.hints["title"]
             job.hints["author"] = grab.get("author") or job.hints["author"]
             job.hints["asin"] = grab.get("asin") or job.hints["asin"]
+            job.say(t("Download für „{title}“", title=grab.get("title") or grab.get("query") or grab.get("asin")))
+        elif grab and grab.get("query"):
+            # Only a free search term: the release name is usually more precise – the term is the fallback
+            job.hints["alt_query"] = audible.clean_query(grab["query"]) or grab["query"]
             job.say(t("Download aus der Suche „{query}“", query=grab["query"]))
         manual_dir = job.source if os.path.isdir(job.source) else os.path.dirname(job.source)
         manual = tagger.load_manual(manual_dir) if os.path.isdir(job.source) else None

@@ -71,7 +71,8 @@ class App:
                              pending=self._pending_asins)
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
         self.events.provide("library", self.library_index.stats)
-        self.downloads = DownloadWatcher(self.usenet, self.notifier, self.db)
+        self.downloads = DownloadWatcher(self.usenet, self.notifier, self.db,
+                                         on_done=lambda name: self.pipeline.scan_now())
         self._started = False
 
     def _pending_asins(self) -> set:

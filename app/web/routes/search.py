@@ -4,12 +4,19 @@ from __future__ import annotations
 from typing import List, Optional
 
 import audible
+import links
 import packs
+import usenet
 from abs import AbsError
 from plex import PlexError
 from usenet import UsenetError
 from i18n import t
 from web.router import HTTPException, Req, route
+
+
+def _book_key(b: dict) -> str:
+    first = (b.get("authors") or [""])[0].split()
+    return f"{' '.join(usenet.match_words(b.get('title') or ''))}|{(usenet.match_words(first[-1]) or [''])[0] if first else ''}"
 
 
 def _owned(entries: List[dict]) -> Optional[dict]:
@@ -87,11 +94,19 @@ def search_books(req: Req):
     region = req.get("region") or req.app.settings()["ab_region"]
     if region not in audible.REGIONS:
         raise HTTPException(400, t("Unbekannte Region"))
+    hints = {"query": audible.clean_query(query) or query, "asin": audible.find_asin(query)}
+    error = None
     try:
-        hints = {"query": audible.clean_query(query) or query, "asin": audible.find_asin(query)}
         books = req.app.pipeline.providers.search(hints, region)[:8]
     except audible.AudibleError as e:
-        raise HTTPException(502, str(e))
+        books, error = [], str(e)
+    # BookBeat as a second shop: only what Audible doesn't have (same title and author)
+    seen = {_book_key(b) for b in books}
+    extra = [b for b in links.bookbeat_search(hints["query"], region)
+             if _book_key(b) not in seen and (b.get("language") or "german") in ("german", "deutsch")]
+    books += audible.rank(extra, hints)[:6]
+    if not books and error:
+        raise HTTPException(502, error)
     keys = ("asin", "title", "subtitle", "authors", "narrators", "series", "series_position",
             "runtime_min", "release_date", "cover_url", "format_type", "url", "source")
     return {"books": [{**{k: b.get(k) for k in keys}, "owned": _owned(req.app.library_index.find(b))}

@@ -202,10 +202,15 @@ You only need SABnzbd; searching is optional.
 3. Everything SABnzbd finishes in that category flows through M4B → Audible → library automatically. The
    **Downloads** list shows progress and history of the category.
 
-**Optional search:** add a Newznab indexer (address + API key) to search directly from the **Search** tab and send
-results to SABnzbd. Results are merged, ranked (preferred language, unabridged before abridged, M4B before MP3)
-and compared with your library. Umlauts are searched in every spelling (`ä` / `ae` / `a`). **Look up on Audible**
-first searches with the store's exact title and remembers the ASIN for tagging.
+**Search** (with a Newznab indexer): you search for an **audiobook**, not a release – matches come from Audible and
+BookBeat. Only once you pick one Hörwerk searches the indexers; you can change the term for that if nothing comes up
+(e.g. title only or surname only). Releases are merged, ranked (preferred language, unabridged before abridged, M4B
+before MP3) and compared with your library; umlauts in every spelling. The ASIN (or title and author) goes along with
+the download – so the inbox recognises the book safely, whatever the release is called.
+For books that aren't in any shop: **search the indexers directly**.
+
+Finished SABnzbd downloads from the search are taken over by the inbox after a few seconds; until then they show up
+as "In the inbox – starts in about … s" at the top of the audiobook list and in the log.
 
 Tip: in SABnzbd set *Config → Switches → Unwanted extensions* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
 to **Abort**.
@@ -243,7 +248,7 @@ Outbound connections: only the Audible API of the chosen store, `www.deutschland
 ### Wanted
 
 A book that exists on Audible or BookBeat but is not on any indexer yet goes on **Discover → Wanted** with **Save**. The
-button is on every card in *Discover* and in the *Search* tab once a book is picked via **Look up at Audible**.
+button is on every card in *Discover* and in the *Search* tab once an audiobook is picked.
 
 * Hörwerk searches every saved book right away and then **every 12 hours** on all indexers (adjustable). A release only
   counts when its name has the author's surname and nearly all words of the title.

@@ -117,3 +117,31 @@ class LinkTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BookBeatSearchTest(unittest.TestCase):
+    def test_search_tries_shorter_phrases_and_keeps_audiobooks(self):
+        import json as _json
+        import links as lk
+        asked = []
+
+        def fake_get(url, allow=None, **kw):
+            self.assertTrue(allow(url))
+            asked.append(url)
+            if "query=Kehlmann+Lichtspiel" in url or "query=Daniel+Kehlmann+Lichtspiel" in url:
+                return _json.dumps({"_embedded": {"books": []}}).encode()
+            return _json.dumps({"_embedded": {"books": [
+                {"id": 1, "title": "Lichtspiel", "author": "Daniel Kehlmann", "audiobookisbn": "978", "language": "German",
+                 "image": "https://img.example/a.jpg?w=400", "shareurl": "https://www.bookbeat.com/de/book/1"},
+                {"id": 2, "title": "Nur E-Book", "author": "X", "audiobookisbn": None}]}}).encode()
+        old = lk.audible.http_get
+        lk.audible.http_get = fake_get
+        try:
+            hits = lk.bookbeat_search("Daniel Kehlmann Lichtspiel", "de")
+            self.assertEqual(lk.bookbeat_search("Lichtspiel", "us"), [])      # no BookBeat market
+        finally:
+            lk.audible.http_get = old
+        self.assertEqual([(b["title"], b["authors"], b["id"]) for b in hits], [("Lichtspiel", ["Daniel Kehlmann"], "bookbeat:1")])
+        self.assertEqual(hits[0]["cover_url"], "https://img.example/a.jpg?w=500")
+        self.assertEqual(len(asked), 3)                                   # full, without first, without last word
+        self.assertIn("market=Germany", asked[0])

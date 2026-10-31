@@ -184,12 +184,17 @@ class Notifier:
 class DownloadWatcher:
     """Tells about finished/failed SABnzbd downloads that were sent from the search."""
 
-    def __init__(self, usenet, notifier: Notifier, db: dbm.Database, interval: float = 120.0) -> None:
+    def __init__(self, usenet, notifier: Notifier, db: dbm.Database, interval: float = 30.0,
+                 on_done=None) -> None:
         self.usenet, self.notifier, self.db, self.interval = usenet, notifier, db, interval
+        self.on_done = on_done or (lambda name: None)     # e.g. look at the inbox right away
 
     def check_once(self) -> List[str]:
         n = self.notifier
-        if not (n.wants("download_done") or n.wants("download_failed")) or not self.usenet.configured()["sab"]:
+        if not self.usenet.configured()["sab"]:
+            return []
+        rows = self.db.all("SELECT 1 FROM grabs WHERE time > ? LIMIT 1", (time.time() - 14 * 86400,))
+        if not rows:
             return []
         rows = self.db.all("SELECT data FROM grabs WHERE time > ?", (time.time() - 14 * 86400,))
         ours = {dbm.loads(r["data"], {}).get("nzo_id") for r in rows} - {None}
@@ -204,6 +209,8 @@ class DownloadWatcher:
                        f"{item.get('name')}\n{item.get('error') or ''}".strip(), priority=4)
             else:
                 n.send("download_done", t("Download fertig"), str(item.get("name")))
+                applog.info(t("SABnzbd ist fertig – der Eingang übernimmt"), str(item.get("name")))
+                self.on_done(str(item.get("name")))
             told.add(item["id"])
             new.append(item["id"])
         if new:

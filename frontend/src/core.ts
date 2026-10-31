@@ -78,7 +78,7 @@ interface AudiobookJob {
 interface QueueStat { workers: number; running: number; waiting: number }
 interface AudiobooksStatus {
   enabled: boolean; inbox: string; library: string; inbox_ok: boolean; library_ok: boolean;
-  last_scan: number | null; scan_note: string; waiting: { name: string; since: number }[];
+  last_scan: number | null; scan_note: string; waiting: { name: string; since: number; ready_in: number }[];
   jobs: AudiobookJob[]; review: number; queues?: { encode: QueueStat; io: QueueStat };
 }
 interface LibraryStats { books: number; m4b: number; other: number; last_scan: number | null; scanning: boolean }

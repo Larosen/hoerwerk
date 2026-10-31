@@ -100,33 +100,39 @@
       <ol class="steps">
         <li>SABnzbd unter <b>Einrichten</b> eintragen. Für die Suche hier zusätzlich einen Newznab-Indexer – ohne Indexer kümmert sich der Eingang trotzdem um alles, was SABnzbd lädt.</li>
         <li>In SABnzbd eine Kategorie (z. B. <code>audiobooks</code>) anlegen, deren Ordner der <b>Hörbuch-Eingang</b> ist.</li>
-        <li>Suchen, <b>Download</b> klicken – nach dem Download übernimmt der Eingang: M4B, Audible-Tags, Bibliothek. Der Suchbegriff hilft dabei der Erkennung.</li>
-        <li>Deutsche Titel: Umlaute werden in allen Schreibweisen gesucht (ä / ae / a). Noch sicherer: <b>Bei Audible nachschlagen</b>, Buch wählen – dann wird mit Titel und Autor aus dem deutschen Shop gesucht.</li>
+        <li>Hörbuch suchen (Audible und BookBeat) und auswählen – dann sucht Hörwerk die Releases dazu. Findet sich nichts, den Suchbegriff für die Indexer ändern (z. B. nur Titel).</li>
+        <li><b>Download</b> klicken – nach dem Download übernimmt der Eingang: M4B, Tags, Bibliothek. Das gewählte Buch (ASIN bzw. Titel und Autor) sorgt für die richtige Erkennung.</li>
       </ol>
     </details>
   </aside>
   <div class="content">
     <section class="panel search-panel">
       <div class="panel-head wrap">
-        <h2>Indexer durchsuchen</h2>
+        <h2>Hörbuch suchen</h2>
+        <span class="muted small">Audible · BookBeat</span>
       </div>
       <form id="searchForm" class="search-row pad">
-        <input id="searchQuery" type="search" placeholder="Autor Titel, z. B. Storm Schimmelreiter" aria-label="Suchbegriff">
+        <input id="searchQuery" type="search" placeholder="Titel oder Autor, z. B. Storm Schimmelreiter" aria-label="Titel oder Autor">
+        <button class="btn primary" type="submit" id="bookLookupBtn">Suchen</button>
+      </form>
+      <div id="bookPick" class="book-pick pad-x" hidden></div>
+      <form id="releaseForm" class="search-row pad release-row" hidden>
+        <label class="release-label">Bei den Indexern als
+          <input id="releaseQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false"></label>
         <select id="searchLang" aria-label="Sprache bevorzugen">
           <option value="de">Deutsch bevorzugen</option>
           <option value="en">Englisch bevorzugen</option>
           <option value="">Sprache egal</option>
         </select>
-        <button class="btn primary" type="submit" id="searchGo">Suchen</button>
-        <button class="btn" type="button" id="bookLookupBtn" title="Erst bei Audible nachschlagen – dann wird mit deutschem Titel und Autor gesucht, und die ASIN hilft später beim Taggen">Bei Audible nachschlagen</button>
+        <button class="btn" type="submit" id="searchGo">Releases suchen</button>
       </form>
-      <div id="bookPick" class="book-pick pad-x" hidden></div>
+      <p class="pad-x muted small" id="freeSearchRow"><button type="button" class="linkish" id="freeSearchBtn">Buch gibt es in keinem Shop? Direkt bei den Indexern suchen</button></p>
       <div id="searchOwned" class="owned-note" hidden></div>
       <div id="searchNote" class="muted small pad-x"></div>
       <div class="table-wrap">
         <table class="results">
           <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">Grabs</th><th class="c-act"></th></tr></thead>
-          <tbody id="searchResults"><tr><td colspan="5" class="empty-row">Noch nicht gesucht.</td></tr></tbody>
+          <tbody id="searchResults"><tr><td colspan="5" class="empty-row">Erst ein Hörbuch suchen und auswählen – dann zeigt Hörwerk die passenden Releases.</td></tr></tbody>
         </table>
       </div>
     </section>
