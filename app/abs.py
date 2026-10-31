@@ -16,6 +16,7 @@ from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
 import db as dbm
+import applog
 from i18n import t
 
 METADATA_FILE = "metadata.json"
@@ -189,7 +190,7 @@ class Audiobookshelf:
             self.last = t("Scan läuft")
         except AbsError as e:
             self.last = str(e)
-            print(e, flush=True)
+            applog.warn(str(e), "Audiobookshelf")
             if self.on_error:
                 self.on_error(str(e))
 

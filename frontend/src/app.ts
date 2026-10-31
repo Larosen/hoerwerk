@@ -704,6 +704,8 @@ function init(): void {
   $("#undoBtn").addEventListener("click", undo);
   $("#historyBtn").addEventListener("click", showHistory);
   $("#refreshBtn").addEventListener("click", () => openFolder(state.path, true));
+  $("#mp3Box").append(settingSelect("originals", t("MP3s danach:"), [
+    ["keep", t("behalten")], ["move", t("in Unterordner verschieben")], ["delete", t("löschen")]]));
   $("#convertNowBtn").addEventListener("click", async () => {
     try { await api("POST", "/api/jobs", { path: state.path }); toast(t("M4B-Konvertierung gestartet")); pollJobs(true); }
     catch (e) { toast(errMsg(e), true); }

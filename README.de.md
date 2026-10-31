@@ -26,9 +26,10 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 4. [Downloads mit SABnzbd](#downloads-mit-sabnzbd)
 5. [Benachrichtigungen (ntfy)](#benachrichtigungen-ntfy)
 6. [Stapel-Umbenenner](#stapel-umbenenner)
-7. [Konfiguration](#konfiguration)
-8. [Sicherheit](#sicherheit)
-9. [Entwicklung](#entwicklung)
+7. [Protokoll](#protokoll)
+8. [Konfiguration](#konfiguration)
+9. [Sicherheit](#sicherheit)
+10. [Entwicklung](#entwicklung)
 
 ---
 
@@ -39,9 +40,11 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 | Hörbuch-Eingang | Wartet, bis ein Ordner fertig kopiert ist, fügt MP3/M4A/FLAC/OGG/Opus/WMA (auch `CD1`/`CD2`-Unterordner) zu einer M4B mit sample-genauen Kapiteln zusammen |
 | Erkennung | Audible-Suche in 10 Shops, bewertet nach Titel, Autor **und Laufzeit** (Lesung ≠ gekürzt ≠ Hörspiel); unsichere Treffer warten auf dich |
 | Tags & Dateien | Titel, Autor, Sprecher, Serie + Band, Genre, Verlag, Datum, Beschreibung, ASIN, Cover in voller Größe; `metadata.json` für Audiobookshelf |
-| Bibliothek | Ordner-Vorlage, nutzt vorhandene Autoren-/Serienordner, erkennt Doppelte, macht alte MP3-Bücher zu M4B |
+| Bibliothek | Alle Bücher durchsuchen, Ordner-Vorlage, nutzt vorhandene Autoren-/Serienordner, erkennt Doppelte, macht alte MP3-Bücher zu M4B und räumt die MP3s sicher weg |
 | Downloads | Schickt NZBs an SABnzbd, beobachtet die Kategorie, nach dem Download übernimmt der Eingang; Newznab-Suche optional |
-| Benachrichtigungen | ntfy-Push-Nachrichten, zehn Ereignisse, jedes einzeln an oder aus |
+| Medienserver | Audiobookshelf und Plex lesen ihre Bibliothek nach dem Ablegen neu ein; Plex leert auf Wunsch den Papierkorb, damit ersetzte MP3s verschwinden |
+| Benachrichtigungen | ntfy-Push-Nachrichten, elf Ereignisse, jedes einzeln an oder aus |
+| Protokoll | Alles, was passiert ist – filterbar und als Datei herunterladbar, direkt in der App |
 | Umbenenner | Live-Vorschau, Konfliktprüfung, Rückgängig mit Verlauf, Voreinstellungen, Unterordner, Begleitdateien wandern mit |
 | Oberfläche | Deutsch / Englisch, helles / dunkles Design, Live-Updates ohne Neuladen |
 | Sicherheit | Eigenes schlankes ffmpeg 9 im Landlock-Käfig, CSRF-Schutz, Zugangsdaten erreichen nie den Browser ([SECURITY.de.md](SECURITY.de.md)) |
@@ -110,6 +113,12 @@ docker compose up -d
 
 Falsch einsortiert? **Korrigieren** holt das Buch aus der Bibliothek zurück in die Prüf-Liste.
 
+### Bibliotheks-Ansicht
+
+**Hörbücher → Bibliothek** zeigt alle Bücher der Bibliothek, mit Suche über Titel, Autor, Serie und Ordner. Jede Zeile
+zeigt, wie das Buch gelesen wurde – Autor, weitere Namen aus Tags und Ordnern, Ordner und Format. Genau das nutzen auch
+die Doppelt-Prüfung und die Suche.
+
 ### Doppelte vermeiden
 
 Die Bibliothek wird beim Start und alle paar Stunden eingelesen (`LIBRARY_RESCAN_HOURS`) – auch ältere MP3-Ordner,
@@ -117,11 +126,24 @@ erkannt über ASIN, Tags oder die Ordnerstruktur. Ist ein neues Buch schon da (g
 oder gleiche Serie + Folge), entscheidest du: **Verwerfen**, **Altes ersetzen** (die alte Fassung wandert nach
 `_ersetzt` im Eingang) oder **Trotzdem zusätzlich ablegen**. `DUPLICATES=skip` oder `keep` entscheidet automatisch.
 
+Der Abgleich ist bewusst tolerant: Sprecher im Interpreten-Tag, Album-Tags wie „Autor - Titel“, Ordner wie
+„Autor - Titel“ und Release-Namen ohne Autor (bei Titeln ab zwei Wörtern) werden trotzdem erkannt. In der **Suche**
+erscheint „Schon in deiner Bibliothek“ über den Ergebnissen, wenn der Suchbegriff zu einem vorhandenen Buch passt.
+
 ### Alte MP3-Bücher zu M4B machen
 
 **Hörbücher → Nicht als M4B** zeigt alle Bücher der Bibliothek, die noch aus Einzeldateien bestehen. Bücher auswählen,
 **Zu M4B** klicken, vorher bei Bedarf die Kapitelnamen anpassen (**Kapitel & Namen …**, benennt auf Wunsch auch die
-Originaldateien in `01 - Kapitel.mp3` um). Die alte Fassung wird erst weggeräumt, wenn die neue M4B getaggt ist.
+Originaldateien in `01 - Kapitel.mp3` um).
+
+**Alte Dateien danach** wählst du direkt neben dem Knopf: *nach `_ersetzt` im Eingang verschieben* (Standard) oder
+*löschen*. In beiden Fällen wird nichts angefasst, bevor die neue M4B liegt: Der alte Ordner wird beiseitegelegt
+(umbenannt, versteckt) und erst gelöscht bzw. verschoben, wenn das neue Buch abgelegt ist. Klappt das Ablegen nicht,
+kommt er unverändert zurück.
+
+Kapitelnamen unter *automatisch* werden für das ganze Buch aufgeräumt: Text, den jeder Track wiederholt (Buchtitel,
+„(2012)“, „Titel - “), fällt weg, und Tracks, die nur nummeriert sind, werden zu „Kapitel 1, 2, 3 …“. Echte
+Kapitelnamen bleiben.
 
 ### Weitere Metadaten-Quellen
 
@@ -135,6 +157,19 @@ nie automatisch abgelegt. Abschalten mit `METADATA_FALLBACK=false`.
   Beschreibung, ASIN, Kapitel) – `WRITE_ABS_METADATA=false` schaltet sie ab.
 * Optional unter **Suchen → Einrichten**: Adresse und API-Token von Audiobookshelf. Nach dem Ablegen neuer Bücher wird
   die Bibliothek dort neu eingelesen – hilfreich auf Netzwerk-Shares, wo die Ordnerüberwachung nichts mitbekommt.
+
+### Plex
+
+Optional unter **Suchen → Einrichten**: Plex-Adresse (z. B. `http://192.168.1.10:32400`), Token und die
+Hörbuch-Mediathek (wird beim Testen automatisch gewählt, wenn eindeutig). Nach dem Ablegen oder Konvertieren liest Plex
+diese Mediathek neu ein.
+
+**Konvertierte Bücher doppelt** (M4B und die alten MP3s): Plex behält Einträge gelöschter Dateien als „nicht verfügbar“,
+bis sein Papierkorb geleert wird. Mit **Danach Papierkorb der Mediathek leeren** leert Better Renamer nach dem Scan den
+Papierkorb genau dieser Mediathek, und die alten MP3-Einträge verschwinden.
+
+Token: in Plex Web bei einem beliebigen Titel **…** → **Informationen abrufen** → **XML anzeigen**; der Wert hinter
+`X-Plex-Token=` in der Adresse.
 
 ---
 
@@ -178,6 +213,7 @@ Push-Nachrichten aufs Handy über [ntfy](https://ntfy.sh) – ntfy.sh oder ein e
 | „Jetzt zu M4B“ fertig | aus |
 | „Jetzt zu M4B“ fehlgeschlagen | an |
 | Audiobookshelf-Scan fehlgeschlagen | an |
+| Plex-Scan fehlgeschlagen | an |
 
 Token und Passwort bleiben auf dem Server und werden bei geänderter Adresse nicht an einen anderen Server geschickt.
 Nachrichten kommen in der Sprache der Oberfläche.
@@ -241,6 +277,14 @@ bei Datumswerten ein strftime-Format. Das ⓘ neben einer Datei zeigt alle Platz
 
 ---
 
+## Protokoll
+
+**Protokoll** oben in der Leiste zeigt, was passiert ist: gefundene, konvertierte, erkannte und abgelegte Bücher,
+Scans der Medienserver, Warnungen und Fehler. Nach Stufe oder Text filtern, live mitlesen, als Datei herunterladen.
+Dieselben Zeilen stehen im Container-Log (`docker logs better-renamer`).
+
+---
+
 ## Konfiguration
 
 Fast alles lässt sich unter **⚙︎ Einstellungen** ändern; die Umgebungsvariablen liefern nur die Startwerte.
@@ -293,7 +337,7 @@ SQLite-Datenbank `/config/better-renamer.db` (Rechte 600).
 | `ALLOW_PUBLIC` | `false` | Ohne Passwort nur Antworten an private Netze; `true` hebt das auf |
 | `ALLOWED_HOSTS` | – | Nur unter diesen Hostnamen/IPs antworten, z. B. `tower,192.168.1.10` |
 
-SABnzbd, der optionale Indexer, Audiobookshelf und ntfy werden in der Oberfläche eingerichtet, nicht über Variablen.
+SABnzbd, der optionale Indexer, Audiobookshelf, Plex und ntfy werden in der Oberfläche eingerichtet, nicht über Variablen.
 
 ---
 
@@ -306,7 +350,7 @@ Kurz gefasst – Details, Tests und Komponenten-Versionen in [SECURITY.de.md](SE
 * Nur nötige Ordner einbinden; der Container läuft ohne Linux-Capabilities und mit `no-new-privileges`.
 * Heruntergeladene Dateien werden nie ausgeführt. ffmpeg ist ein eigener schlanker Build (nur Audio, kein
   Netzwerk-Code) in einem Landlock-Käfig, der nur die Dateien des Buchs lesen darf.
-* API-Keys, Token und Passwörter (SABnzbd, Indexer, Audiobookshelf, ntfy) bleiben auf dem Server und gehen nie an den Browser.
+* API-Keys, Token und Passwörter (SABnzbd, Indexer, Audiobookshelf, Plex, ntfy) bleiben auf dem Server und gehen nie an den Browser.
 
 ---
 
@@ -337,7 +381,8 @@ Typprüfung, Durchklick-Tests gegen den Quelltext und gegen das fertig gebaute D
 | Audio | `app/encoder.py`, `app/sandbox.py`, `app/meta.py`, `docker/build-ffmpeg.sh` |
 | Metadaten | `app/audible.py`, `app/providers.py`, `app/links.py`, `app/tagger.py`, `app/abs.py` |
 | Bibliothek & Downloads | `app/library.py`, `app/library_index.py`, `app/usenet.py` |
-| Benachrichtigungen | `app/notify.py` |
+| Benachrichtigungen & Protokoll | `app/notify.py`, `app/applog.py` |
+| Medienserver | `app/abs.py`, `app/plex.py` |
 | Sprache | `app/i18n.py`, `app/static/i18n/en.json` |
 | Umbenennen | `app/rules.py`, `app/planner.py` |
 | Oberfläche | `frontend/src/*.ts`, `app/static/index.html`, `style.css`; Durchklick-Tests in `e2e/` |

@@ -8,7 +8,7 @@ from typing import FrozenSet, Mapping
 import library
 import planner
 
-VERSION = "4.1.0"
+VERSION = "4.2.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:

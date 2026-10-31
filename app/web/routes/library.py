@@ -17,6 +17,17 @@ def stats(req: Req):
     return req.app.library_index.stats()
 
 
+@route("GET", "/api/library/books")
+def books(req: Req):
+    """Browse the whole library (search over title, author, series, path)."""
+    try:
+        offset = max(0, int(req.query.get("offset") or 0))
+        limit = min(2000, max(1, int(req.query.get("limit") or 100)))
+    except ValueError:
+        raise HTTPException(400, t("Ungültige Daten"))
+    return req.app.library_index.books(req.query.get("q", "")[:200], offset, limit)
+
+
 @route("POST", "/api/library/scan")
 def scan(req: Req):
     threading.Thread(target=req.app.library_index.scan, daemon=True).start()
@@ -46,6 +57,7 @@ def tracks(req: Req):
     """Tracks of an unconverted book with name suggestions for the chapters."""
     folder = library_path(req.app, req.query.get("path", ""))
     out = []
+    entry = req.app.library_index.entries.get(os.path.relpath(folder, os.path.realpath(req.app.config.library)), {})
     for rel in encoder.collect_audio(folder):
         info = meta_cache.probe(os.path.join(folder, rel))
         tags = info.get("tags", {})
@@ -55,6 +67,9 @@ def tracks(req: Req):
             "filename": encoder.chapter_title(rel, tags, "filename"),
             "tag": (tags.get("title") or "").strip(),
         })
+    # "automatisch": cleaned as a whole (repeated book title, years, bare numbers -> "Kapitel N")
+    for track, name in zip(out, encoder.chapter_titles([x["auto"] for x in out], entry.get("title") or "")):
+        track["auto"] = name
     return {"path": os.path.relpath(folder, os.path.realpath(req.app.config.library)), "tracks": out}
 
 

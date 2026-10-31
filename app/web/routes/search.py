@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import audible
 from abs import AbsError
+from plex import PlexError
 from usenet import UsenetError
 from i18n import t
 from web.router import HTTPException, Req, route
@@ -20,7 +21,7 @@ def _owned(entries: List[dict]) -> Optional[dict]:
 
 @route("GET", "/api/sources")
 def sources(req: Req):
-    return req.app.usenet.public_config() | {"abs": req.app.abs.public_config()}
+    return req.app.usenet.public_config() | {"abs": req.app.abs.public_config(), "plex": req.app.plex.public_config()}
 
 
 @route("PUT", "/api/sources")
@@ -29,7 +30,12 @@ def write_sources(req: Req):
         raise HTTPException(400, t("Ungültige Daten"))
     if isinstance(req.body.get("abs"), dict):
         req.app.abs.update_config(req.body["abs"])
-    return req.app.usenet.update_config(req.body) | {"abs": req.app.abs.public_config()}
+    if isinstance(req.body.get("plex"), dict):
+        try:
+            req.app.plex.update_config(req.body["plex"])
+        except PlexError as e:
+            raise HTTPException(400, str(e))
+    return req.app.usenet.update_config(req.body) | {"abs": req.app.abs.public_config(), "plex": req.app.plex.public_config()}
 
 
 @route("POST", "/api/sources/test")
@@ -37,8 +43,10 @@ def test_source(req: Req):
     try:
         if req.get("kind") == "abs":
             return {"ok": True, "message": req.app.abs.test()}
+        if req.get("kind") == "plex":
+            return {"ok": True, "message": req.app.plex.test()}
         return {"ok": True, "message": req.app.usenet.test(req.get("kind", ""), req.get("id", ""))}
-    except (UsenetError, AbsError) as e:
+    except (UsenetError, AbsError, PlexError) as e:
         return {"ok": False, "message": str(e)}
     except Exception as e:  # noqa: BLE001 – unexpected answers (HTML instead of XML …)
         return {"ok": False, "message": t("Unerwartete Antwort: {error}", error=e)}
@@ -54,8 +62,12 @@ def search_indexers(req: Req):
         res = req.app.usenet.search(query, req.get("language") or "", extra)
     except UsenetError as e:
         raise HTTPException(400, str(e))
+    index = req.app.library_index
     for r in res["results"]:
-        r["owned"] = _owned(req.app.library_index.match_release(r["title"]))
+        r["owned"] = _owned(index.match_release(r["title"]))
+    # what the user typed may already be in the library, even if no release name says so
+    res["library"] = [{k: e.get(k) for k in ("path", "title", "authors", "format")}
+                      for e in index.match_release(query, lenient=True)[:3]]
     return res
 
 

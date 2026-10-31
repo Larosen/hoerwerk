@@ -7,8 +7,8 @@ const BOOK_STATUS: Record<BookStatus, string> = {
   queued: t("wartet"), matching: t("sucht"), converting: t("konvertiert"), review: t("zu prüfen"),
   tagging: t("taggt"), done: t("fertig"), failed: t("Fehler"), cancelled: t("abgebrochen"),
 };
-type BookFilter = "all" | "review" | "active" | "done" | "failed" | "unconverted";
-const BOOK_FILTERS: [BookFilter, string][] = [["all", t("Alle")], ["review", t("Zu prüfen")], ["active", t("Laufend")],
+type BookFilter = "library" | "all" | "review" | "active" | "done" | "failed" | "unconverted";
+const BOOK_FILTERS: [BookFilter, string][] = [["library", t("Bibliothek")], ["all", t("Aufträge")], ["review", t("Zu prüfen")], ["active", t("Laufend")],
   ["done", t("Fertig")], ["failed", t("Fehler")], ["unconverted", t("Nicht als M4B")]];
 const ACTIVE_STATES: BookStatus[] = ["queued", "matching", "converting", "tagging"];
 const REGIONS = ["de", "us", "uk", "fr", "it", "es", "ca", "au", "in", "jp"];
@@ -23,6 +23,10 @@ const books = {
   unconverted: null as UnconvertedBook[] | null,   // library books that are not one M4B yet
   picked: new Set<string>(),                  // selected paths in that list
   tracks: null as Track[] | null,             // tracks of the book in the "Kapitel & Namen" dialog
+  libQuery: "",                               // search in the library view
+  libShown: 100,                              // rows loaded so far
+  libTotal: null as number | null,            // books in the library (for the filter chip)
+  libTimer: undefined as number | undefined,
 };
 
 function isActive(status: BookStatus): boolean {
@@ -86,6 +90,7 @@ function renderBooks(): void {
   const list = $("#bookList");
   list.replaceChildren();
   if (books.filter === "unconverted") { renderUnconverted(list); return; }
+  if (books.filter === "library") { renderLibrary(list); return; }
   const jobs = d.jobs.filter((j) => books.filter === "all"
     || (books.filter === "active" ? isActive(j.status)
       : books.filter === "failed" ? ["failed", "cancelled"].includes(j.status) : j.status === books.filter));
@@ -95,6 +100,65 @@ function renderBooks(): void {
         : t("Der Eingangsordner ist nicht eingebunden. In Docker/Unraid einen Pfad auf /inbox mappen.")));
   }
   for (const j of jobs) list.append(bookCard(j));
+}
+
+// ------------------------------------------------------------------------- //
+// The whole library: browse and search (shows how every book was read)
+// ------------------------------------------------------------------------- //
+interface LibraryBook {
+  path: string; title: string; authors: string[]; names?: string[]; series: string | null;
+  series_position: string | null; asin: string | null; format: string; files: number;
+}
+
+function renderLibrary(list: HTMLElement): void {
+  const q = el("input", { type: "search", value: books.libQuery, placeholder: t("Titel, Autor, Serie oder Ordner"),
+    "aria-label": t("Bibliothek durchsuchen") });
+  const rows = el("ul", { class: "lib-rows", id: "libRows" }, el("li", { class: "empty" }, t("Lade …")));
+  q.addEventListener("input", () => {
+    books.libQuery = q.value;
+    books.libShown = 100;
+    clearTimeout(books.libTimer);
+    books.libTimer = setTimeout(loadLibraryBooks, 250);
+  });
+  list.append(el("li", { class: "lib-search" }, icon("search"), q), el("li", { class: "lib-wrap" }, rows));
+  loadLibraryBooks();
+}
+
+async function loadLibraryBooks(): Promise<void> {
+  try {
+    const res = await api<{ total: number; books: LibraryBook[] }>("GET",
+      `/api/library/books?q=${encodeURIComponent(books.libQuery)}&limit=${books.libShown}`);
+    if (!books.libQuery) books.libTotal = res.total;
+    const rows = document.getElementById("libRows");
+    if (!rows) return;
+    rows.replaceChildren(...res.books.map(libraryRow));
+    if (!res.books.length) rows.append(el("li", { class: "empty" }, books.libQuery ? t("Nichts gefunden.") : t("Die Bibliothek ist leer.")));
+    if (res.total > res.books.length) {
+      rows.append(el("li", { class: "lib-more" },
+        el("span", { class: "muted small" }, t("{shown} von {total}", { shown: res.books.length, total: res.total })),
+        el("button", { class: "btn small", onclick: () => { books.libShown += 200; loadLibraryBooks(); } }, t("Mehr anzeigen"))));
+    }
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+function libraryRow(b: LibraryBook): HTMLLIElement {
+  const author = (b.authors || [])[0] || "";
+  // further names, without the pieces of longer ones ("Kleist" of "Kleist, Heinrich von")
+  const all = [...(b.authors || []), ...(b.names || [])];
+  const other = (b.names || []).filter((n, i, arr) => arr.indexOf(n) === i && !(b.authors || []).includes(n)
+    && !all.some((m) => m !== n && m.includes(n)));
+  return el("li", { class: "lib-row" },
+    coverArt(b.title || b.path, author, b.format !== "m4b" ? (b.format || "").toUpperCase() : ""),
+    el("div", { class: "lib-main" },
+      el("div", { class: "lib-title" }, b.title || b.path,
+        b.series ? el("span", { class: "muted" }, ` · ${b.series}${b.series_position ? " " + b.series_position : ""}`) : null),
+      el("div", { class: "book-sub" }, author || t("Autor unbekannt"),
+        other.length ? el("span", { class: "faint", title: t("Weitere Namen aus Tags und Ordnern – zählen beim Abgleich mit") },
+          " · " + other.slice(0, 4).join(" / ")) : null),
+      el("code", { class: "lib-path" }, b.path)),
+    el("div", { class: "lib-side" },
+      b.format === "m4b" ? el("span", { class: "tag" }, "M4B") : el("span", { class: "tag soft" }, t("{n} Datei(en)", { n: b.files })),
+      b.asin ? el("span", { class: "muted small" }, b.asin) : null));
 }
 
 // ------------------------------------------------------------------------- //
@@ -124,8 +188,10 @@ function renderUnconverted(list: HTMLElement): void {
   const bar = el("li", { class: "uc-bar" },
     el("label", { class: "check" }, all, t("Alle ({n})", { n: free.length })),
     el("span", { class: "muted small" }, items.length
-      ? t("Ausgewählte werden zu M4B mit Kapiteln, bei Audible erkannt, getaggt und ersetzen die alte Fassung (die nach _ersetzt im Eingang wandert).")
+      ? t("Ausgewählte werden zu M4B mit Kapiteln, bei Audible erkannt und getaggt. Die alten Dateien werden erst weggeräumt, wenn die neue M4B fertig in der Bibliothek liegt.")
       : t("Alle Bücher der Bibliothek liegen schon als M4B vor.")),
+    settingSelect("ab_library_originals", t("Alte Dateien danach:"), [
+      ["archive", t("nach _ersetzt im Eingang verschieben")], ["delete", t("löschen")]]),
     el("button", {
       class: "btn small primary", disabled: !books.picked.size,
       onclick: () => convertLibrary([...books.picked].map((path) => ({ path }))),
@@ -213,6 +279,10 @@ async function loadLibraryStats(): Promise<void> {
 }
 
 function renderLibraryStats(st: LibraryStats): void {
+  if (books.libTotal !== st.books) {
+    books.libTotal = st.books;
+    if (books.filter === "library" && !$("#viewBooks").hidden && !st.scanning) loadLibraryBooks();
+  }
   $("#libraryInfo").replaceChildren(
     el("div", { class: "kv" }, el("span", {}, t("Bücher")),
       el("span", {}, st.scanning ? t("wird eingelesen …") : `${st.books}` + (st.other ? " " + t("(davon {n} als MP3 & Co.)", { n: st.other }) : "")), el("span", {})),
@@ -250,6 +320,7 @@ function renderFilter(jobs: AudiobookJob[]): void {
     done: jobs.filter((j) => j.status === "done").length,
     failed: jobs.filter((j) => ["failed", "cancelled"].includes(j.status)).length,
     unconverted: books.unconverted ? books.unconverted.length : 0,
+    library: books.libTotal ?? 0,
   };
   $("#bookFilter").replaceChildren(...BOOK_FILTERS.map(([k, label]) => el("button", {
     class: "chip" + (books.filter === k ? " on" : "") + (k === "review" && counts.review ? " attention" : ""),

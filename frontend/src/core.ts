@@ -102,9 +102,12 @@ interface Track { file: string; duration: number; auto: string; filename: string
 
 interface Indexer { id?: string; name?: string; url?: string; categories?: string; enabled?: boolean; apikey_set?: boolean }
 interface AbsConfig { url: string; library: string; library_name: string; token_set: boolean; configured: boolean; last: string | null }
+interface PlexConfig {
+  url: string; section: string; section_name: string; empty_trash: boolean; token_set: boolean; configured: boolean; last: string | null;
+}
 interface Sources {
   indexers: Indexer[]; sab: { url?: string; category?: string; apikey_set?: boolean };
-  configured: { indexers: number; sab: boolean }; abs?: AbsConfig;
+  configured: { indexers: number; sab: boolean }; abs?: AbsConfig; plex?: PlexConfig;
 }
 interface Release {
   id: string; title: string; size: number; published: number | null; grabs: number | null; indexer: string;
@@ -216,6 +219,22 @@ async function api<T = unknown>(method: string, url: string, body?: unknown): Pr
 /** Text of a caught error (anything can be thrown in JavaScript). */
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+/** A setting changed right where it matters (saved at once, the settings dialog shows the same value). */
+function settingSelect(key: string, label: string, options: [string, string][]): HTMLLabelElement {
+  const sel = el("select", { "data-setting": key }, options.map(([v, l]) => el("option", { value: v }, l)));
+  const current = (s: Settings): void => { if (s[key] !== undefined) sel.value = String(s[key]); };
+  api<Settings>("GET", "/api/settings").then(current).catch(() => { /* keeps the first option */ });
+  sel.addEventListener("change", async () => {
+    try {
+      const s = await api<Settings>("PUT", "/api/settings", { [key]: sel.value });
+      if (typeof state !== "undefined") state.settings = s;
+      for (const other of document.querySelectorAll<HTMLSelectElement>(`select[data-setting="${key}"]`)) other.value = sel.value;
+      toast(t("Gespeichert"));
+    } catch (e) { toast(errMsg(e), true); }
+  });
+  return el("label", { class: "inline-setting" }, label, sel);
 }
 
 let toastTimer: number | undefined;

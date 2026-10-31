@@ -48,6 +48,12 @@ async function loadSources(): Promise<void> {
       el("span", { title: abs.last || abs.url }, abs.library_name || abs.library || t("Bibliothek fehlt")),
       el("span", { class: abs.configured ? "ok" : "err" }, icon(abs.configured ? "check" : "alert"))));
   }
+  const plex = s.plex;
+  if (plex?.url) {
+    box.append(el("div", { class: "kv" }, el("span", {}, "Plex"),
+      el("span", { title: plex.last || plex.url }, plex.section_name || plex.section || t("Mediathek fehlt")),
+      el("span", { class: plex.configured ? "ok" : "err" }, icon(plex.configured ? "check" : "alert"))));
+  }
 }
 
 function indexerRow(i: Indexer = {}): HTMLDivElement {
@@ -77,6 +83,13 @@ function openSources(): void {
   const token = field(f, "abs_token");
   token.value = "";
   token.placeholder = abs?.token_set ? t("gespeichert – leer lassen") : "API-Token";
+  const plex = s.plex;
+  field(f, "plex_url").value = plex?.url || "";
+  field(f, "plex_section").value = plex?.section || "";
+  field(f, "plex_empty_trash").checked = !!plex?.empty_trash;
+  const plexToken = field(f, "plex_token");
+  plexToken.value = "";
+  plexToken.placeholder = plex?.token_set ? t("gespeichert – leer lassen") : "X-Plex-Token";
   $<HTMLDialogElement>("#sourcesDialog").showModal();
 }
 
@@ -97,9 +110,11 @@ async function saveSources(): Promise<void> {
   }));
   const sab = { url: field(f, "sab_url").value, apikey: field(f, "sab_apikey").value, category: field(f, "sab_category").value };
   const abs = { url: field(f, "abs_url").value, token: field(f, "abs_token").value, library: field(f, "abs_library").value };
+  const plex = { url: field(f, "plex_url").value, token: field(f, "plex_token").value, section: field(f, "plex_section").value,
+    empty_trash: field(f, "plex_empty_trash").checked };
   let saved: Sources;
   try {
-    saved = search.sources = await api<Sources>("PUT", "/api/sources", { indexers, sab, abs });
+    saved = search.sources = await api<Sources>("PUT", "/api/sources", { indexers, sab, abs, plex });
   } catch (e) { toast(errMsg(e), true); return; }
   await loadSources();
   // test everything that is set up, report in one toast
@@ -113,6 +128,11 @@ async function saveSources(): Promise<void> {
   if (saved.abs?.url && saved.abs?.token_set) {
     tests.push(api<TestResult>("POST", "/api/sources/test", { kind: "abs" })
       .then((r) => (r.ok ? "✓ Audiobookshelf: " : "✗ ") + r.message)
+      .finally(loadSources));
+  }
+  if (saved.plex?.url && saved.plex?.token_set) {
+    tests.push(api<TestResult>("POST", "/api/sources/test", { kind: "plex" })
+      .then((r) => (r.ok ? "✓ Plex: " : "✗ ") + r.message)
       .finally(loadSources));
   }
   const lines = await Promise.all(tests.map((p) => p.catch((e: unknown) => "✗ " + errMsg(e))));
@@ -176,7 +196,8 @@ function clearBook(): void {
   box.replaceChildren();
 }
 
-interface SearchAnswer { results: Release[]; errors: string[]; queries?: string[] }
+interface LibraryHit { path: string; title: string; authors: string[]; format: string }
+interface SearchAnswer { results: Release[]; errors: string[]; queries?: string[]; library?: LibraryHit[] }
 
 async function runSearch(e?: Event): Promise<void> {
   e?.preventDefault();
@@ -198,10 +219,23 @@ async function runSearch(e?: Event): Promise<void> {
     $("#searchNote").textContent = t("{n} Treffer", { n: res.results.length }) +
       (queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: queries.map((x) => `„${x}“`).join(", ") }) : "") +
       (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "");
+    renderOwnedNote(res.library || []);
   } catch (err) {
     toast(errMsg(err), true);
     $("#searchNote").textContent = errMsg(err);
   } finally { go.disabled = false; go.textContent = t("Suchen"); }
+}
+
+/** The search term itself matches books in the library: say so above the results. */
+function renderOwnedNote(hits: LibraryHit[]): void {
+  const box = $("#searchOwned");
+  box.replaceChildren();
+  box.hidden = !hits.length;
+  if (!hits.length) return;
+  box.append(icon("check"), el("span", {}, el("b", {}, t("Schon in deiner Bibliothek:")), " ",
+    ...hits.flatMap((h, i) => [i ? " · " : "", el("span", { title: h.path },
+      `${(h.authors || [])[0] ? (h.authors || [])[0] + " – " : ""}${h.title}`,
+      h.format && h.format !== "m4b" ? el("span", { class: "tag soft" }, h.format.toUpperCase()) : null)])));
 }
 
 function renderResults(): void {

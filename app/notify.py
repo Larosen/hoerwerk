@@ -17,6 +17,7 @@ from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
 import db as dbm
+import applog
 from i18n import t
 
 # event -> (switched on by default, ntfy tags shown as emoji)
@@ -31,6 +32,7 @@ EVENTS: Dict[str, tuple] = {
     "convert_done": (False, ["headphones"]),
     "convert_failed": (True, ["warning"]),
     "abs_error": (True, ["warning"]),
+    "plex_error": (True, ["warning"]),
 }
 PRIORITIES = (1, 2, 3, 4, 5)        # min, low, default, high, max
 SECRETS = ("token", "password")
@@ -169,7 +171,7 @@ class Notifier:
                 self.last_error = None
             except NotifyError as e:
                 self.last_error = str(e)
-                print(e, flush=True)
+                applog.warn(str(e), "ntfy")
         threading.Thread(target=run, daemon=True, name="ntfy").start()
 
     def test(self) -> str:
@@ -214,5 +216,5 @@ class DownloadWatcher:
             try:
                 self.check_once()
             except Exception as e:  # noqa: BLE001 – SABnzbd away for a moment: try again later
-                print(f"download check: {e}", flush=True)
+                applog.warn(f"SABnzbd: {e}", "Downloads")
             time.sleep(self.interval)

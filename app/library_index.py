@@ -19,6 +19,9 @@ from usenet import match_words
 AUDIO_EXTS = (".m4b", ".m4a", ".mp3", ".mp4", ".aac", ".flac", ".ogg", ".opus", ".wma")
 # "CD1", "CD 2", "Disc 3", "Teil 1" … are parts of one book, not books of their own
 DISC_RX = re.compile(r"(?i)^\s*(?:cd|disc|disk|dvd|teil|part|tape|seite|side|mc|kassette)[\s_.-]*\d+\b")
+# "Sebastian Fitzek, Simon Jäger", "Autor / Sprecher", "A & B", "A und B", "A feat. B"
+NAME_SPLIT = re.compile(r"\s*(?:[;/&|+]|,(?=\s*\S+\s+\S)|\bund\b|\band\b|\bfeat\.?|\bgelesen von\b|\bread by\b)\s*", re.I)
+ENTRY_VERSION = 3       # bump when the way entries are read changes: cached folders are read again
 
 
 def _surname(name: str) -> str:
@@ -35,6 +38,32 @@ def title_words(title: str) -> List[str]:
     words = match_words(title)
     significant = [w for w in words if w not in _STOP and (len(w) > 1 or w.isdigit())]
     return significant or words      # "Das Buch" consists of stop words only
+
+
+def names_of(*values: str) -> List[str]:
+    """Every name in author-like tags: the whole value and its parts ("A, B" -> "A, B", "A", "B")."""
+    out: List[str] = []
+    for v in values:
+        v = (v or "").strip()
+        if not v:
+            continue
+        for n in [v, *NAME_SPLIT.split(v)]:
+            n = n.strip(" ,")
+            if n and n not in out:
+                out.append(n)
+    return out
+
+
+def surnames(names: List[str]) -> set:
+    return {s for s in (_surname(n) for n in names) if s}
+
+
+def split_author_title(name: str) -> Optional[tuple]:
+    """Folder names like "Storm, Theodor - Der Schimmelreiter" -> (author, title)."""
+    m = re.match(r"^\s*(.+?)\s+[-–]\s+(.+?)\s*$", name or "")
+    if not m or re.match(r"^\d+$", m.group(1)):      # "01 - Title" is a volume number, not an author
+        return None
+    return m.group(1), m.group(2)
 
 
 def book_key(authors: List[str], title: str) -> Optional[str]:
@@ -103,7 +132,7 @@ class LibraryIndex:
                 except OSError:
                     continue
                 old = self.entries.get(rel)
-                if old and old.get("mtime") == mtime and old.get("files") == len(audio):
+                if old and old.get("mtime") == mtime and old.get("files") == len(audio) and old.get("v") == ENTRY_VERSION:
                     found[rel] = old
                     continue
                 found[rel] = self._entry(folder, rel, sorted(audio), mtime)
@@ -120,23 +149,37 @@ class LibraryIndex:
 
     def _entry(self, folder: str, rel: str, audio: List[str], mtime: float) -> dict:
         book: dict = {}
+        names: List[str] = []           # every name that may be the author: tags (also narrators) + folders
         m4b = next((f for f in audio if f.lower().endswith((".m4b", ".m4a"))), None)
         try:
             if m4b and self._read_m4b:
                 book = self._read_m4b(os.path.join(folder, m4b))
+                names = names_of(*(book.get("authors") or []))
             elif self._probe:
                 tags = (self._probe(os.path.join(folder, audio[0])) or {}).get("tags", {})
-                book = {"title": tags.get("album") or "", "authors": [a for a in [
-                    tags.get("album_artist") or tags.get("artist") or ""] if a],
-                    "asin": tags.get("asin") or tags.get("audible_asin")}
+                names = names_of(tags.get("album_artist", ""), tags.get("artist", ""), tags.get("composer", ""))
+                book = {"title": tags.get("album") or "", "authors": names[:1],
+                        "asin": tags.get("asin") or tags.get("audible_asin")}
         except Exception:  # noqa: BLE001 – one unreadable file must not stop the scan
             book = {}
         parts = rel.split(os.sep)
-        # Folder layout as fallback: Author/Title or Author/Series/NN - Title
-        title = book.get("title") or re.sub(r"^\s*\d+(?:[.,]\d+)?\s*[-–.]\s*", "", parts[-1])
-        authors = book.get("authors") or ([parts[0]] if len(parts) > 1 else [])
+        # Folder layout: Author/Title, Author/Series/NN - Title, or "Author - Title" as one folder
+        folder_author = parts[0] if len(parts) > 1 else None
+        folder_title = re.sub(r"^\s*\d+(?:[.,]\d+)?\s*[-–.]\s*", "", parts[-1])
+        if not folder_author and (pair := split_author_title(parts[-1])):
+            folder_author, folder_title = pair
+        if folder_author:
+            names = [*names, *[n for n in names_of(folder_author) if n not in names]]
+        title = book.get("title") or folder_title
+        # Album tags like "Theodor Storm - Der Schimmelreiter": the author is not part of the title
+        pair = split_author_title(title)
+        if pair and surnames(names_of(pair[0])) & surnames(names):
+            title = pair[1]
+        # M4B: our own tags. MP3 & co.: the artist tag is often the narrator – a folder named after the author wins
+        authors = ([folder_author] if folder_author and not m4b else book.get("authors")) or (
+            [folder_author] if folder_author else [])
         return {
-            "path": rel, "files": len(audio), "mtime": mtime,
+            "v": ENTRY_VERSION, "path": rel, "files": len(audio), "mtime": mtime, "names": names,
             "title": title, "authors": authors, "asin": (book.get("asin") or "").upper() or None,
             "series": book.get("series") or (parts[1] if len(parts) > 2 else None),
             "series_position": book.get("series_position"),
@@ -152,6 +195,7 @@ class LibraryIndex:
             "title": book.get("title") or "", "authors": book.get("authors") or [],
             "asin": (book.get("asin") or "").upper() or None, "series": book.get("series"),
             "series_position": book.get("series_position"), "format": "m4b",
+            "v": ENTRY_VERSION, "names": names_of(*(book.get("authors") or [])),
         }
         with self.lock:
             self.entries[rel] = entry
@@ -166,10 +210,15 @@ class LibraryIndex:
         self.notify()
 
     # -- lookups -----------------------------------------------------------
+    @staticmethod
+    def _names(e: dict) -> set:
+        return surnames([*(e.get("authors") or []), *(e.get("names") or [])])
+
     def find(self, book: dict) -> List[dict]:
-        """Library entries that are this book: same ASIN, or same author and title."""
+        """Library entries that are this book: same ASIN, same author and title, or same series and volume."""
         asin = (book.get("asin") or "").upper()
-        key = book_key(book.get("authors") or [], book.get("title") or "")
+        want = surnames(names_of(*(book.get("authors") or [])))
+        words = title_words(book.get("title") or "")
         series = (book.get("series") or "").strip().lower()
         pos = str(book.get("series_position") or "")
         out = []
@@ -178,28 +227,51 @@ class LibraryIndex:
         for e in entries:
             if asin and e.get("asin") == asin:
                 out.append({**e, "why": "asin"})
-            elif key and book_key(e.get("authors") or [], e.get("title") or "") == key:
+                continue
+            names = self._names(e)
+            if words and want & names and title_words(e.get("title") or "") == words:
                 out.append({**e, "why": "title"})
-            elif (series and pos and (e.get("series") or "").strip().lower() == series
-                  and str(e.get("series_position") or "") == pos
-                  and _surname((e.get("authors") or [""])[0]) == _surname((book.get("authors") or [""])[0])):
+            elif (series and pos and want & names and (e.get("series") or "").strip().lower() == series
+                  and str(e.get("series_position") or "") == pos):
                 out.append({**e, "why": "series"})
         return out
 
-    def match_release(self, release: str) -> List[dict]:
-        """Library books whose author and every title word appear in a release name."""
+    def match_release(self, release: str, lenient: bool = False) -> List[dict]:
+        """Library books whose every title word appears in a release name (or a search term).
+
+        Normally the author's surname must be there as well; titles of two or more significant
+        words also count without it ("Toedliche.Saat.German.Hoerbuch"). ``lenient`` (for what
+        the user typed) accepts one-word titles without the author too."""
         words = set(match_words(release))
         hits = []
         with self.lock:
             entries = list(self.entries.values())
         for e in entries:
-            surname = _surname((e.get("authors") or [""])[0])
             tw = title_words(e.get("title") or "")
-            if surname and tw and surname in words and all(w in words for w in tw):
-                hits.append(e)
-        # the most specific title first ("Eragon - Der Auftrag des Ältesten" before "Eragon")
-        hits.sort(key=lambda e: -len(title_words(e.get("title") or "")))
+            if not tw or not all(w in words for w in tw):
+                continue
+            if self._names(e) & words:
+                hits.append({**e, "why": "title"})
+            elif lenient or len(tw) >= 2:
+                hits.append({**e, "why": "similar"})
+        # author found first, then the most specific title ("Eragon - Der Auftrag des Ältesten" before "Eragon")
+        hits.sort(key=lambda e: (e["why"] != "title", -len(title_words(e.get("title") or ""))))
         return hits
+
+    def books(self, query: str = "", offset: int = 0, limit: int = 100) -> dict:
+        """Browse the library: every word of the query in title, author, series or path."""
+        want = match_words(query)
+        with self.lock:
+            entries = list(self.entries.values())
+        if want:
+            def text(e: dict) -> set:
+                return set(match_words(" ".join([e.get("title") or "", " ".join(e.get("authors") or []),
+                                                 " ".join(e.get("names") or []), e.get("series") or "", e["path"]])))
+            entries = [e for e in entries if all(any(t.startswith(w) for t in text(e)) for w in want)]
+        entries.sort(key=lambda e: [w.lower() for w in re.split(r"(\d+)", e["path"])])
+        keys = ("path", "title", "authors", "names", "series", "series_position", "asin", "format", "files")
+        return {"total": len(entries), "offset": offset,
+                "books": [{k: e.get(k) for k in keys} for e in entries[offset:offset + limit]]}
 
     def stats(self) -> dict:
         with self.lock:

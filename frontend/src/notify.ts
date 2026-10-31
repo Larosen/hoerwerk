@@ -20,6 +20,7 @@ const NOTIFY_EVENTS: Record<string, string> = {
   convert_done: t("„Jetzt zu M4B“ fertig"),
   convert_failed: t("„Jetzt zu M4B“ fehlgeschlagen"),
   abs_error: t("Audiobookshelf-Scan fehlgeschlagen"),
+  plex_error: t("Plex-Scan fehlgeschlagen"),
 };
 
 function renderNotify(c: NotifyConfig): void {

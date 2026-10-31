@@ -174,6 +174,50 @@ def chapter_title(rel_path: str, tags: dict, mode: str) -> str:
     return clean
 
 
+_SEP = " -–—:_.,/|"
+_YEAR_RX = re.compile(r"\s*[(\[]\s*(?:19|20)\d\d\s*[)\]]")
+
+
+def _common_affix(names: List[str], suffix: bool) -> str:
+    """Text all names start (or end) with, cut at a separator so no word is split."""
+    if len(names) < 2:
+        return ""
+    seqs = [n[::-1] for n in names] if suffix else names
+    common = os.path.commonprefix(seqs)
+    common = common[::-1] if suffix else common
+    shortest = min(len(n) for n in names)
+    # cut at a separator: " - Der schlauste Mann der Welt" yes, "tag" of "Montag"/"Sonntag" no
+    while common and len(common) < shortest and (common[0] if suffix else common[-1]) not in _SEP:
+        common = common[1:] if suffix else common[:-1]
+    return common
+
+
+def chapter_titles(names: Sequence[str], book_title: str = "") -> List[str]:
+    """Clean chapter names of one book together.
+
+    Text every track repeats (the book title, "(2012)", "Sie werden dich jagen - ") goes;
+    what is left over that carries no name ("001", "Track 7", nothing) becomes "Kapitel N".
+    """
+    out = [_YEAR_RX.sub("", n or "").strip() for n in names]
+    title = (book_title or "").strip()
+    if title:
+        rx = re.compile(r"[\s" + re.escape(_SEP) + r"]*" + re.escape(title) + r"[\s" + re.escape(_SEP) + r"]*", re.I)
+        out = [rx.sub(" ", n).strip(_SEP + " ") if n.lower() != title.lower() else "" for n in out]
+    if len(out) > 1:
+        pre = _common_affix(out, suffix=False)
+        if pre and not re.fullmatch(r"(?i)\s*(?:kapitel|chapter|track|teil|part|titel|folge)[\s.]*", pre):   # "Kapitel " stays
+            out = [n[len(pre):] for n in out]
+        post = _common_affix(out, suffix=True)
+        if post:
+            out = [n[:len(n) - len(post)] for n in out]
+    out = [re.sub(r"\s+", " ", n).strip(_SEP + " ") for n in out]
+    # numbers left ("001", "Track 7"): keep them if they count up, else count ourselves
+    nums = [int(m.group()) if (m := re.search(r"\d+", n)) else None for n in out]
+    counted = None not in nums and all(b > a for a, b in zip(nums, nums[1:]))
+    return [n if n and not _GENERIC_RX.match(n) else t("Kapitel {n}", n=nums[i] if counted else i + 1)
+            for i, n in enumerate(out)]
+
+
 def looks_generic(chapters: Sequence[dict]) -> bool:
     """True if chapter names carry no information ("Track 01", "1", "Kapitel 3")."""
     return len(chapters) <= 1 or all(_GENERIC_RX.match(c.get("title") or "") for c in chapters)
@@ -348,6 +392,9 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
         # Chapters: one per file – or the file's own chapters if it has several
         chapters: List[dict] = []
         pos = 0.0
+        names = [chapter_title(rel, infos[n]["tags"], chapter_mode) for n, rel in enumerate(files)]
+        if chapter_mode == "auto":
+            names = chapter_titles(names, (tags or {}).get("album") or (tags or {}).get("title") or "")
         for n, rel in enumerate(files):
             length = _adts_seconds(segs[n], rate)
             own = titles[n].strip() if titles and len(titles) == len(files) and titles[n] else ""
@@ -356,7 +403,7 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
                 scale = length / (infos[n].get("duration") or length)
                 chapters += [{"start": pos + c["start"] * scale, "title": c["title"]} for c in inner]
             else:
-                chapters.append({"start": pos, "title": own or chapter_title(rel, infos[n]["tags"], chapter_mode)})
+                chapters.append({"start": pos, "title": own or names[n]})
             pos += length
         total = pos
 
