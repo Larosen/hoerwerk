@@ -34,11 +34,12 @@ function isActive(status: BookStatus): boolean {
 }
 
 function setView(view: string): void {
-  if (!["books", "search", "discover"].includes(view)) view = "books";
-  if (!IS_ADMIN) view = "discover";
+  if (!["books", "search", "discover", "requests"].includes(view)) view = "books";
+  if (!IS_ADMIN && view === "books") view = "discover";
   $("#viewBooks").hidden = view !== "books";
   $("#viewSearch").hidden = view !== "search";
   $("#viewDiscover").hidden = view !== "discover";
+  $("#viewRequests").hidden = view !== "requests";
   for (const t of document.querySelectorAll<HTMLElement>(".tab")) t.setAttribute("aria-selected", String(t.dataset.view === view));
   store.set("view", view);
   if (view === "books") pollBooks(true);
@@ -627,7 +628,7 @@ function updatePathPreview(): void {
 
 function initBooks(): void {
   for (const t of document.querySelectorAll<HTMLElement>(".tab")) t.addEventListener("click", () => setView(t.dataset.view || ""));
-  if (!IS_ADMIN) { setView("discover"); return; }       // family accounts: only Entdecken for now
+  if (!IS_ADMIN) { setView(store.get("view", "discover")); return; }   // family accounts: search, discover, requests
   $("#scanBtn").addEventListener("click", async () => {
     try { await api("POST", "/api/audiobooks/scan"); toast(t("Eingang wird geprüft")); setTimeout(() => pollBooks(true), 800); }
     catch (e) { toast(errMsg(e), true); }

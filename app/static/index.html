@@ -34,8 +34,9 @@
   </div>
   <nav class="tabs" role="tablist" aria-label="Bereich">
     <button class="tab admin-only" role="tab" data-view="books" aria-selected="true">Hörbücher <span id="reviewBadge" class="pill" hidden></span></button>
-    <button class="tab admin-only" role="tab" data-view="search" aria-selected="false">Suchen</button>
+    <button class="tab" role="tab" data-view="search" aria-selected="false">Suchen</button>
     <button class="tab" role="tab" data-view="discover" aria-selected="false">Entdecken</button>
+    <button class="tab" role="tab" data-view="requests" aria-selected="false">Anfragen <span id="requestBadge" class="pill" hidden></span></button>
   </nav>
   <div class="topbar-actions">
     <button id="usersBtn" class="btn ghost admin-only" title="Nutzer verwalten"><svg class="ico" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Konten</span></button>
@@ -87,7 +88,7 @@
 </main>
 
 <main class="books-layout" id="viewSearch" hidden>
-  <aside class="sidebar">
+  <aside class="sidebar admin-only">
     <section class="panel">
       <div class="panel-head">
         <h2>Quellen</h2>
@@ -116,7 +117,7 @@
         <button class="btn primary" type="submit" id="bookLookupBtn">Suchen</button>
       </form>
       <div id="bookPick" class="book-pick pad-x" hidden></div>
-      <form id="releaseForm" class="search-row pad release-row" hidden>
+      <form id="releaseForm" class="search-row pad release-row admin-only" hidden>
         <label class="release-label">Bei den Indexern als
           <input id="releaseQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false"></label>
         <select id="searchLang" aria-label="Sprache bevorzugen">
@@ -126,17 +127,17 @@
         </select>
         <button class="btn" type="submit" id="searchGo">Releases suchen</button>
       </form>
-      <p class="pad-x muted small" id="freeSearchRow"><button type="button" class="linkish" id="freeSearchBtn">Buch gibt es in keinem Shop? Direkt bei den Indexern suchen</button></p>
-      <div id="searchOwned" class="owned-note" hidden></div>
-      <div id="searchNote" class="muted small pad-x"></div>
-      <div class="table-wrap">
+      <p class="pad-x muted small admin-only" id="freeSearchRow"><button type="button" class="linkish" id="freeSearchBtn">Buch gibt es in keinem Shop? Direkt bei den Indexern suchen</button></p>
+      <div id="searchOwned" class="owned-note admin-only" hidden></div>
+      <div id="searchNote" class="muted small pad-x admin-only"></div>
+      <div class="table-wrap admin-only">
         <table class="results">
           <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">Grabs</th><th class="c-act"></th></tr></thead>
           <tbody id="searchResults"><tr><td colspan="5" class="empty-row">Erst ein Hörbuch suchen und auswählen – dann zeigt Hörwerk die passenden Releases.</td></tr></tbody>
         </table>
       </div>
     </section>
-    <section class="panel dl-panel">
+    <section class="panel dl-panel admin-only">
       <div class="panel-head">
         <h2>Downloads (SABnzbd)</h2>
         <span id="dlSpeed" class="muted small"></span>
@@ -154,7 +155,6 @@
         <button type="button" data-section="foryou">Für dich <small>passend zur Bibliothek</small></button>
         <button type="button" data-section="genre">Nach Genre <small>Bestseller &amp; Neuheiten</small></button>
         <button type="button" data-section="critics">Aus der Kritik <small>Deutschlandfunk Kultur, Perlentaucher</small></button>
-        <button type="button" data-section="wanted" class="admin-only"><span>Gesucht <span id="wantedCount" class="pill" hidden></span></span><small>gemerkt, noch bei keinem Indexer</small></button>
       </nav>
     </section>
     <details class="panel how">
@@ -164,7 +164,7 @@
         <li><b>Nach Genre</b>: Bestseller und Neuheiten eines Audible-Genres.</li>
         <li><b>Aus der Kritik</b>: Bücher, die Deutschlandfunk Kultur oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt.</li>
         <li>Nur gut bewertete, ungekürzte deutsche Hörbücher, die du noch nicht hast – nicht in der Bibliothek, nicht im Download, nicht in Arbeit (einstellbar unter <b>Einstellungen</b>).</li>
-        <li><b>Gesucht</b>: Bücher, die du dir mit <b>Merken</b> vorgemerkt hast. Sie werden regelmäßig bei den Indexern gesucht; Funde meldet ntfy.</li>
+        <li><b>Anfragen</b>: Gefällt dir ein Buch, frag es an – Hörwerk besorgt es und meldet sich, wenn es da ist.</li>
         <li>Ob ein Sachbuch inhaltlich stimmt, kann keine Software prüfen. Deshalb kommen Sachbücher standardmäßig nur aus der Kritik, nicht aus Bestsellerlisten.</li>
       </ul>
     </details>
@@ -181,6 +181,39 @@
     <ul id="discoverList" class="discover-grid"></ul>
   </section>
 </main>
+
+<main class="books-layout single" id="viewRequests" hidden>
+  <section class="panel requests-panel">
+    <div class="panel-head wrap">
+      <h2>Anfragen</h2>
+      <div class="row gap wrap">
+        <div id="requestFilter" class="chips" role="group" aria-label="Status-Filter"></div>
+        <label class="inline-setting" id="requestScopeWrap" hidden><input type="checkbox" id="requestScope"> von allen</label>
+      </div>
+    </div>
+    <p id="requestQuota" class="muted small pad-x"></p>
+    <ul id="requestList" class="request-list"></ul>
+  </section>
+</main>
+
+<dialog id="releasesDialog" class="wide">
+  <form method="dialog" class="dialog-body">
+    <h2>Releases für <span id="releasesTitle"></span></h2>
+    <p class="muted small">Hörwerk lädt von selbst das beste passende Release. Hier siehst du alle Treffer – auch die verworfenen, mit Grund – und kannst eins selbst wählen oder sperren.</p>
+    <div class="search-row">
+      <input id="releasesQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false">
+      <button type="button" class="btn" id="releasesGo">Neu suchen</button>
+    </div>
+    <p id="releasesNote" class="muted small"></p>
+    <div class="table-wrap">
+      <table class="results">
+        <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">kbit/s</th><th>Urteil</th><th class="c-act"></th></tr></thead>
+        <tbody id="releasesRows"></tbody>
+      </table>
+    </div>
+    <div class="dialog-actions"><button value="cancel" class="btn primary">Schließen</button></div>
+  </form>
+</dialog>
 
 <dialog id="sourcesDialog">
   <form method="dialog" class="dialog-body" id="sourcesForm">
@@ -302,6 +335,16 @@
         <span class="muted small">Alle anderen Geräte werden dabei abgemeldet.</span></div>
     </fieldset>
     <fieldset>
+      <legend>Zweitfaktor</legend>
+      <div id="totpBox"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Benachrichtigungen an mich</legend>
+      <label>Eigenes ntfy-Topic <small>dorthin meldet Hörwerk, wenn deine Anfragen da sind oder abgelehnt wurden (leer = keine)</small>
+        <input id="myTopic" maxlength="64" spellcheck="false" autocomplete="off" placeholder="z. B. eva-hoerbuecher"></label>
+      <button type="button" class="btn small" id="myTopicSave">Speichern</button>
+    </fieldset>
+    <fieldset>
       <legend>Angemeldete Geräte</legend>
       <ul id="sessionList" class="session-list"></ul>
       <button type="button" class="btn small ghost" id="endOthers">Alle anderen Geräte abmelden</button>
@@ -322,7 +365,7 @@
       <table class="users">
         <thead><tr><th>Name</th><th>Rolle</th><th title="Sieht die Anfragen aller Nutzer">Alle Anfragen sehen</th>
           <th title="Anfragen gehen ohne Freigabe los">Ohne Freigabe</th><th title="Darf Releases selbst ansehen und wählen">Interaktive Suche</th>
-          <th>Kontingent</th><th>Gesperrt</th><th>Zuletzt da</th><th></th></tr></thead>
+          <th>Kontingent</th><th>Gesperrt</th><th title="Zweitfaktor (Authenticator-App)">2FA</th><th>Zuletzt da</th><th></th></tr></thead>
         <tbody id="userRows"></tbody>
       </table>
     </div>
@@ -338,6 +381,10 @@
       <div class="row gap"><button type="button" class="btn" id="newUserPwGen">Passwort erzeugen</button>
         <button type="button" class="btn primary" id="newUserSave">Konto anlegen</button></div>
     </fieldset>
+    <details class="audit-box">
+      <summary>Admin-Protokoll <small class="muted">wer hat wann was geändert</small></summary>
+      <ul id="auditList" class="audit-list"></ul>
+    </details>
     <div class="dialog-actions"><button value="cancel" class="btn primary">Schließen</button></div>
   </form>
 </dialog>
@@ -460,6 +507,10 @@
         <label class="check"><input type="checkbox" name="discover_unabridged"> nur ungekürzte Hörbücher</label>
         <label class="check"><input type="checkbox" name="discover_german"> nur deutschsprachige</label>
         <label class="check"><input type="checkbox" name="discover_nonfiction_store"> Sachbücher auch aus Audible-Listen</label>
+        <label>Anfragen pro Monat <small>Standard je Familienkonto</small>
+          <input name="request_quota" type="number" min="0" max="1000" step="1">
+        </label>
+        <label class="check"><input type="checkbox" name="admin_totp_required"> Admins brauchen einen Zweitfaktor</label>
         <label>Anfragen ohne Fund erneut suchen alle <small>Stunden</small>
           <input name="wanted_interval_hours" type="number" min="1" max="168" step="1">
         </label>
@@ -544,6 +595,7 @@
 <script src="/static/app.js"></script>
 <script src="/static/books.js"></script>
 <script src="/static/search.js"></script>
+<script src="/static/requests.js"></script>
 <script src="/static/discover.js"></script>
 <script src="/static/notify.js"></script>
 <script src="/static/logs.js"></script>

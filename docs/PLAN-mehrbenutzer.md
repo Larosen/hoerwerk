@@ -1,6 +1,6 @@
 # Plan: Hörwerk für die Familie – Anfragen wie Seerr, Konten, Internet-tauglich
 
-Stand: 31.10.2026 · Ziel: Hörwerk über **Pangolin** ins Internet stellen, Familienmitglieder fragen Hörbücher an,
+Stand: 31.10.2026 – **alle fünf Schritte umgesetzt** (Version 7.0.0), Test auf dem Server folgt. Ziel: Hörwerk über **Pangolin** ins Internet stellen, Familienmitglieder fragen Hörbücher an,
 Hörwerk besorgt sie selbstständig. Der Admin sieht und steuert alles.
 
 ## Leitlinien

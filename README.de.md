@@ -26,7 +26,7 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 2. [Schnellstart](#schnellstart)
 3. [Hörbücher](#hörbücher)
 4. [Downloads mit SABnzbd](#downloads-mit-sabnzbd)
-5. [Entdecken](#entdecken)
+5. [Entdecken und Anfragen](#entdecken)
 6. [Benachrichtigungen (ntfy)](#benachrichtigungen-ntfy)
 7. [Protokoll](#protokoll)
 8. [Konten und Zugriff von außen](#konten-und-zugriff-von-außen)
@@ -45,9 +45,9 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 | Tags & Dateien | Titel, Autor, Sprecher, Serie + Band, Genre, Verlag, Datum, Beschreibung, ASIN, Cover in voller Größe; `metadata.json` für Audiobookshelf |
 | Bibliothek | Alle Bücher durchsuchen, Ordner-Vorlage, nutzt vorhandene Autoren-/Serienordner, erkennt Doppelte, macht alte MP3-Bücher zu M4B und räumt die MP3s sicher weg |
 | Downloads | Schickt NZBs an SABnzbd, beobachtet die Kategorie, nach dem Download übernimmt der Eingang; Newznab-Suche optional |
-| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik (Deutschlandfunk Kultur, Perlentaucher) – nur gut bewertet, ungekürzt, nichts, was du schon hast; ein Klick sucht das Buch; **Gesucht**-Liste für Bücher, die noch kein Indexer hat |
+| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik (Deutschlandfunk Kultur, Perlentaucher) – nur gut bewertet, ungekürzt, nichts, was du schon hast; **Anfragen** wie bei Overseerr: Familie wünscht, Hörwerk besorgt (mit Freigabe, Kontingent, interaktiver Suche) |
 | Medienserver | Audiobookshelf und Plex lesen ihre Bibliothek nach dem Ablegen neu ein; Plex leert auf Wunsch den Papierkorb, damit ersetzte MP3s verschwinden |
-| Benachrichtigungen | ntfy-Push-Nachrichten, zehn Ereignisse, jedes einzeln an oder aus |
+| Benachrichtigungen | ntfy-Push-Nachrichten, elf Ereignisse, jedes einzeln an oder aus |
 | Protokoll | Alles, was passiert ist – filterbar und als Datei herunterladbar, direkt in der App |
 | Oberfläche | Deutsch / Englisch, helles / dunkles Design, Live-Updates ohne Neuladen |
 | Sicherheit | Eigenes schlankes ffmpeg 9 im Landlock-Käfig, CSRF-Schutz, Zugangsdaten erreichen nie den Browser ([SECURITY.de.md](SECURITY.de.md)) |
@@ -251,20 +251,30 @@ Die Listen werden im Hintergrund zusammengestellt, höchstens einmal am Tag erne
 in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-API des gewählten Shops,
 `www.deutschlandfunkkultur.de` und `www.perlentaucher.de` (HTTPS).
 
-### Gesucht
+### Anfragen (wie bei Overseerr/Jellyseerr)
 
-Ein Buch, das bei Audible oder BookBeat existiert, aber noch bei keinem Indexer zu finden ist, kommt mit **Merken** auf
-die Liste **Entdecken → Gesucht**. Den Knopf gibt es auf jeder Karte in *Entdecken* und im Reiter *Suchen*, sobald ein
-Hörbuch ausgewählt ist.
+Familienmitglieder wünschen sich ein **Buch**, kein Release: in *Suchen* (Audible, BookBeat) oder *Entdecken* auf
+**Anfragen** klicken. Den Rest erledigt Hörwerk – der Reiter **Anfragen** zeigt, wo es steht:
 
-* Hörwerk sucht jedes gemerkte Buch sofort und danach **alle 12 Stunden** erneut bei allen Indexern (einstellbar).
-  Ein Release zählt nur, wenn sein Name den Nachnamen des Autors und fast alle Wörter des Titels enthält.
-* Neue Funde meldet ntfy („Gesuchtes Hörbuch gefunden“); die Karte zeigt den Treffer, **Ansehen** öffnet die Suche
-  mit dem Buch samt ASIN.
-* Optional (*Einstellungen → Entdecken & Gesucht*): Funde **automatisch an SABnzbd schicken** – ungekürzte Releases
-  zuerst, jedes Buch nur einmal. Standardmäßig aus, damit nichts Falsches ungefragt geladen wird.
-* Läuft der Download, steht „Download läuft“ auf der Karte; ist das Buch in der Bibliothek angekommen, verschwindet es
-  von selbst von der Liste.
+`Wartet auf Freigabe → Wird gesucht → Lädt → Wird verarbeitet → Verfügbar` (oder *Abgelehnt* mit Grund, *Fehlgeschlagen*)
+
+* **Freigabe:** Anfragen von Familienkonten warten, bis ein Admin sie freigibt (ntfy „Neue Buchanfrage“, Zahl am
+  Reiter). Admins und Konten mit dem Recht *Ohne Freigabe* starten sofort.
+* **Kontingent:** Anfragen pro Kalendermonat (Standard 5, je Konto änderbar; abgelehnte zählen nicht).
+* **Sichtbarkeit:** Jeder sieht seine eigenen Anfragen; mit dem Recht *Alle Anfragen sehen* auch die der anderen.
+* **Automatisch besorgen (wie Radarr):** Hörwerk sucht bei allen Indexern und bewertet jedes Release – passt der
+  Autor, passt der Titel, ist es ungekürzt, in der richtigen Sprache, passt die Größe zur Laufzeit (kbit/s), ist es
+  ein Paket mit genau diesem Band? Das beste passende geht mit ASIN und Anfrage-Nummer an SABnzbd; danach verfolgt
+  Hörwerk den Download bis in die Bibliothek. Scheitert der Download oder passt das Buch beim Import nicht, wird
+  das Release gesperrt und das nächste genommen (höchstens 5 Versuche). Ohne Treffer wird alle 12 Stunden erneut
+  gesucht.
+* **Interaktive Suche (nur bei Bedarf):** Admins und Konten mit dem Recht *Interaktive Suche* öffnen bei einer
+  Anfrage **Releases**: alle Treffer mit Urteil – auch die verworfenen samt Grund („gekürzte Fassung“, „zu klein
+  für 9 h Laufzeit“ …). Ein Release von Hand laden, eins sperren oder mit anderen Wörtern neu suchen.
+* **Benachrichtigung an den Anfragenden:** Wer unter *Konto* ein eigenes ntfy-Topic einträgt, erfährt, wenn sein
+  Hörbuch da ist oder abgelehnt wurde.
+
+Eine „Gesucht“-Liste aus Version 5.3 wird beim ersten Start als Anfragen des Admins übernommen.
 
 ---
 
@@ -283,7 +293,8 @@ Push-Nachrichten aufs Handy über [ntfy](https://ntfy.sh) – ntfy.sh oder ein e
 | Hörbuch braucht Prüfung | an |
 | Schon in der Bibliothek | an |
 | Fehler bei einem Hörbuch | an |
-| Gesuchtes Hörbuch gefunden | an |
+| Neue Buchanfrage | an |
+| Buchanfrage fehlgeschlagen | an |
 | Download an SABnzbd geschickt | aus |
 | Download in SABnzbd fertig | aus |
 | Download in SABnzbd fehlgeschlagen | an |
@@ -311,9 +322,12 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
 
 * **Konten** (oben rechts, nur für Admins): Familienkonten anlegen (Startpasswort erzeugen und weitergeben),
   Rolle, Rechte (*Alle Anfragen sehen*, *Ohne Freigabe*, *Interaktive Suche*), Kontingent pro Monat, sperren,
-  Passwort neu setzen, löschen. Familienkonten sehen vorerst **Entdecken**; Anfragen folgen im nächsten Schritt
-  (Plan: [docs/PLAN-mehrbenutzer.md](docs/PLAN-mehrbenutzer.md)).
-* **Konto** (Name oben rechts, für alle): Passwort ändern, angemeldete Geräte sehen und abmelden, Abmelden.
+  Passwort neu setzen, Zweitfaktor zurücksetzen, löschen. Familienkonten sehen *Suchen*, *Entdecken* und *Anfragen*
+  – Eingang, Bibliothek, Einstellungen und Protokoll bleiben Admins vorbehalten. Unten im Dialog: das
+  **Admin-Protokoll** (wer hat wann was geändert, mit IP).
+* **Konto** (Name oben rechts, für alle): Passwort ändern, **Zweitfaktor** (Authenticator-App wie Aegis, 2FAS,
+  Google/Microsoft Authenticator) einrichten, eigenes ntfy-Topic, angemeldete Geräte sehen und abmelden.
+  Mit *Admins brauchen einen Zweitfaktor* (Einstellungen) kommen Admins ohne Zweitfaktor nur noch an ihr Konto.
 * „Angemeldet bleiben“ hält 30 Tage (verlängert sich bei Nutzung), sonst 12 Stunden.
 
 **Über Pangolin ins Internet:**
@@ -362,7 +376,8 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Entdecken: Mindestbewertung und -anzahl Bewertungen |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Entdecken: nur ungekürzt / nur deutschsprachig |
 | `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: Sachbücher auch aus Audible-Listen |
-| `WANTED_INTERVAL_HOURS` | `12` | Gesucht: Abstand der automatischen Suche |
+| `WANTED_INTERVAL_HOURS` | `12` | Anfragen ohne Treffer: Abstand der erneuten Suche |
+| `ADMIN_TOTP_REQUIRED` | `false` | Admins brauchen einen Zweitfaktor |
 | `CPU_CORES` | halbe Kernzahl | Parallele ffmpeg-Prozesse pro Buch |
 | `ENCODE_WORKERS` | `1` | Bücher, die gleichzeitig kodiert werden |
 | `IO_WORKERS` | `2` | Gleichzeitige Erkennungs-, Tag- und Ablageschritte |

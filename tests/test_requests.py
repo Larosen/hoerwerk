@@ -311,7 +311,8 @@ class WebRequestsTest(unittest.TestCase):
         self.assertEqual(self.req("Tom", "DELETE", f"/api/requests/{rid}")[0], 404)
         self.assertEqual(self.req("Tom", "POST", f"/api/requests/{rid}/releases", {})[0], 404)
         status, lst = self.req("Tom", "GET", "/api/requests?scope=all")
-        self.assertEqual(lst["items"], [])
+        self.assertTrue(all(i["mine"] for i in lst["items"]))                 # only his own, even when asking for all
+        self.assertNotIn(rid, [i["id"] for i in lst["items"]])
         # Eva may see her own, but not search releases or approve
         self.assertEqual(self.req("Eva", "GET", f"/api/requests/{rid}")[0], 200)
         self.assertEqual(self.req("Eva", "POST", f"/api/requests/{rid}/releases", {})[0], 403)
@@ -320,13 +321,26 @@ class WebRequestsTest(unittest.TestCase):
         # the admin sees everyone's, with the name, and approves – which lands in the audit log
         status, lst = self.req("Admin", "GET", "/api/requests?scope=all")
         self.assertEqual(lst["items"][0]["user"], "Eva")
-        self.assertEqual(lst["pending"], 1)
+        self.assertGreaterEqual(lst["pending"], 1)
         self.assertEqual(self.req("Admin", "POST", f"/api/requests/{rid}/approve")[0], 200)
         status, log = self.req("Admin", "GET", "/api/audit")
         actions = [e["action"] for e in log["entries"]]
         self.assertIn("request_approved", actions)
         self.assertIn(f"POST /api/requests/{rid}/approve", actions)
         self.assertEqual(self.req("Eva", "GET", "/api/audit")[0], 403)
+
+    def test_ids_can_not_be_probed(self):
+        """Unknown and foreign ids answer the same 404 – nobody learns which requests exist."""
+        status, mine = self.req("Eva", "POST", "/api/requests", {"book": {**BOOK, "asin": "B0PROBE01", "title": "Probe"}})
+        self.assertEqual(status, 200)
+        foreign = self.req("Tom", "GET", f"/api/requests/{mine['id']}")
+        missing = self.req("Tom", "GET", "/api/requests/999999")
+        self.assertEqual(foreign, missing)
+        self.assertEqual(self.req("Tom", "GET", "/api/requests/abc")[0], 404)
+        # a family account can't sneak a request for someone else or set its own status
+        status, other = self.req("Tom", "POST", "/api/requests", {"book": {**BOOK, "asin": "B0PROBE02", "title": "Probe 2"},
+                                                                  "user_id": self.eva["id"], "status": "available"})
+        self.assertEqual((status, other["status"], other["mine"]), (200, "pending", True))
 
     def test_admin_second_factor_can_be_required(self):
         self.app.update_settings({"admin_totp_required": True})

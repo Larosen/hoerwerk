@@ -183,7 +183,7 @@ async function lookupBooks(e?: Event): Promise<void> {
 function pickBook(b: Book): void {
   search.book = b;
   $<HTMLInputElement>("#releaseQuery").value = bookQueries(b).query;
-  $("#releaseForm").hidden = false;
+  $("#releaseForm").hidden = !IS_ADMIN;
   const box = $("#bookPick");
   box.hidden = false;
   box.replaceChildren(el("div", { class: "picked" },
@@ -191,9 +191,9 @@ function pickBook(b: Book): void {
     el("span", {}, el("b", {}, `${(b.authors || []).join(", ")} – ${b.title}`),
       el("span", { class: "muted" }, " · " + (b.asin ? t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin })
         : t("Titel und Autor werden beim Download mitgegeben")))),
-    typeof rememberButton === "function" ? rememberButton(b) : null,
+    typeof requestButton === "function" ? requestButton(b) : null,
     el("button", { type: "button", class: "icon-btn", title: t("Auswahl aufheben"), onclick: clearBook }, icon("x"))));
-  runSearch();
+  if (IS_ADMIN) runSearch();                 // family accounts ask for the book; releases are Hörwerk's job
 }
 
 function clearBook(): void {
@@ -382,9 +382,9 @@ function initSearch(): void {
   const dialog = $<HTMLDialogElement>("#sourcesDialog");
   dialog.addEventListener("close", () => { if (dialog.returnValue === "save") saveSources(); });
   document.addEventListener("viewchange", (e) => {
-    if ((e as CustomEvent<string>).detail === "search") { loadSources(); pollDownloads(true); }
+    if ((e as CustomEvent<string>).detail === "search" && IS_ADMIN) { loadSources(); pollDownloads(true); }
   });
-  if (!$("#viewSearch").hidden) { loadSources(); pollDownloads(true); }
+  if (!$("#viewSearch").hidden && IS_ADMIN) { loadSources(); pollDownloads(true); }
 }
 
 initSearch();

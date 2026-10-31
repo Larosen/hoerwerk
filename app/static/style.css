@@ -477,3 +477,38 @@ table.users select { height: 28px; }
 .release-label { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 .release-label input { flex: 1; }
 .linkish { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Anfragen */
+.books-layout.single { grid-template-columns: minmax(0, 1fr); }
+.requests-panel { min-height: 300px; overflow: auto; }
+.request-list { list-style: none; margin: 0; padding: 4px 14px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.request-list > li.empty { grid-column: 1 / -1; color: var(--muted); padding: 4px 2px; }
+.request { display: flex; gap: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); min-width: 0; }
+.request .cover, .request .thumb.gen { width: 84px; height: 84px; flex: none; border-radius: 6px; object-fit: cover; box-shadow: inset 0 0 0 1px var(--border); }
+.req-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+.req-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rtag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 550; padding: 2px 8px; border-radius: 99px;
+  background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); white-space: nowrap; }
+.rtag .ico { width: 13px; height: 13px; }
+.rtag.ok, .rtag.req-available { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.rtag.req-pending { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.rtag.req-searching, .rtag.req-downloading, .rtag.req-processing { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.rtag.req-declined, .rtag.req-failed { color: var(--err); border-color: color-mix(in srgb, var(--err) 40%, transparent); }
+.verdict { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; }
+.verdict.ok { color: var(--ok); }
+.verdict.no { color: var(--muted); }
+tr.rejected td:first-child span:first-child { color: var(--muted); }
+#releasesDialog .c-title { max-width: 460px; }
+#releasesDialog .c-title span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#releasesDialog .search-row { display: flex; gap: 8px; margin: 8px 0; }
+#releasesDialog .search-row input { flex: 1; }
+@media (max-width: 720px) { .request-list { grid-template-columns: minmax(0, 1fr); padding: 4px 10px 10px; } }
+
+/* Zweitfaktor, Protokoll */
+input.code { width: 120px; letter-spacing: .15em; font-variant-numeric: tabular-nums; }
+code.secret { font-size: 13px; word-break: break-all; }
+.ok-text { color: var(--ok); display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+.audit-box { margin-top: 12px; }
+.audit-box summary { cursor: pointer; font-weight: 550; }
+.audit-list { list-style: none; margin: 8px 0 0; padding: 0; max-height: 260px; overflow: auto; font-size: 12.5px; }
+.audit-list li { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--border); }

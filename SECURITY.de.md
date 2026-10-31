@@ -69,6 +69,11 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 | Gestohlene Sitzung | Token mit 256 Bit, in der DB nur als SHA-256; Cookie `HttpOnly`, `SameSite=Lax`, `Secure` hinter HTTPS. Passwortwechsel, Sperren eines Kontos und „Alle anderen Geräte abmelden“ beenden Sitzungen sofort. |
 | Gefälschte IP in `X-Forwarded-For` | Der Header zählt nur von Adressen in `TRUSTED_PROXIES` und wird von rechts gelesen – vorne angehängte Fantasie-Adressen bleiben wirkungslos. |
 | Rechteausweitung | Rolle und Rechte ändert nur ein Admin (Server-Prüfung); der letzte Admin kann weder herabgestuft noch gesperrt noch gelöscht werden. |
+| Fremde Anfragen ansehen oder ändern (IDOR) | Jede Anfrage-Route prüft, ob das Konto sie sehen darf; fremde und nicht vorhandene IDs liefern dieselbe 404 – Nummern lassen sich nicht ausprobieren. Besitzer und Status setzt nur der Server (Felder aus dem Browser werden ignoriert). Getestet. |
+| Kontingent umgehen | Prüfung und Anlegen in einer Datenbank-Transaktion unter Sperre – auch parallele Anfragen kommen nicht über das Limit. |
+| Familienkonto lädt Beliebiges | Nutzer fragen nur Bücher an; Releases wählt Hörwerk nach festen Regeln. Die interaktive Suche (Releases von Hand) gibt es nur mit eigenem Recht, Indexer-Links (mit API-Key) erreichen nie den Browser. |
+| Passwort gestohlen | Optionaler Zweitfaktor (TOTP nach RFC 6238, Standardbibliothek): Code gilt einmal (keine Wiederverwendung), ±30 s Uhrabweichung, Anmelde-Ticket 5 Minuten / 5 Versuche, Fehlversuche zählen für die IP-Bremse und landen in `auth.log`. Für Admins als Pflicht einstellbar. |
+| Unbemerkte Änderungen durch einen Admin-Zugang | Admin-Protokoll in der Datenbank: jede ändernde Admin-Aktion mit Zeit, Konto und IP (Freigaben, Konten, Einstellungen, Quellen …), einsehbar unter *Konten*. |
 | DNS-Rebinding / fremde Host-Namen | `ALLOWED_HOSTS`; zusätzlich braucht jede Datenanfrage eine Anmeldung. |
 | Pfade außerhalb der Bibliothek | Buch-Pfade aus dem Browser werden aufgelöst (inkl. Symlinks) und müssen in der Bibliothek liegen; statische Dateien nur aus `app/static`. |
 | Riesige Anfragen | max. 4 MB pro Anfrage. |

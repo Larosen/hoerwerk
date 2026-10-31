@@ -247,6 +247,19 @@ class WebAuthTest(unittest.TestCase):
         self.assertEqual(ip("127.0.0.1", "", "5.6.7.8"), "5.6.7.8")
         self.assertEqual(ip("127.0.0.1", "garbage"), "127.0.0.1")              # unreadable header: the peer
 
+    def test_4_fixation_and_login_csrf(self):
+        """A cookie set by an attacker is never taken over; a login from a foreign page is refused."""
+        planted = "hw_session=attacker-chosen-token"
+        status, headers, _ = self.req("POST", "/api/auth/login", {"name": "admin", "password": PW}, cookie=planted,
+                                      ip="198.51.100.9")
+        if status == 200:
+            self.assertNotIn("attacker-chosen-token", headers["Set-Cookie"])
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=20)
+        c.request("POST", "/api/auth/login", body=json.dumps({"name": "admin", "password": PW}).encode(),
+                  headers={"Host": f"127.0.0.1:{self.port}", "Content-Type": "text/plain", "Origin": "http://evil.example"})
+        self.assertEqual(c.getresponse().status, 403)
+        c.close()
+
     def test_3_brake_answers_429(self):
         for _ in range(acc.IP_FAILS):
             self.login("admin", "falsch-falsch", ip="203.0.113.77")
