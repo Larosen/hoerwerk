@@ -28,7 +28,7 @@ export default defineConfig({
     timeout: 60_000,
     env: {
       PORT: String(PORT),
-      DATA_DIR: `${ROOT}/data`, CONFIG_DIR: `${ROOT}/config`, INBOX_DIR: `${ROOT}/inbox`, LIBRARY_DIR: `${ROOT}/library`,
+      CONFIG_DIR: `${ROOT}/config`, INBOX_DIR: `${ROOT}/inbox`, LIBRARY_DIR: `${ROOT}/library`,
       // offline and deterministic: files are filed with their own tags, no shop lookups
       MATCH_MODE: "off", METADATA_FALLBACK: "false", SETTLE_SECONDS: "0", SCAN_INTERVAL: "2",
       DUPLICATES: "ask", AUDIOBOOK_WATCH: "true", LIBRARY_RESCAN_HOURS: "6",

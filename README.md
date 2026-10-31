@@ -2,12 +2,10 @@
 
 **English** · [Deutsch](README.de.md)
 
-A self-hosted web app for your NAS (Unraid or any Docker host) that does two jobs:
-
-* **Audiobook pipeline** – drop audiobooks into an inbox folder; they become **one M4B with chapters**,
-  are matched on Audible, **tagged** and **filed** into a clean library for Audiobookshelf, Plex & co.
-* **Batch renamer** – rename hundreds of files and folders in the browser with a live preview, 16 combinable
-  rules and metadata placeholders (ID3, video, EXIF).
+A self-hosted audiobook pipeline for your NAS (Unraid or any Docker host): drop audiobooks into an inbox folder;
+they become **one M4B with chapters**, are matched on Audible, **tagged** and **filed** into a clean library for
+Audiobookshelf, Plex & co. Older MP3 books already in the library are converted the same way – tracks and chapters
+get sensible names along the way.
 
 Downloads go through **SABnzbd**, notifications through **ntfy** – you choose which events you hear about.
 The interface is available in **English and German**.
@@ -25,11 +23,10 @@ The interface is available in **English and German**.
 3. [Audiobooks](#audiobooks)
 4. [Downloads with SABnzbd](#downloads-with-sabnzbd)
 5. [Notifications (ntfy)](#notifications-ntfy)
-6. [Batch renamer](#batch-renamer)
-7. [Log](#log)
-8. [Configuration](#configuration)
-9. [Security](#security)
-10. [Development](#development)
+6. [Log](#log)
+7. [Configuration](#configuration)
+8. [Security](#security)
+9. [Development](#development)
 
 ---
 
@@ -37,15 +34,14 @@ The interface is available in **English and German**.
 
 | Area | What you get |
 |---|---|
-| Audiobook inbox | Waits until a folder is fully copied, merges MP3/M4A/FLAC/OGG/Opus/WMA (also `CD1`/`CD2` subfolders) into one M4B with sample-exact chapters |
+| Audiobook inbox | Waits until a folder is fully copied, merges MP3/M4A/FLAC/OGG/Opus/WMA (also `CD1`/`CD2` subfolders) into one M4B with sample-exact, cleanly named chapters |
 | Matching | Audible search in 10 stores, rated by title, author **and runtime** (unabridged ≠ abridged ≠ radio play); uncertain matches wait for you |
 | Tags & files | Title, author, narrator, series + volume, genre, publisher, date, description, ASIN, full-size cover; `metadata.json` for Audiobookshelf |
 | Library | Browse and search every book, folder template, reuses existing author/series folders, detects duplicates, converts old MP3 books to M4B and removes the MP3s safely |
 | Downloads | Sends NZBs to SABnzbd, watches the category, the inbox takes over when the download is done; optional Newznab search |
 | Media servers | Audiobookshelf and Plex rescan their library after filing; Plex can empty its trash so replaced MP3s vanish |
-| Notifications | ntfy push messages, eleven events, each one on or off |
+| Notifications | ntfy push messages, nine events, each one on or off |
 | Log | Everything that happened, filterable and downloadable, right in the app |
-| Renamer | Live preview, conflict check, undo history, presets, subfolders, companion files move along |
 | Interface | English / German, light / dark theme, live updates without reloading |
 | Security | Own minimal ffmpeg 9 in a Landlock sandbox, CSRF protection, secrets never reach the browser ([SECURITY.md](SECURITY.md)) |
 
@@ -58,7 +54,6 @@ The interface is available in **English and German**.
 1. **Docker → Add Container**, enter as *Template*:
    `https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/better-renamer.xml`
 2. Set the paths:
-   * **Medien** (`/data`) – the shares the renamer may touch, e.g. `/mnt/user/media/`
    * **Hörbuch-Eingang** (`/inbox`) – where new audiobooks arrive
    * **Hörbuch-Bibliothek** (`/audiobooks`) – the finished library (add it to Audiobookshelf/Plex)
 3. Pick **Language / Sprache** (`APP_LANGUAGE`: `en` or `de`). PUID `99`, PGID `100`, UMASK `000` are already right for Unraid.
@@ -211,70 +206,11 @@ Push messages to your phone via [ntfy](https://ntfy.sh) – ntfy.sh or your own 
 | Download sent to SABnzbd | off |
 | Download finished in SABnzbd | off |
 | Download failed in SABnzbd | on |
-| “To M4B now” done | off |
-| “To M4B now” failed | on |
 | Audiobookshelf scan failed | on |
 | Plex scan failed | on |
 
 Token and password stay on the server; they are not sent to another server if you change the address.
 Messages use the language of the interface.
-
----
-
-## Batch renamer
-
-1. Choose a folder on the left. Options: **Subfolders**, **Folder names**, **Companion files**, **“/” = folder**,
-   **Number conflicts**.
-2. Add rules – they apply in order; the preview highlights every change.
-3. Select with checkboxes (Shift-click for ranges), type chips (Audio/Video/Images …) or the filter.
-4. **Rename** (⌘/Ctrl + Enter). **Undo** (⌘/Ctrl + Z) or via the **History** (last 50 runs).
-
-Example with a public-domain recording: `the_hound_of_the_baskervilles_ch1.mp3` → *Clean up* (`_` → space),
-*Case* (Title) and *Pad numbers* → `The Hound of the Baskervilles Ch01.mp3`. With the template rule
-`{track:2} - {title}` the name comes straight from the ID3 tags.
-
-### Rules
-
-| Group | Rule | What it does |
-|---|---|---|
-| Text | Replace text | Find/replace, all/first/last occurrence, whole word, regex with `$1`/`\1` |
-| | Insert text | At start, end, position or before/after a text; placeholders allowed |
-| | Remove range | N characters from a position, or everything before/after a text |
-| | Case | Title, each word, sentence, UPPER, lower, invert; exceptions like “MP3, DJ” |
-| | Truncate | To N characters, optionally at a word boundary or from the end |
-| Characters | Clean up | `_ . %20` → space, brackets/leading digits away, umlauts → ae/oe/ue, Windows/SMB-safe, trim |
-| | Remove characters/words | Digits, letters, punctuation, non-ASCII, own characters, word list |
-| Position | Move text | Match (also regex) to the start/end |
-| | Swap parts | “Artist - Title” → “Title - Artist” |
-| Numbers | Number | 1/a/A/I/i, start, step, digits, prefix/suffix, position, restart per folder |
-| | Pad numbers | “Track 1” → “Track 01” |
-| | Shift numbers | Change existing numbers by ±N |
-| Date & metadata | Insert date | Taken (EXIF/video/ID3), modified, created, today – any format |
-| | Template / metadata | Build the name from placeholders, e.g. `{track:2} - {title}` or `{show} S{season:2}E{episode:2}` |
-| | From list | Pasted list: line 1 for the first file, line 2 for the second … |
-| Extension | File extension | lower/UPPER, normalise (jpeg → jpg), replace, append, remove |
-
-Every rule can have a **condition**: only if the name contains something, matches a regex or has a given extension
-(also inverted).
-
-### Placeholders
-
-| Placeholder | Meaning |
-|---|---|
-| `{name}` `{original}` `{ext}` | current name, original name, extension |
-| `{n}` `{n:3}` `{folder_n}` | running number (padded), number within the folder |
-| `{folder}` `{parent}` | folder of the file, folder above |
-| `{modified:%Y-%m-%d}` `{created:…}` `{taken:…}` `{now:…}` | dates in any format |
-| `{size}` `{bytes}` | file size |
-| `{title}` `{artist}` `{album}` `{album_artist}` `{track:2}` `{disc}` `{year}` `{genre}` `{composer}` `{duration}` `{bitrate}` | audio |
-| `{resolution}` `{width}` `{height}` `{codec}` `{fps}` `{show}` `{season}` `{episode}` | video |
-| `{camera}` `{make}` `{model}` `{lens}` `{iso}` `{fnumber}` `{exposure}` `{focal}` `{dimensions}` | photo (JPEG, HEIC, RAW) |
-
-Formats after the colon: number = pad with zeros, `upper` `lower` `title` `ascii`, `0-20` = slice, for dates a
-strftime format. The ⓘ next to a file shows every placeholder with its value.
-
-**To M4B now** in the renamer merges the MP3s of the open folder into `<folder>.m4b` right there;
-**→ Library** sends the folder through the audiobook pipeline and leaves the originals untouched.
 
 ---
 
@@ -322,18 +258,9 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `NICE` | `10` | CPU priority of ffmpeg (0 = normal) |
 | `FFMPEG_SANDBOX` | `auto` | ffmpeg in a Landlock sandbox: `auto`, `require`, `off` |
 | `FFMPEG_MEMORY_MB` | `4096` | Memory limit per ffmpeg process |
-| `AUTO_CONVERT` | `true` | “Then MP3 → M4B” on by default in the renamer |
 | `AAC_BITRATE` | `auto` | `auto` (like the source, max. 128k) or a fixed value |
 | `FORCE_MONO` | `false` | Output mono |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` or `tag` |
-| `TITLE_SOURCE` | `folder` | `folder` or `album` |
-| `OUTPUT_NAME` | `{folder}` | Name of the M4B in the renamer, placeholders `{folder} {album} {artist}` |
-| `ORIGINALS` / `ORIGINALS_FOLDER` | `keep` / `_mp3` | MP3s after “To M4B now”: `keep`, `move`, `delete` |
-| `SIDECARS` / `SIDECAR_EXTS` | `true` / `xmp,srt,…` | Companion files move along with their file |
-| `CONFLICT` | `error` | `error` or `number` (append “(2)”) |
-| `ALLOW_SUBDIRS` | `false` | “/” creates folders by default |
-| `MAX_ITEMS` | `20000` | Maximum entries in the preview |
-| `SHOW_HIDDEN` | `false` | Show hidden files |
 | `AUTH_USER` / `AUTH_PASS` | – | Password protection (Basic Auth) – recommended |
 | `ALLOW_PUBLIC` | `false` | Without a password only private networks are answered; `true` lifts that |
 | `ALLOWED_HOSTS` | – | Only answer under these host names/IPs, e.g. `tower,192.168.1.10` |
@@ -364,7 +291,7 @@ npm ci && npm run build                         # TypeScript (frontend/src) -> a
 python3 -m unittest discover -s tests           # Python tests (need ffmpeg, no network)
 npm run check                                   # type check
 npx playwright install chromium && npx playwright test   # click-through tests against a real server
-DATA_DIR=/tmp/data INBOX_DIR=/tmp/inbox LIBRARY_DIR=/tmp/lib CONFIG_DIR=/tmp/br PORT=8080 python3 app/main.py
+INBOX_DIR=/tmp/inbox LIBRARY_DIR=/tmp/lib CONFIG_DIR=/tmp/br PORT=8080 python3 app/main.py
 ```
 
 **Translations:** German is the source language. Every UI text is wrapped in `t("…")` (Python and TypeScript);
@@ -386,7 +313,6 @@ sandbox), type check, click-through tests against the source and against the bui
 | Notifications & log | `app/notify.py`, `app/applog.py` |
 | Media servers | `app/abs.py`, `app/plex.py` |
 | Language | `app/i18n.py`, `app/static/i18n/en.json` |
-| Renamer | `app/rules.py`, `app/planner.py` |
 | Interface | `frontend/src/*.ts`, `app/static/index.html`, `style.css`; E2E tests in `e2e/` |
 
 Inspired by the open-source projects [auto-m4b](https://github.com/seanap/auto-m4b) and

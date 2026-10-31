@@ -10,7 +10,6 @@ import db as dbm
 from abs import Audiobookshelf
 import tagger
 from config import Config, default_settings
-from converter import Converter
 from engine import Engine
 from events import EventBus
 from library_index import LibraryIndex
@@ -19,7 +18,7 @@ from notify import DownloadWatcher, Notifier
 from plex import Plex
 from pipeline import Pipeline
 from providers import Providers
-from stores import History, Presets, Settings
+from stores import Settings
 from usenet import Usenet
 import i18n
 import applog
@@ -38,14 +37,10 @@ class App:
         self.defaults = default_settings(config.env or os.environ)
         self._settings = Settings(self.db, self.defaults)
         i18n.set_language(self.settings().get("language", "de"))
-        self.history = History(self.db)
-        self.presets = Presets(self.db)
         self.events = EventBus()
         self.notifier = Notifier(self.db)
         self.engine = Engine({"encode": config.encode_workers, "io": config.io_workers},
                              on_change=self.events.notifier("audiobooks"))
-        self.converter = Converter(self.settings, self.db, self.engine, jobs=config.cpu_jobs, nice=config.nice,
-                                   notify=self.events.notifier("jobs"), on_finished=self._convert_finished)
         self.usenet = Usenet(self.db)
         self.abs = Audiobookshelf(self.db, on_error=lambda msg: self.notifier.send(
             "abs_error", t("Audiobookshelf-Scan fehlgeschlagen"), msg))
@@ -62,7 +57,6 @@ class App:
         self.pipeline.providers = Providers(self.pipeline.client,
                                             enabled=lambda: bool(self.settings().get("ab_fallback", True)))
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
-        self.events.provide("jobs", self.converter.list)
         self.events.provide("library", self.library_index.stats)
         self.downloads = DownloadWatcher(self.usenet, self.notifier, self.db)
         self._started = False
@@ -97,21 +91,12 @@ class App:
         self.abs.request_scan()
         self.plex.request_scan()
 
-    def _convert_finished(self, job) -> None:
-        n = self.notifier
-        if job.status == "done":
-            self._library_changed()     # the M4B may well be inside a media server's library
-            n.send("convert_done", t("M4B fertig"), f"{job.rel}\n{job.message}")
-        else:
-            n.send("convert_failed", t("M4B fehlgeschlagen"), f"{job.rel}\n{job.message}", priority=4)
-
     # -- background work ---------------------------------------------------
     def start(self) -> "App":
         if self._started or not self.start_workers:
             return self
         self._started = True
         self.engine.start()
-        self.converter.start()
         self.pipeline.start()
         threading.Thread(target=self._library_rescanner, daemon=True, name="library-index").start()
         threading.Thread(target=self.downloads.run, daemon=True, name="download-watch").start()

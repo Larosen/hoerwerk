@@ -34,12 +34,10 @@ function isActive(status: BookStatus): boolean {
 }
 
 function setView(view: string): void {
-  if (!["rename", "books", "search"].includes(view)) view = "rename";
-  $("#viewRename").hidden = view !== "rename";
+  if (!["books", "search"].includes(view)) view = "books";
   $("#viewBooks").hidden = view !== "books";
   $("#viewSearch").hidden = view !== "search";
   for (const t of document.querySelectorAll<HTMLElement>(".tab")) t.setAttribute("aria-selected", String(t.dataset.view === view));
-  for (const id of ["#undoBtn", "#historyBtn"]) $(id).hidden = view !== "rename";
   store.set("view", view);
   if (view === "books") pollBooks(true);
   document.dispatchEvent(new CustomEvent<string>("viewchange", { detail: view }));
@@ -618,13 +616,6 @@ function initBooks(): void {
   $("#clearBooksBtn").addEventListener("click", async () => {
     try { await api("DELETE", "/api/audiobooks"); pollBooks(true); } catch (e) { toast(errMsg(e), true); }
   });
-  $("#importBookBtn").addEventListener("click", async () => {
-    try {
-      await api("POST", "/api/audiobooks/import", { path: state.path });
-      toast(t("Ordner wird als Hörbuch verarbeitet – siehe Reiter „Hörbücher“"));
-      pollBooks(true);
-    } catch (e) { toast(errMsg(e), true); }
-  });
   $("#manualLinkBtn").addEventListener("click", fetchLinkIntoManual);
   $("#manualLink").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); fetchLinkIntoManual(); } });
   const manualDialog = $<HTMLDialogElement>("#manualDialog");
@@ -638,7 +629,7 @@ function initBooks(): void {
     $("#abPaths").textContent = d ? t("Eingang: {inbox} · Bibliothek: {library} (über Docker-Pfade einstellen)", { inbox: d.inbox || "–", library: d.library || "–" }) : "";
   });
   loadUnconverted();
-  setView(store.get("view", "rename"));
+  setView(store.get("view", "books"));
   pollBooks(true);
 }
 

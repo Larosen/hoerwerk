@@ -14,8 +14,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
    Server ohnehin nur Anfragen aus privaten Netzen (LAN, VPN, Docker).
 2. **Container mit minimalen Rechten** starten – im Unraid-Template und in `docker-compose.yml` ist das
    schon eingetragen: `--security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID`.
-3. **Nur die nötigen Ordner einbinden.** `/data` nur auf die Shares, die umbenannt werden sollen,
-   nicht auf `/mnt/user/`.
+3. **Nur die nötigen Ordner einbinden:** Eingang und Bibliothek, nie ganz `/mnt/user/`.
 4. **In SABnzbd** unter *Config → Switches* „Unerwünschte Endungen“ (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
    auf **Abbrechen** stellen. Gefälschte Releases fliegen dann schon vor dem Eingang raus.
 5. Originale im Eingang auf **löschen** (`INBOX_ORIGINALS=delete`) oder `_fertig` regelmäßig leeren.
@@ -59,12 +58,12 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 
 | Angriff | Schutz |
 |---|---|
-| **CSRF**: eine fremde Webseite im selben Browser schickt Anfragen an `http://tower:8080` (z. B. Dateien umbenennen) | Alle ändernden Anfragen brauchen einen eigenen Header, den Browser nur nach einer (nie erlaubten) CORS-Freigabe senden; zusätzlich Prüfung von `Origin` und `Sec-Fetch-Site`. Getestet. |
+| **CSRF**: eine fremde Webseite im selben Browser schickt Anfragen an `http://tower:8080` (z. B. Einstellungen ändern oder Bücher aus der Bibliothek holen) | Alle ändernden Anfragen brauchen einen eigenen Header, den Browser nur nach einer (nie erlaubten) CORS-Freigabe senden; zusätzlich Prüfung von `Origin` und `Sec-Fetch-Site`. Getestet. |
 | Clickjacking | `X-Frame-Options: DENY`, `frame-ancestors 'none'`. |
 | Versehentlich ins Internet freigegeben | Ohne Passwort nur Antworten an private Adressen (LAN, VPN/Tailscale, Docker). Greifen Geräte im Heimnetz per öffentlicher IPv6-Adresse zu, Passwort setzen oder `ALLOW_PUBLIC=true`. |
 | Passwort raten | Vergleich in konstanter Zeit, 1 s Pause nach jedem Fehlversuch. |
 | DNS-Rebinding | Optional `ALLOWED_HOSTS`; mit Passwort ohnehin wirkungslos. |
-| Pfade außerhalb von `/data` | Alle Pfade werden aufgelöst (inkl. Symlinks) und müssen in `/data` liegen; Umbenennen über verlinkte Ordner nach draußen wird abgelehnt; statische Dateien nur aus `app/static`. |
+| Pfade außerhalb der Bibliothek | Buch-Pfade aus dem Browser werden aufgelöst (inkl. Symlinks) und müssen in der Bibliothek liegen; statische Dateien nur aus `app/static`. |
 | Riesige Anfragen | max. 4 MB pro Anfrage. |
 | Viele offene Live-Verbindungen (`/api/events`) | Höchstens 32 gleichzeitig; sie liefern nur, was die Oberfläche ohnehin abruft, und brauchen dieselbe Anmeldung. |
 | Spracheinstellung / Übersetzungen | Nur `de` oder `en` werden angenommen; `/i18n.js` liefert eine feste Datei aus dem Image und braucht dieselbe Anmeldung wie die Seite. |
@@ -100,7 +99,7 @@ Geprüfte Schnittstellen: Audiobookshelf 2.37 (`metadata.json`, Bibliotheks-Scan
 **ffmpeg:** Bis Version 3 kam ffmpeg 7.1.5 aus Debian stable; dafür listete OSV 40 offene CVEs (fast alle in
 Teilen, die Better Renamer nicht nutzt). Seit Version 4 baut das Image ffmpeg 9.0.2 selbst
 (`docker/build-ffmpeg.sh`): nur die Audio-Container und -Decoder, die vorkommen, AAC als einziger Encoder,
-dazu Video-Container ohne Decoder für die Platzhalter des Umbenenners. Videodecoder, Filter außer
+ffprobe/ffmpeg dürfen nur die Audio-Container öffnen (Whitelist). Videodecoder, Filter außer
 Resampling, Streaming-Protokolle (HLS, DASH, RTSP …), Geräte und Fremdbibliotheken sind gar nicht im
 Programm – die meisten ffmpeg-CVEs betreffen genau diese Teile. Weil das Paket nicht mehr aus der
 Debian-Sicherheitspflege kommt, muss die Version im Dockerfile bei ffmpeg-Sicherheitsupdates angehoben werden

@@ -41,29 +41,16 @@ async function open(page: Page): Promise<string[]> {
 
 test.describe.configure({ mode: "serial" });
 
-test("Umbenennen mit Vorschau und Rückgängig", async ({ page }) => {
+test("Bibliothek: alle Bücher, mit Suche", async ({ page }) => {
   const errors = await open(page);
-  await page.locator("#dirList").getByRole("button", { name: "Umbenennen", exact: true }).click();
-  // the default rule "Aufräumen" turns underscores into spaces
-  await expect(page.locator("#previewBody tr[data-name='Erste_Datei.txt'] td.new")).toHaveText("Erste Datei.txt");
-  await expect(page.locator("#summary")).toContainText("2 von 2");
-  await page.locator("#applyBtn").click();
-  await expect(page.locator(".toast")).toContainText("2 Einträge umbenannt");
-  expect(readdirSync(join(ROOT, "data", "Umbenennen")).sort()).toEqual(["Erste Datei.txt", "Zweite Datei.txt"]);
-  await page.locator("#undoBtn").click();
-  await expect(page.locator(".toast")).toContainText("zurückbenannt");
-  expect(readdirSync(join(ROOT, "data", "Umbenennen")).sort()).toEqual(["Erste_Datei.txt", "Zweite_Datei.txt"]);
-  expect(errors).toEqual([]);
-});
-
-test("„Jetzt zu M4B“ erscheint live in den Konvertierungen", async ({ page }) => {
-  const errors = await open(page);
-  await page.locator("#dirList").getByRole("button", { name: "Hörbuch Ordner", exact: true }).click();
-  await page.locator("#convertNowBtn").click();
-  // no reload, no polling: the job list updates through the live connection
-  await expect(page.locator("#jobList .job.done")).toContainText("Hörbuch Ordner.m4b");
-  expect(existsSync(join(ROOT, "data", "Hörbuch Ordner", "Hörbuch Ordner.m4b"))).toBe(true);
-  await expect(page.locator("#previewBody")).toContainText("Hörbuch Ordner.m4b");
+  await expect(page.getByRole("tab", { name: /Hörbücher/ })).toHaveAttribute("aria-selected", "true");   // start page
+  await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
+  await expect(page.locator(".lib-row")).toHaveCount(1);
+  await expect(page.locator(".lib-row")).toContainText("Altes Buch");
+  await page.locator(".lib-search input").fill("gibtsnicht");
+  await expect(page.locator(".lib-row")).toHaveCount(0);
+  await page.locator(".lib-search input").fill("muster");
+  await expect(page.locator(".lib-row")).toHaveCount(1);
   expect(errors).toEqual([]);
 });
 
@@ -133,7 +120,7 @@ test("Oberfläche auf Englisch und zurück", async ({ page }) => {
   await expect(page.locator("#settingsBtn")).toContainText("Settings");
   // nothing German left in the visible chrome of the page
   const text = await page.locator("header.topbar").innerText();
-  expect(text).not.toMatch(/Einstellungen|Hörbücher|Umbenennen|Suchen/);
+  expect(text).not.toMatch(/Einstellungen|Hörbücher|Suchen|Protokoll/);
   await page.locator("#settingsBtn").click();
   await expect(page.locator("#settingsDialog legend").first()).toHaveText("M4B conversion");
   await page.locator("#settingsDialog select[name=language]").selectOption("de");
@@ -144,9 +131,10 @@ test("Oberfläche auf Englisch und zurück", async ({ page }) => {
 
 test("Fremde Seiten dürfen nichts ändern (CSRF)", async ({ page, request }) => {
   await open(page);
-  const res = await request.post("/api/rename", {
-    data: { path: "Umbenennen", files: ["Erste_Datei.txt"], rules: [] },
+  const res = await request.put("/api/settings", {
+    data: { language: "en" },
     headers: { Origin: "http://evil.example" },
   });
   expect(res.status()).toBe(403);
+  await expect(page.getByRole("tab", { name: /Hörbücher/ })).toBeVisible();   // still German
 });

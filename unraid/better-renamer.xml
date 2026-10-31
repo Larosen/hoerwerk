@@ -9,9 +9,9 @@
   <Privileged>false</Privileged>
   <Support>https://github.com/Larosen/rename_merge/issues</Support>
   <Project>https://github.com/Larosen/rename_merge</Project>
-  <Overview>Better Renamer – batch renaming in the browser plus an audiobook pipeline: put audiobooks into the inbox and they become one M4B with chapters (MP3, M4A, FLAC, OGG …, also CD1/CD2), are matched on Audible, tagged (title, author, narrator, series, cover, description) and filed as Author/Series/NN - Title for Audiobookshelf or Plex. Downloads via SABnzbd, push notifications via ntfy (you choose which events). UI in English or German (APP_LANGUAGE).&#xD;
+  <Overview>Better Renamer – audiobook pipeline: put audiobooks into the inbox and they become one M4B with chapters (MP3, M4A, FLAC, OGG …, also CD1/CD2), are matched on Audible, tagged (title, author, narrator, series, cover, description) and filed as Author/Series/NN - Title for Audiobookshelf or Plex. Downloads via SABnzbd, push notifications via ntfy (you choose which events). UI in English or German (APP_LANGUAGE).&#xD;
 &#xD;
-Better Renamer – Stapel-Umbenennen im Browser plus Hörbuch-Automatik: Hörbücher in den Eingang legen, sie werden zu einer M4B mit Kapiteln, bei Audible erkannt, getaggt und als Autor/Serie/NN - Titel für Audiobookshelf oder Plex einsortiert. Downloads über SABnzbd, Push-Nachrichten über ntfy (Ereignisse frei wählbar). Oberfläche auf Deutsch oder Englisch (APP_LANGUAGE).</Overview>
+Better Renamer – Hörbuch-Automatik: Hörbücher in den Eingang legen, sie werden zu einer M4B mit Kapiteln, bei Audible erkannt, getaggt und als Autor/Serie/NN - Titel für Audiobookshelf oder Plex einsortiert. Downloads über SABnzbd, Push-Nachrichten über ntfy (Ereignisse frei wählbar). Oberfläche auf Deutsch oder Englisch (APP_LANGUAGE).</Overview>
   <Category>MediaApp:Books MediaApp:Other Tools:</Category>
   <WebUI>http://[IP]:[PORT:8080]/</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/better-renamer.xml</TemplateURL>
@@ -23,7 +23,6 @@ Better Renamer – Stapel-Umbenennen im Browser plus Hörbuch-Automatik: Hörbü
   <DonateLink/>
   <Requires/>
   <Config Name="WebUI-Port" Target="8080" Default="8080" Mode="tcp" Description="Port der Weboberfläche" Type="Port" Display="always" Required="true" Mask="false">8080</Config>
-  <Config Name="Medien" Target="/data" Default="/mnt/user/" Mode="rw" Description="Ordner, die umbenannt werden dürfen. Tipp: nur die nötigen Shares einbinden, z. B. /mnt/user/media/" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/</Config>
   <Config Name="Hörbuch-Eingang" Target="/inbox" Default="/mnt/user/media/audiobooks-inbox/" Mode="rw" Description="Neue Hörbücher hier hineinlegen (Ordner oder einzelne Dateien). Verarbeitete Originale landen in _fertig, fehlerhafte in _failed." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/media/audiobooks-inbox/</Config>
   <Config Name="Hörbuch-Bibliothek" Target="/audiobooks" Default="/mnt/user/media/audiobooks/" Mode="rw" Description="Fertige, getaggte Hörbücher (Autor/Serie/Band - Titel). Diesen Ordner in Audiobookshelf/Plex einbinden." Type="Path" Display="always" Required="false" Mask="false">/mnt/user/media/audiobooks/</Config>
   <Config Name="Language / Sprache" Target="APP_LANGUAGE" Default="de|en" Mode="" Description="Language of the UI and notifications (can also be changed under Settings) / Sprache der Oberfläche und Benachrichtigungen (auch unter Einstellungen änderbar)" Type="Variable" Display="always" Required="false" Mask="false">de</Config>
@@ -35,9 +34,7 @@ Better Renamer – Stapel-Umbenennen im Browser plus Hörbuch-Automatik: Hörbü
   <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="Benutzer-ID für Dateizugriffe (Unraid: 99 = nobody)" Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
   <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Gruppen-ID für Dateizugriffe (Unraid: 100 = users)" Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
   <Config Name="UMASK" Target="UMASK" Default="000" Mode="" Description="Rechte neu angelegter Dateien (000 = rw für alle, wie bei Unraid-Shares üblich)" Type="Variable" Display="advanced" Required="false" Mask="false">000</Config>
-  <Config Name="MP3 automatisch zu M4B" Target="AUTO_CONVERT" Default="true|false" Mode="" Description="Checkbox „Danach MP3 → M4B“ standardmäßig an" Type="Variable" Display="always" Required="false" Mask="false">true</Config>
   <Config Name="AAC-Bitrate" Target="AAC_BITRATE" Default="auto|64k|96k|128k|160k|192k" Mode="" Description="Bitrate der M4B-Hörbücher (auto = wie die Quelle, höchstens 128k)" Type="Variable" Display="advanced" Required="false" Mask="false">auto</Config>
-  <Config Name="MP3-Originale" Target="ORIGINALS" Default="keep|move|delete" Mode="" Description="Was nach erfolgreicher Konvertierung mit den MP3s passiert: behalten, in Unterordner verschieben, löschen" Type="Variable" Display="advanced" Required="false" Mask="false">keep</Config>
   <Config Name="Gleichzeitig kodieren" Target="ENCODE_WORKERS" Default="1" Mode="" Description="Bücher, die gleichzeitig zu M4B kodiert werden (jedes nutzt CPU_CORES Prozesse)" Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
   <Config Name="CPU-Priorität ffmpeg" Target="NICE" Default="10" Mode="" Description="nice-Wert für die Konvertierung (0–19, höher = weniger Last für andere Container)" Type="Variable" Display="advanced" Required="false" Mask="false">10</Config>
   <Config Name="Weitere Quellen" Target="METADATA_FALLBACK" Default="true|false" Mode="" Description="Audnexus, Apple Books und Open Library fragen, wenn Audible nichts liefert (Treffer kommen immer zur Prüfung)" Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>

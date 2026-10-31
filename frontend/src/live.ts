@@ -1,6 +1,6 @@
 // Live updates from the server (Server-Sent Events). Every topic pushes its full state when
 // something changes; the old polling loops only run while this connection is down.
-interface LiveTopics { jobs: ConvertJob[]; audiobooks: AudiobooksStatus; library: LibraryStats }
+interface LiveTopics { audiobooks: AudiobooksStatus; library: LibraryStats }
 type LiveHandler = (data: never) => void;
 
 const live: { ok: boolean; handlers: Record<string, LiveHandler[]>; source: EventSource | null } = {

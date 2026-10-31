@@ -20,7 +20,6 @@ import services  # noqa: E402
 from web import server  # noqa: E402
 import encoder  # noqa: E402
 import pipeline  # noqa: E402
-import planner  # noqa: E402
 import tagger  # noqa: E402
 import usenet  # noqa: E402
 from media import tone  # noqa: E402
@@ -32,12 +31,10 @@ class WebTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.mkdtemp(prefix="sec-")
-        for d in ("data", "config", "inbox", "lib"):
+        for d in ("config", "inbox", "lib"):
             os.makedirs(os.path.join(cls.tmp, d))
-        os.makedirs(os.path.join(cls.tmp, "data", "x"))
-        open(os.path.join(cls.tmp, "data", "x", "a.txt"), "w").close()
         env = {k: os.path.join(cls.tmp, v) for k, v in
-               {"DATA_DIR": "data", "CONFIG_DIR": "config", "INBOX_DIR": "inbox", "LIBRARY_DIR": "lib"}.items()}
+               {"CONFIG_DIR": "config", "INBOX_DIR": "inbox", "LIBRARY_DIR": "lib"}.items()}
         cls.app = services.App(config.Config.from_env({**env, "AUDIOBOOK_WATCH": "false"}), start_workers=False)
         cls.server = server.make_server(cls.app, "127.0.0.1", 0)
         cls.port = cls.server.server_address[1]
@@ -60,18 +57,17 @@ class WebTest(unittest.TestCase):
 
     OWN = {"X-Requested-With": "BetterRenamer", "Content-Type": "application/json"}
 
-    def test_csrf_rename_from_foreign_page_is_refused(self):
-        rename = {"path": "x", "files": ["a.txt"], "convert": False,
-                  "rules": [{"type": "insert", "enabled": True, "text": "PWNED-", "position": "start"}]}
+    def test_csrf_from_foreign_page_is_refused(self):
+        change = {"language": "en"}
         # what a foreign web page can send without a CORS preflight
-        status, _, _ = self.req("POST", "/api/rename", rename, {"Content-Type": "text/plain",
-                                                               "Origin": "http://evil.example"})
+        status, _, _ = self.req("PUT", "/api/settings", change, {"Content-Type": "text/plain",
+                                                                "Origin": "http://evil.example"})
         self.assertEqual(status, 403)
-        status, _, _ = self.req("POST", "/api/rename", rename, {**self.OWN, "Origin": "http://evil.example"})
+        status, _, _ = self.req("PUT", "/api/settings", change, {**self.OWN, "Origin": "http://evil.example"})
         self.assertEqual(status, 403)
-        status, _, _ = self.req("POST", "/api/rename", rename, {**self.OWN, "Sec-Fetch-Site": "cross-site"})
+        status, _, _ = self.req("PUT", "/api/settings", change, {**self.OWN, "Sec-Fetch-Site": "cross-site"})
         self.assertEqual(status, 403)
-        self.assertEqual(os.listdir(os.path.join(self.tmp, "data", "x")), ["a.txt"])
+        self.assertEqual(self.app.settings()["language"], "de")
         # our own page works
         status, _, _ = self.req("POST", "/api/audiobooks/scan", None,
                                 {"X-Requested-With": "BetterRenamer", "Origin": f"http://127.0.0.1:{self.port}",
@@ -88,7 +84,7 @@ class WebTest(unittest.TestCase):
 
     def test_body_limit(self):
         c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        c.putrequest("POST", "/api/preview")
+        c.putrequest("POST", "/api/search")
         for k, v in {**self.OWN, "Content-Length": str(server.MAX_BODY + 1)}.items():
             c.putheader(k, v)
         c.endheaders()
@@ -99,9 +95,10 @@ class WebTest(unittest.TestCase):
         for p in ("/static/../main.py", "/static/%2e%2e/main.py", "/static/..%2fmain.py"):
             self.assertEqual(self.req("GET", p)[0], 404, p)
 
-    def test_browse_outside_data(self):
-        status, _, body = self.req("GET", "/api/browse?path=../config")
-        self.assertEqual(status, 400, body)
+    def test_library_paths_stay_inside(self):
+        for p in ("../config", "..", "/etc", "x/../../config"):
+            status, _, body = self.req("GET", "/api/library/tracks?path=" + p)
+            self.assertEqual(status, 404, (p, body))
 
     def test_allowed_hosts(self):
         old = self.app.config
@@ -207,13 +204,6 @@ class DownloadTest(unittest.TestCase):
         full = os.path.realpath(os.path.join(folder, name))
         self.assertTrue(full.startswith(os.path.realpath(self.root) + os.sep), full)
         self.assertNotIn("..", os.path.relpath(full, self.root).split(os.sep))
-
-    def test_planner_symlink_escape(self):
-        base = os.path.join(self.root, "data")
-        os.makedirs(base)
-        os.symlink(self.root, os.path.join(base, "out"))
-        with self.assertRaises(planner.PlanError):
-            planner.compute_plan(base, ["out/sources.json"], [], {})
 
 
 class NetworkTest(unittest.TestCase):

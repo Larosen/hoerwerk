@@ -11,7 +11,6 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - /pfad/zu/medien:/data              # <- anpassen: Ordner für den Umbenenner
       - /pfad/zu/hoerbuch-eingang:/inbox   # <- neue Hörbücher hier hineinlegen
       - /pfad/zu/hoerbuecher:/audiobooks   # <- fertige Bibliothek (Audiobookshelf/Plex)
       - ./config:/config

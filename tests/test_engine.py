@@ -11,7 +11,6 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 sys.path.insert(0, os.path.dirname(__file__))
 
-import converter  # noqa: E402
 import db as dbm  # noqa: E402
 import pipeline  # noqa: E402
 from engine import Engine  # noqa: E402
@@ -139,46 +138,6 @@ class PipelineEngineTest(unittest.TestCase):
         self.assertTrue(self.engine.wait_idle(10))
         self.assertEqual(job.status, "cancelled")
 
-
-@unittest.skipUnless(HAVE_FFMPEG, "ffmpeg fehlt")
-class FolderConvertTest(unittest.TestCase):
-    """„Jetzt zu M4B“ in the renamer: same engine, survives a restart."""
-
-    def setUp(self):
-        self.root = tempfile.mkdtemp(prefix="conv-")
-        self.db = dbm.Database(os.path.join(self.root, "t.db"))
-        self.folder = os.path.join(self.root, "Hörbuch")
-        tone(os.path.join(self.folder, "01 Anfang.mp3"), 1.0)
-        tone(os.path.join(self.folder, "02 Ende.mp3"), 1.0)
-        self.settings = {"originals": "move", "originals_folder": "_mp3", "output_name": "{folder}"}
-
-    def tearDown(self):
-        shutil.rmtree(self.root, ignore_errors=True)
-
-    def test_convert_in_place(self):
-        engine = Engine()
-        engine.start()
-        c = converter.Converter(lambda: self.settings, self.db, engine)
-        job = c.enqueue(self.folder, "Hörbuch", "Manuell")
-        self.assertTrue(engine.wait_idle(30))
-        self.assertEqual(job.status, "done", job.message)
-        self.assertEqual(sorted(os.listdir(self.folder)), ["Hörbuch.m4b", "_mp3"])
-        # finished jobs are still listed after a restart, and can be cleared
-        again = converter.Converter(lambda: self.settings, self.db)
-        self.assertEqual([j["status"] for j in again.list()], ["done"])
-        again.clear_finished()
-        self.assertEqual(converter.Converter(lambda: self.settings, self.db).list(), [])
-
-    def test_queued_job_survives_a_restart(self):
-        c = converter.Converter(lambda: self.settings, self.db)     # no engine: nothing runs
-        job = c.enqueue(self.folder, "Hörbuch", "Manuell")
-        engine = Engine()
-        again = converter.Converter(lambda: self.settings, self.db, engine)
-        self.assertEqual(again.list()[0]["id"], job.id)
-        again.start()
-        engine.start()
-        self.assertTrue(engine.wait_idle(30))
-        self.assertEqual(again.list()[0]["status"], "done")
 
 
 if __name__ == "__main__":
