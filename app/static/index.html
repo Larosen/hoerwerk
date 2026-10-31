@@ -394,6 +394,19 @@
   </div>
 </dialog>
 
+<dialog id="packDialog">
+  <form method="dialog" class="dialog-body">
+    <h2>Welche Bände?</h2>
+    <p class="muted small" id="packInfo"></p>
+    <div class="row gap"><button type="button" class="btn small" id="packMissing">Nur fehlende</button><button type="button" class="btn small" id="packAll">Alle</button></div>
+    <div id="packVolumes" class="pack-volumes"></div>
+    <div class="dialog-actions">
+      <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
+      <button value="ok" class="btn primary" id="packOk">Laden</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="confirmDialog">
   <form method="dialog" class="dialog-body">
     <p id="confirmText"></p>

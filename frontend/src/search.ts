@@ -255,6 +255,7 @@ function renderResults(): void {
       el("td", { class: "rel" },
         el("div", { class: "rel-title", title: r.title }, r.title),
         el("div", { class: "rel-meta" },
+          r.pack ? packNote(r.pack) : null,
           r.owned ? el("span", { class: "owned", title: r.owned.path },
             t("✓ vorhanden: {book}", { book: `${(r.owned.authors || [])[0] || ""} – ${r.owned.title}${r.owned.count > 1 ? ` (+${r.owned.count - 1})` : ""}` })) : null,
           tags.map((t) => el("span", { class: "tag" }, t)),
@@ -267,14 +268,65 @@ function renderResults(): void {
   }
 }
 
+/** "Sneijder und Nemez · Bände 1–7 · vorhanden: 1, 2" under a release with several volumes. */
+function packNote(p: NonNullable<Release["pack"]>): HTMLSpanElement {
+  const have = p.volumes.filter((v) => p.owned[String(v)]);
+  const range = `${p.volumes[0]}–${p.volumes[p.volumes.length - 1]}`;
+  return el("span", { class: "pack-note" },
+    el("span", { class: "tag" }, t("{n} Bände", { n: p.volumes.length })),
+    `${p.series ? p.series + " · " : ""}${t("Bände {range}", { range })}`,
+    have.length ? el("span", { class: "owned" }, " · " + (have.length === p.volumes.length ? t("✓ alle vorhanden")
+      : t("✓ vorhanden: {list}", { list: have.join(", ") }))) : null);
+}
+
+/** Which volumes of a pack to keep – the ones already in the library start unticked. */
+function choosePackVolumes(r: Release): Promise<number[] | null> {
+  const p = r.pack!;
+  const d = $<HTMLDialogElement>("#packDialog");
+  $("#packInfo").textContent = t("„{title}“ enthält {n} Bände. Nur die ausgewählten werden nach dem Download zu M4B gemacht, getaggt und abgelegt; die anderen werden übersprungen.", { title: r.title, n: p.volumes.length });
+  const boxes = p.volumes.map((v) => {
+    const owned = p.owned[String(v)];
+    const cb = el("input", { type: "checkbox", value: String(v), checked: !owned });
+    return { v, cb, row: el("label", { class: "check pack-vol" + (owned ? " is-owned" : "") }, cb,
+      el("span", {}, t("Band {n}", { n: v })),
+      owned ? el("span", { class: "muted small", title: owned }, t("vorhanden: {path}", { path: owned })) : null) };
+  });
+  const list = $("#packVolumes");
+  list.replaceChildren(...boxes.map((b) => b.row));
+  const count = (): void => {
+    const n = boxes.filter((b) => b.cb.checked).length;
+    $<HTMLButtonElement>("#packOk").disabled = !n;
+    $("#packOk").textContent = t("{n} Bände laden", { n });
+  };
+  boxes.forEach((b) => b.cb.addEventListener("change", count));
+  $("#packAll").onclick = () => { boxes.forEach((b) => (b.cb.checked = true)); count(); };
+  $("#packMissing").onclick = () => { boxes.forEach((b) => (b.cb.checked = !p.owned[String(b.v)])); count(); };
+  count();
+  return new Promise((resolve) => {
+    d.returnValue = "";
+    d.addEventListener("close", () => resolve(d.returnValue === "ok" ? boxes.filter((b) => b.cb.checked).map((b) => b.v) : null), { once: true });
+    d.showModal();
+  });
+}
+
 async function sendResult(r: Release, btn: HTMLButtonElement): Promise<void> {
   if (!search.sources?.configured.sab) { toast(t("Erst SABnzbd einrichten"), true); openSources(); return; }
-  const owned = r.owned || search.book?.owned;
-  if (owned && !(await confirmBox(t("Sieht aus, als wäre das schon in der Bibliothek: „{path}“. Trotzdem herunterladen?", { path: owned.path }), t("Trotzdem laden")))) return;
+  let volumes: number[] | undefined;
+  if (r.pack) {
+    const chosen = await choosePackVolumes(r);
+    if (!chosen) return;
+    volumes = chosen;
+  } else {
+    const owned = r.owned || search.book?.owned;
+    if (owned && !(await confirmBox(t("Sieht aus, als wäre das schon in der Bibliothek: „{path}“. Trotzdem herunterladen?", { path: owned.path }), t("Trotzdem laden")))) return;
+  }
   btn.disabled = true;
   try {
     const b = search.book;
-    await api("POST", "/api/search/send", b ? { id: r.id, asin: b.asin, title: b.title, author: (b.authors || [])[0] } : { id: r.id });
+    await api("POST", "/api/search/send", {
+      id: r.id, ...(b && !r.pack ? { asin: b.asin, title: b.title } : {}), ...(b ? { author: (b.authors || [])[0] } : {}),
+      ...(volumes ? { volumes } : {}),
+    });
     btn.textContent = t("✓ gesendet");
     toast(t("An SABnzbd geschickt: {title}", { title: r.title }));
     pollDownloads(true);

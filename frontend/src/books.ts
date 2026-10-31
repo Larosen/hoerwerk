@@ -105,7 +105,7 @@ function renderBooks(): void {
 // ------------------------------------------------------------------------- //
 interface LibraryBook {
   path: string; title: string; authors: string[]; names?: string[]; series: string | null;
-  series_position: string | null; asin: string | null; format: string; files: number;
+  series_position: string | null; asin: string | null; format: string; files: number; mtime?: number; cover?: boolean;
 }
 
 function renderLibrary(list: HTMLElement): void {
@@ -146,7 +146,7 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
   const other = (b.names || []).filter((n, i, arr) => arr.indexOf(n) === i && !(b.authors || []).includes(n)
     && !all.some((m) => m !== n && m.includes(n)));
   return el("li", { class: "lib-row" },
-    coverArt(b.title || b.path, author, b.format !== "m4b" ? (b.format || "").toUpperCase() : ""),
+    libraryCover(b.path, b.title || b.path, author, b.format !== "m4b" ? (b.format || "").toUpperCase() : "", b.mtime || "", !!b.cover),
     el("div", { class: "lib-main" },
       el("div", { class: "lib-title" }, b.title || b.path,
         b.series ? el("span", { class: "muted" }, ` · ${b.series}${b.series_position ? " " + b.series_position : ""}`) : null),
@@ -201,7 +201,7 @@ function renderUnconverted(list: HTMLElement): void {
     list.append(el("li", { class: "book uc" },
       el("div", { class: "book-head" },
         el("label", { class: "uc-check" }, cb),
-        coverArt(b.title || b.path, (b.authors || [])[0], (b.format || "").toUpperCase()),
+        libraryCover(b.path, b.title || b.path, (b.authors || [])[0], (b.format || "").toUpperCase(), "", !!b.cover),
         el("div", { class: "book-main" },
           el("div", { class: "book-title" }, el("span", { class: "name" }, b.title || b.path),
             b.job ? el("span", { class: "badge " + b.job.status }, BOOK_STATUS[b.job.status] || b.job.status) : null),

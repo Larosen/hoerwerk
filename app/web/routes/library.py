@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import os
 import threading
+from typing import Optional
 
 import encoder
+import tagger
 from meta import cache as meta_cache
+from library_index import COVER_FILES
 from natsort import natural_key
 from i18n import t
-from web.router import HTTPException, Req, route
+from web.router import File, HTTPException, Req, route
 from web.routes.common import library_path
 
 
@@ -26,6 +29,35 @@ def books(req: Req):
     except ValueError:
         raise HTTPException(400, t("Ungültige Daten"))
     return req.app.library_index.books(req.query.get("q", "")[:200], offset, limit)
+
+
+MAX_COVER = 15 * 1024 * 1024
+
+
+def _image_type(data: bytes) -> Optional[str]:
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    return None
+
+
+@route("GET", "/api/library/cover")
+def cover(req: Req):
+    """The cover of a library book: cover.jpg & co. in its folder, else the picture inside the audio file."""
+    folder = library_path(req.app, req.query.get("path", ""))
+    candidates = [os.path.join(folder, n) for n in COVER_FILES]   # same order as the library index
+    for path in candidates:
+        if os.path.isfile(path) and not os.path.islink(path) and os.path.getsize(path) <= MAX_COVER:
+            with open(path, "rb") as fh:
+                data = fh.read()
+            if _image_type(data):
+                return File(data, _image_type(data), max_age=86400)
+    for rel in encoder.collect_audio(folder)[:1]:
+        data = tagger.embedded_cover(os.path.join(folder, rel))
+        if data and len(data) <= MAX_COVER and _image_type(data):
+            return File(data, _image_type(data), max_age=86400)
+    raise HTTPException(404, t("Kein Cover"))
 
 
 @route("POST", "/api/library/scan")
@@ -47,7 +79,7 @@ def unconverted(req: Req):
     out = []
     for e in sorted(entries, key=lambda e: [natural_key(p) for p in e["path"].split(os.sep)]):
         job = active.get(os.path.join(root, e["path"]))
-        out.append({k: e.get(k) for k in ("path", "title", "authors", "series", "series_position", "files", "format")}
+        out.append({k: e.get(k) for k in ("path", "title", "authors", "series", "series_position", "files", "format", "cover")}
                    | {"job": {"id": job["id"], "status": job["status"]} if job else None})
     return {"books": out, "scanning": index.scanning}
 

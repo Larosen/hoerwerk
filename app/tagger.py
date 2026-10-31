@@ -150,6 +150,25 @@ def read_cover(path: str) -> Optional[bytes]:
     return bytes(covr[0]) if covr else None
 
 
+def embedded_cover(path: str) -> Optional[bytes]:
+    """The picture inside an audio file (M4B/M4A, MP3, FLAC) – without ffmpeg."""
+    ext = os.path.splitext(path)[1].lower()
+    try:
+        if ext in (".m4b", ".m4a", ".mp4"):
+            return read_cover(path)
+        if ext == ".mp3":
+            from mutagen.id3 import ID3
+            pics = ID3(path).getall("APIC")
+            return bytes(pics[0].data) if pics else None
+        if ext == ".flac":
+            from mutagen.flac import FLAC
+            pics = FLAC(path).pictures
+            return bytes(pics[0].data) if pics else None
+    except Exception:  # noqa: BLE001 – any unreadable file simply has no cover
+        return None
+    return None
+
+
 def read_book(path: str) -> dict:
     """Existing tags of an M4B as a book dict (for "ohne Audible ablegen")."""
     try:
@@ -168,6 +187,7 @@ def read_book(path: str) -> dict:
         return [x.strip() for x in re.split(r"\s*[,;&]\s*|\s+und\s+|\s+and\s+", s) if x.strip()]
 
     return {
+        "_cover": bool(tags.get("covr")),        # only for the library index, not a tag to write
         "asin": one(FREEFORM + "ASIN") or None,
         "title": one("©alb") or one("©nam"),
         "subtitle": one(FREEFORM + "SUBTITLE") or None,

@@ -95,6 +95,21 @@ class WebTest(unittest.TestCase):
         for p in ("/static/../main.py", "/static/%2e%2e/main.py", "/static/..%2fmain.py"):
             self.assertEqual(self.req("GET", p)[0], 404, p)
 
+    def test_library_cover(self):
+        book = os.path.join(self.tmp, "lib", "Theodor Storm", "Immensee")
+        os.makedirs(book, exist_ok=True)
+        jpeg = b"\xff\xd8\xff\xe0" + b"0" * 64
+        with open(os.path.join(book, "cover.jpg"), "wb") as fh:
+            fh.write(jpeg)
+        status, headers, body = self.req("GET", "/api/library/cover?path=Theodor%20Storm/Immensee")
+        self.assertEqual((status, headers["Content-Type"], body), (200, "image/jpeg", jpeg))
+        self.assertIn("max-age", headers["Cache-Control"])
+        # a "cover" that is really HTML is not served as an image
+        with open(os.path.join(book, "cover.jpg"), "wb") as fh:
+            fh.write(b"<script>alert(1)</script>")
+        self.assertEqual(self.req("GET", "/api/library/cover?path=Theodor%20Storm/Immensee")[0], 404)
+        self.assertEqual(self.req("GET", "/api/library/cover?path=../config")[0], 404)
+
     def test_library_paths_stay_inside(self):
         for p in ("../config", "..", "/etc", "x/../../config"):
             status, _, body = self.req("GET", "/api/library/tracks?path=" + p)

@@ -117,7 +117,19 @@ Filed the wrong book? **Correct** takes it back out of the library into the revi
 
 **Audiobooks → Library** lists every book in the library with a search over title, author, series and folder. Each row
 shows how the book was read – the author, further names from tags and folders, the folder and the format – which is
-also what the duplicate check and the search use.
+also what the duplicate check and the search use. Covers come from `cover.jpg`/`folder.jpg` in the book folder or from
+the picture inside the audio file; books without one get a generated tile.
+
+### Downloads with several volumes
+
+A download like `Author-Series 01 - 07-…` is a **pack**: every volume folder becomes its own book – merged, matched
+and tagged separately, with author and volume number from the release name. Folders such as `01 - Title`,
+`02 - Title` are volumes; `CD1`/`CD2`, `Disc 1`, `Teil 1` or plain `01`/`02` stay parts of one book.
+
+* In **Search**, a pack shows its volumes and which of them you already own. **Download** asks which volumes you
+  want – owned ones start unticked. Only the chosen volumes are converted; the others are put aside unconverted.
+* Packs that did not come through the search: volumes already in the library are skipped automatically – by series
+  and volume number, or at the latest when Audible recognises the book, always before converting.
 
 ### Avoiding duplicates
 
