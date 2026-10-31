@@ -9,16 +9,18 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 
 ## Empfohlene Einstellungen
 
-1. **Passwort setzen** (`AUTH_USER` / `AUTH_PASS`), sobald mehr als nur du im Netz bist, und die
-   Oberfläche nie ohne Reverse-Proxy mit HTTPS ins Internet stellen. Ohne Passwort beantwortet der
-   Server ohnehin nur Anfragen aus privaten Netzen (LAN, VPN, Docker).
+1. **Konten:** Beim ersten Aufruf wird das Admin-Konto angelegt; ohne Anmeldung gibt es nur die Login-Seite.
+   Ins Internet nur hinter einem Reverse-Proxy mit HTTPS (z. B. **Pangolin**), dessen Adresse in `TRUSTED_PROXIES`
+   steht – sonst sieht Hörwerk nicht die echte IP der Besucher. Fehlversuche landen in `/config/logs/auth.log`
+   (für CrowdSec, siehe [contrib/crowdsec](contrib/crowdsec/README.md)).
 2. **Container mit minimalen Rechten** starten – im Unraid-Template und in `docker-compose.yml` ist das
    schon eingetragen: `--security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID`.
 3. **Nur die nötigen Ordner einbinden:** Eingang und Bibliothek, nie ganz `/mnt/user/`.
 4. **In SABnzbd** unter *Config → Switches* „Unerwünschte Endungen“ (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
    auf **Abbrechen** stellen. Gefälschte Releases fliegen dann schon vor dem Eingang raus.
 5. Originale im Eingang auf **löschen** (`INBOX_ORIGINALS=delete`) oder `_fertig` regelmäßig leeren.
-6. Optional `ALLOWED_HOSTS=tower,192.168.1.10` setzen (Schutz gegen DNS-Rebinding ohne Passwort).
+6. `ALLOWED_HOSTS` auf die Adressen setzen, unter denen du Hörwerk aufrufst, z. B.
+   `ALLOWED_HOSTS=tower,192.168.1.10,hoerbuecher.example.de` (Schutz gegen DNS-Rebinding und fremde Host-Namen).
 7. Image aktuell halten: GitHub Actions baut es jede Woche neu (Debian-Sicherheitsupdates); neue ffmpeg-Versionen
    kommen über ein Update von `FFMPEG_VERSION` im Dockerfile;
    auf Unraid gelegentlich „Check for Updates“.
@@ -61,13 +63,17 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 |---|---|
 | **CSRF**: eine fremde Webseite im selben Browser schickt Anfragen an `http://tower:8080` (z. B. Einstellungen ändern oder Bücher aus der Bibliothek holen) | Alle ändernden Anfragen brauchen einen eigenen Header, den Browser nur nach einer (nie erlaubten) CORS-Freigabe senden; zusätzlich Prüfung von `Origin` und `Sec-Fetch-Site`. Getestet. |
 | Clickjacking | `X-Frame-Options: DENY`, `frame-ancestors 'none'`. |
-| Versehentlich ins Internet freigegeben | Ohne Passwort nur Antworten an private Adressen (LAN, VPN/Tailscale, Docker). Greifen Geräte im Heimnetz per öffentlicher IPv6-Adresse zu, Passwort setzen oder `ALLOW_PUBLIC=true`. |
-| Passwort raten | Vergleich in konstanter Zeit, 1 s Pause nach jedem Fehlversuch. |
-| DNS-Rebinding | Optional `ALLOWED_HOSTS`; mit Passwort ohnehin wirkungslos. |
+| Zugriff ohne Anmeldung | Ohne gültige Sitzung gibt es nur die Login-Seite, den Oberflächen-Code (`/static`, ohnehin Open Source), `/i18n.js`, das Logo und `/api/health`. Jede API-Route hat eine Zugriffsstufe (öffentlich / Nutzer / Admin, Standard Admin), geprüft im Server – nicht nur ausgeblendet. Getestet: unangemeldet 401, Familienkonto auf Admin-Funktionen 403 (wird protokolliert). |
+| Erst-Einrichtung durch Fremde | Solange es kein Konto gibt, darf nur aus dem Heimnetz ohne Weiteres ein Admin angelegt werden; von außen braucht es den Einrichtungs-Code aus dem Container-Log. Danach ist die Einrichtung gesperrt. |
+| Passwort raten | scrypt (N=2¹⁵), Mindestlänge 10; je IP höchstens 5 Fehlversuche in 15 Minuten, danach 429; je Konto wachsende Verzögerung (ein Fremder kann kein Familienkonto aussperren); unbekannte Namen kosten dieselbe Zeit wie bekannte. Jeder Fehlversuch mit IP in `auth.log` → CrowdSec sperrt am VPS. |
+| Gestohlene Sitzung | Token mit 256 Bit, in der DB nur als SHA-256; Cookie `HttpOnly`, `SameSite=Lax`, `Secure` hinter HTTPS. Passwortwechsel, Sperren eines Kontos und „Alle anderen Geräte abmelden“ beenden Sitzungen sofort. |
+| Gefälschte IP in `X-Forwarded-For` | Der Header zählt nur von Adressen in `TRUSTED_PROXIES` und wird von rechts gelesen – vorne angehängte Fantasie-Adressen bleiben wirkungslos. |
+| Rechteausweitung | Rolle und Rechte ändert nur ein Admin (Server-Prüfung); der letzte Admin kann weder herabgestuft noch gesperrt noch gelöscht werden. |
+| DNS-Rebinding / fremde Host-Namen | `ALLOWED_HOSTS`; zusätzlich braucht jede Datenanfrage eine Anmeldung. |
 | Pfade außerhalb der Bibliothek | Buch-Pfade aus dem Browser werden aufgelöst (inkl. Symlinks) und müssen in der Bibliothek liegen; statische Dateien nur aus `app/static`. |
 | Riesige Anfragen | max. 4 MB pro Anfrage. |
 | Viele offene Live-Verbindungen (`/api/events`) | Höchstens 32 gleichzeitig; sie liefern nur, was die Oberfläche ohnehin abruft, und brauchen dieselbe Anmeldung. |
-| Spracheinstellung / Übersetzungen | Nur `de` oder `en` werden angenommen; `/i18n.js` liefert eine feste Datei aus dem Image und braucht dieselbe Anmeldung wie die Seite. |
+| Spracheinstellung / Übersetzungen | Nur `de` oder `en` werden angenommen; `/i18n.js` liefert eine feste Datei aus dem Image (auch für die Login-Seite). |
 | Sonstige Header | `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy`/`-Resource-Policy: same-origin`, `Cache-Control: no-store`. |
 
 ### 4. Container

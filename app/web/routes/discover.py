@@ -12,7 +12,7 @@ def _section(req: Req, value: str) -> str:
     return value
 
 
-@route("GET", "/api/discover")
+@route("GET", "/api/discover", access="user")
 def suggestions(req: Req):
     section = _section(req, req.query.get("section") or "foryou")
     genre = (req.query.get("genre") or "").strip()
@@ -21,7 +21,7 @@ def suggestions(req: Req):
     return req.app.discover.get(section, genre)
 
 
-@route("GET", "/api/discover/genres")
+@route("GET", "/api/discover/genres", access="user")
 def genres(req: Req):
     return {"genres": req.app.discover.genres()}
 

@@ -1,0 +1,11 @@
+# Vector on the Unraid side: read Hörwerk's security log and send it to Vector on the VPS.
+# Mount the AppData folder read-only into the Vector container, e.g. /mnt/user/appdata/hoerwerk/logs:/hoerwerk:ro
+[sources.hoerwerk_auth]
+type = "file"
+include = ["/hoerwerk/auth.log"]
+read_from = "end"
+
+[sinks.vps]
+type = "vector"
+inputs = ["hoerwerk_auth"]
+address = "VPS-ADRESSE-IM-TUNNEL:6000"     # e.g. the WireGuard/Newt address of the VPS

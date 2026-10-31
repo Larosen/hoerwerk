@@ -38,6 +38,8 @@ class WebTest(unittest.TestCase):
         cls.app = services.App(config.Config.from_env({**env, "AUDIOBOOK_WATCH": "false"}), start_workers=False)
         cls.server = server.make_server(cls.app, "127.0.0.1", 0)
         cls.port = cls.server.server_address[1]
+        admin = cls.app.accounts.create("admin", "test-password-123", "admin")
+        cls.cookie = "hw_session=" + cls.app.accounts.start_session(admin["id"], False)
         threading.Thread(target=cls.server.serve_forever, daemon=True).start()
 
     @classmethod
@@ -46,10 +48,11 @@ class WebTest(unittest.TestCase):
         cls.server.server_close()
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
-    def req(self, method, path, body=None, headers=None):
+    def req(self, method, path, body=None, headers=None, cookie=True):
         c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
         data = json.dumps(body).encode() if body is not None else None
-        c.request(method, path, body=data, headers={"Host": f"127.0.0.1:{self.port}", **(headers or {})})
+        auth = {"Cookie": self.cookie} if cookie is True else {"Cookie": cookie} if cookie else {}
+        c.request(method, path, body=data, headers={"Host": f"127.0.0.1:{self.port}", **auth, **(headers or {})})
         r = c.getresponse()
         out = (r.status, dict(r.getheaders()), r.read())
         c.close()
@@ -124,26 +127,20 @@ class WebTest(unittest.TestCase):
         finally:
             self.app.config = old
 
-    def test_logo_is_public_the_rest_is_not(self):
-        """Unraid fetches the Docker icon without a password – only the logo, nothing else."""
-        old = self.app.config
-        self.app.config = dataclasses.replace(old, auth_user="u", auth_pass="p")
-        try:
-            status, headers, _ = self.req("GET", "/static/icon.png")
-            self.assertEqual(status, 200)
-            self.assertEqual(self.req("GET", "/static/style.css")[0], 401)
-            self.assertEqual(self.req("GET", "/static/icon.png/../index.html")[0], 401)
-        finally:
-            self.app.config = old
-
-    def test_internet_clients_need_a_password(self):
-        h = server.Handler.__new__(server.Handler)
-        h.server = self.server
-        for ip, ok in (("192.168.1.20", True), ("10.0.0.5", True), ("172.17.0.1", True), ("127.0.0.1", True),
-                       ("::ffff:192.168.1.2", True), ("fd00::1", True), ("8.8.8.8", False),
-                       ("2a00:1450::1", False), ("::ffff:8.8.8.8", False)):
-            h.client_address = (ip, 1234)
-            self.assertEqual(h._client_ok(), ok, ip)
+    def test_without_login_only_the_login_page(self):
+        """Without a session: logo, UI code and login page – no data, no app page."""
+        self.assertEqual(self.req("GET", "/static/icon.png", cookie=False)[0], 200)
+        self.assertEqual(self.req("GET", "/api/health", cookie=False)[0], 200)
+        status, headers, _ = self.req("GET", "/", cookie=False)
+        self.assertEqual((status, headers["Location"]), (303, "/login"))
+        self.assertEqual(self.req("GET", "/login", cookie=False)[0], 200)
+        self.assertEqual(self.req("GET", "/me.js", cookie=False)[2], b"const ME = null;\n")
+        for path in ("/api/settings", "/api/library/books", "/api/sources", "/api/users", "/api/events?topics=library"):
+            status, _, body = self.req("GET", path, cookie=False)
+            self.assertEqual(status, 401, path)
+            self.assertTrue(json.loads(body)["login"])
+        self.assertEqual(self.req("GET", "/api/settings", cookie="hw_session=forged-token")[0], 401)
+        self.assertEqual(self.req("PUT", "/api/settings", {"language": "en"}, self.OWN, cookie=False)[0], 401)
 
 
 class DownloadTest(unittest.TestCase):

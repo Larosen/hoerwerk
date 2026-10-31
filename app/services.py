@@ -7,7 +7,10 @@ import time
 from typing import Optional
 
 import db as dbm
+import authlog
+import secrets
 from abs import Audiobookshelf
+from accounts import Accounts
 import tagger
 from config import Config, default_settings
 from discover import Discover
@@ -36,6 +39,10 @@ class App:
         imported = dbm.import_legacy(self.db, config.config_dir)
         if imported:
             applog.info(f"Übernommen in die Datenbank: {', '.join(imported)}")
+        authlog.setup(config.config_dir)
+        self.accounts = Accounts(self.db)
+        self.setup_code = ""
+        self._first_account()
         self.defaults = default_settings(config.env or os.environ)
         self._settings = Settings(self.db, self.defaults)
         i18n.set_language(self.settings().get("language", "de"))
@@ -74,6 +81,24 @@ class App:
         for row in self.db.all("SELECT data FROM grabs WHERE time > ?", (time.time() - 30 * 86400,)):
             out.add((dbm.loads(row["data"]) or {}).get("asin"))
         return {a for a in out if a}
+
+    def _first_account(self) -> None:
+        """AUTH_USER/AUTH_PASS of older versions become the admin; without any account a setup code is shown."""
+        if self.accounts.count():
+            if self.config.auth:
+                applog.info(t("AUTH_USER/AUTH_PASS werden nicht mehr gebraucht – Konten verwaltest du in der App."))
+            return
+        if self.config.auth:
+            from accounts import hash_password
+            now = time.time()
+            self.db.run("INSERT INTO users(name, pw, role, perms, created, pw_changed) VALUES(?,?,?,?,?,?)",
+                        (self.config.auth_user.strip()[:40], hash_password(self.config.auth_pass), "admin", "{}", now, now))
+            authlog.event("setup", user=self.config.auth_user, ip="env")
+            applog.info(t("Admin-Konto „{name}“ aus AUTH_USER/AUTH_PASS angelegt.", name=self.config.auth_user))
+            return
+        self.setup_code = "-".join(secrets.token_hex(2).upper() for _ in range(3))
+        applog.warn(t("Noch kein Konto: Admin im Browser anlegen. Von außerhalb des Heimnetzes braucht es den Einrichtungs-Code {code}.",  # noqa: E501
+                      code=self.setup_code), "Anmeldung")
 
     # -- settings ----------------------------------------------------------
     def settings(self) -> dict:

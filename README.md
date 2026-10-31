@@ -29,9 +29,10 @@ The interface is available in **English and German**.
 5. [Discover](#discover)
 6. [Notifications (ntfy)](#notifications-ntfy)
 7. [Log](#log)
-8. [Configuration](#configuration)
-9. [Security](#security)
-10. [Development](#development)
+8. [Accounts and access from outside](#accounts-and-access-from-outside)
+9. [Configuration](#configuration)
+10. [Security](#security)
+11. [Development](#development)
 
 ---
 
@@ -289,6 +290,31 @@ and errors. Filter by level or text, follow it live, download it as a file. The 
 
 ---
 
+## Accounts and access from outside
+
+Without signing in Hörwerk only shows the login page. On the **first visit** you create the admin account (directly
+from the home network; from outside the setup code from `docker logs hoerwerk` is needed). If you had
+`AUTH_USER`/`AUTH_PASS` set, they become the admin account automatically.
+
+* **Accounts** (top right, admins only): create family accounts (generate an initial password and pass it on), role,
+  rights (*see all requests*, *no approval*, *interactive search*), monthly quota, lock, reset password, delete.
+  Family accounts see **Discover** for now; requests come with the next step
+  (plan: [docs/PLAN-mehrbenutzer.md](docs/PLAN-mehrbenutzer.md)).
+* **Account** (your name, top right, everyone): change password, see and sign out devices, sign out.
+* "Stay signed in" lasts 30 days (extended while used), otherwise 12 hours.
+
+**On the internet via Pangolin:**
+1. Create a Pangolin resource pointing at `http://<unraid-ip>:8080` (Pangolin does HTTPS).
+   Pangolin's own login can stay in front as well – safer, but you sign in twice.
+2. Set `TRUSTED_PROXIES` to the address Newt/Pangolin arrives from (e.g. `172.18.0.0/16` for the Docker network or the
+   IP of the Newt container). Only then the log shows the visitors' real IP.
+3. Add the public name to `ALLOWED_HOSTS`, e.g. `tower,192.168.1.10,audiobooks.example.com`.
+4. **CrowdSec:** every failed login is in `/config/logs/auth.log` with its IP. Parser, scenarios and examples for
+   Vector or the CrowdSec agent are in [contrib/crowdsec](contrib/crowdsec/README.md). Hörwerk itself blocks an IP for
+   15 minutes after 5 failures; CrowdSec then bans it right at the VPS.
+
+---
+
 ## Configuration
 
 Almost everything can be changed in **⚙︎ Settings**; the environment only provides the starting values.
@@ -334,8 +360,10 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `AAC_BITRATE` | `auto` | `auto` (like the source, max. 128k) or a fixed value |
 | `FORCE_MONO` | `false` | Output mono |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` or `tag` |
-| `AUTH_USER` / `AUTH_PASS` | – | Password protection (Basic Auth) – recommended |
-| `ALLOW_PUBLIC` | `false` | Without a password only private networks are answered; `true` lifts that |
+| `TRUSTED_PROXIES` | – | IPs/networks of the reverse proxy (Pangolin/Newt, Traefik), e.g. `172.18.0.0/16` – only from there `X-Forwarded-For` counts |
+| `COOKIE_SECURE` | `auto` | Login cookie only over HTTPS: `auto` (when the proxy reports HTTPS), `true`, `false` |
+| `REQUEST_QUOTA` | `5` | Book requests per user and month (adjustable per account) |
+| `AUTH_USER` / `AUTH_PASS` | – | Only for upgrading: becomes the admin account on first start |
 | `ALLOWED_HOSTS` | – | Only answer under these host names/IPs, e.g. `tower,192.168.1.10` |
 
 SABnzbd, the optional indexer, Audiobookshelf, Plex and ntfy are set up in the interface, not via variables.
@@ -346,8 +374,8 @@ SABnzbd, the optional indexer, Audiobookshelf, Plex and ntfy are set up in the i
 
 Short version – details, tests and component versions in [SECURITY.md](SECURITY.md):
 
-* Set `AUTH_USER`/`AUTH_PASS` and never expose the UI to the internet without a reverse proxy with HTTPS.
-  Without a password the server only answers private networks.
+* Accounts with login; on the internet only behind a reverse proxy with HTTPS (e.g. Pangolin) and with
+  `TRUSTED_PROXIES`. Failed logins are in `/config/logs/auth.log` with their IP – ready for CrowdSec.
 * Mount only the folders you need; the container runs without Linux capabilities and with `no-new-privileges`.
 * Downloaded files are never executed. ffmpeg is an own minimal build (audio only, no network code) running in a
   Landlock sandbox that can only read the book's files.

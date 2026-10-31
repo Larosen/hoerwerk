@@ -34,4 +34,4 @@ function startLive(): void {
 }
 
 // after all scripts registered their topics (a timer could fire between two scripts)
-document.addEventListener("DOMContentLoaded", startLive);
+document.addEventListener("DOMContentLoaded", () => { if (IS_ADMIN) startLive(); });

@@ -29,9 +29,10 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 5. [Entdecken](#entdecken)
 6. [Benachrichtigungen (ntfy)](#benachrichtigungen-ntfy)
 7. [Protokoll](#protokoll)
-8. [Konfiguration](#konfiguration)
-9. [Sicherheit](#sicherheit)
-10. [Entwicklung](#entwicklung)
+8. [Konten und Zugriff von außen](#konten-und-zugriff-von-außen)
+9. [Konfiguration](#konfiguration)
+10. [Sicherheit](#sicherheit)
+11. [Entwicklung](#entwicklung)
 
 ---
 
@@ -297,6 +298,31 @@ Dieselben Zeilen stehen im Container-Log (`docker logs hoerwerk`).
 
 ---
 
+## Konten und Zugriff von außen
+
+Ohne Anmeldung zeigt Hörwerk nur die Login-Seite. Beim **ersten Aufruf** legst du das Admin-Konto an (aus dem
+Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs hoerwerk`). Wer bisher
+`AUTH_USER`/`AUTH_PASS` gesetzt hatte, bekommt daraus automatisch das Admin-Konto.
+
+* **Konten** (oben rechts, nur für Admins): Familienkonten anlegen (Startpasswort erzeugen und weitergeben),
+  Rolle, Rechte (*Alle Anfragen sehen*, *Ohne Freigabe*, *Interaktive Suche*), Kontingent pro Monat, sperren,
+  Passwort neu setzen, löschen. Familienkonten sehen vorerst **Entdecken**; Anfragen folgen im nächsten Schritt
+  (Plan: [docs/PLAN-mehrbenutzer.md](docs/PLAN-mehrbenutzer.md)).
+* **Konto** (Name oben rechts, für alle): Passwort ändern, angemeldete Geräte sehen und abmelden, Abmelden.
+* „Angemeldet bleiben“ hält 30 Tage (verlängert sich bei Nutzung), sonst 12 Stunden.
+
+**Über Pangolin ins Internet:**
+1. In Pangolin eine Ressource auf `http://<unraid-ip>:8080` anlegen (HTTPS macht Pangolin).
+   Pangolins eigene Anmeldung kann zusätzlich davor bleiben – sicherer, aber zweimal anmelden.
+2. `TRUSTED_PROXIES` auf die Adresse setzen, von der Newt/Pangolin bei Hörwerk ankommt (z. B. `172.18.0.0/16`
+   für das Docker-Netz oder die IP des Newt-Containers). Nur dann steht im Protokoll die echte IP der Besucher.
+3. `ALLOWED_HOSTS` um den öffentlichen Namen ergänzen, z. B. `tower,192.168.1.10,hoerbuecher.example.de`.
+4. **CrowdSec:** Jeder Fehlversuch steht mit IP in `/config/logs/auth.log`. Parser, Szenarien und Beispiele für
+   Vector bzw. den CrowdSec-Agenten liegen in [contrib/crowdsec](contrib/crowdsec/README.md). Hörwerk selbst sperrt
+   eine IP nach 5 Fehlversuchen für 15 Minuten; CrowdSec sperrt sie dann schon am VPS.
+
+---
+
 ## Konfiguration
 
 Fast alles lässt sich unter **⚙︎ Einstellungen** ändern; die Umgebungsvariablen liefern nur die Startwerte.
@@ -342,8 +368,10 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `AAC_BITRATE` | `auto` | `auto` (wie die Quelle, höchstens 128k) oder fester Wert |
 | `FORCE_MONO` | `false` | Mono ausgeben |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` oder `tag` |
-| `AUTH_USER` / `AUTH_PASS` | – | Passwortschutz (Basic Auth) – empfohlen |
-| `ALLOW_PUBLIC` | `false` | Ohne Passwort nur Antworten an private Netze; `true` hebt das auf |
+| `TRUSTED_PROXIES` | – | IPs/Netze des Reverse-Proxys (Pangolin/Newt, Traefik), z. B. `172.18.0.0/16` – nur von dort zählt `X-Forwarded-For` |
+| `COOKIE_SECURE` | `auto` | Anmelde-Cookie nur über HTTPS: `auto` (wenn der Proxy HTTPS meldet), `true`, `false` |
+| `REQUEST_QUOTA` | `5` | Buchanfragen pro Nutzer und Monat (je Konto änderbar) |
+| `AUTH_USER` / `AUTH_PASS` | – | Nur noch für den Umstieg: wird beim ersten Start zum Admin-Konto |
 | `ALLOWED_HOSTS` | – | Nur unter diesen Hostnamen/IPs antworten, z. B. `tower,192.168.1.10` |
 
 SABnzbd, der optionale Indexer, Audiobookshelf, Plex und ntfy werden in der Oberfläche eingerichtet, nicht über Variablen.
@@ -354,8 +382,8 @@ SABnzbd, der optionale Indexer, Audiobookshelf, Plex und ntfy werden in der Ober
 
 Kurz gefasst – Details, Tests und Komponenten-Versionen in [SECURITY.de.md](SECURITY.de.md):
 
-* `AUTH_USER`/`AUTH_PASS` setzen und die Oberfläche nie ohne Reverse-Proxy mit HTTPS ins Internet stellen.
-  Ohne Passwort antwortet der Server nur privaten Netzen.
+* Konten mit Login; ins Internet nur hinter einem Reverse-Proxy mit HTTPS (z. B. Pangolin) und mit
+  `TRUSTED_PROXIES`. Fehlversuche stehen mit IP in `/config/logs/auth.log` – fertig für CrowdSec.
 * Nur nötige Ordner einbinden; der Container läuft ohne Linux-Capabilities und mit `no-new-privileges`.
 * Heruntergeladene Dateien werden nie ausgeführt. ffmpeg ist ein eigener schlanker Build (nur Audio, kein
   Netzwerk-Code) in einem Landlock-Käfig, der nur die Dateien des Buchs lesen darf.

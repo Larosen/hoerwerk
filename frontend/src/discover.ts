@@ -43,7 +43,8 @@ async function rememberBook(b: Book, btn?: HTMLButtonElement): Promise<void> {
   } catch (err) { toast(errMsg(err), true); if (btn) btn.disabled = false; }
 }
 
-function rememberButton(b: Book): HTMLButtonElement {
+function rememberButton(b: Book): HTMLButtonElement | null {
+  if (!IS_ADMIN) return null;                // requests for everyone come with the next step
   const known = !!b.asin && discover.wanted.has(b.asin.toUpperCase());
   const btn = el("button", { type: "button", class: "btn small ghost", title: t("Auf die Liste „Gesucht“ – wird regelmäßig bei den Indexern gesucht") },
     known ? icon("check") : null, known ? t("Gemerkt") : t("Merken"));
@@ -53,6 +54,7 @@ function rememberButton(b: Book): HTMLButtonElement {
 }
 
 async function updateWantedCount(): Promise<WantedAnswer | null> {
+  if (!IS_ADMIN) return null;
   try {
     const res = await api<WantedAnswer>("GET", "/api/wanted");
     discover.wanted = new Set(res.items.flatMap((i) => [i.id, (i.asin || "").toUpperCase()]).filter(Boolean));
@@ -210,7 +212,7 @@ async function showDiscover(): Promise<void> {
 
 function initDiscover(): void {
   discover.section = store.get("discoverSection", "foryou");
-  if (!(discover.section in DISCOVER_TITLES)) discover.section = "foryou";
+  if (!(discover.section in DISCOVER_TITLES) || (!IS_ADMIN && discover.section === "wanted")) discover.section = "foryou";
   for (const b of document.querySelectorAll<HTMLElement>("#discoverSections button")) {
     b.addEventListener("click", () => {
       discover.section = b.dataset.section || "foryou";

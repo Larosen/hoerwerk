@@ -9,6 +9,13 @@ declare const I18N: { lang: string; text: Record<string, string> } | undefined;
 const LANG = typeof I18N === "undefined" ? "de" : I18N.lang;
 const LOCALE = LANG === "en" ? "en-GB" : "de-DE";
 
+// Who is signed in (/me.js; null on the login page). The server checks every right again –
+// this only decides what the page shows.
+interface Me { id: number; name: string; role: "admin" | "user"; perms: Record<string, boolean>; quota: number | null }
+declare const ME: Me | null | undefined;
+const IS_ADMIN = typeof ME !== "undefined" && !!ME && ME.role === "admin";
+if (typeof ME !== "undefined" && ME) document.documentElement.classList.add(IS_ADMIN ? "role-admin" : "role-user");
+
 /** Translate a German UI text; ``{name}`` placeholders are filled from ``values``. */
 function t(text: string, values: Record<string, string | number> = {}): string {
   let out = (typeof I18N !== "undefined" && I18N.text[text]) || text;
@@ -208,7 +215,8 @@ async function api<T = unknown>(method: string, url: string, body?: unknown): Pr
     headers: { "X-Requested-With": "Hoerwerk", ...(body ? { "Content-Type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await res.json().catch(() => ({})) as T & { error?: string };
+  const data = await res.json().catch(() => ({})) as T & { error?: string; login?: boolean };
+  if (res.status === 401 && data.login && location.pathname !== "/login") location.replace("/login");
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }

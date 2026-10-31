@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hörwerk – Anmelden</title>
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/i18n.js"></script>
+  <script src="/static/theme.js"></script>
+</head>
+<body class="login-body">
+<main class="login-card">
+  <div class="login-brand">
+    <img src="/static/icon.svg" width="44" height="44" alt="">
+    <div>
+      <h1>Hörwerk</h1>
+      <p class="muted small">Die Hörbuch-Werkstatt</p>
+    </div>
+  </div>
+
+  <form id="loginForm" class="login-form" hidden>
+    <label>Name
+      <input name="name" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="40" autofocus>
+    </label>
+    <label>Passwort
+      <input name="password" type="password" autocomplete="current-password" required maxlength="256">
+    </label>
+    <label class="check"><input type="checkbox" name="remember" checked> Angemeldet bleiben (30 Tage)</label>
+    <button class="btn primary" type="submit">Anmelden</button>
+  </form>
+
+  <form id="setupForm" class="login-form" hidden>
+    <p class="setup-note"><b>Willkommen!</b> Es gibt noch kein Konto. Lege jetzt das Admin-Konto an – damit verwaltest du
+      später auch die Konten deiner Familie.</p>
+    <label>Name
+      <input name="name" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="40">
+    </label>
+    <label>Passwort <small>mindestens 10 Zeichen</small>
+      <input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="256">
+    </label>
+    <label>Passwort wiederholen
+      <input name="password2" type="password" autocomplete="new-password" required minlength="10" maxlength="256">
+    </label>
+    <label id="setupCodeRow" hidden>Einrichtungs-Code <small>steht im Container-Log (docker logs hoerwerk)</small>
+      <input name="code" autocomplete="off" spellcheck="false" maxlength="20">
+    </label>
+    <button class="btn primary" type="submit">Admin-Konto anlegen</button>
+  </form>
+
+  <p id="loginError" class="login-error" role="alert" hidden></p>
+</main>
+<div id="toast" class="toast" role="status"></div>
+<script src="/static/core.js"></script>
+<script src="/static/login.js"></script>
+</body>
+</html>

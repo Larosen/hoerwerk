@@ -8,6 +8,7 @@
   <meta name="color-scheme" content="light dark">
   <link rel="stylesheet" href="/static/style.css">
   <script src="/i18n.js"></script>
+  <script src="/me.js"></script>
   <script src="/static/theme.js"></script>
 </head>
 <body>
@@ -21,6 +22,8 @@
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m5.5 12.5 4 4 9-9"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.6 4.6 3.3 17.3A1.6 1.6 0 0 0 4.7 19.7h14.6a1.6 1.6 0 0 0 1.4-2.4L13.4 4.6a1.6 1.6 0 0 0-2.8 0z"/><path d="M12 9.5v4"/><circle cx="12" cy="16.5" r=".6" fill="currentColor"/></symbol>
   <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 14a5.5 5.5 0 0 1 3 5"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
   <symbol id="i-log" viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
 </svg>
@@ -30,14 +33,16 @@
     <span>Hörwerk</span>
   </div>
   <nav class="tabs" role="tablist" aria-label="Bereich">
-    <button class="tab" role="tab" data-view="books" aria-selected="true">Hörbücher <span id="reviewBadge" class="pill" hidden></span></button>
-    <button class="tab" role="tab" data-view="search" aria-selected="false">Suchen</button>
+    <button class="tab admin-only" role="tab" data-view="books" aria-selected="true">Hörbücher <span id="reviewBadge" class="pill" hidden></span></button>
+    <button class="tab admin-only" role="tab" data-view="search" aria-selected="false">Suchen</button>
     <button class="tab" role="tab" data-view="discover" aria-selected="false">Entdecken</button>
   </nav>
   <div class="topbar-actions">
-    <button id="logBtn" class="btn ghost" title="Protokoll"><svg class="ico" aria-hidden="true"><use href="#i-log"/></svg><span class="lbl">Protokoll</span></button>
+    <button id="usersBtn" class="btn ghost admin-only" title="Nutzer verwalten"><svg class="ico" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Konten</span></button>
+    <button id="logBtn" class="btn ghost admin-only" title="Protokoll"><svg class="ico" aria-hidden="true"><use href="#i-log"/></svg><span class="lbl">Protokoll</span></button>
     <button id="themeBtn" class="btn ghost" title="Design"><svg class="ico" aria-hidden="true"><use href="#i-contrast"/></svg><span class="lbl">Design</span></button>
-    <button id="settingsBtn" class="btn ghost" title="Einstellungen"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><span class="lbl">Einstellungen</span></button>
+    <button id="settingsBtn" class="btn ghost admin-only" title="Einstellungen"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><span class="lbl">Einstellungen</span></button>
+    <button id="accountBtn" class="btn ghost" title="Konto"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl" id="accountName">Konto</span></button>
   </div>
 </header>
 
@@ -143,7 +148,7 @@
         <button type="button" data-section="foryou">Für dich <small>passend zur Bibliothek</small></button>
         <button type="button" data-section="genre">Nach Genre <small>Bestseller &amp; Neuheiten</small></button>
         <button type="button" data-section="critics">Aus der Kritik <small>Deutschlandfunk Kultur, Perlentaucher</small></button>
-        <button type="button" data-section="wanted"><span>Gesucht <span id="wantedCount" class="pill" hidden></span></span><small>gemerkt, noch bei keinem Indexer</small></button>
+        <button type="button" data-section="wanted" class="admin-only"><span>Gesucht <span id="wantedCount" class="pill" hidden></span></span><small>gemerkt, noch bei keinem Indexer</small></button>
       </nav>
     </section>
     <details class="panel how">
@@ -273,6 +278,61 @@
       <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
       <button value="save" class="btn primary">Taggen &amp; ablegen</button>
     </div>
+  </form>
+</dialog>
+
+<dialog id="accountDialog">
+  <form method="dialog" class="dialog-body">
+    <h2>Konto <span id="accountTitle" class="muted"></span></h2>
+    <fieldset>
+      <legend>Passwort ändern</legend>
+      <div class="grid2">
+        <label>Bisheriges Passwort <input id="pwOld" type="password" autocomplete="current-password" maxlength="256"></label>
+        <span></span>
+        <label>Neues Passwort <small>mindestens 10 Zeichen</small><input id="pwNew" type="password" autocomplete="new-password" maxlength="256"></label>
+        <label>Neues Passwort wiederholen <input id="pwNew2" type="password" autocomplete="new-password" maxlength="256"></label>
+      </div>
+      <div class="row gap"><button type="button" class="btn" id="pwSave">Passwort ändern</button>
+        <span class="muted small">Alle anderen Geräte werden dabei abgemeldet.</span></div>
+    </fieldset>
+    <fieldset>
+      <legend>Angemeldete Geräte</legend>
+      <ul id="sessionList" class="session-list"></ul>
+      <button type="button" class="btn small ghost" id="endOthers">Alle anderen Geräte abmelden</button>
+    </fieldset>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="logoutBtn">Abmelden</button>
+      <button value="cancel" class="btn primary">Schließen</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="usersDialog" class="wide">
+  <form method="dialog" class="dialog-body">
+    <h2>Konten</h2>
+    <p class="muted small">Admins dürfen alles. Nutzer sehen <b>Entdecken</b> und – mit den Rechten unten – fremde Anfragen
+      oder die Release-Suche. Kontingent: Buchanfragen pro Monat (leer = Standard <span id="defaultQuota"></span>, 0 = keine).</p>
+    <div class="table-wrap">
+      <table class="users">
+        <thead><tr><th>Name</th><th>Rolle</th><th title="Sieht die Anfragen aller Nutzer">Alle Anfragen sehen</th>
+          <th title="Anfragen gehen ohne Freigabe los">Ohne Freigabe</th><th title="Darf Releases selbst ansehen und wählen">Interaktive Suche</th>
+          <th>Kontingent</th><th>Gesperrt</th><th>Zuletzt da</th><th></th></tr></thead>
+        <tbody id="userRows"></tbody>
+      </table>
+    </div>
+    <fieldset>
+      <legend>Neues Konto</legend>
+      <div class="grid2">
+        <label>Name <input id="newUserName" maxlength="40" autocomplete="off" spellcheck="false"></label>
+        <label>Startpasswort <small>mindestens 10 Zeichen – bitte selbst ändern lassen</small>
+          <input id="newUserPw" type="text" maxlength="256" autocomplete="off" spellcheck="false"></label>
+        <label>Rolle <select id="newUserRole"><option value="user">Nutzer</option><option value="admin">Admin</option></select></label>
+        <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="newUserQuota" type="number" min="0" max="1000"></label>
+      </div>
+      <div class="row gap"><button type="button" class="btn" id="newUserPwGen">Passwort erzeugen</button>
+        <button type="button" class="btn primary" id="newUserSave">Konto anlegen</button></div>
+    </fieldset>
+    <div class="dialog-actions"><button value="cancel" class="btn primary">Schließen</button></div>
   </form>
 </dialog>
 
@@ -482,5 +542,6 @@
 <script src="/static/discover.js"></script>
 <script src="/static/notify.js"></script>
 <script src="/static/logs.js"></script>
+<script src="/static/account.js"></script>
 </body>
 </html>

@@ -22,7 +22,7 @@ def stats(req: Req):
     return req.app.library_index.stats()
 
 
-@route("GET", "/api/library/books")
+@route("GET", "/api/library/books", access="user")
 def books(req: Req):
     """Browse the whole library (search over title, author, series, path)."""
     try:
@@ -62,7 +62,7 @@ def _image_type(data: bytes) -> Optional[str]:
     return None
 
 
-@route("GET", "/api/library/cover")
+@route("GET", "/api/library/cover", access="user")
 def cover(req: Req):
     """The cover of a library book: cover.jpg & co. in its folder, else the picture inside the audio file."""
     folder = library_path(req.app, req.query.get("path", ""))

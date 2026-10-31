@@ -35,6 +35,7 @@ function isActive(status: BookStatus): boolean {
 
 function setView(view: string): void {
   if (!["books", "search", "discover"].includes(view)) view = "books";
+  if (!IS_ADMIN) view = "discover";
   $("#viewBooks").hidden = view !== "books";
   $("#viewSearch").hidden = view !== "search";
   $("#viewDiscover").hidden = view !== "discover";
@@ -614,6 +615,7 @@ function updatePathPreview(): void {
 
 function initBooks(): void {
   for (const t of document.querySelectorAll<HTMLElement>(".tab")) t.addEventListener("click", () => setView(t.dataset.view || ""));
+  if (!IS_ADMIN) { setView("discover"); return; }       // family accounts: only Entdecken for now
   $("#scanBtn").addEventListener("click", async () => {
     try { await api("POST", "/api/audiobooks/scan"); toast(t("Eingang wird geprüft")); setTimeout(() => pollBooks(true), 800); }
     catch (e) { toast(errMsg(e), true); }

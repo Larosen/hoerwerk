@@ -11,7 +11,7 @@ from i18n import t
 from web.router import HTTPException, Req, route
 
 
-@route("GET", "/api/settings")
+@route("GET", "/api/settings", access="user")
 def read_settings(req: Req):
     return req.app.settings()
 
@@ -67,6 +67,6 @@ def system(req: Req):
             "queues": req.app.engine.stats()}
 
 
-@route("GET", "/api/health")
+@route("GET", "/api/health", access="public")
 def health(req: Req):
     return {"ok": True, "version": VERSION}

@@ -1,0 +1,12 @@
+# Variant A – a CrowdSec agent on the Unraid server reads the file directly
+# (it reports to the LAPI on your VPS through the tunnel). Put this into /etc/crowdsec/acquis.d/
+filenames:
+  - /mnt/user/appdata/hoerwerk/logs/auth.log
+labels:
+  type: hoerwerk
+---
+# Variant B – Vector ships the lines to the VPS (see vector-*.toml), the agent there reads them
+filenames:
+  - /var/log/hoerwerk/auth.log
+labels:
+  type: hoerwerk

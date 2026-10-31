@@ -80,6 +80,8 @@ class StreamTest(unittest.TestCase):
         cls.app.events.interval = 0.05
         cls.server = server.make_server(cls.app, "127.0.0.1", 0)
         cls.port = cls.server.server_address[1]
+        admin = cls.app.accounts.create("admin", "test-password-123", "admin")
+        cls.cookie = "hw_session=" + cls.app.accounts.start_session(admin["id"], False)
         threading.Thread(target=cls.server.serve_forever, daemon=True).start()
 
     @classmethod
@@ -91,7 +93,7 @@ class StreamTest(unittest.TestCase):
 
     def open(self, path):
         c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        c.request("GET", path, headers={"Host": f"127.0.0.1:{self.port}"})
+        c.request("GET", path, headers={"Host": f"127.0.0.1:{self.port}", "Cookie": self.cookie})
         return c, c.getresponse()
 
     def test_initial_state_then_changes(self):

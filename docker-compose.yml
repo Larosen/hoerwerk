@@ -27,6 +27,6 @@ services:
       # METADATA_FALLBACK: "true"    # Audnexus / Apple Books / Open Library, wenn Audible nichts findet
       # WRITE_ABS_METADATA: "true"   # metadata.json für Audiobookshelf
       # FFMPEG_SANDBOX: "auto"       # ffmpeg im Landlock-Käfig: auto | require | off
-      # AUTH_USER: "admin"           # empfohlen: Passwortschutz
-      # AUTH_PASS: "geheim"
+      # Konten legst du beim ersten Aufruf im Browser an (Admin), Familienkonten dann unter "Konten".
+      # TRUSTED_PROXIES: "172.18.0.0/16"   # hinter Pangolin/Traefik: deren Netz, damit die echte IP geloggt wird
       # ALLOWED_HOSTS: "tower,192.168.1.10"   # optional: nur unter diesen Namen antworten

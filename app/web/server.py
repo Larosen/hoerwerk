@@ -1,15 +1,12 @@
 """HTTP server (stdlib only) with the security checks every request goes through."""
 from __future__ import annotations
 
-import base64
 import importlib
 import ipaddress
 import json
 import mimetypes
 import os
-import secrets
 import sys
-import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional
@@ -18,8 +15,9 @@ from urllib.parse import parse_qs, unquote, urlparse
 import i18n
 from events import Stream
 from web import router
-from web.router import File, HTTPException, Req
+from web.router import File, HTTPException, Reply, Req
 import applog
+import authlog
 from i18n import t
 
 STATIC_DIR = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static"))
@@ -37,8 +35,9 @@ SECURITY_HEADERS = {
         "img-src 'self' data: blob: https:; connect-src 'self'; object-src 'none'; "
         "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"),
 }
-# answered without password/network check: Docker health check, and the logo for the Unraid Docker page
-PUBLIC_PATHS = ("/api/health", "/static/icon.png", "/static/icon.svg")
+COOKIE = "hw_session"
+# pages that need no login: the login page itself, the language catalog, and /static (the open-source UI code)
+LOGIN_PAGE = "/login"
 
 
 class Server(ThreadingHTTPServer):
@@ -93,30 +92,47 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, status: int, data) -> None:
         self._send(status, json.dumps(data, ensure_ascii=False).encode(), "application/json; charset=utf-8")
 
-    # -- checks ------------------------------------------------------------
-    def _authorized(self) -> bool:
-        cfg = self.config
-        if not cfg.auth:
-            return True
-        header = self.headers.get("Authorization", "")
-        if header.lower().startswith("basic "):
-            try:
-                user, _, pw = base64.b64decode(header[6:]).decode().partition(":")
-                return secrets.compare_digest(user, cfg.auth_user) and secrets.compare_digest(pw, cfg.auth_pass)
-            except Exception:  # noqa: BLE001
-                return False
-        return False
-
-    def _client_ok(self) -> bool:
-        if self.config.auth or self.config.allow_public:
-            return True
+    # -- who is asking ------------------------------------------------------
+    @staticmethod
+    def _addr(text: str):
         try:
-            ip = ipaddress.ip_address(self.client_address[0].split("%")[0])
+            ip = ipaddress.ip_address(text.strip().strip("[]").split("%")[0])
         except ValueError:
-            return False
-        if getattr(ip, "ipv4_mapped", None):
-            ip = ip.ipv4_mapped
-        return not ip.is_global
+            return None
+        return ip.ipv4_mapped if getattr(ip, "ipv4_mapped", None) else ip
+
+    def _trusted(self, ip) -> bool:
+        return ip is not None and any(ip in net for net in self.config.trusted_proxies)
+
+    def client_ip(self) -> str:
+        """The real client: behind a trusted proxy the right-most X-Forwarded-For entry it did not add itself."""
+        peer = self._addr(self.client_address[0])
+        if not self._trusted(peer):
+            return str(peer) if peer else self.client_address[0]
+        chain = [self._addr(p) for p in (self.headers.get("X-Forwarded-For") or "").split(",") if p.strip()]
+        real = self._addr(self.headers.get("X-Real-IP") or "")
+        for ip in reversed(chain):
+            if ip is None:
+                break
+            if not self._trusted(ip):
+                return str(ip)
+        return str(real or (chain[0] if chain and chain[0] else peer))
+
+    def is_https(self) -> bool:
+        if self.config.cookie_secure in ("true", "false"):
+            return self.config.cookie_secure == "true"
+        proto = (self.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip().lower()
+        return proto == "https" and self._trusted(self._addr(self.client_address[0]))
+
+    def _token(self) -> str:
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == COOKIE:
+                return v.strip()
+        return ""
+
+    def _user(self, token: str) -> Optional[dict]:
+        return self.server.app.accounts.session_user(token, self.client_ip()) if token else None
 
     def _host_ok(self) -> bool:
         allowed = self.config.allowed_hosts
@@ -174,23 +190,33 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             stream.close()
 
+    def _redirect(self, where: str) -> None:
+        self._send(303, b"", "text/plain", {"Location": where})
+
     def _dispatch(self) -> None:
         url = urlparse(self.path)
         # Early refusals leave the request body unread: don't reuse such a connection
         self.close_connection = True
         if not self._host_ok():
             return self._send(421, b"Unbekannter Host", "text/plain")
-        public = url.path in PUBLIC_PATHS
-        if not self._client_ok() and not public:
-            return self._send(403, t("Zugriff von öffentlichen Adressen nur mit Passwort (AUTH_USER/AUTH_PASS). Bei IPv6 im Heimnetz ggf. ALLOW_PUBLIC=true setzen.").encode(),  # noqa: E501
-                              "text/plain; charset=utf-8")
-        if not self._authorized() and not public:
-            time.sleep(1)   # slows down password guessing
-            return self._send(401, b"", "text/plain", {"WWW-Authenticate": 'Basic realm="Hoerwerk"'})
-        if self.command in ("GET", "HEAD") and url.path == "/i18n.js":
+        token = self._token()
+        reading = self.command in ("GET", "HEAD")
+        if reading and url.path == "/i18n.js":
             return self._i18n()
-        if self.command in ("GET", "HEAD") and (url.path == "/" or url.path.startswith("/static/")):
+        if reading and url.path == "/me.js":
+            user = self._user(token)
+            me = {k: user[k] for k in ("id", "name", "role", "perms", "quota")} if user else None
+            return self._send(200, f"const ME = {json.dumps(me, ensure_ascii=False)};\n".encode(),
+                              "text/javascript; charset=utf-8")
+        if reading and url.path.startswith("/static/"):
             return self._static(url.path)
+        if reading and url.path in ("/", LOGIN_PAGE):
+            signed_in = self._user(token) is not None
+            if url.path == "/" and not signed_in:
+                return self._redirect(LOGIN_PAGE)
+            if url.path == LOGIN_PAGE and signed_in:
+                return self._redirect("/")
+            return self._static("/" if url.path == "/" else "/static/login.html")
         if self.command not in ("GET", "HEAD") and not self._same_origin():
             return self._json(403, {"error": t("Anfrage von fremder Seite abgelehnt")})
         body = None
@@ -210,9 +236,22 @@ class Handler(BaseHTTPRequestHandler):
         found = router.match(self.command, url.path)
         if not found:
             return self._json(404, {"error": t("Nicht gefunden")})
-        fn, params = found
+        fn, params, access = found
+        user = self._user(token) if access != "public" or token else None
+        ip = self.client_ip()
+        if access != "public" and user is None:
+            return self._json(401, {"error": t("Bitte anmelden"), "login": True})
+        if access == "admin" and user["role"] != "admin":
+            authlog.event("forbidden", user=user["name"], ip=ip, path=url.path)
+            return self._json(403, {"error": t("Dafür fehlen die Rechte")})
+        req = Req(self.server.app, body, query, user=user, ip=ip, https=self.is_https(), token=token,
+                  agent=self.headers.get("User-Agent") or "",
+                  proxied=any(self.headers.get(h) for h in ("X-Forwarded-For", "Forwarded", "X-Real-IP")))
         try:
-            result = fn(Req(self.server.app, body, query), **params)
+            result = fn(req, **params)
+            if isinstance(result, Reply):
+                return self._send(200, json.dumps(result.data, ensure_ascii=False).encode(),
+                                  "application/json; charset=utf-8", result.headers)
             if isinstance(result, Stream):
                 return self._stream(result)
             if isinstance(result, File):

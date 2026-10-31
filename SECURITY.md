@@ -9,16 +9,18 @@ This page explains what the program protects against, what was tested and what y
 
 ## Recommended settings
 
-1. **Set a password** (`AUTH_USER` / `AUTH_PASS`) as soon as more than just you is on the network, and never expose the
-   interface to the internet without a reverse proxy with HTTPS. Without a password the server only answers requests
-   from private networks (LAN, VPN, Docker).
+1. **Accounts:** the admin account is created on first visit; without signing in there is only the login page.
+   Expose it to the internet only behind a reverse proxy with HTTPS (e.g. **Pangolin**) whose address is in
+   `TRUSTED_PROXIES` – otherwise Hörwerk doesn't see the visitors' real IP. Failed logins go to `/config/logs/auth.log`
+   (for CrowdSec, see [contrib/crowdsec](contrib/crowdsec/README.md)).
 2. **Run the container with minimal rights** – the Unraid template and `docker-compose.yml` already do:
    `--security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID`.
 3. **Mount only the folders you need:** the inbox and the library, never all of `/mnt/user/`.
 4. **In SABnzbd** set *Config → Switches → Unwanted extensions* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
    to **Abort**. Fake releases are then dropped before they reach the inbox.
 5. Set inbox originals to **delete** (`INBOX_ORIGINALS=delete`) or empty `_fertig` regularly.
-6. Optionally set `ALLOWED_HOSTS=tower,192.168.1.10` (protection against DNS rebinding without a password).
+6. Set `ALLOWED_HOSTS` to the names you open Hörwerk with, e.g.
+   `ALLOWED_HOSTS=tower,192.168.1.10,audiobooks.example.com` (protection against DNS rebinding and foreign host names).
 7. Keep the image up to date: GitHub Actions rebuilds it every week (Debian security updates); new ffmpeg versions
    arrive by updating `FFMPEG_VERSION` in the Dockerfile; on Unraid use “Check for Updates” now and then.
 
@@ -60,13 +62,17 @@ This page explains what the program protects against, what was tested and what y
 |---|---|
 | **CSRF**: a foreign web page in the same browser sends requests to `http://tower:8080` (e.g. changing settings or taking books out of the library) | Every changing request needs a custom header that browsers only send after a CORS approval (never given); additionally `Origin` and `Sec-Fetch-Site` are checked. Tested. |
 | Clickjacking | `X-Frame-Options: DENY`, `frame-ancestors 'none'`. |
-| Accidentally exposed to the internet | Without a password only private addresses are answered (LAN, VPN/Tailscale, Docker). If devices in your home network connect via a public IPv6 address, set a password or `ALLOW_PUBLIC=true`. |
-| Password guessing | Constant-time comparison, 1 s pause after every failed attempt. |
-| DNS rebinding | Optional `ALLOWED_HOSTS`; with a password it has no effect anyway. |
+| Access without signing in | Without a valid session there is only the login page, the UI code (`/static`, open source anyway), `/i18n.js`, the logo and `/api/health`. Every API route has an access level (public / user / admin, default admin), checked on the server – not just hidden. Tested: signed out 401, family account on admin functions 403 (logged). |
+| First setup by strangers | While there is no account, an admin can only be created from the home network directly; from outside the setup code from the container log is needed. Afterwards setup is closed. |
+| Password guessing | scrypt (N=2¹⁵), minimum length 10; per IP at most 5 failures in 15 minutes, then 429; per account a growing delay (a stranger can't lock out a family account); unknown names take as long as known ones. Every failure with its IP goes to `auth.log` → CrowdSec bans at the VPS. |
+| Stolen session | 256-bit token, stored only as SHA-256; cookie `HttpOnly`, `SameSite=Lax`, `Secure` behind HTTPS. Password change, locking an account and "sign out all other devices" end sessions immediately. |
+| Forged IP in `X-Forwarded-For` | The header only counts from addresses in `TRUSTED_PROXIES` and is read from the right – made-up addresses prepended by a client have no effect. |
+| Privilege escalation | Only an admin changes roles and rights (server check); the last admin can't be demoted, locked or deleted. |
+| DNS rebinding / foreign host names | `ALLOWED_HOSTS`; besides, every data request needs a login. |
 | Paths outside the library | Book paths from the browser are resolved (incl. symlinks) and must lie inside the library; static files only from `app/static`. |
 | Huge requests | max. 4 MB per request. |
 | Many open live connections (`/api/events`) | At most 32 at the same time; they deliver only what the interface fetches anyway and need the same login. |
-| Language setting / translation catalog | Only `de` or `en` are accepted; `/i18n.js` serves a fixed file from the image and needs the same login as the page. |
+| Language setting / translation catalog | Only `de` or `en` are accepted; `/i18n.js` serves a fixed file from the image (also for the login page). |
 | Other headers | `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy`/`-Resource-Policy: same-origin`, `Cache-Control: no-store`. |
 
 ### 4. Container

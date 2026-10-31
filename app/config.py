@@ -3,15 +3,28 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import FrozenSet, Mapping
+import ipaddress
+from typing import FrozenSet, Mapping, Tuple
 
 import library
 
-VERSION = "5.3.0"
+VERSION = "6.0.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
     return env.get(key, "true" if default else "false").strip().lower() in ("1", "true", "yes", "on")
+
+
+def parse_networks(text: str) -> Tuple:
+    """ "172.18.0.0/16, 10.0.0.5" -> networks; invalid entries are an error at start (better than silently ignored)."""
+    out = []
+    for part in (p.strip() for p in (text or "").split(",")):
+        if part:
+            try:
+                out.append(ipaddress.ip_network(part, strict=False))
+            except ValueError as e:
+                raise SystemExit(f"TRUSTED_PROXIES: {part!r} ist keine IP/CIDR ({e})") from e
+    return tuple(out)
 
 
 def cpu_jobs(env: Mapping[str, str] = os.environ) -> int:
@@ -29,8 +42,10 @@ class Config:
     auth_pass: str = ""
     # Optional: only answer to these Host names (protects against DNS rebinding), e.g. "tower,192.168.1.10"
     allowed_hosts: FrozenSet[str] = field(default_factory=frozenset)
-    # Without a password the UI only answers clients from private networks (LAN, VPN, Docker)
-    allow_public: bool = False
+    # Reverse proxies (Pangolin/Newt, Traefik …) whose X-Forwarded-For is believed – IPs or CIDR ranges
+    trusted_proxies: Tuple = ()
+    cookie_secure: str = "auto"         # auto (when the proxy says https) | true | false
+    allow_public: bool = False          # no longer used: accounts protect every access (kept for old templates)
     cpu_jobs: int = 1
     nice: str = "10"
     encode_workers: int = 1     # conversions at the same time (each uses cpu_jobs cores)
@@ -50,6 +65,8 @@ class Config:
             auth_pass=env.get("AUTH_PASS", ""),
             allowed_hosts=frozenset(h.strip().lower() for h in env.get("ALLOWED_HOSTS", "").split(",") if h.strip()),
             allow_public=env.get("ALLOW_PUBLIC", "false").lower() == "true",
+            trusted_proxies=parse_networks(env.get("TRUSTED_PROXIES", "")),
+            cookie_secure=(env.get("COOKIE_SECURE", "auto").strip().lower() or "auto"),
             cpu_jobs=cpu_jobs(env),
             nice=env.get("NICE", "10"),
             encode_workers=max(1, int(env.get("ENCODE_WORKERS", "1"))),
@@ -101,6 +118,8 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
         "discover_german": b("DISCOVER_GERMAN", True),
         "discover_nonfiction_store": b("DISCOVER_NONFICTION_STORE", False),
         "discover_genre": env.get("DISCOVER_GENRE", ""),
+        # Accounts: book requests per user and calendar month (users can have their own number)
+        "request_quota": int(env.get("REQUEST_QUOTA", "5")),
         # Gesucht (wanted list)
         "wanted_interval_hours": int(env.get("WANTED_INTERVAL_HOURS", "12")),
         "wanted_auto": b("WANTED_AUTO_DOWNLOAD", False),
