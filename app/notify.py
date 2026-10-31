@@ -26,7 +26,8 @@ EVENTS: Dict[str, tuple] = {
     "review": (True, ["mag"]),
     "duplicate": (True, ["twisted_rightwards_arrows"]),
     "failed": (True, ["warning"]),
-    "wanted_found": (True, ["dart"]),
+    "request_new": (True, ["raising_hand"]),
+    "request_failed": (True, ["x"]),
     "download_sent": (False, ["inbox_tray"]),
     "download_done": (False, ["white_check_mark"]),
     "download_failed": (True, ["x"]),
@@ -158,6 +159,22 @@ class Notifier:
             body["click"] = c["app_url"]
         self._post(c["url"], body, self._headers(c))
         self.sent += 1
+
+    def send_to(self, topic: str, title: str, message: str) -> None:
+        """A message to another topic on the same ntfy server (a family member's own topic)."""
+        if not self.configured() or not re.fullmatch(r"[-_A-Za-z0-9]{1,64}", topic or ""):
+            return
+        c = self._load()
+
+        def run() -> None:
+            try:
+                body = {"topic": topic, "title": title[:250], "message": message[:3500], "tags": ["books"]}
+                if c.get("app_url"):
+                    body["click"] = c["app_url"]
+                self._post(c["url"], body, self._headers(c))
+            except Exception as e:  # noqa: BLE001 – a message must never break anything
+                applog.warn(f"ntfy ({topic}): {e}", "Benachrichtigungen")
+        threading.Thread(target=run, daemon=True).start()
 
     def send(self, event: str, title: str, message: str, priority: Optional[int] = None) -> None:
         """Send in the background if this event is switched on."""

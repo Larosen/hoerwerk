@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 import audible
+import bookrequests as br
 import links
 import packs
 import usenet
@@ -85,7 +86,7 @@ def search_indexers(req: Req):
     return res
 
 
-@route("POST", "/api/search/books")
+@route("POST", "/api/search/books", access="user")
 def search_books(req: Req):
     """Look the book up at Audible first – German title and author as the shop lists them."""
     query = (req.get("query") or "").strip()
@@ -108,9 +109,17 @@ def search_books(req: Req):
     if not books and error:
         raise HTTPException(502, error)
     keys = ("asin", "title", "subtitle", "authors", "narrators", "series", "series_position",
-            "runtime_min", "release_date", "cover_url", "format_type", "url", "source")
-    return {"books": [{**{k: b.get(k) for k in keys}, "owned": _owned(req.app.library_index.find(b))}
-                      for b in books], "region": region}
+            "runtime_min", "release_date", "cover_url", "format_type", "url", "source", "language", "isbn", "id", "region")
+    requested = req.app.requests.status_by_key()
+    out = []
+    for b in books:
+        item = {k: b.get(k) for k in keys}
+        owned = _owned(req.app.library_index.find(b))
+        # family accounts learn *that* a book is there, not where it lies on the server
+        item["owned"] = owned if req.is_admin else ({"title": owned["title"]} if owned else None)
+        item["requested"] = requested.get(br.book_key(b))
+        out.append(item)
+    return {"books": out, "region": region}
 
 
 @route("POST", "/api/search/send")

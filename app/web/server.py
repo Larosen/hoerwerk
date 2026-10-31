@@ -205,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._i18n()
         if reading and url.path == "/me.js":
             user = self._user(token)
-            me = {k: user[k] for k in ("id", "name", "role", "perms", "quota")} if user else None
+            me = {k: user.get(k) for k in ("id", "name", "role", "perms", "quota", "totp")} if user else None
             return self._send(200, f"const ME = {json.dumps(me, ensure_ascii=False)};\n".encode(),
                               "text/javascript; charset=utf-8")
         if reading and url.path.startswith("/static/"):
@@ -244,11 +244,16 @@ class Handler(BaseHTTPRequestHandler):
         if access == "admin" and user["role"] != "admin":
             authlog.event("forbidden", user=user["name"], ip=ip, path=url.path)
             return self._json(403, {"error": t("Dafür fehlen die Rechte")})
+        if access == "admin" and not user.get("totp") and self.server.app.settings().get("admin_totp_required"):
+            return self._json(403, {"error": t("Admins brauchen einen Zweitfaktor – bitte unter Konto einrichten"),
+                                    "totp_setup": True})
         req = Req(self.server.app, body, query, user=user, ip=ip, https=self.is_https(), token=token,
                   agent=self.headers.get("User-Agent") or "",
                   proxied=any(self.headers.get(h) for h in ("X-Forwarded-For", "Forwarded", "X-Real-IP")))
         try:
             result = fn(req, **params)
+            if access == "admin" and self.command not in ("GET", "HEAD"):
+                self.server.app.audit(req, f"{self.command} {url.path}")
             if isinstance(result, Reply):
                 return self._send(200, json.dumps(result.data, ensure_ascii=False).encode(),
                                   "application/json; charset=utf-8", result.headers)

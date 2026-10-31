@@ -355,7 +355,6 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Discover: unabridged only / German only |
 | `DISCOVER_NONFICTION_STORE` | `false` | Discover: non-fiction from Audible lists too |
 | `WANTED_INTERVAL_HOURS` | `12` | Wanted: hours between automatic searches |
-| `WANTED_AUTO_DOWNLOAD` | `false` | Wanted: send finds to SABnzbd automatically |
 | `CPU_CORES` | half the cores | Parallel ffmpeg processes per book |
 | `ENCODE_WORKERS` | `1` | Books encoded at the same time |
 | `IO_WORKERS` | `2` | Parallel matching/tagging/filing steps |

@@ -726,6 +726,8 @@ class Pipeline:
             job.hints["author"] = grab.get("author") or job.hints["author"]
             job.hints["asin"] = grab.get("asin") or job.hints["asin"]
             job.say(t("Download für „{title}“", title=grab.get("title") or grab.get("query") or grab.get("asin")))
+        if grab and grab.get("request_id"):
+            job.hints["request_id"] = grab["request_id"]          # the request reports back when this is done
         elif grab and grab.get("query"):
             # Only a free search term: the release name is usually more precise – the term is the fallback
             job.hints["alt_query"] = audible.clean_query(grab["query"]) or grab["query"]

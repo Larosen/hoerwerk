@@ -26,7 +26,7 @@ def _gone_cookie(req: Req) -> str:
 
 
 def _me(user: dict) -> dict:
-    return {k: user[k] for k in ("id", "name", "role", "perms", "quota")}
+    return {k: user.get(k) for k in ("id", "name", "role", "perms", "quota", "totp")}
 
 
 def _home(req: Req) -> bool:
@@ -78,9 +78,77 @@ def login(req: Req):
                       reason=e.reason)
         raise HTTPException(e.status, str(e))
     persistent = bool(req.get("remember"))
-    token = accounts.start_session(user["id"], persistent, req.ip, req.agent)
+    if user.get("totp"):
+        # password right – the code from the authenticator app comes in a second step
+        return {"ok": False, "totp": True, "ticket": accounts.ticket(user["id"], persistent)}
+    return _signed_in(req, user, persistent)
+
+
+def _signed_in(req: Req, user: dict, persistent: bool) -> Reply:
+    token = req.app.accounts.start_session(user["id"], persistent, req.ip, req.agent)
     authlog.event("login_ok", user=user["name"], ip=req.ip)
     return Reply({"ok": True, "user": _me(user)}, {"Set-Cookie": _cookie(req, token, persistent)})
+
+
+@route("POST", "/api/auth/login/totp", access="public")
+def login_totp(req: Req):
+    try:
+        user = req.app.accounts.redeem(str(req.get("ticket") or ""), str(req.get("code") or ""), req.ip)
+    except AuthError as e:
+        authlog.event("login_blocked" if e.status == 429 else "login_failed", ip=req.ip, reason=e.reason)
+        raise HTTPException(e.status, str(e))
+    return _signed_in(req, user, user.pop("persistent"))
+
+
+@route("POST", "/api/auth/totp/setup", access="user")
+def totp_setup(req: Req):
+    """A new secret for the authenticator app – active only after a correct code (confirm)."""
+    return req.app.accounts.totp_begin(req.user["id"])
+
+
+@route("POST", "/api/auth/totp/confirm", access="user")
+def totp_confirm(req: Req):
+    if not req.app.accounts.totp_confirm(req.user["id"], str(req.get("code") or "")):
+        raise HTTPException(400, t("Code falsch – Uhrzeit des Handys prüfen und den aktuellen Code eingeben"))
+    authlog.event("totp_on", user=req.user["name"], ip=req.ip)
+    return {"ok": True}
+
+
+@route("POST", "/api/auth/totp/disable", access="user")
+def totp_disable(req: Req):
+    accounts = req.app.accounts
+    try:
+        accounts.authenticate(req.user["name"], str(req.get("password") or ""), req.ip)
+    except AuthError as e:
+        authlog.event("login_failed", user=req.user["name"], ip=req.ip, reason="bad_old_password")
+        raise HTTPException(e.status if e.status == 429 else 403, t("Das bisherige Passwort stimmt nicht"))
+    if not accounts.check_totp(req.user["id"], str(req.get("code") or "")):
+        raise HTTPException(403, t("Code falsch"))
+    accounts.totp_off(req.user["id"])
+    authlog.event("totp_off", user=req.user["name"], ip=req.ip)
+    return {"ok": True}
+
+
+@route("GET", "/api/auth/prefs", access="user")
+def get_prefs(req: Req):
+    return {"ntfy_topic": req.app.accounts.prefs(req.user["id"]).get("ntfy_topic", ""),
+            "ntfy_server": bool(req.app.notifier.configured())}
+
+
+@route("PUT", "/api/auth/prefs", access="user")
+def put_prefs(req: Req):
+    import re
+    topic = str(req.get("ntfy_topic") or "").strip()
+    if topic and not re.fullmatch(r"[-_A-Za-z0-9]{1,64}", topic):
+        raise HTTPException(400, t("Topic: nur Buchstaben, Ziffern, - und _ (max. 64 Zeichen)"))
+    req.app.accounts.set_prefs(req.user["id"], {"ntfy_topic": topic})
+    return {"ok": True, "ntfy_topic": topic}
+
+
+@route("GET", "/api/audit")
+def audit(req: Req):
+    rows = req.app.db.all("SELECT time, user, ip, action, detail FROM audit ORDER BY id DESC LIMIT 300")
+    return {"entries": [dict(r) for r in rows]}
 
 
 @route("POST", "/api/auth/logout", access="user")
@@ -154,6 +222,10 @@ def change_user(req: Req, uid: str):
     changes = {k: req.get(k) for k in ("name", "role", "perms", "quota", "disabled") if k in req.body}
     try:
         user = accounts.update(n, changes)
+        if req.get("totp") is False:                       # lost phone: the admin switches the factor off
+            accounts.totp_off(n)
+            accounts.end_sessions(n)
+            changes["totp"] = False
         if req.get("password"):
             accounts.set_password(n, str(req.get("password")))
     except KeyError:

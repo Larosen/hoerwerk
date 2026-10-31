@@ -363,7 +363,6 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Entdecken: nur ungekürzt / nur deutschsprachig |
 | `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: Sachbücher auch aus Audible-Listen |
 | `WANTED_INTERVAL_HOURS` | `12` | Gesucht: Abstand der automatischen Suche |
-| `WANTED_AUTO_DOWNLOAD` | `false` | Gesucht: Funde automatisch an SABnzbd schicken |
 | `CPU_CORES` | halbe Kernzahl | Parallele ffmpeg-Prozesse pro Buch |
 | `ENCODE_WORKERS` | `1` | Bücher, die gleichzeitig kodiert werden |
 | `IO_WORKERS` | `2` | Gleichzeitige Erkennungs-, Tag- und Ablageschritte |
