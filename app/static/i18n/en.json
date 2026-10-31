@@ -564,13 +564,11 @@
  "✓ vorhanden: {book}": "✓ owned: {book}",
  "✓ vorhanden: {list}": "✓ owned: {list}",
  ": Bestseller und Neuheiten eines Audible-Genres.": ": best sellers and new releases of an Audible genre.",
- ": Bücher, die Deutschlandfunk Kultur besprochen hat und die es als Hörbuch gibt.": ": books reviewed by Deutschlandfunk Kultur that exist as an audiobook.",
  ": Titel, die Audible-Hörer mit Büchern aus deiner Bibliothek verbinden – je öfter, desto weiter oben.": ": titles Audible listeners connect with books in your library – the more often, the higher up.",
  "Aktualisieren": "Refresh",
  "Aus der Kritik": "From the critics",
  "Besprochen bei {source}": "Reviewed by {source}",
  "Bestseller & Neuheiten": "Best sellers & new releases",
- "Deutschlandfunk Kultur": "Deutschlandfunk Kultur",
  "Entdecken": "Discover",
  "Entdecken: {source} nicht erreichbar: {error}": "Discover: {source} not reachable: {error}",
  "Für dich": "For you",
@@ -583,7 +581,6 @@
  "Mindestbewertung": "Minimum rating",
  "Nach Genre": "By genre",
  "Noch keine Bücher mit ASIN in der Bibliothek.": "No books with an ASIN in the library yet.",
- "Nur gut bewertete, ungekürzte deutsche Hörbücher, die noch nicht in der Bibliothek sind (einstellbar unter": "Only well-rated, unabridged German audiobooks that are not in the library yet (adjustable under",
  "Ob ein Sachbuch inhaltlich stimmt, kann keine Software prüfen. Deshalb kommen Sachbücher standardmäßig nur aus der Kritik, nicht aus Bestsellerlisten.": "No software can check whether a non-fiction book is accurate. That is why, by default, non-fiction only comes from the critics, not from best-seller lists.",
  "Passt zu: {titles}": "Goes with: {titles}",
  "Sachbuch": "non-fiction",
@@ -606,5 +603,9 @@
  "desc.txt (Beschreibung, nur nötig ohne metadata.json)": "desc.txt (description, only needed without metadata.json)",
  "{n} Dateien gelöscht": "{n} files deleted",
  "{n} überflüssige Dateien (desc.txt, reader.txt) in {folders} Buchordnern löschen? Alles darin steht auch in metadata.json und in der M4B. Neue werden danach nicht mehr geschrieben; Hörbücher und Cover bleiben unberührt.": "Delete {n} redundant files (desc.txt, reader.txt) in {folders} book folders? Everything in them is also in metadata.json and the M4B. New ones will no longer be written; audiobooks and covers stay untouched.",
- "Überflüssige desc.txt und reader.txt aus den Buchordnern löschen": "Delete redundant desc.txt and reader.txt from the book folders"
+ "Überflüssige desc.txt und reader.txt aus den Buchordnern löschen": "Delete redundant desc.txt and reader.txt from the book folders",
+ "{n} Kritiken in der Presse": "{n} press reviews",
+ ": Bücher, die Deutschlandfunk Kultur oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt.": ": books reviewed by Deutschlandfunk Kultur or the press (according to Perlentaucher) that exist as an audiobook.",
+ "Deutschlandfunk Kultur, Perlentaucher": "Deutschlandfunk Kultur, Perlentaucher",
+ "Nur gut bewertete, ungekürzte deutsche Hörbücher, die du noch nicht hast – nicht in der Bibliothek, nicht im Download, nicht in Arbeit (einstellbar unter": "Only well-rated, unabridged German audiobooks you don't have yet – not in the library, not downloading, not being processed (adjustable under"
 }

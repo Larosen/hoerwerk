@@ -44,7 +44,7 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 | Tags & Dateien | Titel, Autor, Sprecher, Serie + Band, Genre, Verlag, Datum, Beschreibung, ASIN, Cover in voller Größe; `metadata.json` für Audiobookshelf |
 | Bibliothek | Alle Bücher durchsuchen, Ordner-Vorlage, nutzt vorhandene Autoren-/Serienordner, erkennt Doppelte, macht alte MP3-Bücher zu M4B und räumt die MP3s sicher weg |
 | Downloads | Schickt NZBs an SABnzbd, beobachtet die Kategorie, nach dem Download übernimmt der Eingang; Newznab-Suche optional |
-| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik von Deutschlandfunk Kultur – nur gut bewertet, ungekürzt, noch nicht vorhanden; ein Klick sucht das Buch |
+| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik (Deutschlandfunk Kultur, Perlentaucher) – nur gut bewertet, ungekürzt, nichts, was du schon hast; ein Klick sucht das Buch |
 | Medienserver | Audiobookshelf und Plex lesen ihre Bibliothek nach dem Ablegen neu ein; Plex leert auf Wunsch den Papierkorb, damit ersetzte MP3s verschwinden |
 | Benachrichtigungen | ntfy-Push-Nachrichten, neun Ereignisse, jedes einzeln an oder aus |
 | Protokoll | Alles, was passiert ist – filterbar und als Datei herunterladbar, direkt in der App |
@@ -124,6 +124,12 @@ Falsch einsortiert? **Korrigieren** holt das Buch aus der Bibliothek zurück in 
 zeigt, wie das Buch gelesen wurde – Autor, weitere Namen aus Tags und Ordnern, Ordner und Format. Genau das nutzen auch
 die Doppelt-Prüfung und die Suche. Cover kommen aus `cover.jpg`/`folder.jpg` im Buchordner oder aus dem Bild in der
 Audiodatei; Bücher ohne Cover bekommen eine erzeugte Kachel.
+
+**Aufräumen** (im Kasten *Bibliothek*) löscht `desc.txt` und `reader.txt` aus allen Buchordnern, in denen eine
+`metadata.json` liegt – vorher zeigt es, wie viele es sind. Alles darin steht auch in `metadata.json` und in den Tags
+der M4B; Plex liest die Dateien gar nicht, Audiobookshelf nur, wenn `metadata.json` fehlt. Hörbücher, `cover.jpg`
+und Ordner ohne `metadata.json` bleiben unberührt, Symlinks werden nicht verfolgt. Neue Bücher bekommen die beiden
+Dateien danach nicht mehr.
 
 ### Downloads mit mehreren Bänden
 
@@ -216,25 +222,28 @@ Der Reiter **Entdecken** schlägt neue Hörbücher vor:
 * **Für dich** – Titel, die Audible-Hörer mit den (bis zu 30 neuesten) Büchern deiner Bibliothek verbinden. Je mehr
   deiner Bücher auf denselben Titel zeigen, desto weiter oben steht er; „Passt zu …“ nennt sie.
 * **Nach Genre** – Bestseller und Neuheiten eines Audible-Genres; das gewählte Genre wird gemerkt.
-* **Aus der Kritik** – Bücher aus dem RSS-Feed „Buchkritik“ von Deutschlandfunk Kultur, die es bei Audible als Hörbuch
-  gibt (gleicher Titel, gleicher Autor), mit Link zur Besprechung.
+* **Aus der Kritik** – besprochene Bücher, die es bei Audible als Hörbuch gibt (gleicher Titel, gleicher Autor), mit Link
+  zur Besprechung. Quellen: der RSS-Feed „Buchkritik“ von Deutschlandfunk Kultur, die Perlentaucher-Liste
+  [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) (mit Anzahl
+  der Pressekritiken) und die Bücherschau/Bücherbriefe aus dem Perlentaucher-Feed. Übernommen werden nur Autor und Titel;
+  gesehene Besprechungen merkt sich Hörwerk 90 Tage, die Liste wächst also mit der Zeit.
 
 **Suchen** auf einer Karte springt in den Reiter *Suchen*, mit dem Buch schon ausgewählt (Titel, Autor und ASIN helfen
 später beim Taggen).
 
 **Qualitätsregeln** (unter *Einstellungen → Entdecken*): Mindestbewertung (Standard 4,3 Sterne) und Mindestanzahl
-Bewertungen (50), nur ungekürzt, nur deutschsprachig, keine Erotik, nichts, was schon in der Bibliothek ist. Bei
+Bewertungen (50), nur ungekürzt, nur deutschsprachig, keine Erotik. **Immer ausgeschlossen** ist, was du schon hast:
+Bücher in der Bibliothek (auch in anderer Schreibweise), Downloads der letzten 30 Tage und Bücher, die gerade verarbeitet werden. Bei
 Büchern aus der Kritik entfällt die Bewertungsregel – sie sind oft neu und noch kaum bewertet.
 
 **Ehrlich gesagt:** Ob ein Sachbuch inhaltlich stimmt, kann keine Software zuverlässig prüfen – auch Bewertungen
 messen nur Beliebtheit. Deshalb kommen Sachbücher standardmäßig **nur aus der redaktionellen Quelle** (Kritik),
 nicht aus Bestsellerlisten; Sachbuch-Genres sind ausgeblendet, bis du sie in den Einstellungen erlaubst.
-BookBeat und Perlentaucher sind nicht angebunden: BookBeat hat keine offene Schnittstelle, Perlentaucher keinen Feed,
-dessen Nutzung erlaubt wäre.
+BookBeat ist nicht angebunden, weil es keine offene Schnittstelle hat.
 
 Die Listen werden im Hintergrund zusammengestellt, höchstens einmal am Tag erneuert (oder mit **Aktualisieren**) und
-in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-API des gewählten Shops und
-`www.deutschlandfunkkultur.de` (HTTPS).
+in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-API des gewählten Shops,
+`www.deutschlandfunkkultur.de` und `www.perlentaucher.de` (HTTPS).
 
 ---
 
@@ -301,7 +310,8 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `LIBRARY_ORIGINALS` | `archive` | Alte Einzeldateien nach „Zu M4B“: `archive` (nach `_ersetzt`) oder `delete` |
 | `NARRATOR_IN_ARTIST` | `false` | Sprecher zusätzlich im Interpreten-Tag |
 | `KEEP_SERIES_IN_TITLE` | `true` | „…, Band 3“ im Titel lassen |
-| `WRITE_DESC` / `WRITE_READER` / `WRITE_COVER` | `true` | `desc.txt`, `reader.txt`, `cover.jpg` schreiben |
+| `WRITE_DESC` / `WRITE_READER` | `false` | `desc.txt`, `reader.txt` schreiben (nur nötig ohne `metadata.json`) |
+| `WRITE_COVER` | `true` | `cover.jpg` schreiben (Audiobookshelf und Plex nutzen es) |
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Entdecken: Mindestbewertung und -anzahl Bewertungen |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Entdecken: nur ungekürzt / nur deutschsprachig |
 | `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: Sachbücher auch aus Audible-Listen |

@@ -44,7 +44,7 @@ The interface is available in **English and German**.
 | Tags & files | Title, author, narrator, series + volume, genre, publisher, date, description, ASIN, full-size cover; `metadata.json` for Audiobookshelf |
 | Library | Browse and search every book, folder template, reuses existing author/series folders, detects duplicates, converts old MP3 books to M4B and removes the MP3s safely |
 | Downloads | Sends NZBs to SABnzbd, watches the category, the inbox takes over when the download is done; optional Newznab search |
-| Discover | Suggestions matching your library, by genre and from Deutschlandfunk Kultur's book reviews – well-rated, unabridged, not owned yet; one click searches the book |
+| Discover | Suggestions matching your library, by genre and from book reviews (Deutschlandfunk Kultur, Perlentaucher) – well-rated, unabridged, nothing you already have; one click searches the book |
 | Media servers | Audiobookshelf and Plex rescan their library after filing; Plex can empty its trash so replaced MP3s vanish |
 | Notifications | ntfy push messages, nine events, each one on or off |
 | Log | Everything that happened, filterable and downloadable, right in the app |
@@ -125,6 +125,11 @@ Filed the wrong book? **Correct** takes it back out of the library into the revi
 shows how the book was read – the author, further names from tags and folders, the folder and the format – which is
 also what the duplicate check and the search use. Covers come from `cover.jpg`/`folder.jpg` in the book folder or from
 the picture inside the audio file; books without one get a generated tile.
+
+**Clean up** (in the *Library* box) deletes `desc.txt` and `reader.txt` from every book folder that has a
+`metadata.json` – after showing how many there are. Everything in them is also in `metadata.json` and the M4B tags;
+Plex never reads them, Audiobookshelf only when `metadata.json` is missing. Audiobooks, `cover.jpg` and folders without
+`metadata.json` stay untouched, symlinks are not followed. New books no longer get the two files.
 
 ### Downloads with several volumes
 
@@ -213,21 +218,26 @@ The **Discover** tab suggests new audiobooks:
 * **For you** – titles Audible listeners connect with the (up to 30 newest) books in your library. The more of your
   books point to the same title, the higher it ranks; "Goes with …" names them.
 * **By genre** – best sellers and new releases of an Audible genre; the chosen genre is remembered.
-* **From the critics** – books from Deutschlandfunk Kultur's "Buchkritik" RSS feed that exist as an audiobook on Audible
-  (same title, same author), with a link to the review.
+* **From the critics** – reviewed books that exist as an audiobook on Audible (same title, same author), with a link to
+  the review. Sources: Deutschlandfunk Kultur's "Buchkritik" RSS feed, Perlentaucher's list
+  [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) (with the number
+  of press reviews) and the book round-ups from Perlentaucher's feed. Only author and title are taken; reviews are
+  remembered for 90 days, so the list grows over time.
 
 **Search** on a card jumps to the *Search* tab with the book already picked (title, author and ASIN help with tagging later).
 
 **Quality rules** (*Settings → Discover*): minimum rating (default 4.3 stars) and number of ratings (50), unabridged only,
-German only, no erotica, nothing already in the library. Books from the critics skip the rating rule – they are often new.
+German only, no erotica. **Always excluded** is what you already have: books in the library
+(even spelled differently), downloads of the last 30 days and books being processed right now. Books from the critics skip the rating rule – they are often new.
 
 **To be honest:** no software can reliably check whether a non-fiction book is accurate – ratings only measure
 popularity. So by default non-fiction comes **only from the editorial source** (the critics), never from best-seller
-lists; non-fiction genres stay hidden until you allow them in the settings. BookBeat and Perlentaucher are not
-connected: BookBeat has no open API, Perlentaucher no feed that may be used.
+lists; non-fiction genres stay hidden until you allow them in the settings. BookBeat is not connected – it
+has no open API.
 
 Lists are put together in the background, refreshed at most once a day (or with **Refresh**) and cached in the database.
-Outbound connections: only the Audible API of the chosen store and `www.deutschlandfunkkultur.de` (HTTPS).
+Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de` and
+`www.perlentaucher.de` (HTTPS).
 
 ---
 
@@ -294,7 +304,8 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `LIBRARY_ORIGINALS` | `archive` | Old single files after “To M4B”: `archive` (to `_ersetzt`) or `delete` |
 | `NARRATOR_IN_ARTIST` | `false` | Narrator also in the artist tag |
 | `KEEP_SERIES_IN_TITLE` | `true` | Keep “…, Band 3” in the title |
-| `WRITE_DESC` / `WRITE_READER` / `WRITE_COVER` | `true` | Write `desc.txt`, `reader.txt`, `cover.jpg` |
+| `WRITE_DESC` / `WRITE_READER` | `false` | Write `desc.txt`, `reader.txt` (only needed without `metadata.json`) |
+| `WRITE_COVER` | `true` | Write `cover.jpg` (used by Audiobookshelf and Plex) |
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Discover: minimum rating and number of ratings |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Discover: unabridged only / German only |
 | `DISCOVER_NONFICTION_STORE` | `false` | Discover: non-fiction from Audible lists too |

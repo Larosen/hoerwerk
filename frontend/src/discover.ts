@@ -5,7 +5,7 @@
 // ------------------------------------------------------------------------- //
 interface Suggestion extends Book {
   rating?: number; ratings?: number; because?: string[];
-  review?: { source: string; link: string; date: string };
+  review?: { source: string; link: string; date: string; notes?: number };
 }
 interface DiscoverAnswer { items: Suggestion[]; updated: number | null; error: string | null; running: boolean }
 interface Genre { id: string; name: string; nonfiction: boolean }
@@ -39,6 +39,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     reason = el("p", { class: "reason" }, t("Passt zu: {titles}", { titles: b.because.map((x) => `„${x}“`).join(", ") }));
   } else if (b.review) {
     reason = el("p", { class: "reason" }, t("Besprochen bei {source}", { source: b.review.source }),
+      b.review.notes ? " · " + t("{n} Kritiken in der Presse", { n: b.review.notes }) : null,
       b.review.link ? el("span", {}, " · ", el("a", { href: b.review.link, target: "_blank", rel: "noopener noreferrer" }, t("Kritik lesen"))) : null);
   }
   return el("li", { class: "suggestion" },
