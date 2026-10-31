@@ -439,7 +439,6 @@
  "chapter_names muss eine Liste von Texten sein": "chapter_names must be a list of strings",
  "cover.jpg": "cover.jpg",
  "deren Ordner = Hörbuch-Eingang": "its folder = audiobook inbox",
- "desc.txt (Beschreibung)": "desc.txt (description)",
  "dort als {format}": "there as {format}",
  "eine M4B mit Kapiteln": "one M4B with chapters",
  "einfügen oder alles selbst eintragen. Falsch einsortiert?": ", or enter everything yourself. Filed wrongly?",
@@ -598,5 +597,14 @@
  "nur deutschsprachige": "German only",
  "nur ungekürzte Hörbücher": "unabridged audiobooks only",
  "passend zur Bibliothek": "matching your library",
- "{n} Bewertungen bei Audible": "{n} ratings on Audible"
+ "{n} Bewertungen bei Audible": "{n} ratings on Audible",
+ "Aufgeräumt: {n} überflüssige Textdateien gelöscht": "Cleaned up: {n} redundant text files deleted",
+ "Aufräumen": "Clean up",
+ "Löschen": "Delete",
+ "Nicht gelöscht: {error}": "Not deleted: {error}",
+ "Nichts aufzuräumen – keine überflüssigen desc.txt/reader.txt.": "Nothing to clean up – no redundant desc.txt/reader.txt.",
+ "desc.txt (Beschreibung, nur nötig ohne metadata.json)": "desc.txt (description, only needed without metadata.json)",
+ "{n} Dateien gelöscht": "{n} files deleted",
+ "{n} überflüssige Dateien (desc.txt, reader.txt) in {folders} Buchordnern löschen? Alles darin steht auch in metadata.json und in der M4B. Neue werden danach nicht mehr geschrieben; Hörbücher und Cover bleiben unberührt.": "Delete {n} redundant files (desc.txt, reader.txt) in {folders} book folders? Everything in them is also in metadata.json and the M4B. New ones will no longer be written; audiobooks and covers stay untouched.",
+ "Überflüssige desc.txt und reader.txt aus den Buchordnern löschen": "Delete redundant desc.txt and reader.txt from the book folders"
 }

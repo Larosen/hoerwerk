@@ -54,6 +54,7 @@
       <div class="panel-head">
         <h2>Bibliothek</h2>
         <button id="libraryScanBtn" class="btn small ghost" title="Bibliothek neu einlesen (passiert sonst automatisch alle paar Stunden)"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Einlesen</button>
+        <button id="libraryCleanBtn" class="btn small ghost" title="Überflüssige desc.txt und reader.txt aus den Buchordnern löschen">Aufräumen</button>
       </div>
       <div class="inbox-info" id="libraryInfo"></div>
     </section>
@@ -366,7 +367,7 @@
       </label>
       <div class="path-preview" id="pathPreview"></div>
       <div class="grid2">
-        <label class="check"><input type="checkbox" name="write_desc"> desc.txt (Beschreibung)</label>
+        <label class="check"><input type="checkbox" name="write_desc"> desc.txt (Beschreibung, nur nötig ohne metadata.json)</label>
         <label class="check"><input type="checkbox" name="write_reader"> reader.txt (Sprecher)</label>
         <label class="check"><input type="checkbox" name="write_cover"> cover.jpg</label>
         <label class="check"><input type="checkbox" name="write_abs"> metadata.json (Audiobookshelf)</label>

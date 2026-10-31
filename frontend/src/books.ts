@@ -289,6 +289,19 @@ function renderLibraryStats(st: LibraryStats): void {
     el("div", { class: "muted small" }, t("Neue Funde werden mit der Bibliothek abgeglichen – in der Suche und vor dem Ablegen.")));
 }
 
+/** Delete desc.txt/reader.txt where metadata.json has everything (after a preview). */
+async function cleanLibrary(): Promise<void> {
+  try {
+    const pre = await api<{ count: number; folders: number; examples: string[] }>("GET", "/api/library/cleanup");
+    if (!pre.count) { toast(t("Nichts aufzuräumen – keine überflüssigen desc.txt/reader.txt.")); return; }
+    const ok = await confirmBox(t("{n} überflüssige Dateien (desc.txt, reader.txt) in {folders} Buchordnern löschen? Alles darin steht auch in metadata.json und in der M4B. Neue werden danach nicht mehr geschrieben; Hörbücher und Cover bleiben unberührt.",
+      { n: pre.count, folders: pre.folders }), t("Löschen"));
+    if (!ok) return;
+    const res = await api<{ removed: number; errors: string[] }>("POST", "/api/library/cleanup");
+    toast(t("{n} Dateien gelöscht", { n: res.removed }) + (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.length }) : ""), res.errors.length > 0);
+  } catch (e) { toast(errMsg(e), true); }
+}
+
 function renderInbox(d: AudiobooksStatus): void {
   const ok = (flag: boolean): HTMLSpanElement => el("span", { class: flag ? "ok" : "err" }, icon(flag ? "check" : "alert", flag ? "OK" : t("Fehler")));
   const box = $("#inboxInfo");
@@ -614,6 +627,7 @@ function initBooks(): void {
     }
     catch (e) { toast(errMsg(e), true); }
   });
+  $("#libraryCleanBtn").addEventListener("click", cleanLibrary);
   $("#clearBooksBtn").addEventListener("click", async () => {
     try { await api("DELETE", "/api/audiobooks"); pollBooks(true); } catch (e) { toast(errMsg(e), true); }
   });
