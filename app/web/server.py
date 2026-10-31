@@ -8,7 +8,9 @@ import json
 import mimetypes
 import os
 import secrets
+import sys
 import time
+import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional
 from urllib.parse import parse_qs, unquote, urlparse
@@ -44,6 +46,13 @@ class Server(ThreadingHTTPServer):
     def __init__(self, address, app) -> None:
         self.app = app
         super().__init__(address, Handler)
+
+    def handle_error(self, request, client_address) -> None:
+        """A client that hangs up (browser tab closed, health check done) is no error worth a traceback."""
+        err = sys.exc_info()[1]
+        if isinstance(err, (ConnectionError, TimeoutError)):
+            return
+        applog.error(f"{client_address[0]}: {err!r}\n{traceback.format_exc().rstrip()}", "web")
 
 
 class Handler(BaseHTTPRequestHandler):

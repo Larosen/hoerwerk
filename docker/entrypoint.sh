@@ -13,7 +13,7 @@ if [ "$(id -u)" = "0" ]; then
         groupadd -o -g "$PGID" renamer
     fi
     if ! getent passwd "$PUID" >/dev/null 2>&1; then
-        useradd -o -u "$PUID" -g "$PGID" -d /config -M -s /usr/sbin/nologin renamer
+        useradd -o -K UID_MIN=1 -K UID_MAX=2147483647 -u "$PUID" -g "$PGID" -d /config -M -s /usr/sbin/nologin renamer
     fi
     mkdir -p /config
     chown "$PUID:$PGID" /config 2>/dev/null || true
