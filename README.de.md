@@ -64,6 +64,10 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 3. **Language / Sprache** wählen (`APP_LANGUAGE`: `de` oder `en`). PUID `99`, PGID `100`, UMASK `000` passen für Unraid schon.
 4. `http://<unraid-ip>:8080` öffnen.
 
+Icon: Das Template lädt es von GitHub. Ist dein Repository privat, kommt Unraid nicht daran – dann als
+**Icon URL** `http://<unraid-ip>:8080/static/icon.png` eintragen; der Container liefert sein Logo selbst aus
+(die einzige Datei, die er ohne Passwort herausgibt).
+
 Image: `ghcr.io/larosen/rename_merge:latest` (amd64 + arm64, wöchentlich für Sicherheitsupdates neu gebaut).
 
 ### Andere Docker-Hosts

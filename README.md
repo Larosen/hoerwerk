@@ -64,6 +64,10 @@ The interface is available in **English and German**.
 3. Pick **Language / Sprache** (`APP_LANGUAGE`: `en` or `de`). PUID `99`, PGID `100`, UMASK `000` are already right for Unraid.
 4. Open `http://<unraid-ip>:8080`.
 
+Icon: the template loads it from GitHub. If your copy of the repository is private, Unraid cannot fetch it –
+set **Icon URL** to `http://<unraid-ip>:8080/static/icon.png` instead; the container serves its own logo
+(the only file it answers without a password).
+
 Image: `ghcr.io/larosen/rename_merge:latest` (amd64 + arm64, rebuilt weekly for security updates).
 
 ### Any other Docker host
