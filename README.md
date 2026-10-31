@@ -44,9 +44,9 @@ The interface is available in **English and German**.
 | Tags & files | Title, author, narrator, series + volume, genre, publisher, date, description, ASIN, full-size cover; `metadata.json` for Audiobookshelf |
 | Library | Browse and search every book, folder template, reuses existing author/series folders, detects duplicates, converts old MP3 books to M4B and removes the MP3s safely |
 | Downloads | Sends NZBs to SABnzbd, watches the category, the inbox takes over when the download is done; optional Newznab search |
-| Discover | Suggestions matching your library, by genre and from book reviews (Deutschlandfunk Kultur, Perlentaucher) – well-rated, unabridged, nothing you already have; one click searches the book |
+| Discover | Suggestions matching your library, by genre and from book reviews (Deutschlandfunk Kultur, Perlentaucher) – well-rated, unabridged, nothing you already have; one click searches the book; a **Wanted** list for books no indexer has yet |
 | Media servers | Audiobookshelf and Plex rescan their library after filing; Plex can empty its trash so replaced MP3s vanish |
-| Notifications | ntfy push messages, nine events, each one on or off |
+| Notifications | ntfy push messages, ten events, each one on or off |
 | Log | Everything that happened, filterable and downloadable, right in the app |
 | Interface | English / German, light / dark theme, live updates without reloading |
 | Security | Own minimal ffmpeg 9 in a Landlock sandbox, CSRF protection, secrets never reach the browser ([SECURITY.md](SECURITY.md)) |
@@ -239,6 +239,19 @@ Lists are put together in the background, refreshed at most once a day (or with 
 Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de` and
 `www.perlentaucher.de` (HTTPS).
 
+### Wanted
+
+A book that exists on Audible or BookBeat but is not on any indexer yet goes on **Discover → Wanted** with **Save**. The
+button is on every card in *Discover* and in the *Search* tab once a book is picked via **Look up at Audible**.
+
+* Hörwerk searches every saved book right away and then **every 12 hours** on all indexers (adjustable). A release only
+  counts when its name has the author's surname and nearly all words of the title.
+* New finds are announced via ntfy ("Wanted audiobook found"); the card shows the match, **View** opens the search with
+  the book and its ASIN.
+* Optional (*Settings → Discover & wanted*): **send finds to SABnzbd automatically** – unabridged releases first, each
+  book only once. Off by default so nothing wrong is downloaded unasked.
+* While downloading the card says "Downloading"; once the book is in the library it leaves the list by itself.
+
 ---
 
 ## Notifications (ntfy)
@@ -256,6 +269,7 @@ Push messages to your phone via [ntfy](https://ntfy.sh) – ntfy.sh or your own 
 | Audiobook needs review | on |
 | Already in the library | on |
 | Error with an audiobook | on |
+| Wanted audiobook found | on |
 | Download sent to SABnzbd | off |
 | Download finished in SABnzbd | off |
 | Download failed in SABnzbd | on |
@@ -309,6 +323,8 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Discover: minimum rating and number of ratings |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Discover: unabridged only / German only |
 | `DISCOVER_NONFICTION_STORE` | `false` | Discover: non-fiction from Audible lists too |
+| `WANTED_INTERVAL_HOURS` | `12` | Wanted: hours between automatic searches |
+| `WANTED_AUTO_DOWNLOAD` | `false` | Wanted: send finds to SABnzbd automatically |
 | `CPU_CORES` | half the cores | Parallel ffmpeg processes per book |
 | `ENCODE_WORKERS` | `1` | Books encoded at the same time |
 | `IO_WORKERS` | `2` | Parallel matching/tagging/filing steps |

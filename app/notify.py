@@ -26,6 +26,7 @@ EVENTS: Dict[str, tuple] = {
     "review": (True, ["mag"]),
     "duplicate": (True, ["twisted_rightwards_arrows"]),
     "failed": (True, ["warning"]),
+    "wanted_found": (True, ["dart"]),
     "download_sent": (False, ["inbox_tray"]),
     "download_done": (False, ["white_check_mark"]),
     "download_failed": (True, ["x"]),

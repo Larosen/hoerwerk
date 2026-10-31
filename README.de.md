@@ -44,9 +44,9 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 | Tags & Dateien | Titel, Autor, Sprecher, Serie + Band, Genre, Verlag, Datum, Beschreibung, ASIN, Cover in voller Größe; `metadata.json` für Audiobookshelf |
 | Bibliothek | Alle Bücher durchsuchen, Ordner-Vorlage, nutzt vorhandene Autoren-/Serienordner, erkennt Doppelte, macht alte MP3-Bücher zu M4B und räumt die MP3s sicher weg |
 | Downloads | Schickt NZBs an SABnzbd, beobachtet die Kategorie, nach dem Download übernimmt der Eingang; Newznab-Suche optional |
-| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik (Deutschlandfunk Kultur, Perlentaucher) – nur gut bewertet, ungekürzt, nichts, was du schon hast; ein Klick sucht das Buch |
+| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik (Deutschlandfunk Kultur, Perlentaucher) – nur gut bewertet, ungekürzt, nichts, was du schon hast; ein Klick sucht das Buch; **Gesucht**-Liste für Bücher, die noch kein Indexer hat |
 | Medienserver | Audiobookshelf und Plex lesen ihre Bibliothek nach dem Ablegen neu ein; Plex leert auf Wunsch den Papierkorb, damit ersetzte MP3s verschwinden |
-| Benachrichtigungen | ntfy-Push-Nachrichten, neun Ereignisse, jedes einzeln an oder aus |
+| Benachrichtigungen | ntfy-Push-Nachrichten, zehn Ereignisse, jedes einzeln an oder aus |
 | Protokoll | Alles, was passiert ist – filterbar und als Datei herunterladbar, direkt in der App |
 | Oberfläche | Deutsch / Englisch, helles / dunkles Design, Live-Updates ohne Neuladen |
 | Sicherheit | Eigenes schlankes ffmpeg 9 im Landlock-Käfig, CSRF-Schutz, Zugangsdaten erreichen nie den Browser ([SECURITY.de.md](SECURITY.de.md)) |
@@ -245,6 +245,21 @@ Die Listen werden im Hintergrund zusammengestellt, höchstens einmal am Tag erne
 in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-API des gewählten Shops,
 `www.deutschlandfunkkultur.de` und `www.perlentaucher.de` (HTTPS).
 
+### Gesucht
+
+Ein Buch, das bei Audible oder BookBeat existiert, aber noch bei keinem Indexer zu finden ist, kommt mit **Merken** auf
+die Liste **Entdecken → Gesucht**. Den Knopf gibt es auf jeder Karte in *Entdecken* und im Reiter *Suchen*, sobald ein
+Buch über **Bei Audible nachschlagen** ausgewählt ist.
+
+* Hörwerk sucht jedes gemerkte Buch sofort und danach **alle 12 Stunden** erneut bei allen Indexern (einstellbar).
+  Ein Release zählt nur, wenn sein Name den Nachnamen des Autors und fast alle Wörter des Titels enthält.
+* Neue Funde meldet ntfy („Gesuchtes Hörbuch gefunden“); die Karte zeigt den Treffer, **Ansehen** öffnet die Suche
+  mit dem Buch samt ASIN.
+* Optional (*Einstellungen → Entdecken & Gesucht*): Funde **automatisch an SABnzbd schicken** – ungekürzte Releases
+  zuerst, jedes Buch nur einmal. Standardmäßig aus, damit nichts Falsches ungefragt geladen wird.
+* Läuft der Download, steht „Download läuft“ auf der Karte; ist das Buch in der Bibliothek angekommen, verschwindet es
+  von selbst von der Liste.
+
 ---
 
 ## Benachrichtigungen (ntfy)
@@ -262,6 +277,7 @@ Push-Nachrichten aufs Handy über [ntfy](https://ntfy.sh) – ntfy.sh oder ein e
 | Hörbuch braucht Prüfung | an |
 | Schon in der Bibliothek | an |
 | Fehler bei einem Hörbuch | an |
+| Gesuchtes Hörbuch gefunden | an |
 | Download an SABnzbd geschickt | aus |
 | Download in SABnzbd fertig | aus |
 | Download in SABnzbd fehlgeschlagen | an |
@@ -315,6 +331,8 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Entdecken: Mindestbewertung und -anzahl Bewertungen |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Entdecken: nur ungekürzt / nur deutschsprachig |
 | `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: Sachbücher auch aus Audible-Listen |
+| `WANTED_INTERVAL_HOURS` | `12` | Gesucht: Abstand der automatischen Suche |
+| `WANTED_AUTO_DOWNLOAD` | `false` | Gesucht: Funde automatisch an SABnzbd schicken |
 | `CPU_CORES` | halbe Kernzahl | Parallele ffmpeg-Prozesse pro Buch |
 | `ENCODE_WORKERS` | `1` | Bücher, die gleichzeitig kodiert werden |
 | `IO_WORKERS` | `2` | Gleichzeitige Erkennungs-, Tag- und Ablageschritte |

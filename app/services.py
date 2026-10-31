@@ -21,6 +21,7 @@ from pipeline import Pipeline
 from providers import Providers
 from stores import Settings
 from usenet import Usenet
+from wanted import Wanted
 import i18n
 import applog
 from i18n import t
@@ -59,6 +60,8 @@ class App:
                                             enabled=lambda: bool(self.settings().get("ab_fallback", True)))
         self.discover = Discover(self.db, self.pipeline.client, self.library_index, self.settings,
                                  pending=self._pending_asins)
+        self.wanted = Wanted(self.db, self.usenet, self.library_index, self.notifier, self.settings,
+                             pending=self._pending_asins)
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
         self.events.provide("library", self.library_index.stats)
         self.downloads = DownloadWatcher(self.usenet, self.notifier, self.db)
@@ -111,6 +114,7 @@ class App:
         self.pipeline.start()
         threading.Thread(target=self._library_rescanner, daemon=True, name="library-index").start()
         threading.Thread(target=self.downloads.run, daemon=True, name="download-watch").start()
+        threading.Thread(target=self._wanted_searcher, daemon=True, name="wanted").start()
         return self
 
     def _library_rescanner(self) -> None:
@@ -121,6 +125,17 @@ class App:
             except Exception as e:  # noqa: BLE001 – keep the thread alive
                 applog.error(t("Bibliothek konnte nicht eingelesen werden: {error}", error=e), "Bibliothek")
             time.sleep(max(1, int(self.settings().get("library_rescan_hours") or 6)) * 3600)
+
+
+    def _wanted_searcher(self) -> None:
+        """Search the wanted books again when their interval is up (checked every quarter of an hour)."""
+        time.sleep(120)                                     # let the library index load first
+        while True:
+            try:
+                self.wanted.run_due()
+            except Exception as e:  # noqa: BLE001 – keep the thread alive
+                applog.error(t("Gesucht: Suche fehlgeschlagen: {error}", error=e), "Gesucht")
+            time.sleep(900)
 
 
 def create_app(config: Optional[Config] = None, start: bool = True) -> App:

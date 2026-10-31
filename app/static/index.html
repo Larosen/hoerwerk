@@ -143,6 +143,7 @@
         <button type="button" data-section="foryou">Für dich <small>passend zur Bibliothek</small></button>
         <button type="button" data-section="genre">Nach Genre <small>Bestseller &amp; Neuheiten</small></button>
         <button type="button" data-section="critics">Aus der Kritik <small>Deutschlandfunk Kultur, Perlentaucher</small></button>
+        <button type="button" data-section="wanted"><span>Gesucht <span id="wantedCount" class="pill" hidden></span></span><small>gemerkt, noch bei keinem Indexer</small></button>
       </nav>
     </section>
     <details class="panel how">
@@ -152,6 +153,7 @@
         <li><b>Nach Genre</b>: Bestseller und Neuheiten eines Audible-Genres.</li>
         <li><b>Aus der Kritik</b>: Bücher, die Deutschlandfunk Kultur oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt.</li>
         <li>Nur gut bewertete, ungekürzte deutsche Hörbücher, die du noch nicht hast – nicht in der Bibliothek, nicht im Download, nicht in Arbeit (einstellbar unter <b>Einstellungen</b>).</li>
+        <li><b>Gesucht</b>: Bücher, die du dir mit <b>Merken</b> vorgemerkt hast. Sie werden regelmäßig bei den Indexern gesucht; Funde meldet ntfy.</li>
         <li>Ob ein Sachbuch inhaltlich stimmt, kann keine Software prüfen. Deshalb kommen Sachbücher standardmäßig nur aus der Kritik, nicht aus Bestsellerlisten.</li>
       </ul>
     </details>
@@ -381,7 +383,7 @@
       </label>
     </fieldset>
     <fieldset>
-      <legend>Entdecken</legend>
+      <legend>Entdecken &amp; Gesucht</legend>
       <div class="grid2">
         <label>Mindestbewertung <small>Sterne, 0 – 5</small>
           <input name="discover_min_rating" type="number" min="0" max="5" step="0.1">
@@ -392,6 +394,10 @@
         <label class="check"><input type="checkbox" name="discover_unabridged"> nur ungekürzte Hörbücher</label>
         <label class="check"><input type="checkbox" name="discover_german"> nur deutschsprachige</label>
         <label class="check"><input type="checkbox" name="discover_nonfiction_store"> Sachbücher auch aus Audible-Listen</label>
+        <label>„Gesucht“ erneut suchen alle <small>Stunden</small>
+          <input name="wanted_interval_hours" type="number" min="1" max="168" step="1">
+        </label>
+        <label class="check"><input type="checkbox" name="wanted_auto"> Funde aus „Gesucht“ automatisch an SABnzbd schicken</label>
       </div>
     </fieldset>
     <fieldset id="notifyBox">

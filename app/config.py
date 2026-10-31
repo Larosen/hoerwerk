@@ -7,7 +7,7 @@ from typing import FrozenSet, Mapping
 
 import library
 
-VERSION = "5.2.0"
+VERSION = "5.3.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
@@ -101,6 +101,9 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
         "discover_german": b("DISCOVER_GERMAN", True),
         "discover_nonfiction_store": b("DISCOVER_NONFICTION_STORE", False),
         "discover_genre": env.get("DISCOVER_GENRE", ""),
+        # Gesucht (wanted list)
+        "wanted_interval_hours": int(env.get("WANTED_INTERVAL_HOURS", "12")),
+        "wanted_auto": b("WANTED_AUTO_DOWNLOAD", False),
     }
 
 
