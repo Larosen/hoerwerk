@@ -216,9 +216,9 @@ def write_sidecars(folder: str, book: dict, settings: dict, cover: Optional[byte
             fh.write(data)
         written.append(name)
 
-    if settings.get("write_desc", True) and book.get("description"):
+    if settings.get("write_desc", False) and book.get("description"):
         put("desc.txt", book["description"] + "\n")
-    if settings.get("write_reader", True) and book.get("narrators"):
+    if settings.get("write_reader", False) and book.get("narrators"):
         put("reader.txt", ", ".join(book["narrators"]) + "\n")
     if settings.get("write_cover", True) and cover:
         put("cover.png" if cover[:8] == b"\x89PNG\r\n\x1a\n" else "cover.jpg", cover, binary=True)

@@ -212,9 +212,7 @@ class ConvertLibraryTest(unittest.TestCase):
         self.assertEqual(j.status, "done", j.log)       # not flagged as a duplicate of itself
         self.assertEqual(tree(self.lib), ["Theodor Storm/Der Schimmelreiter/Der Schimmelreiter.m4b",
                                           "Theodor Storm/Der Schimmelreiter/cover.jpg",   # the old folder.jpg
-                                          "Theodor Storm/Der Schimmelreiter/desc.txt",
-                                          "Theodor Storm/Der Schimmelreiter/metadata.json",
-                                          "Theodor Storm/Der Schimmelreiter/reader.txt"])
+                                          "Theodor Storm/Der Schimmelreiter/metadata.json"])
         import encoder
         self.assertEqual([c["title"] for c in encoder.file_chapters(j.dest)], names)
         old = sorted(f for f in tree(self.inbox) if f.startswith("_ersetzt/"))

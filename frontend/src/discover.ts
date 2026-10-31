@@ -5,23 +5,100 @@
 // ------------------------------------------------------------------------- //
 interface Suggestion extends Book {
   rating?: number; ratings?: number; because?: string[];
-  review?: { source: string; link: string; date: string };
+  review?: { source: string; link: string; date: string; notes?: number };
 }
 interface DiscoverAnswer { items: Suggestion[]; updated: number | null; error: string | null; running: boolean }
 interface Genre { id: string; name: string; nonfiction: boolean }
+interface WantedFind { title: string; size: number; indexer: string; format?: string; abridged?: boolean }
+interface WantedItem extends Book {
+  id: string; added: number; last_search: number | null; found: WantedFind[]; error: string | null;
+  status: "missing" | "found" | "loading";
+}
+interface WantedAnswer { items: WantedItem[]; interval: number; auto: boolean; indexers: number }
 
 const discover = {
   section: "foryou",
   genre: "",
   genres: [] as Genre[],
   timer: undefined as number | undefined,
+  wanted: new Set<string>(),        // ids on the wanted list (ASIN or title key)
 };
 
 const DISCOVER_TITLES: Record<string, () => string> = {
   foryou: () => t("Für dich"),
   genre: () => t("Nach Genre"),
   critics: () => t("Aus der Kritik"),
+  wanted: () => t("Gesucht"),
 };
+
+/** Put a book on the wanted list (searched on the indexers every few hours). */
+async function rememberBook(b: Book, btn?: HTMLButtonElement): Promise<void> {
+  if (btn) btn.disabled = true;
+  try {
+    await api("POST", "/api/wanted", b);
+    if (b.asin) discover.wanted.add(b.asin.toUpperCase());
+    toast(t("Gemerkt – wird regelmäßig gesucht"));
+    if (btn) btn.replaceChildren(icon("check"), t("Gemerkt"));
+    updateWantedCount();
+  } catch (err) { toast(errMsg(err), true); if (btn) btn.disabled = false; }
+}
+
+function rememberButton(b: Book): HTMLButtonElement {
+  const known = !!b.asin && discover.wanted.has(b.asin.toUpperCase());
+  const btn = el("button", { type: "button", class: "btn small ghost", title: t("Auf die Liste „Gesucht“ – wird regelmäßig bei den Indexern gesucht") },
+    known ? icon("check") : null, known ? t("Gemerkt") : t("Merken"));
+  btn.disabled = known;
+  btn.addEventListener("click", () => rememberBook(b, btn));
+  return btn;
+}
+
+async function updateWantedCount(): Promise<WantedAnswer | null> {
+  try {
+    const res = await api<WantedAnswer>("GET", "/api/wanted");
+    discover.wanted = new Set(res.items.flatMap((i) => [i.id, (i.asin || "").toUpperCase()]).filter(Boolean));
+    const badge = $("#wantedCount");
+    badge.textContent = String(res.items.length);
+    badge.hidden = !res.items.length;
+    return res;
+  } catch { return null; }
+}
+
+function wantedCard(w: WantedItem): HTMLLIElement {
+  const author = (w.authors || [])[0] || "";
+  const best = w.found[0];
+  const status = w.status === "loading" ? el("span", { class: "w-status ok" }, t("Download läuft"))
+    : w.status === "found" ? el("span", { class: "w-status found" }, t("{n} Release(s) gefunden", { n: w.found.length }))
+      : el("span", { class: "w-status" }, t("Noch nicht gefunden"));
+  const searchBtn = el("button", { type: "button", class: "btn small ghost" }, icon("refresh"), t("Jetzt suchen"));
+  searchBtn.addEventListener("click", async () => {
+    searchBtn.disabled = true;
+    try { await api("POST", "/api/wanted/search", { id: w.id }); await loadWanted(); } catch (err) { toast(errMsg(err), true); searchBtn.disabled = false; }
+  });
+  return el("li", { class: "suggestion" },
+    w.cover_url ? el("img", { class: "cover", src: w.cover_url, alt: "", loading: "lazy" }) : coverArt(w.title, author),
+    el("div", { class: "s-body" },
+      el("b", { class: "s-title", title: w.title }, w.title),
+      el("span", { class: "s-author" }, (w.authors || []).join(", ")),
+      status,
+      best ? el("span", { class: "muted small", title: best.title }, `${best.title} · ${best.indexer}`) : null,
+      el("span", { class: "muted small" }, w.last_search ? t("Zuletzt gesucht: {when}", { when: fmtAgo(w.last_search) }) : t("Noch nicht gesucht")),
+      w.error ? el("span", { class: "muted small err-text" }, w.error) : null,
+      el("div", { class: "s-actions" },
+        el("button", { type: "button", class: "btn small" + (w.found.length ? " primary" : ""), onclick: () => searchSuggestion(w) }, icon("search"), t("Ansehen")),
+        searchBtn,
+        el("button", { type: "button", class: "icon-btn", title: t("Von der Liste nehmen"), onclick: async () => {
+          try { await api("DELETE", `/api/wanted/${encodeURIComponent(w.id)}`); await loadWanted(); } catch (err) { toast(errMsg(err), true); }
+        } }, icon("x")))));
+}
+
+async function loadWanted(): Promise<void> {
+  const res = await updateWantedCount();
+  if (!res) return;
+  $("#discoverState").textContent = !res.indexers ? t("Kein Indexer eingerichtet (Suchen → Einrichten)")
+    : t("Wird alle {n} Stunden gesucht", { n: res.interval }) + (res.auto ? " · " + t("Funde werden automatisch geladen") : "");
+  $("#discoverList").replaceChildren(...(res.items.length ? res.items.map(wantedCard)
+    : [el("li", { class: "empty" }, t("Noch nichts gemerkt. „Merken“ gibt es auf den Karten in Entdecken und nach „Bei Audible nachschlagen“."))]));
+}
 
 function fmtCount(n: number): string {
   return new Intl.NumberFormat(LANG).format(n);
@@ -39,6 +116,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     reason = el("p", { class: "reason" }, t("Passt zu: {titles}", { titles: b.because.map((x) => `„${x}“`).join(", ") }));
   } else if (b.review) {
     reason = el("p", { class: "reason" }, t("Besprochen bei {source}", { source: b.review.source }),
+      b.review.notes ? " · " + t("{n} Kritiken in der Presse", { n: b.review.notes }) : null,
       b.review.link ? el("span", {}, " · ", el("a", { href: b.review.link, target: "_blank", rel: "noopener noreferrer" }, t("Kritik lesen"))) : null);
   }
   return el("li", { class: "suggestion" },
@@ -53,6 +131,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
       reason,
       el("div", { class: "s-actions" },
         el("button", { type: "button", class: "btn small primary", onclick: () => searchSuggestion(b) }, icon("search"), t("Suchen")),
+        rememberButton(b),
         b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null)));
 }
 
@@ -83,9 +162,11 @@ async function loadDiscover(): Promise<void> {
   clearTimeout(discover.timer);
   $("#discoverTitle").textContent = DISCOVER_TITLES[discover.section]();
   $("#discoverGenreWrap").hidden = discover.section !== "genre";
+  $("#discoverRefresh").hidden = discover.section === "wanted";
   for (const b of document.querySelectorAll<HTMLElement>("#discoverSections button")) {
     b.setAttribute("aria-current", String(b.dataset.section === discover.section));
   }
+  if (discover.section === "wanted") { await loadWanted(); return; }
   const params = new URLSearchParams({ section: discover.section, genre: discover.genre });
   try {
     const res = await api<DiscoverAnswer>("GET", `/api/discover?${params}`);
@@ -122,6 +203,7 @@ async function refreshDiscover(): Promise<void> {
 }
 
 async function showDiscover(): Promise<void> {
+  await updateWantedCount();
   if (discover.section === "genre") await loadGenres();
   await loadDiscover();
 }

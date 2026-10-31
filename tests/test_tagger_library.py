@@ -124,7 +124,8 @@ class TaggerTest(unittest.TestCase):
         self.assertNotIn("©mvn", t)
 
     def test_sidecars(self):
-        out = self.tagger.write_sidecars(self.dir, BOOK, {}, self.cover)
+        self.assertEqual(self.tagger.write_sidecars(self.dir, BOOK, {}, self.cover), ["cover.jpg"])   # default: no txt
+        out = self.tagger.write_sidecars(self.dir, BOOK, {"write_desc": True, "write_reader": True}, self.cover)
         self.assertEqual(out, ["desc.txt", "reader.txt", "cover.jpg"])
         with open(os.path.join(self.dir, "reader.txt"), encoding="utf-8") as fh:
             self.assertEqual(fh.read(), "Erika Muster\n")

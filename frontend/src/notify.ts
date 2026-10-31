@@ -14,6 +14,7 @@ const NOTIFY_EVENTS: Record<string, string> = {
   review: t("Hörbuch braucht Prüfung"),
   duplicate: t("Schon in der Bibliothek"),
   failed: t("Fehler bei einem Hörbuch"),
+  wanted_found: t("Gesuchtes Hörbuch gefunden"),
   download_sent: t("Download an SABnzbd geschickt"),
   download_done: t("Download in SABnzbd fertig"),
   download_failed: t("Download in SABnzbd fehlgeschlagen"),

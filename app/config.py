@@ -7,7 +7,7 @@ from typing import FrozenSet, Mapping
 
 import library
 
-VERSION = "5.1.0"
+VERSION = "5.3.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
@@ -90,8 +90,8 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
         "narrator_in_artist": b("NARRATOR_IN_ARTIST", False),
         "keep_series_in_title": b("KEEP_SERIES_IN_TITLE", True),
         "keep_series_in_subtitle": b("KEEP_SERIES_IN_SUBTITLE", True),
-        "write_desc": b("WRITE_DESC", True),
-        "write_reader": b("WRITE_READER", True),
+        "write_desc": b("WRITE_DESC", False),       # only a fallback for metadata.json
+        "write_reader": b("WRITE_READER", False),
         "write_cover": b("WRITE_COVER", True),
         "write_abs": b("WRITE_ABS_METADATA", True),             # metadata.json for Audiobookshelf
         # Entdecken (suggestions)
@@ -101,6 +101,9 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
         "discover_german": b("DISCOVER_GERMAN", True),
         "discover_nonfiction_store": b("DISCOVER_NONFICTION_STORE", False),
         "discover_genre": env.get("DISCOVER_GENRE", ""),
+        # Gesucht (wanted list)
+        "wanted_interval_hours": int(env.get("WANTED_INTERVAL_HOURS", "12")),
+        "wanted_auto": b("WANTED_AUTO_DOWNLOAD", False),
     }
 
 

@@ -5,6 +5,8 @@ import os
 import threading
 from typing import Optional
 
+import applog
+import cleanup
 import encoder
 import tagger
 from meta import cache as meta_cache
@@ -29,6 +31,24 @@ def books(req: Req):
     except ValueError:
         raise HTTPException(400, t("Ungültige Daten"))
     return req.app.library_index.books(req.query.get("q", "")[:200], offset, limit)
+
+
+@route("GET", "/api/library/cleanup")
+def cleanup_preview(req: Req):
+    """How many redundant desc.txt/reader.txt files the library holds."""
+    found = cleanup.leftovers(req.app.config.library)
+    return {"count": len(found), "folders": len({os.path.dirname(p) for p in found}), "examples": found[:5]}
+
+
+@route("POST", "/api/library/cleanup")
+def cleanup_run(req: Req):
+    """Delete them and stop writing new ones (they would come back with the next book)."""
+    req.app.update_settings({"write_desc": False, "write_reader": False})
+    res = cleanup.remove(req.app.config.library)
+    applog.info(t("Aufgeräumt: {n} überflüssige Textdateien gelöscht", n=res["removed"]), "Bibliothek")
+    for err in res["errors"]:
+        applog.warn(t("Nicht gelöscht: {error}", error=err), "Bibliothek")
+    return res
 
 
 MAX_COVER = 15 * 1024 * 1024

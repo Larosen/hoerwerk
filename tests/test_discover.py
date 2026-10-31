@@ -47,6 +47,22 @@ class FakeClient:
         return [h for h in self.hits if h["title"].lower().startswith(title.lower()[:5])]
 
 
+PT = """<?xml version="1.0"?><rss version="2.0"><channel>
+<item><category>BÜCHERBRIEF</category><title>BÜCHERBRIEF: Oktober</title>
+<link>https://www.perlentaucher.de/buecherbrief/oktober.html</link><pubDate>Mon, 12 Oct 2026 08:53:37 +0000</pubDate>
+<description><![CDATA[<a href="x"><img src="y"/></a><b>Dora Kapralovas</b> kleines Juwel "Die Mariborhypnose" und
+<b>Jachym Topols</b> barocker Roman "Die Hölle gibt es nicht" vertreten den Schwerpunkt. Die <i>FAZ</i> denkt
+über <b>Schuld und Sühne </b>nach. Und eine Biografie über <b>Rudolf Augstein</b>.]]></description></item>
+<item><category>IM KINO</category><title>Film</title><link>https://www.perlentaucher.de/k.html</link>
+<description><![CDATA[<b>Anna Regie</b> dreht "Ein Film"]]></description></item>
+</channel></rss>"""
+
+PT_LIST = """<html><body>
+<article title="Radio Nacht. Roman - 7 Notizen" class="book teaser-block"><h2><a href="/buch/juri-andruchowytsch/radio-nacht.html">Juri Andruchowytsch: <span>Radio Nacht. Roman</span> </a></h2>
+<div class="paragraph">Aus dem Ukrainischen.</div><a href="/buch/juri-andruchowytsch/radio-nacht.html" class="gold"><img src="x.svg"><span> 7 Notizen</span></a></article>
+<article title="Ein Leben" class="book teaser-block"><h2><a href="/buch/anna-autorin/ein-leben.html">Anna Autorin: <span>Ein Leben</span> </a></h2></article>
+</body></html>"""
+
 RSS = """<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel>
 <item><title>Buchkritik: "Das stille Haus" von Anna Autorin</title><link>https://www.deutschlandfunkkultur.de/a-100.html</link>
 <pubDate>Fri, 30 Oct 2026 10:00:00 +0100</pubDate></item>
@@ -63,7 +79,22 @@ class DiscoverTest(unittest.TestCase):
         self.client = FakeClient()
         self.index = FakeIndex()
         self.feed = RSS.encode()
-        self.d = discover.Discover(self.db, self.client, self.index, lambda: self.settings, fetch=lambda url: self.feed)
+        self.pt = PT.encode()
+        self.pt_list = b"<html></html>"
+        self.busy = set()
+        self.d = discover.Discover(self.db, self.client, self.index, lambda: self.settings, fetch=self.fetch,
+                                   pending=lambda: self.busy)
+
+    def fetch(self, url):
+        if "buchKSL" in url:
+            if self.pt_list is None:
+                raise OSError("down")
+            return self.pt_list
+        if "perlentaucher" in url:
+            if self.pt is None:
+                raise OSError("down")
+            return self.pt
+        return self.feed
 
     def items(self, section, genre=""):
         self.d.refresh(section, genre, wait=True)
@@ -75,6 +106,12 @@ class DiscoverTest(unittest.TestCase):
         self.assertEqual(p('Gaia Vince: "Das nomadische Jahrhundert"'), {"title": "Das nomadische Jahrhundert", "author": "Gaia Vince"})
         self.assertEqual(p('„Zwei Leben“ von A. Autorin und B. Berger')["author"], "A. Autorin")
         self.assertIsNone(p("Ein Gespräch über Bücher"))
+
+    def test_perlentaucher_mentions(self):
+        got = discover.parse_book_mentions(PT.split("CDATA[")[1].split("]]>")[0])
+        self.assertEqual(got, [{"title": "Die Mariborhypnose", "author": "Dora Kapralovas"},
+                               {"title": "Die Hölle gibt es nicht", "author": "Jachym Topols"}])
+        self.assertEqual(discover._surnames("Dora Kapralovas"), ["kapralovas", "kapralova"])
 
     def test_for_you_counts_and_filters(self):
         self.index.entries = {"a": {"asin": "S1", "title": "Seed Eins", "mtime": 2},
@@ -100,6 +137,7 @@ class DiscoverTest(unittest.TestCase):
         self.assertEqual(self.d.get("genre", "")["items"], [])
 
     def test_critics_only_real_audiobooks(self):
+        self.pt = None                                                    # one feed down: the other still counts
         self.client.hits = [book("R1", "Das stille Haus", rating=0, ratings=0),          # new: no ratings needed
                             book("R2", "Die Geschichte der Wolken", author="Bert Berger", genres=["Geschichte"]),
                             book("R3", "Das stille Haus", author="Jemand Anderes")]
@@ -108,8 +146,36 @@ class DiscoverTest(unittest.TestCase):
         self.assertEqual(got[0]["review"]["link"], "https://www.deutschlandfunkkultur.de/a-100.html")
         self.assertEqual(got[0]["review"]["source"], "Deutschlandfunk Kultur")
 
+    def test_perlentaucher_and_memory(self):
+        self.feed = b'<rss><channel></channel></rss>'
+        self.client.hits = [book("P1", "Die Mariborhypnose", author="Dora Kapralová", rating=0, ratings=0),
+                            book("P2", "Ein Film", author="Anna Regie")]
+        got = self.items("critics")
+        self.assertEqual([i["asin"] for i in got], ["P1"])                # genitive s and accent tolerated, no film
+        self.assertEqual(got[0]["review"]["source"], "Perlentaucher")
+        self.pt = b'<rss><channel></channel></rss>'                       # feed moved on: still remembered
+        self.client.hits = []
+        self.assertEqual([i["asin"] for i in self.items("critics")], ["P1"])
+        self.busy = {"P1"}                                                # being downloaded: hidden
+        self.assertEqual(self.d.get("critics")["items"], [])
+
+    def test_perlentaucher_audiobook_list(self):
+        self.assertEqual(discover.parse_pt_list(PT_LIST), [
+            {"title": "Radio Nacht", "author": "Juri Andruchowytsch", "notes": 7,
+             "link": "https://www.perlentaucher.de/buch/juri-andruchowytsch/radio-nacht.html"},
+            {"title": "Ein Leben", "author": "Anna Autorin", "notes": 0,
+             "link": "https://www.perlentaucher.de/buch/anna-autorin/ein-leben.html"}])
+        self.feed = self.pt = b"<rss><channel></channel></rss>"
+        self.pt_list = PT_LIST.encode()
+        self.client.hits = [book("L1", "Radio Nacht", author="Juri Andruchowytsch", rating=0, ratings=0)]
+        got = self.items("critics")
+        self.assertEqual([i["asin"] for i in got], ["L1"])
+        self.assertEqual(got[0]["review"]["notes"], 7)
+
     def test_feed_with_dtd_is_rejected(self):
         self.feed = b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "b">]><rss/>'
+        self.pt = self.feed
+        self.pt_list = None
         self.d.refresh("critics", wait=True)
         res = self.d.get("critics")
         self.assertEqual(res["items"], [])

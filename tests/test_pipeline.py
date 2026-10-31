@@ -93,9 +93,7 @@ class PipelineTest(unittest.TestCase):
         j = jobs[0]
         self.assertEqual(j.status, "done", j.log)
         self.assertEqual(tree(self.lib), ["Theodor Storm/Der Schimmelreiter/Der Schimmelreiter.m4b",
-                                          "Theodor Storm/Der Schimmelreiter/desc.txt",
-                                          "Theodor Storm/Der Schimmelreiter/metadata.json",
-                                          "Theodor Storm/Der Schimmelreiter/reader.txt"])
+                                          "Theodor Storm/Der Schimmelreiter/metadata.json"])
         self.assertEqual(tree(self.inbox), ["_fertig/Theodor Storm - Der Schimmelreiter (Ungekürzt)/CD1/01.mp3",
                                             "_fertig/Theodor Storm - Der Schimmelreiter (Ungekürzt)/CD1/02.mp3",
                                             "_fertig/Theodor Storm - Der Schimmelreiter (Ungekürzt)/CD2/01.mp3"])
@@ -124,9 +122,7 @@ class PipelineTest(unittest.TestCase):
         self.p.process(j)
         self.assertEqual(j.status, "done", j.log)
         self.assertEqual(tree(self.lib), ["Max Muster/Rätselreihe/02 - Das Rätsel/Das Rätsel.m4b",
-                                          "Max Muster/Rätselreihe/02 - Das Rätsel/desc.txt",
-                                          "Max Muster/Rätselreihe/02 - Das Rätsel/metadata.json",
-                                          "Max Muster/Rätselreihe/02 - Das Rätsel/reader.txt"])
+                                          "Max Muster/Rätselreihe/02 - Das Rätsel/metadata.json"])
 
     def test_manual_without_audible(self):
         tone(os.path.join(self.inbox, "Völlig Unbekannt", "a.mp3"), 1.0,

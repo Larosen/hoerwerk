@@ -154,6 +154,15 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
   await expect(card).toContainText("Das stille Haus");
   await expect(card).toContainText("★ 4.7");
   await expect(card).toContainText("Altes Buch");
+  await card.getByRole("button", { name: "Merken" }).click();
+  await expect(card.getByRole("button", { name: "Gemerkt" })).toBeDisabled();
+  await page.locator("#discoverSections").getByRole("button", { name: /Gesucht/ }).click();
+  await expect(page.locator("#wantedCount")).toHaveText("1");
+  await expect(page.locator(".suggestion")).toContainText("Noch nicht gesucht");   // no indexer in the test setup
+  await expect(page.locator("#discoverState")).toContainText("Kein Indexer");
+  await page.locator(".suggestion").getByRole("button", { name: "Von der Liste nehmen" }).click();
+  await expect(page.locator(".discover-grid .empty")).toBeVisible();
+  await page.locator("#discoverSections").getByRole("button", { name: /Für dich/ }).click();
   await card.getByRole("button", { name: "Suchen" }).click();
   await expect(page.getByRole("tab", { name: "Suchen" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#searchQuery")).toHaveValue("Autorin Das stille Haus");

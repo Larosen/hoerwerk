@@ -21,6 +21,7 @@ from pipeline import Pipeline
 from providers import Providers
 from stores import Settings
 from usenet import Usenet
+from wanted import Wanted
 import i18n
 import applog
 from i18n import t
@@ -57,11 +58,22 @@ class App:
                                  on_filed=lambda dest: self._library_changed(), on_event=self._book_event)
         self.pipeline.providers = Providers(self.pipeline.client,
                                             enabled=lambda: bool(self.settings().get("ab_fallback", True)))
-        self.discover = Discover(self.db, self.pipeline.client, self.library_index, self.settings)
+        self.discover = Discover(self.db, self.pipeline.client, self.library_index, self.settings,
+                                 pending=self._pending_asins)
+        self.wanted = Wanted(self.db, self.usenet, self.library_index, self.notifier, self.settings,
+                             pending=self._pending_asins)
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
         self.events.provide("library", self.library_index.stats)
         self.downloads = DownloadWatcher(self.usenet, self.notifier, self.db)
         self._started = False
+
+    def _pending_asins(self) -> set:
+        """Books on their way: grabbed in the last 30 days or being processed (Entdecken hides them)."""
+        out = {(j.match or {}).get("asin") or (j.hints or {}).get("asin")
+               for j in list(self.pipeline.jobs) if j.status not in ("failed", "cancelled")}
+        for row in self.db.all("SELECT data FROM grabs WHERE time > ?", (time.time() - 30 * 86400,)):
+            out.add((dbm.loads(row["data"]) or {}).get("asin"))
+        return {a for a in out if a}
 
     # -- settings ----------------------------------------------------------
     def settings(self) -> dict:
@@ -102,6 +114,7 @@ class App:
         self.pipeline.start()
         threading.Thread(target=self._library_rescanner, daemon=True, name="library-index").start()
         threading.Thread(target=self.downloads.run, daemon=True, name="download-watch").start()
+        threading.Thread(target=self._wanted_searcher, daemon=True, name="wanted").start()
         return self
 
     def _library_rescanner(self) -> None:
@@ -112,6 +125,17 @@ class App:
             except Exception as e:  # noqa: BLE001 – keep the thread alive
                 applog.error(t("Bibliothek konnte nicht eingelesen werden: {error}", error=e), "Bibliothek")
             time.sleep(max(1, int(self.settings().get("library_rescan_hours") or 6)) * 3600)
+
+
+    def _wanted_searcher(self) -> None:
+        """Search the wanted books again when their interval is up (checked every quarter of an hour)."""
+        time.sleep(120)                                     # let the library index load first
+        while True:
+            try:
+                self.wanted.run_due()
+            except Exception as e:  # noqa: BLE001 – keep the thread alive
+                applog.error(t("Gesucht: Suche fehlgeschlagen: {error}", error=e), "Gesucht")
+            time.sleep(900)
 
 
 def create_app(config: Optional[Config] = None, start: bool = True) -> App:

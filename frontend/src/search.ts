@@ -185,6 +185,7 @@ function pickBook(b: Book): void {
     b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "" }) : null,
     el("span", {}, t("Gesucht wird:") + " ", el("b", {}, `${(b.authors || []).join(", ")} – ${b.title}`),
       el("span", { class: "muted" }, " · " + t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin || "–" }))),
+    typeof rememberButton === "function" ? rememberButton(b) : null,
     el("button", { type: "button", class: "icon-btn", title: t("Auswahl aufheben"), onclick: clearBook }, icon("x"))));
   runSearch();
 }
