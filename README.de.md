@@ -286,6 +286,13 @@ Familienmitglieder wünschen sich ein **Buch**, kein Release: in *Suchen* (Audib
 * **Benachrichtigung an den Anfragenden:** Wer unter *Konto* ein eigenes ntfy-Topic einträgt, erfährt, wenn sein
   Hörbuch da ist oder abgelehnt wurde.
 
+**Bücher, die anders in den Eingang kommen** (hochgeladen, von JDownloader o. Ä.): Die Erkennung vergleicht jedes Buch
+auch mit den offenen Anfragen. Ist es zweifelsfrei ein angefragtes Buch (mindestens die eingestellte
+*Mindest-Sicherheit*, Standard 80 %), wird es automatisch zugeordnet, abgelegt und die Anfrage auf *Verfügbar*
+gesetzt; die Suche dafür hört auf. Darunter wartet es unter *Hörbücher → Zu prüfen* auf einen Admin – das
+angefragte Buch steht dort mit „Anfrage von …“ oben, **Übernehmen** erfüllt die Anfrage, **Bearbeiten** korrigiert
+die Erkennung vorher.
+
 Eine „Gesucht“-Liste aus Version 5.3 wird beim ersten Start als Anfragen des Admins übernommen.
 
 ---

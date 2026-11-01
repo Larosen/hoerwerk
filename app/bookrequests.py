@@ -387,8 +387,8 @@ class Requests:
         else:
             self._follow_job(req)                      # the inbox may be quicker than SABnzbd's history
 
-    def _follow_job(self, req: dict) -> None:
-        job = next((j for j in reversed(self.jobs()) if (j.hints or {}).get("request_id") == req["id"]), None)
+    def _follow_job(self, req: dict, job=None) -> None:
+        job = job or next((j for j in reversed(self.jobs()) if (j.hints or {}).get("request_id") == req["id"]), None)
         if not job:
             return
         if job.status == "done":
@@ -402,13 +402,31 @@ class Requests:
             self._save(req, "processing", t("Download fertig – wird verarbeitet"))
 
     def on_job(self, job) -> None:
-        """Called by the pipeline when a job finishes, fails or waits for review."""
+        """Called by the pipeline when a job is linked to a request, finishes, fails or waits for review.
+
+        Also for books that simply turned up in the inbox (not downloaded by Hörwerk): once the
+        recognition linked them to a request, the request follows them like its own download."""
         rid = (job.hints or {}).get("request_id")
         if not rid:
             return
         req = self.get(int(rid))
-        if req and req["status"] in ("downloading", "processing"):
-            self._follow_job(req)
+        if not req or req["status"] not in OPEN:
+            return
+        if job.status in ("done", "failed", "review"):
+            if req["status"] != "processing":
+                req = self._save(req, "processing", t("Im Eingang gefunden: {name}", name=getattr(job, "name", "")))
+            self._follow_job(req, job)
+        elif req["status"] != "processing":
+            self._save(req, "processing", t("Im Eingang gefunden: {name}", name=getattr(job, "name", "")))
+
+    def open_for_matching(self) -> List[dict]:
+        """Open requests for the recognition in the inbox: [{id, user, key, book}]."""
+        out = []
+        for r in self.db.all("SELECT * FROM requests WHERE status IN (?,?,?,?)", OPEN):
+            user = self.accounts.get(r["user_id"]) if r["user_id"] else None
+            out.append({"id": r["id"], "user": user["name"] if user else "–", "key": r["book_key"],
+                        "book": dbm.loads(r["book"], {})})
+        return out
 
     def _arrived(self, req: dict, dest: str) -> None:
         req["path"] = dest

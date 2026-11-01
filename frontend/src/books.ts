@@ -505,6 +505,7 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
         narrators.length ? t("Sprecher: {names}", { names: narrators.slice(0, 3).join(", ") + (narrators.length > 3 ? " …" : "") }) : "",
       ].filter(Boolean).join(" · ")),
       el("div", { class: "cand-meta" },
+        c.request_id ? el("span", { class: "rtag req-pending", title: t("Dieses Buch wurde angefragt – Übernehmen erfüllt die Anfrage") }, t("Anfrage von {name}", { name: c.request_user || "–" })) : null,
         c.series ? el("span", { class: "tag" }, `${c.series}${c.series_position ? " #" + c.series_position : ""}`) : null,
         c.format_type && c.format_type !== "unabridged" ? el("span", { class: "tag soft" }, c.format_type === "abridged" ? t("gekürzt") : c.format_type) : null,
         el("span", { class: diff === null ? "" : diff <= 0.03 ? "ok" : diff > 0.15 ? "err" : "" },

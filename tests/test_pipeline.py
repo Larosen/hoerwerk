@@ -228,6 +228,37 @@ class PipelineTest(unittest.TestCase):
         self.p.process(j)
         self.assertIn("Christopher Paolini/Eragon/01 - Eragon/Eragon.m4b", tree(self.lib))
 
+    def test_inbox_book_is_linked_to_an_open_request(self):
+        """Something in the inbox that clearly is a requested book: linked and filed without asking."""
+        linked = []
+        self.p.open_requests = lambda: [{"id": 7, "user": "Eva", "key": "asin:B0STORM001",
+                                         "book": {"asin": "B0STORM001", "title": "Der Schimmelreiter",
+                                                  "authors": ["Theodor Storm"]}}]
+        self.p.on_request = linked.append
+        tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "a.mp3"), 4.0)
+        j = self.run_all()[0]
+        self.assertEqual(j.status, "done", j.log)
+        self.assertEqual(j.hints["request_id"], 7)
+        self.assertEqual(linked, [j])
+        self.assertTrue(any("Anfrage von Eva" in line for line in j.log))
+
+    def test_unsure_request_match_waits_for_an_admin(self):
+        """Below the minimum certainty: the requested book is offered first, an admin decides."""
+        linked = []
+        self.p.open_requests = lambda: [{"id": 9, "user": "Tom", "key": "book:das ratsel|muster",
+                                         "book": {"title": "Das Rätsel", "authors": ["Max Muster"], "source": "bookbeat",
+                                                  "id": "bookbeat:42"}}]
+        self.p.on_request = linked.append
+        tone(os.path.join(self.inbox, "Raetsel", "a.mp3"), 3.0)
+        j = self.run_all()[0]
+        self.assertEqual(j.status, "review", j.log)
+        self.assertEqual(linked, [])
+        mine = [c for c in j.candidates if c.get("request_id") == 9]
+        self.assertTrue(mine)
+        self.p.choose(j.id, pipeline.candidate_id(mine[0]))
+        self.assertEqual((j.hints["request_id"], linked), (9, [j]))
+        self.assertNotIn("request_id", j.match)
+
     def test_existing_author_folder_is_reused(self):
         os.makedirs(os.path.join(self.lib, "Storm, Theodor"))
         tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "a.mp3"), 4.0)
