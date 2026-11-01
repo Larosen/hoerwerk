@@ -146,6 +146,7 @@ def parse_results(xml: bytes, indexer: str) -> List[dict]:
     out = []
     for item in root.iter("item"):
         attrs = {a.get("name"): a.get("value") for a in item.findall(f"{NEWZNAB_NS}attr")}
+        cats = [a.get("value") for a in item.findall(f"{NEWZNAB_NS}attr") if a.get("name") == "category" and a.get("value")]
         enc = item.find("enclosure")
         link = (enc.get("url") if enc is not None else None) or item.findtext("link")
         if not _http_url(link):
@@ -165,11 +166,53 @@ def parse_results(xml: bytes, indexer: str) -> List[dict]:
             "published": ts,
             "grabs": int(attrs["grabs"]) if (attrs.get("grabs") or "").isdigit() else None,
             "category": attrs.get("category") or item.findtext("category"),
+            "categories": cats,
+            "category_name": (item.findtext("category") or "").strip(),
             "details": _http_url(item.findtext("comments")) or _http_url(item.findtext("guid")),
             "indexer": indexer,
             **release_info(title),
         })
     return out
+
+
+AUDIOBOOK_NAME = re.compile(r"(?i)audio\s*-?\s*book|h(?:ö|oe|o)rbu(?:ch|echer|cher)|h(?:ö|oe|o)rspiel|spoken|abook")
+_CAPS: Dict[str, tuple] = {}            # indexer url -> (time, audiobook category ids)
+CAPS_TTL = 24 * 3600
+
+
+AUDIO_NAME = re.compile(r"(?i)\baudio\b|\bmusi[ck]\b|\bmp3\b|lossless|flac")
+
+
+def audiobook_categories(caps_xml: bytes) -> List[str]:
+    """Category ids where an indexer files audiobooks, read from its capabilities (t=caps).
+
+    Not only "Audiobook": old free readings (Goethe & co.) often sit under "Audio > Lossless" or
+    "Audio > MP3". So the whole audio area counts – the standard 3000 range, every main category called
+    "Audio" with all its sub-categories, and the indexer's own "Hörbuch"/"Hörspiel" categories anywhere.
+    The release verdict (author and title) sorts out the music albums that come along."""
+    root = _xml(caps_xml)
+    out = []
+    for cat in root.iter("category"):
+        cid, name = cat.get("id") or "", cat.get("name") or ""
+        audio_main = cid.isdigit() and (3000 <= int(cid) < 4000 or AUDIO_NAME.search(name))
+        if cid.isdigit() and (audio_main or AUDIOBOOK_NAME.search(name)):
+            out.append(cid)
+        for sub in cat.findall("subcat"):
+            sid = sub.get("id") or ""
+            if sid.isdigit() and (audio_main or AUDIOBOOK_NAME.search(sub.get("name") or "")):
+                out.append(sid)
+    return list(dict.fromkeys(out))
+
+
+def is_audio(result: dict, cats: List[str]) -> bool:
+    """Result from a search over all categories: keep it only if it is in the audio area."""
+    ids = [str(c) for c in (result.get("categories") or [result.get("category")]) if c]
+    if any(c in cats for c in ids) or any(c.isdigit() and 3000 <= int(c) < 4000 for c in ids):
+        return True
+    name = result.get("category_name") or ""
+    if name:
+        return bool(AUDIOBOOK_NAME.search(name) or AUDIO_NAME.search(name))
+    return not ids                      # the indexer says nothing about the category: let the verdict decide
 
 
 class Newznab:
@@ -188,14 +231,38 @@ class Newznab:
             raise UsenetError(f"{self.name}: {_redact(str(e))}") from e
 
     def test(self) -> str:
-        root = _xml(self._call(t="caps"))
+        raw = self._call(t="caps")
+        root = _xml(raw)
         _check_error(root)
         server = root.find("server")
-        return (server.get("title") if server is not None else None) or "OK"
+        title = (server.get("title") if server is not None else None) or "OK"
+        found = audiobook_categories(raw)
+        _CAPS[self.url] = (time.time(), found)
+        cats = list(dict.fromkeys([c for c in self.categories.split(",") if c] + found))
+        return t("{title} · Hörbuch-Kategorien: {cats}", title=title, cats=", ".join(cats))
+
+    def audiobook_cats(self) -> List[str]:
+        """The configured categories plus the indexer's own audiobook categories (asked once a day)."""
+        own = [c for c in self.categories.split(",") if c]
+        hit = _CAPS.get(self.url)
+        if not hit or time.time() - hit[0] > CAPS_TTL:
+            try:
+                found = audiobook_categories(self._call(t="caps"))
+            except (UsenetError, ET.ParseError):
+                found = []
+            hit = (time.time(), found)
+            _CAPS[self.url] = hit
+        return list(dict.fromkeys(own + hit[1] + ["3000"]))   # 3000 = the whole audio area (Newznab standard)
 
     def search(self, query: str, limit: int = 100) -> List[dict]:
-        return parse_results(self._call(t="search", q=query, cat=self.categories, limit=limit, extended=1),
-                             self.name)
+        cats = self.audiobook_cats()
+        found = parse_results(self._call(t="search", q=query, cat=",".join(cats), limit=limit, extended=1), self.name)
+        if found:
+            return found
+        # Nothing in the audiobook categories: many indexers file German audiobooks elsewhere –
+        # search all categories and keep what lies in the audio area (the verdict checks the rest)
+        everything = parse_results(self._call(t="search", q=query, limit=limit, extended=1), self.name)
+        return [r for r in everything if is_audio(r, cats)]
 
 
 # --------------------------------------------------------------------------- #

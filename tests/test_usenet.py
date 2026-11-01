@@ -5,6 +5,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from urllib import parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -128,7 +129,7 @@ class UsenetTest(unittest.TestCase):
 
     def test_tests(self):
         idx = {i["name"]: i["id"] for i in self.u.public_config()["indexers"]}
-        self.assertEqual(self.u.test("indexer", idx["Eins"]), "idx1")
+        self.assertEqual(self.u.test("indexer", idx["Eins"]), "idx1 · Hörbuch-Kategorien: 3030")
         with self.assertRaises(usenet.UsenetError) as cm:
             self.u.test("indexer", idx["Kaputt"])
         self.assertIn("Incorrect user credentials", str(cm.exception))
@@ -148,7 +149,7 @@ class UsenetTest(unittest.TestCase):
         self.assertNotIn("link", top)
         self.assertNotIn("SECRETKEY", json.dumps(res))
         cats = [q.get("cat") for p, q in Fake.calls if q.get("t") == "search"]
-        self.assertIn("3030,7020", cats)
+        self.assertIn("3030,7020,3000", cats)          # own categories kept, the whole audio area (3000) added
 
     def test_send_to_sab_and_hint(self):
         res = self.u.search("Storm Schimmelreiter", language="de")
@@ -216,3 +217,61 @@ class UsenetTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AudiobookCategoryTest(unittest.TestCase):
+    """Indexers with their own audiobook categories (like many German ones): found and searched."""
+
+    CAPS = b"""<?xml version="1.0"?><caps><server title="TM"/><categories>
+      <category id="3000" name="Audio"><subcat id="3010" name="MP3"/><subcat id="3030" name="Audiobook"/>
+        <subcat id="3040" name="Lossless"/></category>
+      <category id="100000" name="Deutsch"><subcat id="100030" name="H&#246;rbuch DE"/><subcat id="100040" name="H&#246;rspiele"/>
+        <subcat id="100050" name="Filme"/></category>
+      <category id="7000" name="Books"><subcat id="7020" name="eBook"/></category></categories></caps>"""
+
+    def item(self, title, cat, cat_name=""):
+        return (f'<item><title>{title}</title><link>https://idx/get/1</link><category>{cat_name}</category>'
+                f'<enclosure url="https://idx/get/{abs(hash(title))}" length="1000"/>'
+                f'<newznab:attr name="category" value="{cat}"/></item>')
+
+    def feed(self, *items):
+        return ('<?xml version="1.0"?><rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/">'
+                f'<channel>{"".join(items)}</channel></rss>').encode()
+
+    def setUp(self):
+        usenet._CAPS.clear()
+        self.calls = []
+
+    def test_own_categories_from_caps(self):
+        # the whole audio area (Goethe readings often sit under "Audio > Lossless"), plus own audiobook categories
+        self.assertEqual(usenet.audiobook_categories(self.CAPS), ["3000", "3010", "3030", "3040", "100030", "100040"])
+
+    def test_every_audio_subcategory_counts(self):
+        """The categories of a real German indexer: audiobooks can be in any of them."""
+        caps = b"""<caps><categories><category id="3000" name="Audio">
+          <subcat id="3010" name="MP3"/><subcat id="3020" name="Video"/><subcat id="3030" name="Audiobook"/>
+          <subcat id="3040" name="Lossless"/><subcat id="3060" name="Audiobook - DE"/><subcat id="3070" name="Audiobook - ES"/>
+          <subcat id="3080" name="Audiobook - FR"/><subcat id="3999" name="Other"/></category>
+          <category id="2000" name="Movies"><subcat id="2040" name="HD"/></category></categories></caps>"""
+        self.assertEqual(usenet.audiobook_categories(caps),
+                         ["3000", "3010", "3020", "3030", "3040", "3060", "3070", "3080", "3999"])
+
+    def test_searches_own_categories_then_falls_back_to_all(self):
+        def get(url):
+            q = dict(parse.parse_qsl(parse.urlparse(url).query))
+            self.calls.append(q)
+            if q["t"] == "caps":
+                return self.CAPS
+            if "cat" in q:
+                return self.feed()                                   # nothing in the audiobook categories
+            return self.feed(self.item("Shida Bazyar-Die Luecken (Ungekuerzt) DE MP3-ABook", "100031", "Audio > Audiobook DE"),
+                             self.item("Shida Bazyar Die Luecken German EPUB", "7020", "Books > eBook"),
+                             self.item("Die Luecken 2026 German 1080p", "2040", "Movies > HD"))
+        n = usenet.Newznab("TM", "https://idx", "key", "3030", get)
+        found = n.search("Shida Bazyar")
+        self.assertEqual([r["title"] for r in found], ["Shida Bazyar-Die Luecken (Ungekuerzt) DE MP3-ABook"])
+        searches = [c for c in self.calls if c["t"] == "search"]
+        self.assertEqual(searches[0]["cat"], "3030,3000,3010,3040,100030,100040")       # 3000 is in already
+        self.assertNotIn("cat", searches[1])
+        n.search("noch mal")
+        self.assertEqual(sum(1 for c in self.calls if c["t"] == "caps"), 1)    # caps only once a day

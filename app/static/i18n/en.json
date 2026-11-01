@@ -863,5 +863,6 @@
  "Anfrage von {name}": "Request by {name}",
  "Dieses Buch wurde angefragt – Übernehmen erfüllt die Anfrage": "This book was requested – taking it fulfils the request",
  "Gehört zur Anfrage von {name}": "Belongs to the request by {name}",
- "Im Eingang gefunden: {name}": "Found in the inbox: {name}"
+ "Im Eingang gefunden: {name}": "Found in the inbox: {name}",
+ "{title} · Hörbuch-Kategorien: {cats}": "{title} · audiobook categories: {cats}"
 }
