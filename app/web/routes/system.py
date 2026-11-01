@@ -162,7 +162,7 @@ def diagnostics(req: Req):
     else:
         add("connection", "warn", t("Keine öffentliche Adresse eingetragen – Einladungslinks gehen erst danach"), id="public_url",
             detail=t("Einstellungen → Allgemein, oder Hörwerk einmal über den Reverse-Proxy öffnen."),
-            hint="PUBLIC_URL=https://hoerwerk.example.de")
+            hint="https://hoerwerk.example.de")
     host = conn.get("host", "").rsplit(":", 1)[0].strip("[]").lower()
     if cfg.allowed_hosts:
         add("connection", "ok", t("Erlaubte Namen: {hosts}", hosts=", ".join(sorted(cfg.allowed_hosts))), id="hosts",

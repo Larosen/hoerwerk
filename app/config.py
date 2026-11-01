@@ -102,7 +102,7 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
     return {
         "language": env.get("APP_LANGUAGE", "de").lower(),  # de|en
         # the address from the internet (behind Pangolin & co.) – invitation links always point there
-        "public_url": public_url(env.get("PUBLIC_URL", "")),
+        "public_url": "",          # set under Einstellungen → Allgemein, or taken over from the reverse proxy
         # M4B encoding
         "bitrate": env.get("AAC_BITRATE", "auto"),          # auto|64k|96k|…
         "force_mono": b("FORCE_MONO", False),

@@ -349,7 +349,8 @@ from the home network; from outside the setup code from `docker logs hoerwerk` i
 * **Invitations** (*Settings → Accounts*, like Wizarr): create a link and send it e.g. via WhatsApp. Whoever opens it
   picks their own name and password, gets a family account and is signed in right away. Per link: a note ("Mum"),
   validity (1, 7, 30 days or unlimited), how often it can be used, quota. The list shows open, used (by whom), expired
-  or revoked; revoking works any time. A link never creates an admin. Links always point to the public address (`PUBLIC_URL`), also when created at home.
+  or revoked; revoking works any time. A link never creates an admin. Links always point to the public address (*Settings → General*), also when created at home;
+  if it is not set yet, the invitations section says where to enter it.
   Passwords must meet the rules (12+ characters, mixed or a sentence, no name, no “Hörwerk”) – a checklist shows what
   is missing while typing, with a pointer to password managers. Wrong links count like wrong passwords (block
   after 5 tries, `auth.log` → CrowdSec); a single-use link yields only one account even when opened at the same time.
@@ -435,7 +436,6 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `AAC_BITRATE` | `auto` | `auto` (like the source, max. 128k) or a fixed value |
 | `FORCE_MONO` | `false` | Output mono |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` or `tag` |
-| `PUBLIC_URL` | – | Address from the internet, e.g. `https://audiobooks.example.com` – invitation links always point there (otherwise taken over on the first visit through the reverse proxy; changeable under Settings → General) |
 | `TRUSTED_PROXIES` | – | IPs/networks of the reverse proxy (Pangolin/Newt, Traefik), e.g. `172.18.0.0/16` – only from there `X-Forwarded-For` counts |
 | `COOKIE_SECURE` | `auto` | Login cookie only over HTTPS: `auto` (when the proxy reports HTTPS), `true`, `false` |
 | `REQUEST_QUOTA` | `5` | Book requests per user and month (adjustable per account) |
