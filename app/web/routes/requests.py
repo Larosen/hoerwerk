@@ -129,3 +129,12 @@ def request_grab(req: Req, rid: str):
 def request_block(req: Req, rid: str):
     item = _searcher(req, rid)
     return _out(req, _call(req.app.requests.block, item["id"], str(req.get("title") or "")[:300]))
+
+
+# -- statistics per account (admins) ----------------------------------------------
+@route("GET", "/api/stats")
+def stats(req: Req):
+    try:
+        return req.app.stats.summary(str(req.query.get("period") or "365"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))

@@ -111,7 +111,7 @@ test("Einstellungen: Übersicht, Healthcheck mit ffmpeg und Proxy, Design bleibt
   const errors = await open(page);
   await page.locator("#settingsBtn").click();
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(10);
+  await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(11);
   await page.locator("#settingsHub").getByRole("link", { name: /Healthcheck/ }).click();
   await expect(page).toHaveURL(/\/settings\/health$/);
   await expect(page.locator("#healthList")).toContainText("ffmpeg");
@@ -333,6 +333,23 @@ test("Suchen: ganze Reihe anfragen – Bände wählen, eine Karte unter Anfragen
   await card.locator(".s-actions .icon-btn").click();
   await page.locator("#confirmDialog button[value=ok]").click();
   await expect(card).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Statistik: je Konto, Zeitraum wählbar, Monate als Balken und als Tabelle", async ({ page }) => {
+  const errors = await open(page);
+  await page.goto("/settings/stats");
+  await expect(page.locator("#settingsTitle")).toHaveText("Statistik");
+  await expect(page.locator("#statsTiles .stat-tile")).toHaveCount(5);
+  await expect(page.locator("#statsRows tr").first()).toContainText("admin");
+  await expect(page.locator("#statsChart .col")).toHaveCount(12);
+  const asked: string[] = [];
+  page.on("request", (r) => { if (r.url().includes("/api/stats")) asked.push(new URL(r.url()).searchParams.get("period") || ""); });
+  await page.locator("#statsPeriod").getByText("Gesamt").click();
+  await expect.poll(() => asked).toContain("all");
+  await page.locator(".stats-months summary").click();
+  await expect(page.locator("#statsMonthRows tr")).toHaveCount(12);
+  await page.locator("#statsPeriod").getByText("12 Monate").click();               // back for the next tests
   expect(errors).toEqual([]);
 });
 

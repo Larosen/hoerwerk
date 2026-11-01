@@ -225,6 +225,7 @@
         <a href="/settings/discover" data-section="discover">Entdecken &amp; Anfragen <small>Qualität, Kontingent</small></a>
         <a href="/settings/notify" data-section="notify">Benachrichtigungen <small>ntfy aufs Handy</small></a>
         <a href="/settings/users" data-section="users">Konten <small>Familie, Rechte, Admin-Protokoll</small></a>
+        <a href="/settings/stats" data-section="stats">Statistik <small>wer wie viel angefragt hat</small></a>
         <a href="/settings/logs" data-section="logs">Protokoll <small>was gerade passiert</small></a>
       </nav>
     </section>
@@ -485,6 +486,44 @@
       <ul id="auditList" class="audit-list"></ul>
     </details>
     </div>
+    <div class="dialog-body page-body" data-page="stats">
+    <div class="stats-tools">
+      <div class="seg" role="radiogroup" aria-label="Zeitraum" id="statsPeriod">
+        <label><input type="radio" name="statsPeriod" value="30"><span>30 Tage</span></label>
+        <label><input type="radio" name="statsPeriod" value="90"><span>90 Tage</span></label>
+        <label><input type="radio" name="statsPeriod" value="365" checked><span>12 Monate</span></label>
+        <label><input type="radio" name="statsPeriod" value="all"><span>Gesamt</span></label>
+      </div>
+    </div>
+    <div id="statsTiles" class="stat-tiles"></div>
+    <h3 class="stats-h">Je Konto</h3>
+    <div class="table-scroll">
+      <table class="stats-table">
+        <thead><tr>
+          <th>Konto</th>
+          <th class="num" title="Eine Reihe zählt als eine Anfrage">Anfragen</th>
+          <th class="num">Bücher</th>
+          <th class="num">Verfügbar</th>
+          <th class="num">Offen</th>
+          <th class="num" title="Abgelehnt / fehlgeschlagen">Abgel./Fehl.</th>
+          <th class="num" title="Spielzeit aller nicht abgelehnten Bücher">Spielzeit</th>
+          <th class="num" title="Platz der verfügbaren Bücher in der Bibliothek">Speicher</th>
+          <th class="num" title="Median: von der Anfrage bis verfügbar">Wartezeit</th>
+          <th class="num">Englisch</th>
+          <th>Häufigstes Genre</th>
+          <th>Zuletzt</th>
+        </tr></thead>
+        <tbody id="statsRows"></tbody>
+      </table>
+    </div>
+    <h3 class="stats-h">Angefragte Bücher je Monat <small class="muted">letzte 12 Monate, alle Konten</small></h3>
+    <div id="statsChart" class="month-chart" role="img"></div>
+    <details class="stats-months"><summary>Als Tabelle</summary>
+      <table class="stats-table"><thead><tr><th>Monat</th><th class="num">Bücher</th><th class="num">Spielzeit</th></tr></thead>
+        <tbody id="statsMonthRows"></tbody></table>
+    </details>
+    <p class="muted small">Gezählt werden Anfragen. Spielzeit laut Shop; Speicher und Wartezeit nur für Bücher, die schon in der Bibliothek liegen. Abgelehnte Bücher zählen bei der Spielzeit nicht mit.</p>
+    </div>
     <div class="dialog-body page-body" data-page="logs">
     <div class="log-tools">
       <select id="logLevel" aria-label="Was">
@@ -703,6 +742,7 @@
 <script src="/static/discover.js"></script>
 <script src="/static/notify.js"></script>
 <script src="/static/logs.js"></script>
+<script src="/static/stats.js"></script>
 <script src="/static/account.js"></script>
 <script src="/static/upload.js"></script>
 <script src="/static/settings.js"></script>
