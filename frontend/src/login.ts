@@ -41,7 +41,27 @@ async function submitForm(form: HTMLFormElement, url: string, body: Record<strin
   } finally { if (btn) btn.disabled = false; }
 }
 
+/** /invite/<token>: the invited person picks name and password and is signed in right away. */
+async function initInvite(token: string): Promise<void> {
+  const form = $<HTMLFormElement>("#inviteForm");
+  const url = `/api/invite/${encodeURIComponent(token)}`;
+  try {
+    const inv = await api<{ ok: boolean; note: string; expires: number | null }>("GET", url);
+    $("#inviteNote").textContent = inv.expires
+      ? t("Der Link gilt bis {date}.", { date: new Date(inv.expires * 1000).toLocaleDateString(LOCALE, { dateStyle: "long" }) }) : "";
+  } catch (e) { showError(errMsg(e)); return; }
+  form.hidden = false;
+  field(form, "name").focus();
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (field(form, "password").value !== field(form, "password2").value) { showError(t("Die Passwörter stimmen nicht überein")); return; }
+    submitForm(form, url, { name: field(form, "name").value, password: field(form, "password").value });
+  });
+}
+
 async function initLogin(): Promise<void> {
+  const invite = location.pathname.match(/^\/invite\/([A-Za-z0-9_-]+)$/);
+  if (invite) { initInvite(invite[1]); return; }
   let st: AuthStatus;
   try { st = await api<AuthStatus>("GET", "/api/auth/status"); } catch (e) { showError(errMsg(e)); return; }
   if (st.user) { location.replace(nextPage()); return; }

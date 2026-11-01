@@ -19,6 +19,7 @@ from events import Stream
 from web import router
 from web.router import File, HTTPException, Reply, Req
 import applog
+from invites import valid_token_format
 import authlog
 from i18n import t
 
@@ -278,6 +279,10 @@ class Handler(BaseHTTPRequestHandler):
             if url.path[len("/static/"):] not in PUBLIC_STATIC and self._user(token) is None:
                 return self._json(401, {"error": t("Bitte anmelden"), "login": True})
             return self._static(url.path)
+        if reading and url.path.startswith("/invite/"):     # invitation link: the login page shows the sign-up form
+            if not valid_token_format(url.path[len("/invite/"):]):
+                return self._json(404, {"error": t("Nicht gefunden")})
+            return self._static("/static/login.html")
         if reading and url.path in ("/", LOGIN_PAGE):
             signed_in = self._user(token) is not None
             if url.path == "/" and not signed_in:

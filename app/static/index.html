@@ -422,8 +422,8 @@
     <div class="save-bar"><button type="submit" class="btn primary">Speichern &amp; testen</button></div>
     </form>
     <div class="dialog-body page-body" data-page="users">
-    <p class="muted small">Admins dürfen alles. Nutzer sehen <b>Entdecken</b> und – mit den Rechten unten – fremde Anfragen
-      oder die Release-Suche. Kontingent: Buchanfragen pro Monat (leer = Standard <span id="defaultQuota"></span>, 0 = keine).</p>
+    <p class="muted small">Admins dürfen alles. Nutzer sehen <b>Entdecken</b>, <b>Suchen</b> und ihre <b>Anfragen</b> – mit den
+      Rechten unten auch fremde Anfragen oder die Release-Suche. Kontingent: Buchanfragen pro Monat (leer = Standard <span id="defaultQuota"></span>, 0 = keine).</p>
     <div class="table-wrap">
       <table class="users">
         <thead><tr><th>Name</th><th>Rolle</th><th title="Sieht die Anfragen aller Nutzer">Alle Anfragen sehen</th>
@@ -433,9 +433,26 @@
       </table>
     </div>
     <fieldset>
-      <legend>Neues Konto</legend>
+      <legend>Einladungen</legend>
+      <p class="muted small">Ein Link zum Weitergeben, z. B. per WhatsApp oder Mail: Wer ihn öffnet, wählt selbst Name und
+        Passwort und bekommt ein Familienkonto. Der Link läuft ab und lässt sich jederzeit widerrufen.</p>
       <div class="grid2">
-        <label>Name <input id="newUserName" maxlength="40" autocomplete="off" spellcheck="false"></label>
+        <label>Für wen <small>nur als Notiz für dich, z. B. „Mama“</small><input id="inviteNote" type="text" maxlength="60" autocomplete="off"></label>
+        <label>Gültig
+          <select id="inviteDays"><option value="1">1 Tag</option><option value="7" selected>7 Tage</option>
+            <option value="30">30 Tage</option><option value="0">unbegrenzt</option></select></label>
+        <label>Wie oft nutzbar
+          <select id="inviteUses"><option value="1" selected>einmal</option><option value="5">5-mal</option>
+            <option value="20">20-mal</option></select></label>
+        <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="inviteQuota" type="number" min="0" max="1000"></label>
+      </div>
+      <div class="row gap"><button type="button" class="btn primary" id="inviteCreate">Einladung erstellen</button></div>
+      <ul id="inviteList" class="invite-list"></ul>
+    </fieldset>
+    <fieldset>
+      <legend>Neues Konto <small class="muted">selbst anlegen, ohne Einladung</small></legend>
+      <div class="grid2">
+        <label>Name <input id="newUserName" type="text" maxlength="40" autocomplete="off" spellcheck="false"></label>
         <label>Startpasswort <small>mindestens 10 Zeichen – bitte selbst ändern lassen</small>
           <input id="newUserPw" type="text" maxlength="256" autocomplete="off" spellcheck="false"></label>
         <label>Rolle <select id="newUserRole"><option value="user">Nutzer</option><option value="admin">Admin</option></select></label>

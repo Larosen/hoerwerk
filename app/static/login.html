@@ -58,6 +58,21 @@
     <button class="btn primary" type="submit">Admin-Konto anlegen</button>
   </form>
 
+  <form id="inviteForm" class="login-form" hidden>
+    <p class="setup-note"><b>Du bist zu Hörwerk eingeladen!</b> Wähle einen Namen und ein Passwort – damit meldest du dich
+      künftig an. <span id="inviteNote"></span></p>
+    <label>Dein Name <small>z. B. dein Vorname</small>
+      <input name="name" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="40">
+    </label>
+    <label>Passwort <small>mindestens 10 Zeichen – gut merken oder im Passwort-Manager speichern</small>
+      <input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="256">
+    </label>
+    <label>Passwort wiederholen
+      <input name="password2" type="password" autocomplete="new-password" required minlength="10" maxlength="256">
+    </label>
+    <button class="btn primary" type="submit">Konto anlegen</button>
+  </form>
+
   <p id="loginError" class="login-error" role="alert" hidden></p>
 </main>
 <div id="toast" class="toast" role="status"></div>

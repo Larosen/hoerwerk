@@ -11,6 +11,7 @@ import authlog
 import secrets
 from abs import Audiobookshelf
 from accounts import Accounts
+from invites import Invites
 import tagger
 from config import Config, default_settings
 from discover import Discover
@@ -42,6 +43,7 @@ class App:
             applog.info(f"Übernommen in die Datenbank: {', '.join(imported)}")
         authlog.setup(config.config_dir)
         self.accounts = Accounts(self.db)
+        self.invites = Invites(self.db, self.accounts)
         self.setup_code = ""
         self._first_account()
         self.defaults = default_settings(config.env or os.environ)

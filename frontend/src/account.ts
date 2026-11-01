@@ -161,7 +161,88 @@ function userRow(u: UserInfo): HTMLTableRowElement {
       } }, icon("x"))));
 }
 
+// -- invitations by link (Einstellungen → Konten) ------------------------------------
+interface Invite {
+  id: number; token: string; note: string; created: number; created_by: string; expires: number | null;
+  max_uses: number; uses: number; quota: number | null; used_by: { name: string; time: number }[];
+  status: "open" | "used" | "expired" | "revoked";
+}
+const INVITE_STATUS: Record<Invite["status"], () => string> = {
+  open: () => t("offen"), used: () => t("benutzt"), expired: () => t("abgelaufen"), revoked: () => t("widerrufen"),
+};
+let inviteBase = "";
+
+function inviteLink(inv: Invite): string {
+  return `${inviteBase || location.origin}/invite/${inv.token}`;
+}
+
+/** Copy to the clipboard – over plain http (LAN) browsers refuse that, then the link is selected for copying by hand. */
+async function copyInvite(inv: Invite, input: HTMLInputElement): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(inviteLink(inv));
+    toast(t("Link kopiert – jetzt z. B. in WhatsApp einfügen"));
+  } catch {
+    input.focus();
+    input.select();
+    toast(t("Link markiert – jetzt kopieren"));
+  }
+}
+
+function inviteRow(inv: Invite): HTMLLIElement {
+  const active = inv.status === "open";
+  const date = (ts: number): string => new Date(ts * 1000).toLocaleDateString(LOCALE, { dateStyle: "medium" });
+  const input = el("input", { type: "text", readonly: true, value: inviteLink(inv), "aria-label": t("Einladungslink"),
+    onclick: (e: MouseEvent) => (e.target as HTMLInputElement).select() });
+  const share = typeof navigator.share === "function" ? el("button", { type: "button", class: "btn small", onclick: () => {
+    navigator.share({ title: "Hörwerk", text: t("Deine Einladung zu Hörwerk – Hörbücher entdecken und wünschen:"), url: inviteLink(inv) })
+      .catch(() => { /* closed */ });
+  } }, t("Teilen")) : null;
+  return el("li", { class: active ? "" : "inactive" },
+    el("div", { class: "invite-head" },
+      el("b", {}, inv.note || t("Einladung")),
+      el("span", { class: `rtag ${active ? "ok" : ""}` }, INVITE_STATUS[inv.status]()),
+      el("span", { class: "muted small" }, [
+        inv.expires ? t("gültig bis {date}", { date: date(inv.expires) }) : t("ohne Ablauf"),
+        t("{n} von {max} genutzt", { n: inv.uses, max: inv.max_uses }),
+        inv.used_by.length ? t("von {names}", { names: inv.used_by.map((u) => u.name).join(", ") }) : "",
+      ].filter(Boolean).join(" · "))),
+    active ? el("div", { class: "invite-link" }, input,
+      el("button", { type: "button", class: "btn small primary", onclick: () => copyInvite(inv, input) }, t("Kopieren")), share) : null,
+    el("div", { class: "row gap" },
+      active ? el("button", { type: "button", class: "btn small ghost", onclick: async () => {
+        if (!(await confirmBox(t("Einladung widerrufen? Der Link funktioniert dann nicht mehr."), t("Widerrufen")))) return;
+        try { await api("POST", `/api/invites/${inv.id}/revoke`); } catch (e) { toast(errMsg(e), true); }
+        loadInvites();
+      } }, t("Widerrufen")) : el("button", { type: "button", class: "btn small ghost", onclick: async () => {
+        try { await api("DELETE", `/api/invites/${inv.id}`); } catch (e) { toast(errMsg(e), true); }
+        loadInvites();
+      } }, t("Aus der Liste entfernen"))));
+}
+
+async function loadInvites(): Promise<void> {
+  try {
+    const res = await api<{ invites: Invite[]; app_url: string }>("GET", "/api/invites");
+    inviteBase = (res.app_url || "").replace(/\/+$/, "");
+    $("#inviteList").replaceChildren(...res.invites.map(inviteRow));
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+async function createInvite(): Promise<void> {
+  const quota = $<HTMLInputElement>("#inviteQuota").value;
+  try {
+    const inv = await api<Invite>("POST", "/api/invites", {
+      note: $<HTMLInputElement>("#inviteNote").value, days: Number($<HTMLSelectElement>("#inviteDays").value),
+      uses: Number($<HTMLSelectElement>("#inviteUses").value), quota: quota === "" ? null : Number(quota),
+    });
+    $<HTMLInputElement>("#inviteNote").value = "";
+    await loadInvites();
+    const input = document.querySelector<HTMLInputElement>("#inviteList li:first-child input");
+    if (input) copyInvite(inv, input);
+  } catch (e) { toast(errMsg(e), true); }
+}
+
 async function loadUsers(): Promise<void> {
+  loadInvites();
   try {
     const res = await api<{ users: UserInfo[]; default_quota: number }>("GET", "/api/users");
     $("#defaultQuota").textContent = String(res.default_quota);
@@ -209,6 +290,7 @@ function initAccount(): void {
   $(".audit-box").addEventListener("toggle", (e) => { if ((e.target as HTMLDetailsElement).open) loadAudit(); });
   $("#newUserPwGen").addEventListener("click", () => { $<HTMLInputElement>("#newUserPw").value = randomPassword(); });
   $("#newUserSave").addEventListener("click", createUser);
+  $("#inviteCreate").addEventListener("click", createInvite);
 }
 
 initAccount();
