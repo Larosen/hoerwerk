@@ -51,6 +51,7 @@ class App:
         i18n.set_language(self.settings().get("language", "de"))
         self.events = EventBus()
         self.notifier = Notifier(self.db)
+        self.notifier.public_url = lambda: self.settings().get("public_url", "")
         self.engine = Engine({"encode": config.encode_workers, "io": config.io_workers},
                              on_change=self.events.notifier("audiobooks"))
         self.usenet = Usenet(self.db)
@@ -177,7 +178,8 @@ class App:
         try:
             n = self.requests.import_wanted()
             if n:
-                applog.info(t("{n} Bücher aus „Gesucht“ als Anfragen übernommen", n=n), "Anfragen")
+                applog.info(t("1 Buch aus „Gesucht“ als Anfrage übernommen") if n == 1
+                            else t("{n} Bücher aus „Gesucht“ als Anfragen übernommen", n=n), "Anfragen")
         except Exception as e:  # noqa: BLE001
             applog.error(t("Anfragen: {error}", error=e), "Anfragen")
         while True:

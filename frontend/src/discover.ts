@@ -41,7 +41,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     reason = el("p", { class: "reason" }, t("Passt zu: {titles}", { titles: b.because.map((x) => `„${x}“`).join(", ") }));
   } else if (b.review) {
     reason = el("p", { class: "reason" }, t("Besprochen bei {source}", { source: b.review.source }),
-      b.review.notes ? " · " + t("{n} Kritiken in der Presse", { n: b.review.notes }) : null,
+      b.review.notes ? " · " + plural(b.review.notes, t("1 Kritik in der Presse"), t("{n} Kritiken in der Presse", { n: b.review.notes })) : null,
       b.review.link ? el("span", {}, " · ", el("a", { href: b.review.link, target: "_blank", rel: "noopener noreferrer" }, t("Kritik lesen"))) : null);
   }
   return el("li", { class: "suggestion" },
@@ -49,9 +49,9 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
       el("span", { class: "s-author" }, (b.authors || []).join(", ")),
-      genreTag(b),
+      el("span", { class: "tag-row" }, genreTag(b), langTag(b)),
       b.narrators?.length ? el("span", { class: "muted small" }, t("gelesen von {names}", { names: b.narrators.slice(0, 2).join(", ") })) : null,
-      b.rating ? el("span", { class: "rating", title: t("{n} Bewertungen bei Audible", { n: fmtCount(b.ratings || 0) }) },
+      b.rating ? el("span", { class: "rating", title: plural(b.ratings || 0, t("1 Bewertung bei Audible"), t("{n} Bewertungen bei Audible", { n: fmtCount(b.ratings || 0) })) },
         `★ ${b.rating.toFixed(1)}`, el("span", { class: "muted" }, ` (${fmtCount(b.ratings || 0)})`)) : null,
       facts ? el("span", { class: "muted small" }, facts) : null,
       reason),

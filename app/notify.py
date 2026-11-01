@@ -102,6 +102,7 @@ class Notifier:
         self.t = translate                   # language of the messages
         self.last_error: Optional[str] = None
         self.sent = 0
+        self.public_url: Callable[[], str] = lambda: ""     # set by the app: the address under Allgemein
 
     # -- config ------------------------------------------------------------
     def _load(self) -> dict:
@@ -164,10 +165,19 @@ class Notifier:
         c = self._load()
         body = {"topic": c["topic"], "title": title[:250], "message": message[:3500],
                 "priority": priority or int(c.get("priority") or 3), "tags": EVENTS.get(event, (False, []))[1]}
-        if c.get("app_url"):            # tapping the message opens the page it is about
-            body["click"] = c["app_url"].rstrip("/") + EVENT_PAGES.get(event, "")
+        base = self.link_base(c)
+        if base:                        # tapping the message opens the page it is about
+            body["click"] = base + EVENT_PAGES.get(event, "")
         self._post(c["url"], body, self._headers(c))
         self.sent += 1
+
+    def link_base(self, c: Optional[dict] = None) -> str:
+        """Where links in messages point: the own address field, else the public address (Allgemein)."""
+        c = c if c is not None else self._load()
+        try:
+            return (c.get("app_url") or self.public_url() or "").rstrip("/")
+        except Exception:  # noqa: BLE001 – only a link
+            return ""
 
     def send_to(self, topic: str, title: str, message: str) -> None:
         """A message to another topic on the same ntfy server (a family member's own topic)."""
@@ -178,8 +188,8 @@ class Notifier:
         def run() -> None:
             try:
                 body = {"topic": topic, "title": title[:250], "message": message[:3500], "tags": ["books"]}
-                if c.get("app_url"):
-                    body["click"] = c["app_url"].rstrip("/") + "/requests"     # their own requests
+                if self.link_base(c):
+                    body["click"] = self.link_base(c) + "/requests"     # their own requests
                 self._post(c["url"], body, self._headers(c))
             except Exception as e:  # noqa: BLE001 – a message must never break anything
                 applog.warn(f"ntfy ({topic}): {e}", "Benachrichtigungen")

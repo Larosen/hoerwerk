@@ -5,7 +5,7 @@
 interface SessionInfo { id: string; created: number; last_seen: number; ip: string; agent: string }
 interface UserInfo {
   id: number; name: string; role: "admin" | "user"; perms: Record<string, boolean>; quota: number | null;
-  disabled: boolean; last_login: number | null;
+  disabled: boolean; last_login: number | null; last_seen?: number | null; origin?: string;
 }
 const PERM_KEYS = ["see_all_requests", "auto_approve", "interactive_search"];
 
@@ -144,13 +144,14 @@ function userRow(u: UserInfo): HTMLTableRowElement {
     } }, icon("check"))
     : el("span", { class: "muted small" }, "–");
   return el("tr", {},
-    el("td", {}, el("b", {}, u.name), isMe ? el("span", { class: "muted small" }, " · " + t("du")) : null),
+    el("td", {}, el("b", {}, u.name), isMe ? el("span", { class: "muted small" }, " · " + t("du")) : null,
+      u.origin ? el("div", { class: "muted small" }, t("über Einladung „{note}“", { note: u.origin })) : null),
     el("td", {}, role),
     ...PERM_KEYS.map(perm),
     el("td", {}, quota),
     el("td", { class: "c-check" }, off),
     el("td", { class: "c-check" }, twoFa),
-    el("td", { class: "muted small" }, u.last_login ? fmtAgo(u.last_login) : t("noch nie")),
+    el("td", { class: "muted small" }, (u.last_seen ?? u.last_login) ? fmtAgo(u.last_seen ?? u.last_login) : t("noch nie")),
     el("td", { class: "c-act" },
       el("button", { type: "button", class: "btn small ghost", title: t("Neues Passwort setzen"), onclick: async () => {
         const pw = randomPassword();
@@ -207,7 +208,8 @@ function inviteRow(inv: Invite): HTMLLIElement {
       el("span", { class: `rtag ${active ? "ok" : ""}` }, INVITE_STATUS[inv.status]()),
       el("span", { class: "muted small" }, [
         inv.expires ? t("gültig bis {date}", { date: date(inv.expires) }) : t("ohne Ablauf"),
-        t("{n} von {max} genutzt", { n: inv.uses, max: inv.max_uses }),
+        inv.max_uses === 0 ? t("für beliebig viele Personen") : plural(inv.max_uses, t("für 1 Person"), t("für {n} Personen", { n: inv.max_uses })),
+        inv.uses === 0 ? t("noch niemand angemeldet") : plural(inv.uses, t("1 angemeldet"), t("{n} angemeldet", { n: inv.uses })),
         inv.used_by.length ? t("von {names}", { names: inv.used_by.map((u) => u.name).join(", ") }) : "",
       ].filter(Boolean).join(" · "))),
     el("span", { class: "muted small" }, t("Startrechte: {rights}", { rights: inviteRights(inv) })),
@@ -287,7 +289,7 @@ function initAccount(): void {
   $("#pwSave").addEventListener("click", changePassword);
   attachPasswordRules($<HTMLInputElement>("#pwNew"), () => ME?.name || "");
   $("#endOthers").addEventListener("click", async () => {
-    try { const r = await api<{ ended: number }>("POST", "/api/auth/sessions/end", {}); toast(t("{n} Geräte abgemeldet", { n: r.ended })); openAccount(); }
+    try { const r = await api<{ ended: number }>("POST", "/api/auth/sessions/end", {}); toast(plural(r.ended, t("1 Gerät abgemeldet"), t("{n} Geräte abgemeldet", { n: r.ended }))); openAccount(); }
     catch (e) { toast(errMsg(e), true); }
   });
   $("#logoutBtn").addEventListener("click", logout);
@@ -311,6 +313,20 @@ function initAccount(): void {
   $("#newUserPwGen").addEventListener("click", () => { $<HTMLInputElement>("#newUserPw").value = randomPassword(); });
   $("#newUserSave").addEventListener("click", createUser);
   $("#inviteCreate").addEventListener("click", createInvite);
+  // how many people may sign up through one link: 1 … 20, 30, or as many as like
+  $("#inviteUses").replaceChildren(
+    ...[...Array.from({ length: 20 }, (_, i) => i + 1), 30].map((n) =>
+      el("option", { value: String(n) }, n === 1 ? t("1 Person") : t("{n} Personen", { n }))),
+    el("option", { value: "0" }, t("unbegrenzt")));
+  // security: admins without a second factor only reach their own account (saved at once)
+  const totpRequired = $<HTMLInputElement>("#adminTotpRequired");
+  api<Settings>("GET", "/api/settings").then((s) => { totpRequired.checked = !!s.admin_totp_required; }).catch(() => { /* stays off */ });
+  totpRequired.addEventListener("change", async () => {
+    try {
+      await api("PUT", "/api/settings", { admin_totp_required: totpRequired.checked });
+      toast(totpRequired.checked ? t("Admins brauchen jetzt einen Zweitfaktor") : t("Zweitfaktor für Admins ist wieder freiwillig"));
+    } catch (e) { totpRequired.checked = !totpRequired.checked; toast(errMsg(e), true); }
+  });
   attachPasswordRules($<HTMLInputElement>("#newUserPw"), () => $<HTMLInputElement>("#newUserName").value);
 }
 

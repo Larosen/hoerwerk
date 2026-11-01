@@ -209,8 +209,9 @@ class Uploads:
         shutil.rmtree(src, ignore_errors=True)
         with self.lock:
             self.sessions.pop(uid, None)
-        applog.info(t("Hochgeladen von {user}: {names} ({n} Dateien)", user=s["user"], names=", ".join(moved),
-                      n=s["files"]), "Eingang")
+        files = t("1 Datei") if s["files"] == 1 else t("{n} Dateien", n=s["files"])
+        applog.info(t("Hochgeladen von {user}: {names} ({files})", user=s["user"], names=", ".join(moved), files=files),
+                    "Eingang")
         if moved:
             self.on_done(moved)
         return moved

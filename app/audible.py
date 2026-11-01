@@ -366,9 +366,14 @@ _NOISE_RX = re.compile(r"(?i)\b(?:%s)\b" % _NOISE_WORDS)
 _BRACKET_RX = re.compile(r"[\[({]([^\])}]*)[\])}]")
 
 
+# a letter or two in brackets inside a word: "Bis(s)", "Freund(in)" – part of the word, not a remark
+INWORD_BRACKET = re.compile(r"(?<=\w)(\w*)\((\w{1,3})\)(?=[\s\-:,.!?]|$)")
+
+
 def clean_query(s: str) -> str:
     """Folder/tag text -> search keywords: drop rip cruft, years, CD numbers, brackets."""
     s = ASIN_RX.sub(" ", s or "")
+    s = INWORD_BRACKET.sub(r"\1\2", s)          # "Bis(s) zum Morgengrauen" -> "Biss …", not "Bis s …"
     s = s.replace("_", " ")
     s = re.sub(r"(?<=\w)\.(?=\w{2,})", " ", s)
 

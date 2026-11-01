@@ -23,6 +23,11 @@ function t(text: string, values: Record<string, string | number> = {}): string {
   return out;
 }
 
+/** Singular or plural – both texts are passed already translated (so the catalog check finds them). */
+function plural(n: number, one: string, many: string): string {
+  return n === 1 ? one : many;
+}
+
 const TRANSLATED_ATTRS = ["placeholder", "title", "aria-label"];
 
 /** The fixed texts of index.html: every text node and label attribute that has a translation. */
@@ -183,6 +188,16 @@ function icon(name: string, label?: string): SVGSVGElement {
 function genreTag(b: { genres?: string[] | null }): HTMLElement | null {
   const g = (b.genres || [])[0];
   return g ? el("span", { class: "genre-tag", title: (b.genres || []).join(" · ") }, g) : null;
+}
+
+/** A label when a book is not in German – so nobody requests the English edition by mistake. */
+function langTag(b: { language?: string | null }): HTMLElement | null {
+  const lang = (b.language || "").toLowerCase();
+  if (!lang || lang === "german" || lang === "deutsch") return null;
+  const names: Record<string, () => string> = {
+    english: () => t("Englisch"), french: () => t("Französisch"), spanish: () => t("Spanisch"), italian: () => t("Italienisch"),
+  };
+  return el("span", { class: "lang-tag", title: t("Sprache des Hörbuchs") }, names[lang]?.() || b.language || "");
 }
 
 /** Stand-in cover for books without artwork: a calm tile coloured by the title, with its initial. */

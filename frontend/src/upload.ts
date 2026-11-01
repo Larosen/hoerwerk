@@ -40,7 +40,8 @@ function setUploadItems(items: UploadItem[]): void {
   const loose = upload.items.some((i) => !i.path.includes("/"));
   $("#uploadNameRow").hidden = !loose;
   renderUploadList();
-  $("#uploadNote").textContent = skipped ? t("{n} Dateien werden übersprungen (keine Audio- oder Cover-Dateien).", { n: skipped }) : "";
+  $("#uploadNote").textContent = skipped ? plural(skipped, t("1 Datei wird übersprungen (keine Audio- oder Cover-Datei)."),
+    t("{n} Dateien werden übersprungen (keine Audio- oder Cover-Dateien).", { n: skipped })) : "";
 }
 
 function renderUploadList(): void {
@@ -52,7 +53,7 @@ function renderUploadList(): void {
     books.set(top, b);
   }
   $("#uploadList").replaceChildren(...[...books].map(([name, b]) => el("li", {},
-    el("b", {}, name), el("span", { class: "muted small" }, t("{n} Dateien · {size}", { n: b.files, size: fmtSize(b.bytes) })))));
+    el("b", {}, name), el("span", { class: "muted small" }, plural(b.files, t("1 Datei · {size}", { size: fmtSize(b.bytes) }), t("{n} Dateien · {size}", { n: b.files, size: fmtSize(b.bytes) }))))));
   $<HTMLButtonElement>("#uploadGo").disabled = !upload.items.length || upload.busy;
 }
 

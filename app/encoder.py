@@ -375,9 +375,10 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
                          t("Kopiere Datei {n}/{total}", n=n + 1, total=len(paths)) if copy
                          else t("Kodiere Datei {n}/{total}", n=n + 1, total=len(paths)))
 
-        progress(0.0, t("{n} Datei(en), {codec}, {rate} Hz, {channels}", n=len(paths),
-                        codec=t("AAC kopieren") if copy else f"AAC {br}", rate=rate,
-                        channels="Mono" if channels == 1 else "Stereo"))
+        what = dict(codec=t("AAC kopieren") if copy else f"AAC {br}", rate=rate,
+                    channels="Mono" if channels == 1 else "Stereo")
+        progress(0.0, t("1 Datei, {codec}, {rate} Hz, {channels}", **what) if len(paths) == 1
+                 else t("{n} Dateien, {codec}, {rate} Hz, {channels}", n=len(paths), **what))
         with ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
             futures = [pool.submit(encode, n) for n in range(len(paths))]
             try:

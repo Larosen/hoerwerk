@@ -120,6 +120,47 @@ GOOD = {"id": "r1", "title": "Anna.Autorin-Das.stille.Haus.German.M4B", "size": 
 ALSO = {"id": "r2", "title": "Anna Autorin - Das stille Haus MP3", "size": 500 << 20, "format": "MP3", "indexer": "Y"}
 
 
+class VolumeTest(unittest.TestCase):
+    """Band 1 was asked for – "Twilight-Saga 5" must not come instead (a real case)."""
+    TWILIGHT = {"title": "Twilight", "authors": ["Stephenie Meyer"], "series": "The Twilight Saga", "series_position": "1",
+                "runtime_min": 771}
+
+    def test_other_volume_is_rejected(self):
+        v = releases.evaluate({"title": "Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl-4CD-mp3-DE-2010",
+                               "language": "de"}, self.TWILIGHT)
+        self.assertFalse(v["ok"])
+        self.assertIn("anderer Band (5 statt 1)", v["reason"])
+
+    def test_same_volume_and_no_number_pass(self):
+        for name in ("Stephenie Meyer - Twilight Saga 1 - Twilight - Hoerbuch", "Stephenie_Meyer-Twilight-Band_01-DE",
+                     "Stephenie Meyer - Twilight (2010)", "Stephenie Meyer - Twilight - 12CD - 2008"):
+            self.assertTrue(releases.evaluate({"title": name}, self.TWILIGHT, check_size=False)["ok"], name)
+
+    def test_the_real_list(self):
+        """The releases the indexer really returned for "meyer Twilight": Band 1 wins, the others are out."""
+        names = {
+            "Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl-4CD-mp3-DE-2010": ({"size": 252 << 20, "format": "MP3", "language": "de"}, False),
+            "Meyer Edwards-Unplugged Tribute to Twilight-16BIT-WEB-FLAC-2010": ({"size": 158 << 20, "format": "FLAC"}, False),
+            "Stephenie.Meyer.-.Twilight.4.-.Bis(s).Zum.Ende.Der.Nacht": ({"size": 493 << 20}, False),
+            "Stephenie.Meyer.-.Twilight.1.-.Bis(s).zum.Morgengrauen": ({"size": 858 << 20}, True),
+            "Stephenie.Meyer.-.Twilight.2.-.Bis(s).zur.Mittagsstunde": ({"size": 924 << 20}, False),
+            "Stephanie Meyer - Twilight 03 - Bis(s) zum Abendrot": ({"size": 943 << 20}, False),
+            "Stephanie Meyer - Twilight 01 - Bis(s) zum Morgengrauen": ({"size": 814 << 20}, True),
+            "Stephenie Meyer-Twilight 01 - 05-AUDiOBOOK-5CD-MP3-DE": ({"size": 3800 << 20, "format": "MP3", "language": "de"}, True),
+        }
+        ranked = releases.rank([{"title": n, **extra} for n, (extra, _) in names.items()], self.TWILIGHT)
+        for r in ranked:
+            self.assertEqual(r["verdict"]["ok"], names[r["title"]][1], (r["title"], r["verdict"]))
+        self.assertIn("Twilight.1", ranked[0]["title"].replace(" ", "."))   # a single Band 1 first, not the pack
+
+    def test_volume_words(self):
+        book = {"series": "Harry Potter"}
+        self.assertEqual(releases.release_volumes("J.K. Rowling - Harry Potter 3 - Der Gefangene von Askaban", book), {3})
+        self.assertEqual(releases.release_volumes("Die drei Fragezeichen Folge 012 - 2019", {}), {12})
+        self.assertEqual(releases.release_volumes("Autor - Titel - Band 7 - 4CD - 2010", {}), {7})
+        self.assertEqual(releases.release_volumes("Autor - Titel - 4CD - 2010", {}), set())
+
+
 class RequestsTest(unittest.TestCase):
     def setUp(self):
         self.db = dbm.Database(os.path.join(tempfile.mkdtemp(), "t.db"))

@@ -97,7 +97,8 @@ def query_variants(query: str) -> List[str]:
 
 def match_words(text: str) -> List[str]:
     """Spelling-insensitive words: "Fräulein", "Fraeulein", "Fraulein" and "FRAULEIN" all become "fraulein"."""
-    s = text.lower().replace("ß", "ss").translate(_PLAIN)
+    s = re.sub(r"(?<=\w)\((\w{1,3})\)(?=\W|$)", r"\1", text or "")    # "Bis(s)" is one word: "biss"
+    s = s.lower().replace("ß", "ss").translate(_PLAIN)
     s = re.sub(r"([aou])e", r"\1", s)
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
