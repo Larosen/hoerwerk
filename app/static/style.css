@@ -600,3 +600,8 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
   #discoverSections button { flex: 1; align-items: center; text-align: center; }
   #discoverSections button small { display: none; }
 }
+@media (max-width: 900px) {
+  /* phones: the page scrolls, not the panel – so the save bar can stay at the bottom of the screen */
+  .settings-panel, .account-panel { overflow: visible; }
+  .save-bar { padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); }
+}
