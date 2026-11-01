@@ -132,6 +132,13 @@ test("Einstellungen: Übersicht, Healthcheck mit ffmpeg und Proxy, Design bleibt
 
 test("Oberfläche auf Englisch und zurück", async ({ page }) => {
   const errors = await open(page);
+  const ntfy = { url: "https://ntfy.example", topic: "hoerwerk-e2e", events: {} };
+  expect((await page.request.put("/api/notify", { headers: OWN, data: ntfy })).status()).toBe(200);
+  // a slow server: the saved values arrive after the page is shown – they must not overwrite a choice
+  await page.route("**/api/settings", async (r) => {
+    if (r.request().method() === "GET") await new Promise((done) => setTimeout(done, 800));
+    await r.continue();
+  });
   await page.goto("/settings/general");
   await page.locator("#settingsForm select[name=language]").selectOption("en");
   await page.locator("#settingsForm button[type=submit]").click();
@@ -149,6 +156,10 @@ test("Oberfläche auf Englisch und zurück", async ({ page }) => {
   await page.locator("#settingsForm select[name=language]").selectOption("de");
   await page.locator("#settingsForm button[type=submit]").click();
   await expect(page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toBeVisible();
+  // saving on another page left ntfy as it was
+  const saved = await (await page.request.get("/api/notify")).json();
+  expect([saved.url, saved.topic]).toEqual([ntfy.url, ntfy.topic]);
+  expect((await page.request.put("/api/notify", { headers: OWN, data: { url: "", topic: "", events: {} } })).status()).toBe(200);
   expect(errors).toEqual([]);
 });
 

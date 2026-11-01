@@ -31,6 +31,17 @@ function renderSettingsHub(): void {
   }));
 }
 
+/** Controls stay locked until the saved values are in – otherwise a late answer would overwrite what was just typed. */
+async function whileLoading(form: HTMLFormElement, load: () => Promise<unknown>): Promise<void> {
+  const controls = [...form.elements].filter((c): c is HTMLInputElement => "disabled" in c && !(c as HTMLInputElement).disabled);
+  form.setAttribute("aria-busy", "true");
+  for (const c of controls) c.disabled = true;
+  try { await load(); } catch { /* shown on the page itself */ } finally {
+    for (const c of controls) c.disabled = false;
+    form.removeAttribute("aria-busy");
+  }
+}
+
 function showSettingsPage(section: string, entering: boolean): void {
   const view = $("#viewSettings");
   view.classList.toggle("hub", !section);
@@ -53,11 +64,10 @@ function showSettingsPage(section: string, entering: boolean): void {
   document.title = section && link ? `${$("#settingsTitle").textContent} · Hörwerk` : `${t("Einstellungen")} · Hörwerk`;
 
   if (entering) {                          // fresh values when coming from another page – not between two areas
-    fillSettings();
-    loadSources().then(fillSources).catch(() => { /* shown on the page itself */ });
+    whileLoading($<HTMLFormElement>("#settingsForm"), () => Promise.all([fillSettings(), loadNotify()]));
+    whileLoading($<HTMLFormElement>("#sourcesForm"), () => loadSources().then(fillSources));
   }
   if (section === "library") showLibrarySettings();
-  if (section === "notify") loadNotify();
   if (section === "users") loadUsers();
   if (section === "logs") showLogs();
   if (section === "health") runHealth();

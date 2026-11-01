@@ -218,11 +218,13 @@ class AccessTest(WebTest):
         self.assertEqual(self.req("GET", "/account", cookie=self.user_cookie)[0], 200)
 
     def test_ui_code_only_after_login(self):
-        for name in ("style.css", "icon.svg", "theme.js", "core.js", "login.js"):
+        for name in ("style.css", "icon.svg"):
             self.assertEqual(self.req("GET", "/static/" + name, cookie=False)[0], 200, name)
+        for name in ("theme.js", "core.js", "login.js"):        # built from TypeScript: 404 until built, never 401
+            self.assertIn(self.req("GET", "/static/" + name, cookie=False)[0], (200, 404), name)
         for name in ("index.html", "app.js", "settings.js", "router.js", "i18n/en.json", "../web/server.py", "%2e%2e/main.py"):
             self.assertEqual(self.req("GET", "/static/" + name, cookie=False)[0], 401, name)
-        self.assertEqual(self.req("GET", "/static/settings.js")[0], 200)
+        self.assertIn(self.req("GET", "/static/settings.js")[0], (200, 404))     # with login: served when built
         self.assertEqual(self.req("GET", "/static/../web/server.py")[0], 404)
         self.assertEqual(self.req("GET", "/static/%2e%2e/main.py")[0], 404)
 

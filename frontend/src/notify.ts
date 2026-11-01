@@ -23,7 +23,10 @@ const NOTIFY_EVENTS: Record<string, string> = {
   plex_error: t("Plex-Scan fehlgeschlagen"),
 };
 
+let notifyLoaded = false;       // saved only after the form showed the stored values (else empty fields would overwrite them)
+
 function renderNotify(c: NotifyConfig): void {
+  notifyLoaded = true;
   const f = $<HTMLFormElement>("#settingsForm");
   field(f, "ntfy_url").value = c.url;
   field(f, "ntfy_topic").value = c.topic;
@@ -47,6 +50,7 @@ async function loadNotify(): Promise<void> {
 }
 
 async function saveNotify(): Promise<void> {
+  if (!notifyLoaded) return;
   const f = $<HTMLFormElement>("#settingsForm");
   const events: Record<string, boolean> = {};
   for (const box of document.querySelectorAll<HTMLInputElement>("#notifyEvents input[data-event]")) {
