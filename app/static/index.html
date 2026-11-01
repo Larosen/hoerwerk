@@ -163,11 +163,11 @@
       <summary class="panel-head"><h2>Was gezeigt wird</h2><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
       <ul class="steps">
         <li><b>Für dich</b>: Titel, die Audible-Hörer mit Büchern aus deiner Bibliothek verbinden – je öfter, desto weiter oben.</li>
-        <li><b>Nach Genre</b>: Bestseller und Neuheiten eines Audible-Genres.</li>
-        <li><b>Aus der Kritik</b>: Bücher, die Deutschlandfunk Kultur oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt.</li>
+        <li><b>Nach Genre</b>: alle Genres und Unterkategorien wie bei Audible – Bestseller, Bestbewertete und Neuheiten. Kleine Bereiche werden mit Titeln aufgefüllt, die genauso gut, aber von weniger Hörern bewertet sind.</li>
+        <li><b>Aus der Kritik</b>: Bücher, die Deutschlandfunk, Deutschlandfunk Kultur oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt – die neuesten rund 40.</li>
         <li>Nur gut bewertete, ungekürzte deutsche Hörbücher, die du noch nicht hast – nicht in der Bibliothek, nicht im Download, nicht in Arbeit (einstellbar unter <b>Einstellungen</b>).</li>
         <li><b>Anfragen</b>: Gefällt dir ein Buch, frag es an – Hörwerk besorgt es und meldet sich, wenn es da ist.</li>
-        <li>Ob ein Sachbuch inhaltlich stimmt, kann keine Software prüfen. Deshalb kommen Sachbücher standardmäßig nur aus der Kritik, nicht aus Bestsellerlisten.</li>
+        <li>Ob ein Sachbuch inhaltlich stimmt, kann keine Software prüfen. Deshalb zeigt „Für dich“ Sachbücher standardmäßig nicht; in „Nach Genre“ erscheinen sie nur, wenn du ein Sachbuch-Genre wählst – mit Hinweis.</li>
       </ul>
     </details>
   </aside>
@@ -180,6 +180,7 @@
         <button id="discoverRefresh" class="btn small ghost" title="Liste neu laden"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Aktualisieren</button>
       </div>
     </div>
+    <p id="discoverNote" class="discover-note" hidden>Sachbuch: Sterne sagen, wie gut ein Buch ankommt – nicht, ob es inhaltlich stimmt. Im Zweifel lieber „Aus der Kritik“.</p>
     <ul id="discoverList" class="discover-grid"></ul>
   </section>
 </main>
@@ -536,7 +537,7 @@
         </label>
         <label class="check"><input type="checkbox" name="discover_unabridged"> nur ungekürzte Hörbücher</label>
         <label class="check"><input type="checkbox" name="discover_german"> nur deutschsprachige</label>
-        <label class="check"><input type="checkbox" name="discover_nonfiction_store"> Sachbücher auch aus Audible-Listen</label>
+        <label class="check"><input type="checkbox" name="discover_nonfiction_store"> Sachbücher auch in „Für dich“</label>
         <label>Anfragen pro Monat <small>Standard je Familienkonto</small>
           <input name="request_quota" type="number" min="0" max="1000" step="1">
         </label>

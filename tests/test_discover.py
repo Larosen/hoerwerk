@@ -33,15 +33,20 @@ class FakeClient:
         self.sims = {}
         self.lists = {}
         self.hits = []
+        self.asked = []
 
     def similar(self, asin, region, limit=20):
         return self.sims.get(asin, [])
 
-    def genre_products(self, region, genre_id, sort="BestSellers", limit=50):
-        return self.lists.get(sort, [])
+    def genre_products(self, region, genre_id, sort="BestSellers", limit=50, page=1):
+        self.asked.append((genre_id, sort, page))
+        return self.lists.get(sort, []) if page == 1 else self.lists.get(f"{sort}:{page}", [])
 
     def genres(self, region):
-        return [{"id": "1", "name": "Krimis & Thriller"}, {"id": "2", "name": "Geschichte"}, {"id": "3", "name": "Erotik"}]
+        return [{"id": "1", "name": "Krimis & Thriller", "children": [{"id": "11", "name": "Krimis"}, {"id": "12", "name": "Cricket"}]},
+                {"id": "2", "name": "Geschichte", "children": []},
+                {"id": "3", "name": "Erotik", "children": [{"id": "31", "name": "Sexpraktiken"}]},
+                {"id": "4", "name": "Literatur & Belletristik", "children": [{"id": "41", "name": "Erotik"}]}]
 
     def search(self, region, title="", author="", limit=5, **kw):
         return [h for h in self.hits if h["title"].lower().startswith(title.lower()[:5])]
@@ -83,7 +88,7 @@ class DiscoverTest(unittest.TestCase):
         self.pt_list = b"<html></html>"
         self.busy = set()
         self.d = discover.Discover(self.db, self.client, self.index, lambda: self.settings, fetch=self.fetch,
-                                   pending=lambda: self.busy)
+                                   pending=lambda: self.busy, prepare=False)
 
     def fetch(self, url):
         if "buchKSL" in url:
@@ -132,9 +137,31 @@ class DiscoverTest(unittest.TestCase):
 
     def test_genre_merges_lists(self):
         self.client.lists = {"BestSellers": [book("G1", "Eins"), book("G2", "Zwei")],
-                             "-ReleaseDate": [book("G2", "Zwei"), book("G3", "Drei", rating=2.0)]}
-        self.assertEqual([i["asin"] for i in self.items("genre", "1")], ["G1", "G2"])
+                             "-ReleaseDate": [book("G2", "Zwei"), book("G3", "Drei", rating=2.0)],
+                             "AvgRating": [book("G4", "Vier", rating=4.9, ratings=12),       # few ratings: fill-up, at the end
+                                           book("G5", "Fünf", rating=4.5, ratings=2)],       # too few even for that
+                             "BestSellers:2": [book("G6", "Sechs")]}
+        self.assertEqual([i["asin"] for i in self.items("genre", "1")], ["G1", "G2", "G6", "G4"])
+        self.assertTrue(self.d.get("genre", "1")["items"][-1]["loose"])
         self.assertEqual(self.d.get("genre", "")["items"], [])
+
+    def test_genre_shows_nonfiction_when_picked(self):
+        self.client.lists = {"BestSellers": [book("H1", "Rom", genres=["Geschichte"])]}
+        self.assertEqual([i["asin"] for i in self.items("genre", "2")], ["H1"])
+        self.client.sims = {"A1": [book("H1", "Rom", genres=["Geschichte"])]}
+        self.index.entries = {"x": {"asin": "A1", "title": "Seed"}}
+        self.assertEqual(self.items("foryou"), [])                 # not mixed into "Für dich"
+
+    def test_big_genre_needs_no_second_page(self):
+        self.client.lists = {"BestSellers": [book(f"B{n}", f"Titel {n}") for n in range(40)]}
+        self.items("genre", "1")
+        self.assertNotIn(("1", "BestSellers", 2), self.client.asked)
+
+    def test_unknown_genre_is_not_looked_up(self):
+        self.d.refresh("genre", "999", wait=True)
+        self.assertEqual(self.client.asked, [])
+        self.assertFalse(self.d.known_genre("999"))
+        self.assertTrue(self.d.known_genre("11"))
 
     def test_critics_only_real_audiobooks(self):
         self.pt = None                                                    # one feed down: the other still counts
@@ -187,12 +214,21 @@ class DiscoverTest(unittest.TestCase):
         self.index.owned_titles = {"Eins"}
         self.assertEqual(self.d.get("genre", "1")["items"], [])
 
-    def test_genres_hide_adult_and_nonfiction(self):
-        self.assertEqual([g["name"] for g in self.d.genres()], ["Krimis & Thriller"])
-        self.settings["discover_nonfiction_store"] = True
+    def test_genres_like_the_shop(self):
         gs = self.d.genres()
-        self.assertEqual([g["name"] for g in gs], ["Krimis & Thriller", "Geschichte"])
+        self.assertEqual([g["name"] for g in gs], ["Krimis & Thriller", "Geschichte", "Literatur & Belletristik"])
         self.assertTrue(gs[1]["nonfiction"])
+        self.assertEqual([c["name"] for c in gs[0]["children"]], ["Krimis", "Cricket"])
+        self.assertEqual(gs[2]["children"], [])                         # no adult subcategory either
+        self.items("genre", "12")                                       # nothing German there at all …
+        self.assertEqual([c["name"] for c in self.d.genres()[0]["children"]], ["Krimis"])   # … so it is left out
+
+    def test_review_title_with_subline(self):
+        p = discover.parse_review_title
+        self.assertEqual(p("Manuel Bittorf: „Goldener Retriever“ – Weltschmerz und Übermut (Buchkritik)"),
+                         {"title": "Goldener Retriever", "author": "Manuel Bittorf"})
+        self.assertEqual(p('Pernille Radeid, Jannicke Hansen (Ill.): "Wenn der Nebel flüstert"')["author"], "Pernille Radeid")
+        self.assertIsNone(p("„Das glückliche Schicksal“: Ach, diese wunderbaren Lücken!"))
 
 
 if __name__ == "__main__":

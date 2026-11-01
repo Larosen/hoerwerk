@@ -17,7 +17,7 @@ def _section(req: Req, value: str) -> str:
 def suggestions(req: Req):
     section = _section(req, req.query.get("section") or "foryou")
     genre = (req.query.get("genre") or "").strip()
-    if section == "genre" and not genre.isdigit():
+    if section == "genre" and not (genre.isdigit() and req.app.discover.known_genre(genre)):
         return {"items": [], "updated": None, "error": None, "running": False}
     res = req.app.discover.get(section, genre)
     requested = req.app.requests.status_by_key()
@@ -34,7 +34,7 @@ def genres(req: Req):
 def refresh(req: Req):
     section = _section(req, req.get("section") or "foryou")
     genre = str(req.get("genre") or "").strip()
-    if section == "genre" and not genre.isdigit():
+    if section == "genre" and not (genre.isdigit() and req.app.discover.known_genre(genre)):
         raise HTTPException(400, t("Ungültige Daten"))
     req.app.discover.refresh(section, genre)
     return {"ok": True}

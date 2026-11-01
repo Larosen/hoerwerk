@@ -45,7 +45,7 @@ The interface is available in **English and German**.
 | Tags & files | Title, author, narrator, series + volume, genre, publisher, date, description, ASIN, full-size cover; `metadata.json` for Audiobookshelf |
 | Library | Browse and search every book, folder template, reuses existing author/series folders, detects duplicates, converts old MP3 books to M4B and removes the MP3s safely |
 | Downloads | Sends NZBs to SABnzbd, watches the category, the inbox takes over when the download is done; optional Newznab search |
-| Discover | Suggestions matching your library, by genre and from book reviews (Deutschlandfunk Kultur, Perlentaucher) – well-rated, unabridged, nothing you already have; **requests** like Overseerr: the family asks, Hörwerk gets it (with approval, quota, interactive search) |
+| Discover | Suggestions matching your library, by genre and from book reviews (Deutschlandfunk, Deutschlandfunk Kultur, Perlentaucher) – well-rated, unabridged, nothing you already have; **requests** like Overseerr: the family asks, Hörwerk gets it (with approval, quota, interactive search) |
 | Media servers | Audiobookshelf and Plex rescan their library after filing; Plex can empty its trash so replaced MP3s vanish |
 | Notifications | ntfy push messages, eleven events, each one on or off |
 | Log | Everything that happened, filterable and downloadable, right in the app |
@@ -240,12 +240,17 @@ The **Discover** tab suggests new audiobooks:
 
 * **For you** – titles Audible listeners connect with the (up to 30 newest) books in your library. The more of your
   books point to the same title, the higher it ranks; "Goes with …" names them.
-* **By genre** – best sellers and new releases of an Audible genre; the chosen genre is remembered.
+* **By genre** – all genres and subcategories as in the Audible shop (e.g. *Krimis & Thriller → Thriller*): best
+  sellers, best rated and new releases. Small areas are filled up with titles rated just as well (4.0+) by fewer
+  listeners, so every genre shows suggestions; subcategories without a single German audiobook (e.g. *Cricket*) are left
+  out. All lists are prepared in the background once a day. The chosen genre is remembered per browser.
 * **From the critics** – reviewed books that exist as an audiobook on Audible (same title, same author), with a link to
-  the review. Sources: Deutschlandfunk Kultur's "Buchkritik" RSS feed, Perlentaucher's list
-  [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) (with the number
-  of press reviews) and the book round-ups from Perlentaucher's feed. Only author and title are taken; reviews are
-  remembered for 90 days, so the list grows over time.
+  the review. Sources: the RSS feeds "Buchkritik" and "Lesart" (Deutschlandfunk Kultur) and "Büchermarkt"
+  (Deutschlandfunk), Perlentaucher's lists
+  [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) and
+  [Sachbuch aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-sachbuch-aktuell.html) (with the number of press
+  reviews) and the book round-ups from Perlentaucher's feed. Only author and title are taken; reviews are remembered for
+  180 days, the newest ~40 audiobooks are shown.
 
 **Search** on a card jumps to the *Search* tab with the book already picked (title, author and ASIN help with tagging later).
 
@@ -254,12 +259,12 @@ German only, no erotica. **Always excluded** is what you already have: books in 
 (even spelled differently), downloads of the last 30 days and books being processed right now. Books from the critics skip the rating rule – they are often new.
 
 **To be honest:** no software can reliably check whether a non-fiction book is accurate – ratings only measure
-popularity. So by default non-fiction comes **only from the editorial source** (the critics), never from best-seller
-lists; non-fiction genres stay hidden until you allow them in the settings. BookBeat is not connected – it
+popularity. So *For you* leaves non-fiction out by default (switch in the settings); in *By genre* it only appears when
+you pick a non-fiction genre yourself, with a note that stars are no fact check. BookBeat is not connected – it
 has no open API.
 
 Lists are put together in the background, refreshed at most once a day (or with **Refresh**) and cached in the database.
-Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de` and
+Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de` and
 `www.perlentaucher.de` (HTTPS).
 
 ### Requests (like Overseerr/Jellyseerr)
@@ -390,7 +395,7 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `WRITE_COVER` | `true` | Write `cover.jpg` (used by Audiobookshelf and Plex) |
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Discover: minimum rating and number of ratings |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Discover: unabridged only / German only |
-| `DISCOVER_NONFICTION_STORE` | `false` | Discover: non-fiction from Audible lists too |
+| `DISCOVER_NONFICTION_STORE` | `false` | Discover: non-fiction in "For you" too |
 | `WANTED_INTERVAL_HOURS` | `12` | Requests without a match: hours until the next search |
 | `ADMIN_TOTP_REQUIRED` | `false` | Admins need a second factor |
 | `CPU_CORES` | half the cores | Parallel ffmpeg processes per book |

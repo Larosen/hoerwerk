@@ -305,14 +305,19 @@ class AudibleClient:
         return out
 
     def genres(self, region: str) -> List[dict]:
-        """The store's top-level genres: [{id, name}]."""
+        """The store's genres with their subcategories: [{id, name, children: [{id, name}]}]."""
         data = self._cached(f"{api_host(region)}/1.0/catalog/categories?root=Genres")
-        return [{"id": str(c["id"]), "name": c.get("name") or ""} for c in data.get("categories") or [] if c.get("id")]
+        return [{"id": str(c["id"]), "name": c.get("name") or "",
+                 "children": [{"id": str(x["id"]), "name": x.get("name") or ""} for x in c.get("children") or [] if x.get("id")]}
+                for c in data.get("categories") or [] if c.get("id")]
 
-    def genre_products(self, region: str, genre_id: str, sort: str = "BestSellers", limit: int = 50) -> List[dict]:
+    def genre_products(self, region: str, genre_id: str, sort: str = "BestSellers", limit: int = 50,
+                       page: int = 1) -> List[dict]:
         """Books of one genre, sorted by Audible (BestSellers, -ReleaseDate, AvgRating)."""
         params = {"response_groups": RESPONSE_GROUPS, "image_sizes": "500", "num_results": limit,
                   "products_sort_by": sort, "category_id": genre_id}
+        if page > 1:
+            params["page"] = page
         data = self._cached(f"{api_host(region)}/1.0/catalog/products?{parse.urlencode(params)}")
         return self._products(data.get("products"), region)
 
