@@ -815,5 +815,7 @@
  "{n} Bücher aus „Gesucht“ als Anfragen übernommen": "{n} books from “Wanted” taken over as requests",
  "{n} Releases, davon {ok} passend": "{n} releases, {ok} of them matching",
  "{n} passende Releases gefunden": "{n} matching releases found",
- "{why} – nächstes Release": "{why} – next release"
+ "{why} – nächstes Release": "{why} – next release",
+ "Testnachricht an „{topic}“ gesendet": "Test message sent to “{topic}”",
+ "ntfy: {error}": "ntfy: {error}"
 }

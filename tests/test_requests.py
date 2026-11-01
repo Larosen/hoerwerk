@@ -218,6 +218,17 @@ class RequestsTest(unittest.TestCase):
         self.assertIsNone(self.db.get("wanted"))
         self.assertEqual(self.r.list(self.admin)[0]["book"]["title"], "Gemerkt")
 
+    def test_test_message_to_own_topic(self):
+        import notify
+        sent = []
+        n = notify.Notifier(self.db)
+        n.db.put("ntfy", {"url": "https://ntfy.example", "topic": "admin-topic", "events": {}})
+        n._post = lambda url, body, headers: sent.append(body)
+        self.assertIn("eva-buecher", n.test_to("eva-buecher"))
+        self.assertEqual(sent[0]["topic"], "eva-buecher")
+        with self.assertRaises(notify.NotifyError):
+            n.test_to("bad topic/../x")
+
     def test_requester_hears_about_it(self):
         self.accounts.set_prefs(self.eva["id"], {"ntfy_topic": "eva-buecher"})
         req = self.r.create(self.eva, BOOK)

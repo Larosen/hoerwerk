@@ -183,6 +183,12 @@ function initAccount(): void {
     catch (e) { toast(errMsg(e), true); }
   });
   $("#logoutBtn").addEventListener("click", logout);
+  $("#myTopicTest").addEventListener("click", async () => {
+    try {
+      const r = await api<{ ok: boolean; message: string }>("POST", "/api/auth/prefs/test", { ntfy_topic: $<HTMLInputElement>("#myTopic").value });
+      toast((r.ok ? "✓ " : "✗ ") + r.message, !r.ok);
+    } catch (e) { toast(errMsg(e), true); }
+  });
   $("#myTopicSave").addEventListener("click", async () => {
     try { await api("PUT", "/api/auth/prefs", { ntfy_topic: $<HTMLInputElement>("#myTopic").value }); toast(t("Gespeichert")); }
     catch (e) { toast(errMsg(e), true); }
