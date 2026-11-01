@@ -153,6 +153,22 @@ class VolumeTest(unittest.TestCase):
             self.assertEqual(r["verdict"]["ok"], names[r["title"]][1], (r["title"], r["verdict"]))
         self.assertIn("Twilight.1", ranked[0]["title"].replace(" ", "."))   # a single Band 1 first, not the pack
 
+    def test_english_request_gets_english_releases(self):
+        """Theresa wanted Twilight in English: German releases – tagged or just German words – are out."""
+        book = {**self.TWILIGHT, "language": "English"}
+        lang = releases.book_language(book)
+        self.assertEqual(lang, "en")
+        judge = lambda name, **kw: releases.evaluate({"title": name, **kw}, book, prefer_language=lang, check_size=False)  # noqa: E731
+        self.assertIn("vermutlich andere Sprache (de)", judge("Stephenie.Meyer.-.Twilight.1.-.Bis(s).zum.Morgengrauen")["reason"])
+        self.assertIn("andere Sprache (de)", judge("Stephenie Meyer - Twilight 01 - 05-AUDiOBOOK-5CD-MP3-DE", language="de")["reason"])
+        self.assertTrue(judge("Stephenie Meyer - Twilight - The Twilight Saga Book 1 - Unabridged")["ok"])
+        self.assertTrue(judge("Stephenie.Meyer.Twilight.1.M4B")["ok"])               # no hint either way: allowed
+        # and the other way round: a German request does not take an English edition
+        de_book = {**self.TWILIGHT, "language": "German"}
+        v = releases.evaluate({"title": "Stephenie Meyer - Twilight - The Twilight Saga Book 1 - Unabridged"}, de_book,
+                              prefer_language="de", check_size=False)
+        self.assertIn("vermutlich andere Sprache (en)", v["reason"])
+
     def test_volume_words(self):
         book = {"series": "Harry Potter"}
         self.assertEqual(releases.release_volumes("J.K. Rowling - Harry Potter 3 - Der Gefangene von Askaban", book), {3})

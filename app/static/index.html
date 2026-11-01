@@ -114,6 +114,10 @@
       </div>
       <form id="searchForm" class="search-row pad">
         <input id="searchQuery" type="search" placeholder="Titel oder Autor, z. B. Storm Schimmelreiter" aria-label="Titel oder Autor">
+        <div class="seg" role="radiogroup" aria-label="Sprache des Hörbuchs" id="bookLang">
+          <label><input type="radio" name="bookLang" value="de" checked><span>Deutsch</span></label>
+          <label><input type="radio" name="bookLang" value="en"><span>Englisch</span></label>
+        </div>
         <button class="btn primary" type="submit" id="bookLookupBtn">Suchen</button>
       </form>
       <div id="bookPick" class="book-pick pad-x" hidden></div>
