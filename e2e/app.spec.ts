@@ -437,6 +437,14 @@ test("Einladung per Link: Admin erstellt, Eingeladene wählt Name und Passwort",
   await page.reload();
   await expect(row).toContainText("benutzt");
   await expect(row).toContainText("von Oma");
+  // the members list says where Oma came from, and that she was here just now – not "never"
+  const member = page.locator("#userRows tr", { hasText: "Oma" });
+  await expect(member).toContainText("über Einladung „Oma“");
+  await expect(member).not.toContainText("noch nie");
+  // the second-factor rule sits with the accounts now, not under Entdecken
+  await expect(page.locator("#adminTotpRequired")).toBeVisible();
+  await expect(page.locator("#settingsForm [name=admin_totp_required]")).toHaveCount(0);
+  await expect(page.locator("#inviteUses option")).toHaveCount(22);                   // 1 … 20, 30, unbegrenzt
 });
 
 test("Zweitfaktor: einrichten, dann Anmeldung nur mit Code", async ({ page, browser }) => {

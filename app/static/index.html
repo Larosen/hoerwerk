@@ -353,7 +353,6 @@
         <label>Anfragen pro Monat <small>Standard je Familienkonto</small>
           <input name="request_quota" type="number" min="0" max="1000" step="1">
         </label>
-        <label class="check"><input type="checkbox" name="admin_totp_required"> Admins brauchen einen Zweitfaktor</label>
         <label>Anfragen ohne Fund erneut suchen alle <small>Stunden</small>
           <input name="wanted_interval_hours" type="number" min="1" max="168" step="1">
         </label>
@@ -374,7 +373,7 @@
         </label>
         <label>Benutzer <input name="ntfy_user" type="text" autocomplete="off" spellcheck="false"></label>
         <label>Passwort <input name="ntfy_password" type="password" autocomplete="off" spellcheck="false"></label>
-        <label>Adresse dieser Oberfläche <small>Tippen auf die Nachricht öffnet sie</small><input name="ntfy_app_url" type="text" placeholder="http://tower:8080" spellcheck="false"></label>
+        <label>Adresse für Links in Nachrichten <small>Tippen auf eine Nachricht öffnet die passende Seite – leer = die öffentliche Adresse aus „Allgemein“</small><input name="ntfy_app_url" type="text" placeholder="https://hoerwerk.example.de" spellcheck="false"></label>
       </div>
       <div class="small">Benachrichtigen bei:</div>
       <div class="grid2" id="notifyEvents"></div>
@@ -435,6 +434,11 @@
       </table>
     </div>
     <fieldset>
+      <legend>Sicherheit</legend>
+      <label class="check"><input type="checkbox" id="adminTotpRequired"><span>Admins brauchen einen Zweitfaktor
+        <small class="muted">Ohne kommen sie nur noch an ihr eigenes Konto, bis sie dort eine Authenticator-App eingerichtet haben.</small></span></label>
+    </fieldset>
+    <fieldset>
       <legend>Einladungen</legend>
       <p class="muted small">Ein Link zum Weitergeben, z. B. per WhatsApp oder Mail: Wer ihn öffnet, wählt selbst Name und
         Passwort und bekommt ein Familienkonto. Der Link läuft ab und lässt sich jederzeit widerrufen.</p>
@@ -443,9 +447,8 @@
         <label>Gültig
           <select id="inviteDays"><option value="1">1 Tag</option><option value="7" selected>7 Tage</option>
             <option value="30">30 Tage</option><option value="0">unbegrenzt</option></select></label>
-        <label>Wie oft nutzbar
-          <select id="inviteUses"><option value="1" selected>einmal</option><option value="5">5-mal</option>
-            <option value="20">20-mal</option></select></label>
+        <label>Wie viele Personen <small>können sich über diesen Link anmelden</small>
+          <select id="inviteUses"></select></label>
         <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="inviteQuota" type="number" min="0" max="1000"></label>
       </div>
       <div class="invite-perms" id="invitePerms">

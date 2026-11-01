@@ -46,7 +46,7 @@ class Invites:
             uses = int(uses if uses not in (None, "") else 1)
         except (TypeError, ValueError):
             raise ValueError(t("Ungültige Daten"))
-        if not 0 <= days <= MAX_DAYS or not 1 <= uses <= MAX_USES:
+        if not 0 <= days <= MAX_DAYS or not 0 <= uses <= MAX_USES:      # uses 0 = as many people as like
             raise ValueError(t("Ungültige Daten"))
         if quota not in (None, ""):
             quota = int(quota)
@@ -70,7 +70,7 @@ class Invites:
     def _public(self, row) -> dict:
         data = dbm.loads(row["data"], {}) or {}
         now = self.clock()
-        status = ("revoked" if row["revoked"] else "used" if row["uses"] >= row["max_uses"]
+        status = ("revoked" if row["revoked"] else "used" if row["max_uses"] and row["uses"] >= row["max_uses"]
                   else "expired" if row["expires"] and row["expires"] < now else "open")
         return {"id": row["id"], "token": row["token"], "note": row["note"], "created": row["created"],
                 "created_by": row["created_by"], "expires": row["expires"], "max_uses": row["max_uses"],
@@ -108,8 +108,12 @@ class Invites:
         with self.db.tx() as c:
             invite = self.check(token)
             user = self.accounts.create(name, password, role="user", perms=invite["perms"], quota=invite["quota"])
+            origin = invite["note"] or t("Einladung #{n}", n=invite["id"])
+            self.accounts.set_origin(user["id"], origin)
+            user["origin"] = origin
             used_by = invite["used_by"] + [{"name": user["name"], "time": self.clock()}]
-            done = c.execute("UPDATE invites SET uses=uses+1, data=? WHERE id=? AND uses<max_uses AND revoked=0",
+            done = c.execute("UPDATE invites SET uses=uses+1, data=? WHERE id=? AND (max_uses=0 OR uses<max_uses) "
+                             "AND revoked=0",
                              (dbm.dumps({"quota": invite["quota"], "perms": invite["perms"], "used_by": used_by[-MAX_USES:]}),
                               invite["id"]))
             if done.rowcount != 1:                  # used up in the meantime: the account goes with the rollback

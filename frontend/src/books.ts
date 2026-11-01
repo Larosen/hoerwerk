@@ -157,7 +157,7 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
           " · " + other.slice(0, 4).join(" / ")) : null),
       el("code", { class: "lib-path" }, b.path)),
     el("div", { class: "lib-side" },
-      b.format === "m4b" ? el("span", { class: "tag" }, "M4B") : el("span", { class: "tag soft" }, t("{n} Datei(en)", { n: b.files })),
+      b.format === "m4b" ? el("span", { class: "tag" }, "M4B") : el("span", { class: "tag soft" }, plural(b.files, t("1 Datei"), t("{n} Dateien", { n: b.files }))),
       b.asin ? el("span", { class: "muted small" }, b.asin) : null));
 }
 
@@ -209,7 +209,7 @@ function renderUnconverted(list: HTMLElement): void {
             b.job ? el("span", { class: "badge " + b.job.status }, BOOK_STATUS[b.job.status] || b.job.status) : null),
           el("div", { class: "book-sub" }, [(b.authors || []).join(", "),
             b.series ? `${b.series}${b.series_position ? " " + b.series_position : ""}` : "",
-            t("{n} Datei(en)", { n: b.files })].filter(Boolean).join(" · ")),
+            plural(b.files, t("1 Datei"), t("{n} Dateien", { n: b.files }))].filter(Boolean).join(" · ")),
           el("div", { class: "book-dest" }, el("code", {}, b.path)))),
       b.job ? null : el("div", { class: "book-tools" },
         el("button", { class: "btn small", onclick: () => openTracks(b) }, t("Kapitel & Namen …")),
@@ -222,7 +222,8 @@ interface ConvertItem { path: string; chapter_names?: string[]; rename_files?: b
 async function convertLibrary(items: ConvertItem[]): Promise<void> {
   try {
     const res = await api<{ jobs: AudiobookJob[] }>("POST", "/api/library/convert", { items });
-    toast(t("{n} Buch/Bücher in Arbeit – Fortschritt unter „Laufend“", { n: res.jobs.length }));
+    toast(plural(res.jobs.length, t("1 Buch in Arbeit – Fortschritt unter „Laufend“"),
+      t("{n} Bücher in Arbeit – Fortschritt unter „Laufend“", { n: res.jobs.length })));
     for (const it of items) books.picked.delete(it.path);
     await loadUnconverted();
     pollBooks(true);
@@ -299,7 +300,7 @@ async function cleanLibrary(): Promise<void> {
       { n: pre.count, folders: pre.folders }), t("Löschen"));
     if (!ok) return;
     const res = await api<{ removed: number; errors: string[] }>("POST", "/api/library/cleanup");
-    toast(t("{n} Dateien gelöscht", { n: res.removed }) + (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.length }) : ""), res.errors.length > 0);
+    toast(plural(res.removed, t("1 Datei gelöscht"), t("{n} Dateien gelöscht", { n: res.removed })) + (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.length }) : ""), res.errors.length > 0);
   } catch (e) { toast(errMsg(e), true); }
 }
 
@@ -313,8 +314,10 @@ function renderInbox(d: AudiobooksStatus): void {
       el("span", {}, d.enabled ? t("an · zuletzt geprüft {when}", { when: fmtAgo(d.last_scan) }) : t("aus (Einstellungen)"))),
   );
   if (d.queues) {
-    const q = (x: QueueStat): string => x.running ? t("{n} läuft", { n: x.running }) + (x.waiting ? ", " + t("{n} warten", { n: x.waiting }) : "")
-      : x.waiting ? t("{n} warten", { n: x.waiting }) : t("frei");
+    const waiting = (n: number): string => plural(n, t("1 wartet"), t("{n} warten", { n }));
+    const q = (x: QueueStat): string => x.running
+      ? plural(x.running, t("1 läuft"), t("{n} laufen", { n: x.running })) + (x.waiting ? ", " + waiting(x.waiting) : "")
+      : x.waiting ? waiting(x.waiting) : t("frei");
     box.append(el("div", { class: "kv" }, el("span", {}, t("Kodieren")), el("span", {}, q(d.queues.encode))),
       el("div", { class: "kv" }, el("span", {}, t("Ablegen")), el("span", {}, q(d.queues.io))));
   }

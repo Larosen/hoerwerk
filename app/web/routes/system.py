@@ -187,7 +187,8 @@ def diagnostics(req: Req):
     else:
         add("security", "error", t("Anmelde-Protokoll nicht schreibbar: {path}", path=log), id="authlog")
     blocked = app.accounts.blocked_count()
-    add("security", "warn" if blocked else "ok", t("{n} Adressen gerade wegen Fehlversuchen gesperrt", n=blocked) if blocked
+    add("security", "warn" if blocked else "ok", (t("1 Adresse gerade wegen Fehlversuchen gesperrt") if blocked == 1
+                                                 else t("{n} Adressen gerade wegen Fehlversuchen gesperrt", n=blocked)) if blocked
         else t("Keine Adresse wegen Fehlversuchen gesperrt"), id="blocked")
 
     # -- storage --
@@ -229,7 +230,7 @@ def diagnostics(req: Req):
     add("system", "info", t("Warteschlangen: Umwandeln {e} aktiv / {ew} wartend, Erkennen & Ablegen {i} / {iw}",
                             e=q["encode"]["running"], ew=q["encode"]["waiting"], i=q["io"]["running"], iw=q["io"]["waiting"]),
         id="queues")
-    return {"checks": checks, "server_time": time.time(), "app_url": ntfy.get("app_url", ""), "version": VERSION,
+    return {"checks": checks, "server_time": time.time(), "app_url": app.notifier.link_base(), "version": VERSION,
             "services": {"indexers": [{"id": i["id"], "name": i.get("name") or i.get("url", "")} for i in src["indexers"]
                                       if i.get("enabled", True) and i.get("apikey_set")],
                          "sab": bool(src["sab"].get("apikey_set") and src["sab"].get("url")),

@@ -94,7 +94,8 @@ function requestCard(r: BookRequest): HTMLLIElement {
     } }, icon("x")));
   }
   const detail = r.status === "declined" && r.reason ? t("Grund: {reason}", { reason: r.reason })
-    : r.status === "searching" && r.last_search ? t("Zuletzt gesucht {when} – nichts Passendes ({n} Releases geprüft)", { when: fmtAgo(r.last_search), n: r.seen || 0 })
+    : r.status === "searching" && r.last_search ? t("Zuletzt gesucht {when} – nichts Passendes ({checked})", { when: fmtAgo(r.last_search),
+      checked: plural(r.seen || 0, t("1 Release geprüft"), t("{n} Releases geprüft", { n: r.seen || 0 })) })
       : r.status === "downloading" && r.release ? r.release
         : r.error || (last ? last.text : "");
   return el("li", { class: `request req-${r.status}` },

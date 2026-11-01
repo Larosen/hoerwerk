@@ -290,7 +290,8 @@ class Requests:
                                               n=len(ranked), h=self.interval_hours()))
             if not self.usenet.configured()["sab"]:
                 req["error"] = t("SABnzbd ist nicht eingerichtet")
-                return self._save(req, note=t("{n} passende Releases gefunden", n=len(good)))
+                return self._save(req, note=t("1 passendes Release gefunden") if len(good) == 1
+                                  else t("{n} passende Releases gefunden", n=len(good)))
             return self.grab(rid, good[0]["id"], by=None, release=good[0])
         finally:
             with self.lock:

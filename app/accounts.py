@@ -180,7 +180,8 @@ class Accounts:
         return {"id": row["id"], "name": row["name"], "role": row["role"],
                 "perms": {p: bool(perms.get(p)) for p in PERMS}, "quota": row["quota"],
                 "disabled": bool(row["disabled"]), "created": row["created"], "last_login": row["last_login"],
-                "totp": bool(row["totp"]) if "totp" in row.keys() else False}
+                "totp": bool(row["totp"]) if "totp" in row.keys() else False,
+                "origin": row["origin"] if "origin" in row.keys() else ""}
 
     def count(self) -> int:
         return self.db.one("SELECT COUNT(*) AS n FROM users")["n"]
@@ -192,7 +193,17 @@ class Accounts:
         return self.public(self.db.one("SELECT * FROM users WHERE name=?", (name.strip(),)))
 
     def list(self) -> List[dict]:
-        return [self.public(r) for r in self.db.all("SELECT * FROM users ORDER BY name COLLATE NOCASE")]
+        """All accounts, each with ``last_seen``: the last time it did anything – staying signed in for weeks
+        (or coming in through an invitation) means no new password login, so that alone would say "never"."""
+        out = []
+        for r in self.db.all("SELECT * FROM users ORDER BY name COLLATE NOCASE"):
+            u = self.public(r)
+            u["last_seen"] = max(filter(None, (u["last_login"], r["last_seen"])), default=None)
+            out.append(u)
+        return out
+
+    def set_origin(self, uid: int, origin: str) -> None:
+        self.db.run("UPDATE users SET origin=? WHERE id=?", (origin[:80], uid))
 
     def create(self, name: str, password: str, role: str = "user", perms: Optional[dict] = None,
                quota: Optional[int] = None) -> dict:
@@ -410,6 +421,7 @@ class Accounts:
             c.execute("INSERT INTO sessions(token_hash, user_id, created, last_seen, expires, persistent, ip, agent)"
                       " VALUES(?,?,?,?,?,?,?,?)", (_token_hash(token), uid, now, now, now + life, int(persistent),
                                                    ip[:64], agent[:200]))
+            c.execute("UPDATE users SET last_seen=? WHERE id=?", (now, uid))
         return token
 
     def session_user(self, token: str, ip: str = "") -> Optional[dict]:
@@ -425,8 +437,10 @@ class Accounts:
         if now - row["last_seen"] > TOUCH_EVERY:
             life = SESSION_LONG if row["persistent"] else SESSION_SHORT
             expires = max(row["expires"], now + life) if row["persistent"] else row["expires"]
-            self.db.run("UPDATE sessions SET last_seen=?, expires=?, ip=? WHERE token_hash=?",
-                        (now, expires, ip[:64] or row["ip"], th))
+            with self.db.tx() as c:
+                c.execute("UPDATE sessions SET last_seen=?, expires=?, ip=? WHERE token_hash=?",
+                          (now, expires, ip[:64] or row["ip"], th))
+                c.execute("UPDATE users SET last_seen=? WHERE id=?", (now, row["user_id"]))   # outlives the session
         user = self.get(row["user_id"])
         if user:
             user["session"] = th[:16]

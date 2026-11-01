@@ -72,6 +72,24 @@ class InvitesTest(unittest.TestCase):
         self.inv.accept(forever["token"], "Ole", PW)
         self.assertEqual(self.inv.get(forever["id"])["uses"], 2)
 
+    def test_unlimited_people_and_origin(self):
+        i = self.inv.create("admin", "Familie", uses=0)
+        for name in ("Eva", "Ole", "Mia", "Tom"):
+            self.assertEqual(self.inv.accept(i["token"], name, PW)["origin"], "Familie")
+        after = self.inv.get(i["id"])
+        self.assertEqual((after["status"], after["uses"], after["max_uses"]), ("open", 4, 0))
+        self.assertEqual({u["name"]: u["origin"] for u in self.accounts.list()}["Ole"], "Familie")
+        plain = self.inv.create("admin")                                  # no note: the number says which one
+        self.assertEqual(self.inv.accept(plain["token"], "Bea", PW)["origin"], f"Einladung #{plain['id']}")
+
+    def test_last_seen_from_the_session(self):
+        """Signed in through the invitation and active since – "last seen" is not "never"."""
+        i = self.inv.create("admin")
+        user = self.inv.accept(i["token"], "Eva", PW)
+        self.accounts.start_session(user["id"], True)
+        self.assertEqual({u["name"]: u["last_seen"] for u in self.accounts.list()}["Eva"], self.clock.now)
+        self.assertIsNone(self.accounts.get(user["id"])["last_login"])        # no password login ever
+
     def test_revoke_and_delete(self):
         i = self.inv.create("admin")
         self.assertEqual(self.inv.revoke(i["id"])["status"], "revoked")
@@ -110,7 +128,7 @@ class InvitesTest(unittest.TestCase):
         self.assertEqual(self.accounts.count(), 1)
 
     def test_limits(self):
-        for kw in ({"days": 400}, {"uses": 0}, {"uses": 101}, {"quota": -1}, {"days": "x"}):
+        for kw in ({"days": 400}, {"uses": -1}, {"uses": 101}, {"quota": -1}, {"days": "x"}):
             with self.assertRaises(ValueError):
                 self.inv.create("admin", **kw)
         self.assertEqual(len(self.inv.create("admin", "x" * 200)["note"]), inv.NOTE_MAX)

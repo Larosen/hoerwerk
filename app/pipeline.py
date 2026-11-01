@@ -619,7 +619,7 @@ class Pipeline:
             if p not in present:
                 self.seen.pop(p, None)
                 self.ready_at.pop(p, None)
-        self.scan_note = t("{n} neue(s) Hörbuch/Hörbücher", n=len(added)) if added else t("Nichts Neues")
+        self.scan_note = (t("1 neues Hörbuch") if len(added) == 1 else t("{n} neue Hörbücher", n=len(added))) if added else t("Nichts Neues")
         self.notify()
         return added
 
@@ -694,7 +694,7 @@ class Pipeline:
         if job.rename_files and job.chapter_names and len(job.chapter_names) == len(files):
             files = rename_tracks(folder, files, job.chapter_names)
             job.rename_files = False          # done – a retry must not rename again
-            job.say(t("{n} Tracks umbenannt", n=len(files)))
+            job.say(t("1 Track umbenannt") if len(files) == 1 else t("{n} Tracks umbenannt", n=len(files)))
         job.files = files
         suspicious = suspicious_files(job.source)
         if suspicious:
@@ -855,7 +855,7 @@ class Pipeline:
                 job.updated = _now()
                 self.notify()
 
-            job.say(t("Konvertiere {n} Datei(en) …", n=len(job.files)), 0.0)
+            job.say(t("Konvertiere 1 Datei …") if len(job.files) == 1 else t("Konvertiere {n} Dateien …", n=len(job.files)), 0.0)
             info = encoder.merge_to_m4b(
                 folder, job.files, out, bitrate=s.get("bitrate", "auto"),
                 mono=bool(s.get("force_mono")), jobs=self.cpu_jobs,

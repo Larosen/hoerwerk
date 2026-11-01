@@ -626,3 +626,13 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
 /* the main category of a book on its card */
 .genre-tag { align-self: flex-start; font-size: 11.5px; font-weight: 550; line-height: 1.5; padding: 0 8px; border-radius: 99px;
   color: var(--accent); background: var(--accent-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* small screens and zoom: nothing may push the page wider than the window */
+.grid2 > * { min-width: 0; }
+.grid2 select, .page-body select, .page-body input:not([type=checkbox]):not([type=radio]):not([type=number]) { max-width: 100%; }
+.grid2 label > select, .grid2 label > input:not([type=checkbox]):not([type=number]) { width: 100%; }
+.health-hint { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+.page-body label.check { white-space: normal; align-items: flex-start; }
+.page-body label.check > input { margin-top: 3px; flex: none; }
+.page-body label.check small { display: block; }
+.page-body .row { flex-wrap: wrap; }
+@media (max-width: 380px) { .tabs .tab { font-size: 13px; } }

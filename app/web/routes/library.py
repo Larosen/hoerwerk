@@ -45,7 +45,8 @@ def cleanup_run(req: Req):
     """Delete them and stop writing new ones (they would come back with the next book)."""
     req.app.update_settings({"write_desc": False, "write_reader": False})
     res = cleanup.remove(req.app.config.library)
-    applog.info(t("Aufgeräumt: {n} überflüssige Textdateien gelöscht", n=res["removed"]), "Bibliothek")
+    applog.info((t("Aufgeräumt: 1 überflüssige Textdatei gelöscht") if res["removed"] == 1
+                 else t("Aufgeräumt: {n} überflüssige Textdateien gelöscht", n=res["removed"])), "Bibliothek")
     for err in res["errors"]:
         applog.warn(t("Nicht gelöscht: {error}", error=err), "Bibliothek")
     return res

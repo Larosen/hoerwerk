@@ -23,6 +23,11 @@ function t(text: string, values: Record<string, string | number> = {}): string {
   return out;
 }
 
+/** Singular or plural – both texts are passed already translated (so the catalog check finds them). */
+function plural(n: number, one: string, many: string): string {
+  return n === 1 ? one : many;
+}
+
 const TRANSLATED_ATTRS = ["placeholder", "title", "aria-label"];
 
 /** The fixed texts of index.html: every text node and label attribute that has a translation. */
