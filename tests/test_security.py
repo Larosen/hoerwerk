@@ -88,7 +88,7 @@ class WebTest(unittest.TestCase):
     def test_body_limit(self):
         c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
         c.putrequest("POST", "/api/search")
-        for k, v in {**self.OWN, "Content-Length": str(server.MAX_BODY + 1)}.items():
+        for k, v in {**self.OWN, "Cookie": self.cookie, "Content-Length": str(server.MAX_BODY + 1)}.items():
             c.putheader(k, v)
         c.endheaders()
         self.assertEqual(c.getresponse().status, 413)

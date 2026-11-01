@@ -23,6 +23,7 @@ from plex import Plex
 from pipeline import Pipeline
 from providers import Providers
 from stores import Settings
+from uploads import Uploads
 from usenet import Usenet
 from bookrequests import Requests
 import i18n
@@ -69,6 +70,7 @@ class App:
                                  pending=self._pending_asins)
         self.requests = Requests(self.db, self.accounts, self.usenet, self.library_index, self.notifier, self.settings,
                                  jobs=lambda: list(self.pipeline.jobs))
+        self.uploads = Uploads(config.inbox, on_done=self.pipeline.arrived)
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
         self.events.provide("library", self.library_index.stats)
         self.downloads = DownloadWatcher(self.usenet, self.notifier, self.db,

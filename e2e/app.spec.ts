@@ -303,3 +303,21 @@ test("Zweitfaktor: einrichten, dann Anmeldung nur mit Code", async ({ page, brow
   expect(errors).toEqual([]);
   await ole.close();
 });
+
+test("Hochladen: CD-Hörbuch als Ordner hochladen, landet als M4B in der Bibliothek", async ({ page }) => {
+  const errors = await open(page);
+  const dir = join(ROOT, "upload-src", "Clara Clever - Die Funkenstadt");
+  const tags = { album: "Die Funkenstadt", artist: "Clara Clever" };
+  tone(join(dir, "CD1", "01 Anfang.mp3"), 1.0, tags);
+  tone(join(dir, "CD2", "01 Ende.mp3"), 1.0, tags);
+  await page.locator("#uploadBtn").click();
+  await page.locator("#uploadFolder").setInputFiles(dir);
+  await expect(page.locator("#uploadList")).toContainText("Clara Clever - Die Funkenstadt");
+  await expect(page.locator("#uploadList")).toContainText("2 Dateien");
+  await page.locator("#uploadGo").click();
+  await expect(page.locator("#uploadDialog")).not.toBeVisible();
+  // no waiting for "settled" files: the inbox takes the upload at once and files it
+  await expect.poll(() => existsSync(join(ROOT, "library", "Clara Clever", "Die Funkenstadt", "Die Funkenstadt.m4b")),
+    { timeout: 45_000, message: "M4B in der Bibliothek" }).toBe(true);
+  expect(errors).toEqual([]);
+});

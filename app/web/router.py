@@ -36,6 +36,8 @@ class Req:
         self.token = token
         self.agent = agent
         self.proxied = proxied          # came through a reverse proxy (any forwarding header)
+        self.stream = None              # raw-body routes (uploads): the socket to read ``length`` bytes from
+        self.length = 0
 
     @property
     def is_admin(self) -> bool:
@@ -50,12 +52,14 @@ ACCESS = ("public", "user", "admin")
 ROUTES: List[Tuple[str, "re.Pattern[str]", object, str]] = []
 
 
-def route(method: str, pattern: str, access: str = "admin"):
+def route(method: str, pattern: str, access: str = "admin", raw_body: int = 0):
+    """``raw_body``: the handler streams the body itself (``req.stream``/``req.length``), up to this many bytes."""
     if access not in ACCESS:
         raise ValueError(access)
     rx = re.compile("^" + re.sub(r"\{(\w+)\}", r"(?P<\1>[^/]+)", pattern) + "$")
 
     def deco(fn):
+        fn.raw_body = raw_body
         ROUTES.append((method, rx, fn, access))
         return fn
     return deco

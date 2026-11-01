@@ -75,7 +75,8 @@ This page explains what the program protects against, what was tested and what y
 | Unnoticed changes through an admin login | Admin log in the database: every changing admin action with time, account and IP (approvals, accounts, settings, sources …), visible under *Accounts*. |
 | DNS rebinding / foreign host names | `ALLOWED_HOSTS`; besides, every data request needs a login. |
 | Paths outside the library | Book paths from the browser are resolved (incl. symlinks) and must lie inside the library; static files only from `app/static`. |
-| Huge requests | max. 4 MB per request. |
+| Huge requests | max. 4 MB per request; the only exception is the upload (up to 4 GB per file, streamed straight to disk). |
+| Upload | Admins only; login and rights are checked before a single byte is read. Only relative paths without `..` and without hidden names, only audio, covers, cue sheets and Hörwerk's text files – judged by **content**: the first bytes must match the extension (audio signatures such as ID3/MPEG/FLAC/Ogg/MP4, image signatures, text without binary data). Programs (`.exe`, ELF, macOS), PDFs, Office documents, archives (ZIP/RAR/7z …) and scripts are recognised even when renamed and refused before anything lands on disk; free space checked before each file; first a hidden staging folder, then one step into the inbox (nothing is overwritten). |
 | Many open live connections (`/api/events`) | At most 32 at the same time; they deliver only what the interface fetches anyway and need the same login. |
 | Language setting / translation catalog | Only `de` or `en` are accepted; `/i18n.js` serves a fixed file from the image (also for the login page). |
 | Other headers | `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy`/`-Resource-Policy: same-origin`, `Cache-Control: no-store`. |
