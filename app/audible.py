@@ -27,6 +27,7 @@ REGIONS = {
 RESPONSE_GROUPS = ("contributors,product_attrs,product_desc,product_extended_attrs,"
                    "series,media,category_ladders,rating")
 AUDNEXUS = "https://api.audnex.us"
+SERIES_MAX = 60           # volumes of one series offered for a request
 USER_AGENT = "Hoerwerk/5 (+https://github.com/Larosen/rename_merge)"
 ASIN_RX = re.compile(r"(?<![A-Z0-9])(B0[0-9A-Z]{8}|\d{9}[\dX])(?![A-Z0-9])")
 AUTHOR_ROLES_SKIP = re.compile(r"(?i)(translator|übersetz|editor|herausgeb|illustrat|foreword|vorwort|"
@@ -335,6 +336,49 @@ class AudibleClient:
         if not p or not p.get("title"):
             raise AudibleError(t("ASIN {asin} im Audible-Shop ({region}) nicht gefunden", asin=asin, region=region))
         return normalize_product(p, region)
+
+    def series(self, series_asin: str, region: str, language: str = "", limit: int = SERIES_MAX) -> dict:
+        """The released volumes of a series in order: {asin, title, books: [book with this series' position]}.
+
+        Box sets ("Band 1-3") and other editions of the same volume are left out – one book per position,
+        unabridged and in the wanted language ("german"/"english") first."""
+        params = {"response_groups": "relationships,product_attrs", "image_sizes": "500"}
+        data = self._cached(f"{api_host(region)}/1.0/catalog/products/{series_asin}?{parse.urlencode(params)}")
+        p = data.get("product") or {}
+        rel = [r for r in p.get("relationships") or []
+               if r.get("asin") and r.get("relationship_type") == "series" and r.get("relationship_to_product") == "child"]
+        rel.sort(key=lambda r: float(r.get("sort") or 0))
+        asins = list(dict.fromkeys(r["asin"] for r in rel))[:limit * 2]
+        products: List[dict] = []
+        for i in range(0, len(asins), 50):
+            q = {"response_groups": RESPONSE_GROUPS, "image_sizes": "500,1024", "asins": ",".join(asins[i:i + 50])}
+            got = self._cached(f"{api_host(region)}/1.0/catalog/products?{parse.urlencode(q)}")
+            products += got.get("products") or []
+        by_asin = {x.get("asin"): x for x in products}
+        best: Dict[str, dict] = {}
+        for r in rel:
+            raw = by_asin.get(r["asin"])
+            if not raw:
+                continue
+            found = self._products([raw], region)
+            if not found:
+                continue                                    # not released yet, a podcast …
+            book = found[0]
+            own = next((s for s in raw.get("series") or [] if s.get("asin") == series_asin), None)
+            pos = series_position((own or {}).get("sequence") or r.get("sequence"))
+            if not pos or "-" in pos:
+                continue                                    # box set or extra without a number
+            book.update(series=(own or {}).get("title") or p.get("title") or book.get("series"),
+                        series_asin=series_asin, series_position=pos)
+            rank = (bool(language) and book.get("language", "").lower() != language,
+                    book.get("format_type") == "abridged")
+            if pos not in best or rank < best[pos][0]:
+                best[pos] = (rank, book)
+        books = [b for _, b in sorted(best.values(), key=lambda x: float(x[1]["series_position"]))]
+        if language:
+            books = [b for b in books if (b.get("language") or "").lower() in (language, "")]
+        return {"asin": series_asin, "title": (p.get("title") or "").strip() or (books[0]["series"] if books else ""),
+                "books": books[:limit]}
 
     def chapters(self, asin: str, region: str) -> Optional[dict]:
         """Audnexus chapter data: {accurate, runtime_ms, intro_ms, outro_ms, chapters: [{start, title}]}"""

@@ -170,17 +170,31 @@ async function lookupBooks(e?: Event): Promise<void> {
     box.replaceChildren(
       el("div", { class: "muted small" }, res.books.length ? t("Welches Hörbuch? Auswählen – dann sucht Hörwerk die Releases dazu.")
         : t("Weder bei Audible noch bei BookBeat gefunden. Anders schreiben, einen Shop-Link einfügen oder direkt bei den Indexern suchen.")),
+      seriesRow(res.books) || "",
       el("div", { class: "pick-list" }, res.books.map((b) => el("button", { type: "button", class: "pick", onclick: () => pickBook(b) },
         b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, (b.authors || [])[0]),
         el("span", { class: "pick-text" },
           el("b", {}, b.title),
           el("span", {}, (b.authors || []).join(", ")),
-          el("span", { class: "tag-row" }, langTag(b, true), genreTag(b)),
+          el("span", { class: "tag-row" }, langTag(b), genreTag(b)),
           el("span", { class: "muted" }, [b.series ? `${b.series} ${b.series_position || ""}`.trim() : "",
             b.runtime_min ? fmtDuration(b.runtime_min * 60) : "", b.format_type === "abridged" ? t("gekürzt") : "",
             b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : ""].filter(Boolean).join(" · ")),
           b.owned ? el("span", { class: "owned", title: b.owned.path }, t("✓ schon in der Bibliothek")) : null)))));
   } catch (err) { toast(errMsg(err), true); } finally { btn.disabled = false; btn.textContent = t("Suchen"); }
+}
+
+/** The series among the hits (once each): "Ganze Reihe anfragen" without picking a single volume first. */
+function seriesRow(books: Book[]): HTMLElement | null {
+  const seen = new Map<string, Book>();
+  for (const b of books) if (b.series_asin && !seen.has(b.series_asin)) seen.set(b.series_asin, b);
+  if (!seen.size) return null;
+  return el("div", { class: "series-row" }, ...[...seen.values()].slice(0, 4).map((b) =>
+    el("button", { type: "button", class: "series-chip", onclick: () => openSeries(b),
+      title: t("Alle Bände der Reihe „{series}“ ansehen und anfragen", { series: b.series || "" }) },
+      icon("books"), el("span", { class: "series-chip-text" }, el("b", {}, b.series || ""),
+        el("span", { class: "muted small" }, [t("Ganze Reihe"), (b.authors || [])[0] || ""].filter(Boolean).join(" · "))),
+      langTag(b))));
 }
 
 function pickBook(b: Book): void {
@@ -198,6 +212,7 @@ function pickBook(b: Book): void {
       el("span", { class: "muted" }, " · " + (b.asin ? t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin })
         : t("Titel und Autor werden beim Download mitgegeben")))),
     typeof requestButton === "function" ? requestButton(b) : null,
+    typeof seriesButton === "function" ? seriesButton(b) : null,
     el("button", { type: "button", class: "icon-btn", title: t("Auswahl aufheben"), onclick: clearBook }, icon("x"))));
   if (IS_ADMIN) runSearch();                 // family accounts ask for the book; releases are Hörwerk's job
 }

@@ -57,6 +57,14 @@ def create_request(req: Req):
     return _out(req, item)
 
 
+@route("POST", "/api/requests/series", access="user")
+def create_series_request(req: Req):
+    """A whole series (or the chosen volumes): one request, counted once, approved together."""
+    res = _call(req.app.requests.create_series, req.user, req.get("series"), req.get("books"))
+    return {"group": res["group"], "status": res["status"], "skipped": res["skipped"],
+            "items": [_out(req, r) for r in res["items"]]}
+
+
 @route("GET", "/api/requests/{rid}", access="user")
 def one_request(req: Req, rid: str):
     return _out(req, _visible(req, rid))
@@ -65,10 +73,11 @@ def one_request(req: Req, rid: str):
 @route("DELETE", "/api/requests/{rid}", access="user")
 def withdraw_request(req: Req, rid: str):
     item = _visible(req, rid)
-    _call(req.app.requests.withdraw, item["id"], req.user)
+    whole = req.query.get("group") == "1"
+    n = _call(req.app.requests.withdraw, item["id"], req.user, whole)
     if req.is_admin and item["user_id"] != req.user["id"]:
-        req.app.audit(req, "request_deleted", f"{item['id']} {item['book'].get('title')}")
-    return {"ok": True}
+        req.app.audit(req, "request_deleted", f"{item['id']} {item['book'].get('title')}" + (f" (+{n - 1})" if n > 1 else ""))
+    return {"ok": True, "deleted": n}
 
 
 @route("POST", "/api/requests/{rid}/approve")

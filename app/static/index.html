@@ -27,6 +27,7 @@
   <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5V4.5M7.5 9 12 4.5 16.5 9"/><path d="M4.5 15v3.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V15"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></symbol>
   <symbol id="i-log" viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></symbol>
+  <symbol id="i-books" viewBox="0 0 24 24"><rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><path d="m16.2 5.2 3.6-.9 3 15.5-3.6.9z"/></symbol>
 </svg>
 <header class="topbar">
   <div class="brand">
@@ -664,6 +665,19 @@
     <div class="dialog-actions">
       <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
       <button value="ok" class="btn primary" id="packOk">Laden</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="seriesDialog">
+  <form method="dialog" class="dialog-body">
+    <h2 id="seriesTitle">Reihe</h2>
+    <p class="muted small" id="seriesInfo"></p>
+    <div class="row gap"><button type="button" class="btn small" id="seriesMissing">Alle fehlenden</button><button type="button" class="btn small" id="seriesNone">Keine</button></div>
+    <div id="seriesVolumes" class="series-volumes"></div>
+    <div class="dialog-actions">
+      <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
+      <button value="ok" class="btn primary" id="seriesOk">Anfragen</button>
     </div>
   </form>
 </dialog>

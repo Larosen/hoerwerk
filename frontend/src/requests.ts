@@ -7,8 +7,11 @@ type RequestStatus = "pending" | "searching" | "downloading" | "processing" | "a
 interface BookRequest {
   id: number; book: Book; status: RequestStatus; created: number; updated: number; user?: string; mine: boolean;
   reason?: string; release?: string; error?: string | null; last_search?: number | null; found?: number; seen?: number;
-  history?: { time: number; text: string }[]; blocked?: string[]; attempts?: number;
+  history?: { time: number; text: string }[]; blocked?: string[]; attempts?: number; group?: RequestGroup | null;
 }
+/** The volumes of a series asked for at once share a group (one request against the quota, decided together). */
+interface RequestGroup { id: string; title: string; asin?: string | null; count: number }
+interface SeriesAnswer { series: { asin: string; title: string; region: string }; books: (Book & { requested?: string | null })[] }
 interface Quota { limit: number | null; used: number; left: number | null }
 interface RequestList { items: BookRequest[]; quota: Quota; sees_all: boolean; may_search: boolean; pending: number | null; interval: number }
 interface Verdict { ok: boolean; score: number; reason: string | null; notes: string[]; kbps: number | null }
@@ -36,6 +39,7 @@ const requests = {
   keys: {} as Record<string, string>,
   current: null as BookRequest | null,
   timer: undefined as number | undefined,
+  openGroups: new Set<string>(),            // series cards whose volume list is unfolded (survives the refresh)
 };
 
 /** Same key as the server (bookrequests.book_key): ASIN, else title words + author surname. */
@@ -72,6 +76,84 @@ function requestButton(b: Book & { requested?: string | null }): HTMLElement {
   return btn;
 }
 
+// -- whole series ---------------------------------------------------------------
+/** "de"/"en" of a book (for the series search: the volumes in the same language). */
+function bookLangCode(b: Book): string {
+  const lang = (b.language || "").toLowerCase();
+  return lang === "english" ? "en" : lang === "german" || lang === "deutsch" ? "de" : "";
+}
+
+/** "Ganze Reihe" next to a book that belongs to a series. */
+function seriesButton(b: Book): HTMLButtonElement | null {
+  if (!b.series_asin) return null;
+  return el("button", { type: "button", class: "btn small series-btn", title: t("Alle Bände der Reihe „{series}“ ansehen und anfragen", { series: b.series || "" }),
+    onclick: (e: Event) => { e.stopPropagation(); openSeries(b); } }, icon("books"), t("Ganze Reihe"));
+}
+
+function volumeLabel(b: Book): string {
+  return b.series_position ? t("Band {n}", { n: b.series_position }) : "";
+}
+
+/** The volumes of a series to tick: what is in the library or asked for already can't be ticked. */
+async function openSeries(b: Book): Promise<void> {
+  const d = $<HTMLDialogElement>("#seriesDialog");
+  const ok = $<HTMLButtonElement>("#seriesOk");
+  $("#seriesTitle").replaceChildren(el("span", {}, t("Reihe „{series}“", { series: b.series || b.title })), " ", langTag(b) || "");
+  $("#seriesInfo").textContent = t("Lade die Bände …");
+  $("#seriesVolumes").replaceChildren();
+  ok.disabled = true;
+  ok.textContent = t("Anfragen");
+  d.returnValue = "";
+  if (!d.open) d.showModal();
+  let res: SeriesAnswer;
+  try {
+    res = await api<SeriesAnswer>("POST", "/api/search/series", { asin: b.series_asin, region: b.region || "", language: bookLangCode(b) });
+  } catch (e) { $("#seriesInfo").textContent = errMsg(e); return; }
+  $("#seriesTitle").replaceChildren(el("span", {}, t("Reihe „{series}“", { series: res.series.title || b.series || "" })), " ", langTag(b) || "");
+  const rows = res.books.map((v) => {
+    const state = (v.requested || requests.keys[requestKey(v)]) as RequestStatus | undefined;
+    const taken = v.owned ? t("In der Bibliothek") : state && state !== "declined" ? REQ_STATUS[state]?.() || state : "";
+    const cb = el("input", { type: "checkbox", checked: !taken, disabled: !!taken });
+    const row = el("label", { class: "check series-vol" + (taken ? " is-taken" : "") }, cb,
+      v.cover_url ? el("img", { class: "thumb", src: v.cover_url, alt: "", loading: "lazy" }) : coverArt(v.title, (v.authors || [])[0]),
+      el("span", { class: "series-vol-text" },
+        el("b", {}, [volumeLabel(v), v.title].filter(Boolean).join(" · ")),
+        el("span", { class: "muted small" }, [v.runtime_min ? fmtDuration(v.runtime_min * 60) : "", v.format_type === "abridged" ? t("gekürzt") : "",
+          v.release_date ? v.release_date.slice(0, 4) : ""].filter(Boolean).join(" · ")),
+        taken ? el("span", { class: v.owned ? "rtag ok" : `rtag req-${state}` }, taken) : null));
+    return { v, cb, taken, row };
+  });
+  const free = rows.filter((r) => !r.taken).length;
+  $("#seriesVolumes").replaceChildren(...rows.map((r) => r.row));
+  $("#seriesInfo").textContent = !rows.length ? t("Bei Audible sind zu dieser Reihe keine einzelnen Bände zu finden.")
+    : (plural(rows.length, t("1 Band bei Audible."), t("{n} Bände bei Audible.", { n: rows.length })) + " " +
+      (free ? t("Alles Angehakte zählt zusammen als eine Anfrage. Hörwerk lädt die Bände nacheinander.")
+        : t("Alle Bände sind schon da oder angefragt.")));
+  const count = (): void => {
+    const n = rows.filter((r) => r.cb.checked).length;
+    ok.disabled = !n;
+    ok.textContent = plural(n, t("1 Band anfragen"), t("{n} Bände anfragen", { n }));
+  };
+  rows.forEach((r) => r.cb.addEventListener("change", count));
+  $("#seriesMissing").onclick = () => { rows.forEach((r) => { if (!r.taken) r.cb.checked = true; }); count(); };
+  $("#seriesNone").onclick = () => { rows.forEach((r) => { r.cb.checked = false; }); count(); };
+  count();
+  d.addEventListener("close", async () => {
+    if (d.returnValue !== "ok") return;
+    const books = rows.filter((r) => r.cb.checked).map((r) => r.v);
+    try {
+      const out = await api<{ status: RequestStatus; items: BookRequest[]; skipped: string[] }>("POST", "/api/requests/series",
+        { series: res.series, books });
+      for (const r of out.items) requests.keys[requestKey(r.book)] = r.status;
+      const n = out.items.length;
+      toast((out.status === "pending" ? plural(n, t("Reihe angefragt (1 Band) – wartet auf Freigabe"), t("Reihe angefragt ({n} Bände) – wartet auf Freigabe", { n }))
+        : plural(n, t("Reihe angefragt (1 Band) – Hörwerk sucht jetzt"), t("Reihe angefragt ({n} Bände) – Hörwerk sucht jetzt", { n }))) +
+        (out.skipped.length ? " · " + t("übersprungen: {list}", { list: out.skipped.join(", ") }) : ""));
+      loadRequests();
+    } catch (e) { toast(errMsg(e), true); }
+  }, { once: true });
+}
+
 function requestCard(r: BookRequest): HTMLLIElement {
   const b = r.book;
   const author = (b.authors || [])[0] || "";
@@ -103,7 +185,7 @@ function requestCard(r: BookRequest): HTMLLIElement {
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
       el("span", { class: "s-author" }, (b.authors || []).join(", ")),
-      el("span", { class: "tag-row" }, langTag(b, true), genreTag(b)),
+      el("span", { class: "tag-row" }, langTag(b), genreTag(b)),
       el("span", { class: "req-line" }, el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
         r.user && !r.mine ? el("span", { class: "muted small" }, t("von {name}", { name: r.user })) : null,
         el("span", { class: "muted small" }, fmtAgo(r.created))),
@@ -119,6 +201,69 @@ async function decide(r: BookRequest, what: "approve" | "decline" | "retry"): Pr
     body = { reason };
   }
   try { await api("POST", `/api/requests/${r.id}/${what}`, body); loadRequests(); } catch (e) { toast(errMsg(e), true); }
+}
+
+/** A series asked for at once: one card with the state of all volumes, the volumes unfold below. */
+function groupCard(members: BookRequest[]): HTMLLIElement {
+  const first = members[0];
+  const g = first.group!;
+  const b = first.book;
+  const author = (b.authors || [])[0] || "";
+  const counts = new Map<RequestStatus, number>();
+  for (const m of members) counts.set(m.status, (counts.get(m.status) || 0) + 1);
+  const order: RequestStatus[] = ["pending", "searching", "downloading", "processing", "available", "failed", "declined"];
+  const pending = members.find((m) => m.status === "pending");
+  const actions: (HTMLElement | null)[] = [];
+  if (IS_ADMIN && pending) {
+    actions.push(el("button", { type: "button", class: "btn small primary", onclick: () => decide(pending, "approve") }, icon("check"), t("Reihe freigeben")));
+    actions.push(el("button", { type: "button", class: "btn small", onclick: () => decide(pending, "decline") }, t("Ablehnen")));
+  }
+  const removable = IS_ADMIN || members.some((m) => m.mine && ["pending", "searching", "failed", "declined"].includes(m.status));
+  if (removable) {
+    actions.push(el("button", { type: "button", class: "icon-btn", title: t("Reihen-Anfrage zurückziehen / löschen"), onclick: async () => {
+      const q = IS_ADMIN ? t("Reihe „{title}“ löschen – alle {n} Bände?", { title: g.title, n: members.length })
+        : t("Reihe „{title}“ zurückziehen? Bände, die schon laden, bleiben.", { title: g.title });
+      if (!(await confirmBox(q, t("Löschen")))) return;
+      try { await api("DELETE", `/api/requests/${first.id}?group=1`); loadRequests(); } catch (e) { toast(errMsg(e), true); }
+    } }, icon("x")));
+  }
+  const vols = el("details", { class: "group-vols" },
+    el("summary", {}, plural(members.length, t("1 Band anzeigen"), t("{n} Bände anzeigen", { n: members.length }))),
+    el("ul", {}, ...members.map(volumeRow)));
+  vols.open = requests.openGroups.has(g.id);
+  vols.addEventListener("toggle", () => { if (vols.open) requests.openGroups.add(g.id); else requests.openGroups.delete(g.id); });
+  return el("li", { class: `request request-group req-${pending ? "pending" : first.status}` },
+    b.cover_url ? el("img", { class: "cover", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(g.title, author),
+    el("div", { class: "s-body" },
+      el("b", { class: "s-title", title: g.title }, g.title),
+      el("span", { class: "s-author" }, (b.authors || []).join(", ")),
+      el("span", { class: "tag-row" }, el("span", { class: "series-tag" }, icon("books"), t("Reihe")), langTag(b), genreTag(b)),
+      el("span", { class: "req-line" }, ...order.filter((s) => counts.get(s)).map((s) =>
+        el("span", { class: `rtag req-${s}` }, `${REQ_STATUS[s]()}: ${counts.get(s)}`)),
+        first.user && !first.mine ? el("span", { class: "muted small" }, t("von {name}", { name: first.user })) : null,
+        el("span", { class: "muted small" }, fmtAgo(first.created)))),
+    vols,
+    actions.length ? el("div", { class: "s-actions" }, ...actions) : null);
+}
+
+/** One volume inside a series card: number, title, state – and what can be done with it alone. */
+function volumeRow(r: BookRequest): HTMLLIElement {
+  const b = r.book;
+  const detail = r.status === "declined" && r.reason ? r.reason : r.status === "downloading" && r.release ? r.release : r.error || "";
+  return el("li", { class: "group-vol" },
+    el("span", { class: "group-vol-text" },
+      el("span", { title: b.title }, [volumeLabel(b), b.title].filter(Boolean).join(" · ")),
+      detail ? el("span", { class: "muted small", title: detail }, detail) : null),
+    el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
+    requests.data?.may_search && ["searching", "failed", "downloading", "processing"].includes(r.status)
+      ? el("button", { type: "button", class: "icon-btn", title: t("Releases"), onclick: () => openReleases(r) }, icon("search")) : null,
+    IS_ADMIN && ["failed", "searching"].includes(r.status)
+      ? el("button", { type: "button", class: "icon-btn", title: t("Jetzt suchen"), onclick: () => decide(r, "retry") }, icon("refresh")) : null,
+    (r.mine && ["pending", "searching", "failed", "declined"].includes(r.status)) || IS_ADMIN
+      ? el("button", { type: "button", class: "icon-btn", title: t("Diesen Band löschen"), onclick: async () => {
+        if (!(await confirmBox(t("Anfrage „{title}“ löschen?", { title: b.title }), t("Löschen")))) return;
+        try { await api("DELETE", `/api/requests/${r.id}`); loadRequests(); } catch (e) { toast(errMsg(e), true); }
+      } }, icon("x")) : null);
 }
 
 function renderRequests(): void {
@@ -138,8 +283,21 @@ function renderRequests(): void {
   $("#requestQuota").textContent = q.limit === null ? t("Du kannst unbegrenzt anfragen.")
     : t("Diesen Monat noch {left} von {limit} Anfragen frei.", { left: q.left ?? 0, limit: q.limit });
   const states = REQ_FILTERS[requests.filter]?.[1] || [];
-  const items = d.items.filter((r) => !states.length || states.includes(r.status));
-  $("#requestList").replaceChildren(...(items.length ? items.map(requestCard)
+  // a series is one card – shown when one of its volumes fits the filter
+  const groups = new Map<string, BookRequest[]>();
+  for (const r of d.items) if (r.group?.id) groups.set(r.group.id, [...(groups.get(r.group.id) || []), r]);
+  const seen = new Set<string>();
+  const cards: HTMLLIElement[] = [];
+  for (const r of d.items) {
+    const gid = r.group?.id;
+    if (gid && seen.has(gid)) continue;
+    const members = gid ? groups.get(gid)! : [r];
+    if (states.length && !members.some((m) => states.includes(m.status))) continue;
+    if (gid) seen.add(gid);
+    cards.push(gid ? groupCard([...members].sort((a, b) => parseFloat(a.book.series_position || "0") - parseFloat(b.book.series_position || "0"))) : requestCard(r));
+  }
+  const items = cards;
+  $("#requestList").replaceChildren(...(items.length ? items
     : [el("li", { class: "empty" }, d.items.length ? t("Nichts in dieser Ansicht.")
       : t("Noch keine Anfragen. Such ein Hörbuch unter „Suchen“ oder stöbere in „Entdecken“ und klick auf „Anfragen“."))]));
 }

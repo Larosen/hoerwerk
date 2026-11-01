@@ -7,7 +7,8 @@ A family member asks for a *book* (from Audible or BookBeat), never for a releas
        └──decline──▶ declined   └──── download failed / import didn't fit: release blocked, next one ◀┘
 
 * Admins and accounts with the right *auto_approve* skip the approval.
-* Quota: requests per calendar month (declined or withdrawn ones don't count).
+* Quota: requests per calendar month (declined or withdrawn ones don't count). A whole series asked for at
+  once is one request: its volumes share a *group* and count once; approving or declining one decides them all.
 * Each account sees its own requests; *see_all_requests* (and admins) see everyone's.
 * Releases are judged by ``releases.evaluate``; the best accepted one is sent to SABnzbd with the ASIN
   (or title and author) and the request id, so the inbox recognises the book and reports back.
@@ -30,9 +31,10 @@ OPEN = ("pending", "searching", "downloading", "processing")
 STATUSES = OPEN + ("available", "declined", "failed")
 BOOK_KEYS = ("asin", "title", "subtitle", "authors", "narrators", "series", "series_position", "runtime_min",
              "release_date", "cover_url", "url", "source", "region", "isbn", "language", "format_type", "id",
-             "genres")
+             "genres", "series_asin")
 MAX_ATTEMPTS = 5            # releases tried before a request counts as failed
 DOWNLOAD_TIMEOUT = 2 * 86400
+SERIES_MAX = 60             # volumes in one series request
 
 
 def book_key(book: dict) -> str:
@@ -106,7 +108,9 @@ class Requests:
         if user["role"] == "admin":
             return {"limit": None, "used": 0, "left": None}
         limit = user["quota"] if user.get("quota") is not None else int(self.settings().get("request_quota", 5))
-        used = self.db.one("SELECT COUNT(*) AS n FROM requests WHERE user_id=? AND created>=? AND status<>'declined'",
+        # the volumes of a series request count once
+        used = self.db.one("SELECT COUNT(DISTINCT COALESCE(json_extract(data, '$.group.id'), 'r' || id)) AS n "
+                           "FROM requests WHERE user_id=? AND created>=? AND status<>'declined'",
                            (user["id"], month_start(self.clock())))["n"]
         return {"limit": limit, "used": used, "left": max(0, limit - used)}
 
@@ -142,7 +146,10 @@ class Requests:
                 return True
         return bool(self.index.find(book))
 
-    def create(self, user: dict, book: dict) -> dict:
+    @staticmethod
+    def _clean(book: dict) -> dict:
+        if not isinstance(book, dict):
+            raise RequestError(t("Ungültige Daten"))
         clean = {k: book.get(k) for k in BOOK_KEYS if book.get(k) not in (None, "", [])}
         clean["title"] = str(clean.get("title") or "").strip()[:300]
         clean["authors"] = [str(a)[:120] for a in clean.get("authors") or []][:5]
@@ -150,22 +157,37 @@ class Requests:
             raise RequestError(t("Titel und Autor fehlen"))
         if clean.get("asin"):
             clean["asin"] = str(clean["asin"]).upper()[:20]
+        for k in ("series", "series_position", "series_asin", "language", "region"):
+            if clean.get(k) is not None:
+                clean[k] = str(clean[k])[:200]
         for k in ("cover_url", "url"):
             if clean.get(k) and not str(clean[k]).startswith("https://"):
                 clean.pop(k)
+        return clean
+
+    def _is_open(self, c, key: str) -> bool:
+        return bool(c.execute("SELECT 1 FROM requests WHERE book_key=? AND status IN (?,?,?,?)", (key, *OPEN)).fetchone())
+
+    def _check_quota(self, user: dict) -> None:
+        q = self.quota(user)
+        if q["limit"] is not None and q["left"] <= 0:
+            raise RequestError(t("Kontingent für diesen Monat aufgebraucht ({n} Anfragen)", n=q["limit"]), 429)
+
+    @staticmethod
+    def _auto(user: dict) -> bool:
+        return user["role"] == "admin" or bool(user["perms"].get("auto_approve"))
+
+    def create(self, user: dict, book: dict) -> dict:
+        clean = self._clean(book)
         if self._owned(clean):
             raise RequestError(t("Das Buch ist schon in der Bibliothek"), 409)
         key = book_key(clean)
         now = self.clock()
-        auto = user["role"] == "admin" or bool(user["perms"].get("auto_approve"))
         with self.lock, self.db.tx() as c:
-            other = c.execute("SELECT user_id FROM requests WHERE book_key=? AND status IN (?,?,?,?)", (key, *OPEN)).fetchone()
-            if other:
+            if self._is_open(c, key):
                 raise RequestError(t("Das Buch ist schon angefragt"), 409)
-            q = self.quota(user)
-            if q["limit"] is not None and q["left"] <= 0:
-                raise RequestError(t("Kontingent für diesen Monat aufgebraucht ({n} Anfragen)", n=q["limit"]), 429)
-            status = "searching" if auto else "pending"
+            self._check_quota(user)
+            status = "searching" if self._auto(user) else "pending"
             data = {"history": [{"time": now, "text": t("Angefragt von {name}", name=user["name"])}], "blocked": [],
                     "attempts": 0}
             cur = c.execute("INSERT INTO requests(user_id, book_key, book, status, created, updated, data) VALUES(?,?,?,?,?,?,?)",
@@ -179,32 +201,112 @@ class Requests:
             self.search_soon(rid)
         return req
 
+    def create_series(self, user: dict, series: dict, books: list) -> dict:
+        """Several volumes of one series as one request: one group, counted once, decided together.
+
+        Volumes that are in the library or asked for already are skipped (and reported)."""
+        if not isinstance(series, dict) or not isinstance(books, list) or not books:
+            raise RequestError(t("Bitte mindestens einen Band auswählen"))
+        if len(books) > SERIES_MAX:
+            raise RequestError(t("Höchstens {n} Bände auf einmal", n=SERIES_MAX))
+        title = " ".join(str(series.get("title") or "").split())[:200]
+        cleaned = [self._clean(b) for b in books]
+        title = title or cleaned[0].get("series") or cleaned[0]["title"]
+        now = self.clock()
+        group = {"id": f"g{int(now * 1000)}-{user['id']}", "title": title,
+                 "asin": str(series.get("asin") or "")[:20] or None}
+        skipped: List[str] = []
+        todo = []
+        for b in cleaned:
+            b["series"] = b.get("series") or title
+            if self._owned(b):
+                skipped.append(b["title"])
+            else:
+                todo.append(b)
+        with self.lock, self.db.tx() as c:
+            fresh, keys = [], set()
+            for b in todo:
+                key = book_key(b)
+                if key in keys or self._is_open(c, key):
+                    skipped.append(b["title"])
+                    continue
+                keys.add(key)
+                fresh.append((key, b))
+            if not fresh:
+                raise RequestError(t("Alle ausgewählten Bände sind schon da oder angefragt"), 409)
+            self._check_quota(user)
+            status = "searching" if self._auto(user) else "pending"
+            group["count"] = len(fresh)
+            ids = []
+            for key, b in fresh:
+                data = {"history": [{"time": now, "text": t("Angefragt von {name} (Reihe „{series}“)", name=user["name"],
+                                                             series=title)}],
+                        "blocked": [], "attempts": 0, "group": group}
+                cur = c.execute("INSERT INTO requests(user_id, book_key, book, status, created, updated, data) "
+                                "VALUES(?,?,?,?,?,?,?)", (user["id"], key, dbm.dumps(b), status, now, now, dbm.dumps(data)))
+                ids.append(cur.lastrowid)
+        author = ", ".join(fresh[0][1].get("authors") or [])
+        label = t("{author} – Reihe „{series}“ ({n} Bände)", author=author, series=title, n=len(ids))
+        applog.info(t("Reihen-Anfrage: {label} von {name}", label=label, name=user["name"]), "Anfragen")
+        if status == "pending":
+            self.notifier.send("request_new", t("Neue Reihen-Anfrage"), f"{user['name']}: {label}")
+        else:
+            self.search_group_soon(ids)
+        return {"group": group, "status": status, "items": [self.get(i) for i in ids], "skipped": skipped}
+
+    def group(self, req: dict) -> List[dict]:
+        """All volumes of the series request this request belongs to (just itself without one)."""
+        gid = (req.get("group") or {}).get("id")
+        if not gid:
+            return [req]
+        rows = self.db.all("SELECT * FROM requests WHERE json_extract(data, '$.group.id')=? ORDER BY id", (gid,))
+        return [self._row(r) for r in rows]
+
     def approve(self, rid: int, admin: dict) -> dict:
         req = self._need(rid)
         if req["status"] != "pending":
             raise RequestError(t("Die Anfrage wartet nicht auf Freigabe"), 409)
-        req["decided_by"] = admin["name"]
-        req = self._save(req, "searching", t("Freigegeben von {name}", name=admin["name"]))
-        self.search_soon(rid)
-        return req
+        ids = []
+        for item in self.group(req):                      # a series is approved as a whole
+            if item["status"] == "pending":
+                item["decided_by"] = admin["name"]
+                self._save(item, "searching", t("Freigegeben von {name}", name=admin["name"]))
+                ids.append(item["id"])
+        self.search_group_soon(ids)
+        return self.get(rid)
 
     def decline(self, rid: int, admin: dict, reason: str = "") -> dict:
         req = self._need(rid)
         if req["status"] not in ("pending", "searching", "failed"):
             raise RequestError(t("Die Anfrage läuft schon – erst zurückziehen"), 409)
-        req["decided_by"], req["reason"] = admin["name"], (reason or "").strip()[:300]
-        req = self._save(req, "declined", t("Abgelehnt von {name}", name=admin["name"]) + (f": {req['reason']}" if req["reason"] else ""))
-        self._tell(req, t("Anfrage abgelehnt"), self._label(req) + (f"\n{req['reason']}" if req["reason"] else ""))
+        reason = (reason or "").strip()[:300]
+        note = t("Abgelehnt von {name}", name=admin["name"]) + (f": {reason}" if reason else "")
+        group = self.group(req)
+        for item in group:                                # the not yet started volumes of the series too
+            if item["id"] == rid or (item["status"] == "pending" and req["status"] == "pending"):
+                item["decided_by"], item["reason"] = admin["name"], reason
+                self._save(item, "declined", note)
+        req = self.get(rid)
+        label = self._label(req) if len(group) == 1 else self._group_label(req)
+        self._tell(req, t("Anfrage abgelehnt"), label + (f"\n{reason}" if reason else ""))
         return req
 
-    def withdraw(self, rid: int, user: dict) -> None:
+    def withdraw(self, rid: int, user: dict, whole_group: bool = False) -> int:
+        """Delete the request (with ``whole_group``: every volume of its series that may be withdrawn)."""
         req = self._need(rid)
+        items = self.group(req) if whole_group else [req]
         if user["role"] != "admin":
             if req["user_id"] != user["id"]:
                 raise RequestError(t("Nicht gefunden"), 404)
-            if req["status"] not in ("pending", "searching", "failed", "declined"):
+            may = ("pending", "searching", "failed", "declined")
+            if not whole_group and req["status"] not in may:
                 raise RequestError(t("Der Download läuft schon – zurückziehen geht nicht mehr"), 409)
-        self.db.run("DELETE FROM requests WHERE id=?", (rid,))
+            items = [i for i in items if i["status"] in may and i["user_id"] == user["id"]]
+            if not items:
+                raise RequestError(t("Der Download läuft schon – zurückziehen geht nicht mehr"), 409)
+        for i in items:
+            self.db.run("DELETE FROM requests WHERE id=?", (i["id"],))
+        return len(items)
 
     def retry(self, rid: int) -> dict:
         req = self._need(rid)
@@ -255,6 +357,22 @@ class Requests:
     def search_soon(self, rid: int) -> None:
         threading.Thread(target=self._search_safe, args=(rid,), daemon=True, name=f"request-{rid}").start()
 
+    def search_group_soon(self, ids: List[int]) -> None:
+        """The volumes of a series one after the other – not all at once at the indexers."""
+        if len(ids) == 1:
+            self.search_soon(ids[0])
+        elif ids:
+            threading.Thread(target=lambda: [self._search_safe(i) for i in ids], daemon=True,
+                             name=f"request-group-{ids[0]}").start()
+
+    def _coming_with_pack(self, req: dict) -> Optional[dict]:
+        """Another volume of the same series is loading a pack that holds this volume too."""
+        vol = releases._volumes(req["book"])
+        if vol is None or not req.get("group"):
+            return None
+        return next((o for o in self.group(req) if o["id"] != req["id"] and o["status"] in ("downloading", "processing")
+                     and vol in (o.get("pack_volumes") or [])), None)
+
     def _search_safe(self, rid: int) -> None:
         try:
             self.search(rid)
@@ -276,6 +394,12 @@ class Requests:
             if not self.usenet.configured()["indexers"]:
                 req.update(last_search=self.clock(), error=t("Noch kein Indexer eingerichtet"))
                 return self._save(req)
+            carrier = self._coming_with_pack(req)
+            if carrier:                                    # no second download of the same pack
+                note = "" if req.get("pack_noted") == carrier["release"] else \
+                    t("Kommt mit dem Paket „{release}“", release=carrier["release"])
+                req.update(last_search=self.clock(), error=None, pack_noted=carrier["release"])
+                return self._save(req, note=note)
             q, extra = self._queries(req["book"])
             try:
                 res = self.usenet.search(q, "", extra)
@@ -307,8 +431,17 @@ class Requests:
                  "request_id": rid}
         vol = releases._volumes(book)
         name = (release or {}).get("title") or ""
-        if name and vol is not None and releases.packs.pack_info(name):
-            hints["volumes"] = [vol]
+        pack = releases.packs.pack_info(name) if name else None
+        req["pack_volumes"] = None
+        if pack and vol is not None:
+            # a pack: keep this volume – and the other volumes of the same series request that are still sought
+            wanted = {vol}
+            for other in self.group(req):
+                v = releases._volumes(other["book"])
+                if other["id"] != rid and other["status"] == "searching" and v in pack["volumes"]:
+                    wanted.add(v)
+            hints["volumes"] = sorted(wanted)
+            req["pack_volumes"] = hints["volumes"]
         try:
             sent = self.usenet.send(release_id, hints)
         except UsenetError as e:
@@ -331,7 +464,7 @@ class Requests:
         """Download or import went wrong: block that release and try the next one (or give up)."""
         if req.get("release"):
             req["blocked"] = ((req.get("blocked") or []) + [req["release"]])[-50:]
-        req.update(nzo_id=None, job_id=None, last_search=None)
+        req.update(nzo_id=None, job_id=None, last_search=None, pack_volumes=None)
         if int(req.get("attempts") or 0) >= MAX_ATTEMPTS:
             req["error"] = why
             req = self._save(req, "failed", t("Aufgegeben nach {n} Versuchen: {why}", n=req["attempts"], why=why))
@@ -443,6 +576,11 @@ class Requests:
         b = req["book"]
         return f"{', '.join(b.get('authors') or [])} – {b.get('title')}"
 
+    @staticmethod
+    def _group_label(req: dict) -> str:
+        b, g = req["book"], req.get("group") or {}
+        return t("{author} – Reihe „{series}“", author=", ".join(b.get("authors") or []), series=g.get("title") or b.get("series"))
+
     def _tell(self, req: dict, title: str, message: str) -> None:
         """The requester's own ntfy topic (set in their account), if any."""
         user = self.accounts.get(req["user_id"]) if req.get("user_id") else None
@@ -473,7 +611,7 @@ class Requests:
 def summary(req: dict, user: dict, sees_all: bool) -> dict:
     """What the browser gets: no blocked-release internals for family accounts."""
     out = {k: req.get(k) for k in ("id", "book", "status", "created", "updated", "reason", "release", "error",
-                                    "last_search", "found", "seen", "history", "path", "attempts")}
+                                    "last_search", "found", "seen", "history", "path", "attempts", "group")}
     out["mine"] = req["user_id"] == user["id"]
     if sees_all:
         out["user"] = req["user"]
