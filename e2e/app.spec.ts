@@ -353,8 +353,16 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   await page.reload();
   await expect(page.locator("#requestBadge")).toHaveText("1");
   await page.locator("nav.tabs").getByRole("link", { name: /Anfragen/ }).click();
-  await page.locator("#requestScope").check();
+  // admins see everyone's requests by default – a waiting approval never hides
+  await expect(page.locator("#requestScope")).toBeChecked();
   const req = page.locator(".request", { hasText: "Die leise Stadt" });
+  await expect(req).toContainText("von Mia");
+  // only own requests chosen: a hint says that others wait, one click shows them
+  await page.locator("#requestScope").uncheck();
+  await expect(req).toHaveCount(0);
+  await expect(page.locator("#requestHint")).toContainText("Eine Anfrage von jemand anderem wartet");
+  await page.locator("#requestHint").getByRole("button", { name: "Anzeigen" }).click();
+  await expect(page.locator("#requestScope")).toBeChecked();
   await expect(req).toContainText("von Mia");
   await req.getByRole("button", { name: "Freigeben" }).click();
   await expect(req).toContainText("Wird gesucht");

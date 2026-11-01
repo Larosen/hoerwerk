@@ -114,8 +114,9 @@ function renderHealth(checks: HealthCheck[]): void {
     return rows.length ? [el("section", { class: "health-group" }, el("h3", {}, name), ...rows.map(healthRow))] : [];
   }));
   const bad = checks.filter((c) => c.status === "error").length, warn = checks.filter((c) => c.status === "warn").length;
-  $("#healthSummary").textContent = bad ? t("{n} Fehler, {w} Hinweise", { n: bad, w: warn })
-    : warn ? t("Alles läuft – {w} Hinweise", { w: warn }) : t("Alles in Ordnung");
+  const notes = warn === 1 ? t("1 Hinweis") : t("{w} Hinweise", { w: warn });
+  $("#healthSummary").textContent = bad ? `${t("{n} Fehler", { n: bad })}, ${notes}`
+    : warn ? t("Alles läuft – {notes}", { notes }) : t("Alles in Ordnung");
 }
 
 type TestResult = { ok: boolean; message: string };

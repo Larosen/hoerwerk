@@ -38,6 +38,15 @@ PRIORITIES = (1, 2, 3, 4, 5)        # min, low, default, high, max
 SECRETS = ("token", "password")
 
 
+
+# The page a message is about (tapping it in the ntfy app opens it)
+EVENT_PAGES = {
+    "request_new": "/requests", "request_failed": "/requests",
+    "filed": "/books", "review": "/books", "duplicate": "/books", "failed": "/books",
+    "download_sent": "/search", "download_done": "/books", "download_failed": "/search",
+    "abs_error": "/settings/health", "plex_error": "/settings/health",
+}
+
 class NotifyError(Exception):
     pass
 
@@ -155,8 +164,8 @@ class Notifier:
         c = self._load()
         body = {"topic": c["topic"], "title": title[:250], "message": message[:3500],
                 "priority": priority or int(c.get("priority") or 3), "tags": EVENTS.get(event, (False, []))[1]}
-        if c.get("app_url"):
-            body["click"] = c["app_url"]
+        if c.get("app_url"):            # tapping the message opens the page it is about
+            body["click"] = c["app_url"].rstrip("/") + EVENT_PAGES.get(event, "")
         self._post(c["url"], body, self._headers(c))
         self.sent += 1
 
@@ -170,7 +179,7 @@ class Notifier:
             try:
                 body = {"topic": topic, "title": title[:250], "message": message[:3500], "tags": ["books"]}
                 if c.get("app_url"):
-                    body["click"] = c["app_url"]
+                    body["click"] = c["app_url"].rstrip("/") + "/requests"     # their own requests
                 self._post(c["url"], body, self._headers(c))
             except Exception as e:  # noqa: BLE001 – a message must never break anything
                 applog.warn(f"ntfy ({topic}): {e}", "Benachrichtigungen")

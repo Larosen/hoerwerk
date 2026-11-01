@@ -136,6 +136,17 @@ function renderRequests(): void {
   const q = d.quota;
   $("#requestQuota").textContent = q.limit === null ? t("Du kannst unbegrenzt anfragen.")
     : t("Diesen Monat noch {left} von {limit} Anfragen frei.", { left: q.left ?? 0, limit: q.limit });
+  // only own requests shown, but others wait for approval: say so, one click shows them
+  const scope = $<HTMLInputElement>("#requestScope");
+  const hidden = d.sees_all && !scope.checked ? (d.pending || 0) - d.items.filter((r) => r.status === "pending").length : 0;
+  $("#requestHint").replaceChildren(...(hidden > 0 ? [
+    hidden === 1 ? t("Eine Anfrage von jemand anderem wartet auf deine Freigabe.")
+      : t("{n} Anfragen von anderen warten auf deine Freigabe.", { n: hidden }), " ",
+    el("button", { type: "button", class: "btn small primary", onclick: () => {
+      scope.checked = true; store.set("requestScopeAll", true); loadRequests();
+    } }, t("Anzeigen")),
+  ] : []));
+  $("#requestHint").hidden = hidden <= 0;
   const states = REQ_FILTERS[requests.filter]?.[1] || [];
   const items = d.items.filter((r) => !states.length || states.includes(r.status));
   $("#requestList").replaceChildren(...(items.length ? items.map(requestCard)
@@ -208,7 +219,12 @@ function releaseRow(r: BookRequest, x: JudgedRelease): HTMLTableRowElement {
 function initRequests(): void {
   requests.filter = store.get("requestFilter", "open");
   if (!(requests.filter in REQ_FILTERS)) requests.filter = "open";
-  $("#requestScope").addEventListener("change", loadRequests);
+  // whoever may see all requests (admins) sees all by default – waiting approvals must not hide
+  $<HTMLInputElement>("#requestScope").checked = store.get("requestScopeAll", true);
+  $("#requestScope").addEventListener("change", () => {
+    store.set("requestScopeAll", $<HTMLInputElement>("#requestScope").checked);
+    loadRequests();
+  });
   $("#releasesGo").addEventListener("click", () => { if (requests.current) openReleases(requests.current, $<HTMLInputElement>("#releasesQuery").value); });
   document.addEventListener("viewchange", (e) => {
     if ((e as CustomEvent<string>).detail === "requests") loadRequests(); else clearTimeout(requests.timer);
