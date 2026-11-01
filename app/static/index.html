@@ -213,7 +213,7 @@
       <div class="panel-head"><h2><a href="/settings" class="plain">Einstellungen</a></h2></div>
       <nav id="settingsNav" class="side-nav" aria-label="Einstellungen">
         <a href="/settings/health" data-section="health">Healthcheck <small>Ist alles richtig eingerichtet?</small></a>
-        <a href="/settings/general" data-section="general">Allgemein <small>Sprache</small></a>
+        <a href="/settings/general" data-section="general">Allgemein <small>Adresse, Sprache</small></a>
         <a href="/settings/library" data-section="library">Eingang &amp; Bibliothek <small>Erkennung, Ordner, Dateien</small></a>
         <a href="/settings/convert" data-section="convert">M4B-Konvertierung <small>Bitrate, Kapitel</small></a>
         <a href="/settings/downloads" data-section="downloads">Indexer &amp; SABnzbd <small>Release-Suche und Download</small></a>
@@ -231,7 +231,10 @@
     <div id="settingsHub" class="settings-hub"></div>
     <form id="settingsForm" class="dialog-body page-body" novalidate>
     <fieldset data-section="general">
-      <legend>Sprache / Language</legend>
+      <legend>Allgemein</legend>
+      <label>Öffentliche Adresse <small>so erreicht man Hörwerk aus dem Internet (z. B. über Pangolin) – Einladungslinks zeigen
+        immer dorthin. Leer: wird übernommen, sobald du Hörwerk einmal darüber öffnest.</small>
+        <input name="public_url" type="url" placeholder="https://hoerwerk.example.de" spellcheck="false" autocomplete="off"></label>
       <label class="lang-pick">Oberfläche und Benachrichtigungen
         <select name="language">
           <option value="de">Deutsch</option>
@@ -446,6 +449,9 @@
             <option value="20">20-mal</option></select></label>
         <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="inviteQuota" type="number" min="0" max="1000"></label>
       </div>
+      <p id="invitePublic" class="discover-note" hidden>Einladungslinks zeigen immer auf die Adresse aus dem Internet. Bitte erst
+        unter <a href="/settings/general">Einstellungen → Allgemein</a> die öffentliche Adresse eintragen (z. B.
+        <code>https://hoerwerk.example.de</code>) – oder Hörwerk einmal über diese Adresse öffnen, dann übernimmt es sie selbst.</p>
       <div class="row gap"><button type="button" class="btn primary" id="inviteCreate">Einladung erstellen</button></div>
       <ul id="inviteList" class="invite-list"></ul>
     </fieldset>
@@ -453,7 +459,7 @@
       <legend>Neues Konto <small class="muted">selbst anlegen, ohne Einladung</small></legend>
       <div class="grid2">
         <label>Name <input id="newUserName" type="text" maxlength="40" autocomplete="off" spellcheck="false"></label>
-        <label>Startpasswort <small>mindestens 10 Zeichen – bitte selbst ändern lassen</small>
+        <label>Startpasswort <small>„Passwort erzeugen“ macht ein sicheres – bitte selbst ändern lassen</small>
           <input id="newUserPw" type="text" maxlength="256" autocomplete="off" spellcheck="false"></label>
         <label>Rolle <select id="newUserRole"><option value="user">Nutzer</option><option value="admin">Admin</option></select></label>
         <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="newUserQuota" type="number" min="0" max="1000"></label>
@@ -498,7 +504,7 @@
       <div class="grid2">
         <label>Bisheriges Passwort <input id="pwOld" type="password" autocomplete="current-password" maxlength="256"></label>
         <span></span>
-        <label>Neues Passwort <small>mindestens 10 Zeichen</small><input id="pwNew" type="password" autocomplete="new-password" maxlength="256"></label>
+        <label>Neues Passwort <input id="pwNew" type="password" autocomplete="new-password" maxlength="256"></label>
         <label>Neues Passwort wiederholen <input id="pwNew2" type="password" autocomplete="new-password" maxlength="256"></label>
       </div>
       <div class="row gap"><button type="button" class="btn" id="pwSave">Passwort ändern</button>

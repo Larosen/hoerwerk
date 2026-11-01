@@ -12,6 +12,10 @@
   <script src="/static/theme.js"></script>
 </head>
 <body class="login-body">
+<svg xmlns="http://www.w3.org/2000/svg" class="sprite" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5.5 12.5 4 4 9-9"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+</svg>
 <main class="login-card">
   <div class="login-brand">
     <img src="/static/icon.svg" width="44" height="44" alt="">
@@ -46,11 +50,11 @@
     <label>Name
       <input name="name" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="40">
     </label>
-    <label>Passwort <small>mindestens 10 Zeichen</small>
-      <input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="256">
+    <label>Passwort
+      <input name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="256">
     </label>
     <label>Passwort wiederholen
-      <input name="password2" type="password" autocomplete="new-password" required minlength="10" maxlength="256">
+      <input name="password2" type="password" autocomplete="new-password" required minlength="12" maxlength="256">
     </label>
     <label id="setupCodeRow" hidden>Einrichtungs-Code <small>steht im Container-Log (docker logs hoerwerk)</small>
       <input name="code" autocomplete="off" spellcheck="false" maxlength="20">
@@ -64,11 +68,11 @@
     <label>Dein Name <small>z. B. dein Vorname</small>
       <input name="name" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="40">
     </label>
-    <label>Passwort <small>mindestens 10 Zeichen – gut merken oder im Passwort-Manager speichern</small>
-      <input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="256">
+    <label>Passwort
+      <input name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="256">
     </label>
     <label>Passwort wiederholen
-      <input name="password2" type="password" autocomplete="new-password" required minlength="10" maxlength="256">
+      <input name="password2" type="password" autocomplete="new-password" required minlength="12" maxlength="256">
     </label>
     <button class="btn primary" type="submit">Konto anlegen</button>
   </form>

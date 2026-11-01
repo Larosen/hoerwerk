@@ -38,7 +38,7 @@ class WebTest(unittest.TestCase):
         cls.app = services.App(config.Config.from_env({**env, "AUDIOBOOK_WATCH": "false"}), start_workers=False)
         cls.server = server.make_server(cls.app, "127.0.0.1", 0)
         cls.port = cls.server.server_address[1]
-        admin = cls.app.accounts.create("admin", "test-password-123", "admin")
+        admin = cls.app.accounts.create("admin", "Test-Kaffee-123", "admin")
         cls.cookie = "hw_session=" + cls.app.accounts.start_session(admin["id"], False)
         threading.Thread(target=cls.server.serve_forever, daemon=True).start()
 
@@ -174,7 +174,7 @@ class AccessTest(WebTest):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        eva = cls.app.accounts.create("eva", "test-password-456", "user")
+        eva = cls.app.accounts.create("eva", "Test-Kaffee-456", "user")
         cls.user_cookie = "hw_session=" + cls.app.accounts.start_session(eva["id"], False)
 
     def _routes(self):

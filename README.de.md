@@ -361,7 +361,9 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
   Wer ihn öffnet, wählt selbst Name und Passwort, bekommt ein Familienkonto und ist sofort angemeldet. Je Link:
   Notiz („Mama“), Gültigkeit (1, 7, 30 Tage oder unbegrenzt), wie oft nutzbar, Kontingent. Die Liste zeigt offen,
   benutzt (von wem), abgelaufen oder widerrufen; Widerrufen geht jederzeit. Über einen Link entsteht nie ein Admin.
-  Falsche Links zählen wie falsche Passwörter (Sperre nach 5 Versuchen, `auth.log` → CrowdSec), ein einmal nutzbarer
+  Die Links zeigen immer auf die öffentliche Adresse (`PUBLIC_URL`), auch wenn du sie zu Hause erstellst.
+  Passwörter müssen den Regeln genügen (mind. 12 Zeichen, gemischt oder ein Satz, kein Name, kein „Hörwerk“) – eine
+  Checkliste zeigt beim Tippen, was fehlt, mit Hinweis auf Passwort-Manager. Falsche Links zählen wie falsche Passwörter (Sperre nach 5 Versuchen, `auth.log` → CrowdSec), ein einmal nutzbarer
   Link kann auch bei gleichzeitigem Öffnen nur ein Konto ergeben.
 * **Konto** (Name oben rechts, `/account`, für alle): Passwort ändern, **Zweitfaktor** (Authenticator-App wie Aegis, 2FAS,
   Google/Microsoft Authenticator) einrichten, eigenes ntfy-Topic, angemeldete Geräte sehen und abmelden,
@@ -445,6 +447,7 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `AAC_BITRATE` | `auto` | `auto` (wie die Quelle, höchstens 128k) oder fester Wert |
 | `FORCE_MONO` | `false` | Mono ausgeben |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` oder `tag` |
+| `PUBLIC_URL` | – | Adresse aus dem Internet, z. B. `https://hoerbuecher.example.de` – Einladungslinks zeigen immer dorthin (wird sonst beim ersten Aufruf über den Reverse-Proxy übernommen; änderbar unter Einstellungen → Allgemein) |
 | `TRUSTED_PROXIES` | – | IPs/Netze des Reverse-Proxys (Pangolin/Newt, Traefik), z. B. `172.18.0.0/16` – nur von dort zählt `X-Forwarded-For` |
 | `COOKIE_SECURE` | `auto` | Anmelde-Cookie nur über HTTPS: `auto` (wenn der Proxy HTTPS meldet), `true`, `false` |
 | `REQUEST_QUOTA` | `5` | Buchanfragen pro Nutzer und Monat (je Konto änderbar) |

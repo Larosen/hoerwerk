@@ -18,7 +18,7 @@ import releases  # noqa: E402
 import services  # noqa: E402
 from web import server  # noqa: E402
 
-PW = "korrekt-pferd-batterie"
+PW = "korrekt pferd batterie heftklammer"
 BOOK = {"asin": "b0req00001", "title": "Das stille Haus", "authors": ["Anna Autorin"], "runtime_min": 600,
         "language": "german"}
 GB = 1 << 30

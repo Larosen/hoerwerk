@@ -105,8 +105,11 @@ async function loadAudit(): Promise<void> {
 // -- users (admin) ------------------------------------------------------------
 function randomPassword(): string {
   const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  const bytes = crypto.getRandomValues(new Uint8Array(14));
-  return Array.from(bytes, (b) => chars[b % chars.length]).join("").replace(/(.{4})(?=.)/g, "$1-");
+  for (;;) {                                  // until it meets every rule (nearly always the first one)
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    const pw = Array.from(bytes, (b) => chars[b % chars.length]).join("").replace(/(.{4})(?=.)/g, "$1-");
+    if (passwordRules(pw).every((r) => r.ok)) return pw;
+  }
 }
 
 async function saveUser(id: number, changes: Record<string, unknown>): Promise<void> {
@@ -170,10 +173,10 @@ interface Invite {
 const INVITE_STATUS: Record<Invite["status"], () => string> = {
   open: () => t("offen"), used: () => t("benutzt"), expired: () => t("abgelaufen"), revoked: () => t("widerrufen"),
 };
-let inviteBase = "";
+interface InviteWithLink extends Invite { link: string }
 
 function inviteLink(inv: Invite): string {
-  return `${inviteBase || location.origin}/invite/${inv.token}`;
+  return (inv as InviteWithLink).link;
 }
 
 /** Copy to the clipboard – over plain http (LAN) browsers refuse that, then the link is selected for copying by hand. */
@@ -221,8 +224,10 @@ function inviteRow(inv: Invite): HTMLLIElement {
 
 async function loadInvites(): Promise<void> {
   try {
-    const res = await api<{ invites: Invite[]; app_url: string }>("GET", "/api/invites");
-    inviteBase = (res.app_url || "").replace(/\/+$/, "");
+    const res = await api<{ invites: Invite[]; public_url: string }>("GET", "/api/invites");
+    // links always point to the address from the internet – without it there are no links
+    $("#invitePublic").hidden = !!res.public_url;
+    $<HTMLButtonElement>("#inviteCreate").disabled = !res.public_url;
     $("#inviteList").replaceChildren(...res.invites.map(inviteRow));
   } catch (e) { toast(errMsg(e), true); }
 }
@@ -266,6 +271,7 @@ function initAccount(): void {
   if (typeof ME === "undefined" || !ME) return;
   $("#accountName").textContent = ME.name;
   $("#pwSave").addEventListener("click", changePassword);
+  attachPasswordRules($<HTMLInputElement>("#pwNew"), () => ME?.name || "");
   $("#endOthers").addEventListener("click", async () => {
     try { const r = await api<{ ended: number }>("POST", "/api/auth/sessions/end", {}); toast(t("{n} Geräte abgemeldet", { n: r.ended })); openAccount(); }
     catch (e) { toast(errMsg(e), true); }
@@ -291,6 +297,7 @@ function initAccount(): void {
   $("#newUserPwGen").addEventListener("click", () => { $<HTMLInputElement>("#newUserPw").value = randomPassword(); });
   $("#newUserSave").addEventListener("click", createUser);
   $("#inviteCreate").addEventListener("click", createInvite);
+  attachPasswordRules($<HTMLInputElement>("#newUserPw"), () => $<HTMLInputElement>("#newUserName").value);
 }
 
 initAccount();

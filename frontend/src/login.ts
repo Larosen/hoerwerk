@@ -51,6 +51,7 @@ async function initInvite(token: string): Promise<void> {
       ? t("Der Link gilt bis {date}.", { date: new Date(inv.expires * 1000).toLocaleDateString(LOCALE, { dateStyle: "long" }) }) : "";
   } catch (e) { showError(errMsg(e)); return; }
   form.hidden = false;
+  attachPasswordRules(field(form, "password"), () => field(form, "name").value);
   field(form, "name").focus();
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -70,6 +71,7 @@ async function initLogin(): Promise<void> {
   login.hidden = st.setup;
   setup.hidden = !st.setup;
   $("#setupCodeRow").hidden = !st.setup_code;
+  if (st.setup) attachPasswordRules(field(setup, "password"), () => field(setup, "name").value);
   if (st.setup) field(setup, "name").focus(); else field(login, "name").focus();
 
   login.addEventListener("submit", (e) => {
