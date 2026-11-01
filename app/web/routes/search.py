@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 import audible
+import releases
 import bookrequests as br
 import links
 import packs
@@ -95,6 +96,9 @@ def search_books(req: Req):
     region = req.get("region") or req.app.settings()["ab_region"]
     if region not in audible.REGIONS:
         raise HTTPException(400, t("Unbekannte Region"))
+    language = req.get("language") or ""             # "de" / "en" / "" – which edition is wanted
+    if language not in ("", "de", "en"):
+        raise HTTPException(400, t("Ungültige Daten"))
     hints = {"query": audible.clean_query(query) or query, "asin": audible.find_asin(query)}
     error = None
     try:
@@ -106,6 +110,15 @@ def search_books(req: Req):
     extra = [b for b in links.bookbeat_search(hints["query"], region)
              if _book_key(b) not in seen and (b.get("language") or "german") in ("german", "deutsch")]
     books += audible.rank(extra, hints)[:6]
+    if language:
+        wanted = [b for b in books if releases.book_language(b) in (language, "")]
+        if not wanted and language == "en" and region not in ("us", "uk"):
+            # an English edition the German store doesn't list: ask the US store
+            try:
+                wanted = [b for b in req.app.pipeline.providers.search(hints, "us")[:8] if releases.book_language(b) == "en"]
+            except audible.AudibleError:
+                wanted = []
+        books = wanted
     if not books and error:
         raise HTTPException(502, error)
     keys = ("asin", "title", "subtitle", "authors", "narrators", "series", "series_position",

@@ -233,7 +233,8 @@ class Requests:
 
     def _judge(self, req: dict, results: List[dict]) -> List[dict]:
         s = self.settings()
-        lang = "de" if (req["book"].get("language") or "german").lower() in ("german", "deutsch", "de") else ""
+        # the language of the requested edition decides – an English request gets English releases
+        lang = releases.book_language(req["book"]) or "de"
         return releases.rank(results, req["book"], prefer_language=lang,
                              unabridged=bool(s.get("discover_unabridged", True)), blocked=req.get("blocked") or [])
 

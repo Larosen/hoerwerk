@@ -29,6 +29,32 @@ def title_words(title: str) -> List[str]:
     return [w for w in match_words(title or "") if w not in STOP and len(w) > 1]
 
 
+LANG_CODES = {"german": "de", "deutsch": "de", "de": "de", "english": "en", "englisch": "en", "en": "en"}
+# words that only German (or only English) release names use – for names without a language tag
+_DE_WORDS = {"der", "die", "das", "und", "zum", "zur", "vom", "bis", "biss", "ein", "eine", "des", "den", "dem", "im",
+             "auf", "aus", "mit", "nach", "hoerbuch", "horbuch", "ungekurzt", "gekurzt", "gelesen", "teil", "folge", "band"}
+_EN_WORDS = {"the", "of", "and", "in", "to", "a", "an", "unabridged", "narrated", "book", "audiobook", "edition"}
+
+
+def book_language(book: dict) -> str:
+    """"de", "en" or "" (unknown) – the language a request is for."""
+    return LANG_CODES.get((book.get("language") or "").strip().lower(), "")
+
+
+def guess_language(name: str) -> str:
+    """"de"/"en" from the words of a release name without a language tag ("…Bis(s).zum.Morgengrauen" is German)."""
+    if re.search(r"[äöüÄÖÜß]", name or ""):
+        return "de"
+    words = match_words(name)
+    de = sum(1 for w in words if w in _DE_WORDS)
+    en = sum(1 for w in words if w in _EN_WORDS)
+    if de >= 2 and de > en:
+        return "de"
+    if en >= 2 and en > de:
+        return "en"
+    return ""
+
+
 def fits(release: str, book: dict) -> bool:
     """Author's surname and (nearly) all words of the title in the release name."""
     return evaluate({"title": release}, book, check_size=False)["ok"]
@@ -105,6 +131,10 @@ def evaluate(release: dict, book: dict, prefer_language: str = "de", unabridged:
     lang = release.get("language")
     if prefer_language and lang and lang != prefer_language:
         return no(t("andere Sprache ({lang})", lang=lang))
+    if prefer_language and not lang:
+        guessed = guess_language(name)
+        if guessed and guessed != prefer_language:
+            return no(t("vermutlich andere Sprache ({lang})", lang=guessed))
     if check_size and kbps is not None and (release.get("format") or "").upper() in ("FLAC", "LOSSLESS", "WAV") and kbps < 200:
         # lossless audio of the whole book is far bigger – a small FLAC is something else (e.g. a music album)
         return no(t("verlustfrei, aber viel zu klein für {h} h Laufzeit ({kbps} kbit/s)", h=round(runtime / 60, 1), kbps=kbps))

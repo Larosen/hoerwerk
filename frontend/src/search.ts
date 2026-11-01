@@ -162,7 +162,9 @@ async function lookupBooks(e?: Event): Promise<void> {
   btn.disabled = true;
   btn.textContent = t("Suche …");
   try {
-    const res = await api<{ books: Book[]; region: string }>("POST", "/api/search/books", { query: q });
+    const language = document.querySelector<HTMLInputElement>("#bookLang input:checked")?.value || "de";
+    store.set("bookLang", language);
+    const res = await api<{ books: Book[]; region: string }>("POST", "/api/search/books", { query: q, language });
     const box = $("#bookPick");
     box.hidden = false;
     box.replaceChildren(
@@ -173,7 +175,7 @@ async function lookupBooks(e?: Event): Promise<void> {
         el("span", { class: "pick-text" },
           el("b", {}, b.title),
           el("span", {}, (b.authors || []).join(", ")),
-          el("span", { class: "tag-row" }, genreTag(b), langTag(b)),
+          el("span", { class: "tag-row" }, langTag(b, true), genreTag(b)),
           el("span", { class: "muted" }, [b.series ? `${b.series} ${b.series_position || ""}`.trim() : "",
             b.runtime_min ? fmtDuration(b.runtime_min * 60) : "", b.format_type === "abridged" ? t("gekürzt") : "",
             b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : ""].filter(Boolean).join(" · ")),
@@ -183,6 +185,9 @@ async function lookupBooks(e?: Event): Promise<void> {
 
 function pickBook(b: Book): void {
   search.book = b;
+  // the releases are searched in the language of the chosen edition
+  const lang = (b.language || "").toLowerCase();
+  if (lang) $<HTMLSelectElement>("#searchLang").value = lang === "english" ? "en" : lang === "german" || lang === "deutsch" ? "de" : "";
   $<HTMLInputElement>("#releaseQuery").value = bookQueries(b).query;
   $("#releaseForm").hidden = !IS_ADMIN;
   const box = $("#bookPick");
@@ -375,6 +380,11 @@ async function pollDownloads(force = false): Promise<void> {
 function initSearch(): void {
   const lang = $<HTMLSelectElement>("#searchLang");
   lang.value = store.get("searchLang", "de");
+  const bookLang = store.get("bookLang", "de");
+  for (const r of document.querySelectorAll<HTMLInputElement>("#bookLang input")) {
+    r.checked = r.value === bookLang;
+    r.addEventListener("change", () => { store.set("bookLang", r.value); if ($<HTMLInputElement>("#searchQuery").value.trim()) lookupBooks(); });
+  }
   $("#searchForm").addEventListener("submit", lookupBooks);
   $("#releaseForm").addEventListener("submit", (e) => runSearch(e));
   $("#freeSearchBtn").addEventListener("click", () => runSearch(undefined, true));

@@ -266,6 +266,40 @@ test("Entdecken: Nach Genre startet mit einem Genre, Unterkategorien wie bei Aud
   expect(errors).toEqual([]);
 });
 
+test("Suchen: Deutsch oder Englisch – die Wahl geht mit, jede Kachel zeigt die Sprache", async ({ page }) => {
+  const asked: { query: string; language: string }[] = [];
+  await page.route("**/api/search/books", async (r) => {
+    const body = r.request().postDataJSON();
+    asked.push(body);
+    const english = body.language === "en";
+    await r.fulfill({ json: { region: "de", books: [{
+      asin: english ? "B004V0T0VK" : "B00TEST001", title: english ? "Twilight" : "Bis(s) zum Morgengrauen",
+      authors: ["Stephenie Meyer"], language: english ? "English" : "German", genres: ["Jugendliche & Heranwachsende"],
+      series: "Twilight", series_position: "1", runtime_min: 700, source: "audible" }] } });
+  });
+  const releaseSearch: { language: string }[] = [];
+  await page.route("**/api/search", (r) => {
+    releaseSearch.push(r.request().postDataJSON());
+    return r.fulfill({ json: { results: [], errors: [], queries: [] } });
+  });
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();
+  await page.locator("#searchQuery").fill("Twilight");
+  await page.locator("#bookLookupBtn").click();
+  await expect(page.locator("#bookPick .pick")).toContainText("Bis(s) zum Morgengrauen");
+  await expect(page.locator("#bookPick .lang-tag")).toHaveText("Deutsch");
+  await page.locator("#bookLang").getByText("Englisch").click();                       // searches again at once
+  await expect(page.locator("#bookPick .pick")).toContainText("Twilight");
+  await expect(page.locator("#bookPick .lang-tag")).toHaveText("Englisch");
+  expect(asked.map((a) => a.language)).toEqual(["de", "en"]);
+  // the releases are then searched in the edition's language
+  await page.locator("#bookPick .pick").click();
+  await expect(page.locator("#searchLang")).toHaveValue("en");
+  await expect.poll(() => releaseSearch.map((x) => x.language)).toEqual(["en"]);     // the indexers are asked for English
+  await page.locator("#bookLang").getByText("Deutsch").click();                         // back for the next tests
+  expect(errors).toEqual([]);
+});
+
 test("Anmeldung: falsches Passwort, dann richtig; ohne Anmeldung keine Daten", async ({ page, request }) => {
   const errors = watchErrors(page);
   expect((await request.get("/api/settings")).status()).toBe(401);

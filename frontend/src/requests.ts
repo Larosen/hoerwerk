@@ -103,7 +103,7 @@ function requestCard(r: BookRequest): HTMLLIElement {
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
       el("span", { class: "s-author" }, (b.authors || []).join(", ")),
-      el("span", { class: "tag-row" }, genreTag(b), langTag(b)),
+      el("span", { class: "tag-row" }, langTag(b, true), genreTag(b)),
       el("span", { class: "req-line" }, el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
         r.user && !r.mine ? el("span", { class: "muted small" }, t("von {name}", { name: r.user })) : null,
         el("span", { class: "muted small" }, fmtAgo(r.created))),

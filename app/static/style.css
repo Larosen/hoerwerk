@@ -642,3 +642,13 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
 .lang-tag { font-size: 11.5px; font-weight: 600; line-height: 1.5; padding: 0 8px; border-radius: 99px; color: var(--mark-text, #7a5a00);
   background: var(--mark, #fdf0c4); white-space: nowrap; }
 #releasesDialog table.results th:nth-child(4) { width: 28%; }
+/* Deutsch | Englisch – which edition is searched */
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex: none; }
+.seg label { display: inline-flex; cursor: pointer; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { padding: 0 12px; height: 34px; display: inline-flex; align-items: center; font-size: 13.5px; font-weight: 550; color: var(--muted); }
+.seg label + label span { border-left: 1px solid var(--border); }
+.seg input:checked + span { background: var(--accent); color: var(--accent-text); }
+.seg input:focus-visible + span { box-shadow: inset 0 0 0 2px var(--accent-soft); }
+.lang-tag.de { color: var(--muted); background: var(--panel-2); }
+@media (max-width: 520px) { #searchForm { flex-wrap: wrap; } #searchForm input[type=search] { flex: 1 1 100%; } }
