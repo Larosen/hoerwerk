@@ -120,6 +120,17 @@ docker compose up -d
 
 Filed the wrong book? **Correct** takes it back out of the library into the review list.
 
+### Upload (e.g. from CD)
+
+Audiobooks you own – say ripped from CD – can be uploaded right in the browser: *Audiobooks → Inbox → **Upload***.
+Drag in or choose one folder per audiobook, ideally "Author – Title", sub-folders `CD1`, `CD2` … welcome; single files
+work too (then enter the name). Hörwerk takes audio files, covers, cue sheets and `chapters.txt`/`metadata.yml`;
+everything else is skipped.
+
+The files first go into a hidden folder and are moved into the inbox in one step after the last one – then the usual
+way starts without waiting: folder name and tags → Audible → M4B with chapters → library. Up to 4 GB per file;
+abandoned uploads are cleaned up after a day. Admins only.
+
 ### Library view
 
 **Audiobooks → Library** lists every book in the library with a search over title, author, series and folder. Each row

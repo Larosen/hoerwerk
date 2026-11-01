@@ -76,7 +76,8 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 | Unbemerkte Änderungen durch einen Admin-Zugang | Admin-Protokoll in der Datenbank: jede ändernde Admin-Aktion mit Zeit, Konto und IP (Freigaben, Konten, Einstellungen, Quellen …), einsehbar unter *Konten*. |
 | DNS-Rebinding / fremde Host-Namen | `ALLOWED_HOSTS`; zusätzlich braucht jede Datenanfrage eine Anmeldung. |
 | Pfade außerhalb der Bibliothek | Buch-Pfade aus dem Browser werden aufgelöst (inkl. Symlinks) und müssen in der Bibliothek liegen; statische Dateien nur aus `app/static`. |
-| Riesige Anfragen | max. 4 MB pro Anfrage. |
+| Riesige Anfragen | max. 4 MB pro Anfrage; Ausnahme nur der Upload (bis 4 GB je Datei, direkt auf die Platte gestreamt). |
+| Upload | Nur Admins; Anmeldung und Rechte werden geprüft, bevor ein Byte gelesen wird. Nur relative Pfade ohne `..` und ohne versteckte Namen, nur Audio, Cover, Cue-Sheets und Hörwerks Textdateien; freier Platz wird vor jeder Datei geprüft; erst ein versteckter Zwischenordner, dann ein Schritt in den Eingang (nichts wird überschrieben). |
 | Viele offene Live-Verbindungen (`/api/events`) | Höchstens 32 gleichzeitig; sie liefern nur, was die Oberfläche ohnehin abruft, und brauchen dieselbe Anmeldung. |
 | Spracheinstellung / Übersetzungen | Nur `de` oder `en` werden angenommen; `/i18n.js` liefert eine feste Datei aus dem Image (auch für die Login-Seite). |
 | Sonstige Header | `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy`/`-Resource-Policy: same-origin`, `Cache-Control: no-store`. |

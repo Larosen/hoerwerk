@@ -235,6 +235,7 @@ class Pipeline:
         self.wake = threading.Condition(self.lock)
         self.seen: Dict[str, tuple] = {}     # inbox path -> (signature, first seen)
         self.ready_at: Dict[str, float] = {}  # inbox path -> when it counts as completely copied
+        self.complete: set = set()            # inbox names known to be complete (uploads): no waiting
         self.last_scan: Optional[float] = None
         self.scan_note = ""
         self._force_scan = False
@@ -330,6 +331,12 @@ class Pipeline:
         self.save()
         self._schedule(job)
         return job
+
+    def arrived(self, names: List[str]) -> None:
+        """Entries that were moved into the inbox complete (an upload): take them at once."""
+        with self.lock:
+            self.complete.update(names)
+        self.scan_now()
 
     def scan_now(self) -> None:
         with self.lock:
@@ -581,9 +588,13 @@ class Pipeline:
             prev = self.seen.get(path)
             # finished SABnzbd downloads from the search arrive in one move: a short pause is enough
             wait = min(settle, GRAB_SETTLE) if settle and self.hint_provider and self.hint_provider(name) else settle
-            if not prev:
+            if name in self.complete:
+                wait = 0
+            if not prev and wait:
                 applog.info(t("Neu im Eingang – wird verarbeitet, sobald {n} s lang nichts mehr geschrieben wurde",
                               n=wait), name)
+            elif not prev:
+                applog.info(t("Neu im Eingang – wird jetzt verarbeitet"), name)
             if not prev or prev[0] != sig:
                 self.seen[path] = (sig, _now())
                 self.ready_at[path] = _now() + wait
@@ -597,6 +608,7 @@ class Pipeline:
             if not units:
                 continue
             added += self._add_units(path, units)
+            self.complete.discard(name)
             self.seen.pop(path, None)
             self.ready_at.pop(path, None)
         for p in list(self.seen):

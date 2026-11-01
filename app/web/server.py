@@ -219,24 +219,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._static("/" if url.path == "/" else "/static/login.html")
         if self.command not in ("GET", "HEAD") and not self._same_origin():
             return self._json(403, {"error": t("Anfrage von fremder Seite abgelehnt")})
-        body = None
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
             return self._json(400, {"error": t("Ungültige Länge")})
-        if length > MAX_BODY:
-            return self._json(413, {"error": t("Anfrage zu groß")})
-        self.close_connection = False
-        if length:
-            try:
-                body = json.loads(self.rfile.read(length))
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                return self._json(400, {"error": t("Ungültiges JSON")})
         query = {k: v[0] for k, v in parse_qs(url.query).items()}
         found = router.match(self.command, url.path)
         if not found:
             return self._json(404, {"error": t("Nicht gefunden")})
         fn, params, access = found
+        # who is asking is checked before a single byte of the body is read (uploads can be large)
         user = self._user(token) if access != "public" or token else None
         ip = self.client_ip()
         if access != "public" and user is None:
@@ -247,9 +239,24 @@ class Handler(BaseHTTPRequestHandler):
         if access == "admin" and not user.get("totp") and self.server.app.settings().get("admin_totp_required"):
             return self._json(403, {"error": t("Admins brauchen einen Zweitfaktor – bitte unter Konto einrichten"),
                                     "totp_setup": True})
+        raw = getattr(fn, "raw_body", 0)
+        if length > (raw or MAX_BODY):
+            return self._json(413, {"error": t("Anfrage zu groß")})
+        if raw and not self.headers.get("Content-Length"):
+            return self._json(411, {"error": t("Ungültige Länge")})
+        self.close_connection = False
+        body = None
+        if length and not raw:
+            try:
+                body = json.loads(self.rfile.read(length))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return self._json(400, {"error": t("Ungültiges JSON")})
         req = Req(self.server.app, body, query, user=user, ip=ip, https=self.is_https(), token=token,
                   agent=self.headers.get("User-Agent") or "",
                   proxied=any(self.headers.get(h) for h in ("X-Forwarded-For", "Forwarded", "X-Real-IP")))
+        if raw:
+            req.stream, req.length = self.rfile, length          # the handler reads the body itself
+            self.close_connection = True                          # never reuse: an aborted upload leaves bytes behind
         try:
             result = fn(req, **params)
             if access == "admin" and self.command not in ("GET", "HEAD"):
