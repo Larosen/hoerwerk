@@ -357,6 +357,12 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
   kurzen Anleitung in drei Schritten)
   – Eingang, Bibliothek, Einstellungen und Protokoll bleiben Admins vorbehalten. Darunter: das
   **Admin-Protokoll** (wer hat wann was geändert, mit IP).
+* **Einladungen** (*Einstellungen → Konten*, wie bei Wizarr): einen Link erzeugen und z. B. per WhatsApp verschicken.
+  Wer ihn öffnet, wählt selbst Name und Passwort, bekommt ein Familienkonto und ist sofort angemeldet. Je Link:
+  Notiz („Mama“), Gültigkeit (1, 7, 30 Tage oder unbegrenzt), wie oft nutzbar, Kontingent. Die Liste zeigt offen,
+  benutzt (von wem), abgelaufen oder widerrufen; Widerrufen geht jederzeit. Über einen Link entsteht nie ein Admin.
+  Falsche Links zählen wie falsche Passwörter (Sperre nach 5 Versuchen, `auth.log` → CrowdSec), ein einmal nutzbarer
+  Link kann auch bei gleichzeitigem Öffnen nur ein Konto ergeben.
 * **Konto** (Name oben rechts, `/account`, für alle): Passwort ändern, **Zweitfaktor** (Authenticator-App wie Aegis, 2FAS,
   Google/Microsoft Authenticator) einrichten, eigenes ntfy-Topic, angemeldete Geräte sehen und abmelden,
   und **So sieht dich Hörwerk** (deine Adresse, über welchen Proxy, HTTPS) – zum Prüfen eines Reverse-Proxys.

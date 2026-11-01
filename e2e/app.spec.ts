@@ -381,6 +381,44 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   await mia.close();
 });
 
+test("Einladung per Link: Admin erstellt, Eingeladene wählt Name und Passwort", async ({ page, browser }) => {
+  const errors = await open(page);
+  await page.goto("/settings/users");
+  await page.locator("#inviteNote").fill("Oma");
+  await page.locator("#inviteCreate").click();
+  const row = page.locator("#inviteList li", { hasText: "Oma" });
+  await expect(row).toContainText("offen");
+  const link = await row.locator("input").inputValue();
+  expect(link).toMatch(/\/invite\/[A-Za-z0-9_-]{30,}$/);
+  expect(errors).toEqual([]);
+
+  const ctx = await browser.newContext();
+  const oma = await ctx.newPage();
+  const omaErrors = watchErrors(oma);
+  await oma.goto(link);
+  const form = oma.locator("#inviteForm");
+  await expect(form).toBeVisible();
+  await expect(oma.locator("#loginForm")).toBeHidden();
+  await form.getByLabel("Dein Name").fill("Oma");
+  await form.getByLabel("Passwort", { exact: false }).first().fill("omas-geheimes-passwort");
+  await form.getByLabel("Passwort wiederholen").fill("omas-geheimes-passwort");
+  await form.getByRole("button", { name: "Konto anlegen" }).click();
+  await expect(oma).toHaveURL(/\/discover$/);                       // signed in, straight to Entdecken
+  await expect(oma.locator("#accountName")).toHaveText("Oma");
+  await expect(oma.locator("#welcome")).toBeVisible();
+  expect(omaErrors).toEqual([]);
+  // the link is used up now
+  const again = await ctx.newPage();
+  await again.context().clearCookies();
+  await again.goto(link);
+  await expect(again.locator("#loginError")).toContainText("gilt nicht");
+  await expect(again.locator("#inviteForm")).toBeHidden();
+  await ctx.close();
+  await page.reload();
+  await expect(row).toContainText("benutzt");
+  await expect(row).toContainText("von Oma");
+});
+
 test("Zweitfaktor: einrichten, dann Anmeldung nur mit Code", async ({ page, browser }) => {
   const errors = await open(page);
   expect((await page.request.post("/api/users", { headers: OWN, data: { name: "Ole", password: "oles-passwort-123" } })).status()).toBe(200);

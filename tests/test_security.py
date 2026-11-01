@@ -168,7 +168,8 @@ class WebTest(unittest.TestCase):
 class AccessTest(WebTest):
     """Nothing without login: every API route, every app page, the UI code."""
     PUBLIC_API = {("GET", "/api/health"), ("GET", "/api/auth/status"), ("POST", "/api/auth/setup"),
-                  ("POST", "/api/auth/login"), ("POST", "/api/auth/login/totp")}
+                  ("POST", "/api/auth/login"), ("POST", "/api/auth/login/totp"),
+                  ("GET", "/api/invite/1"), ("POST", "/api/invite/1")}       # the invitation link (token checked)
 
     @classmethod
     def setUpClass(cls):

@@ -312,6 +312,13 @@ class Accounts:
                 q.popleft()
             return bool(q) and len(q) >= IP_FAILS
 
+    def is_blocked(self, ip: str) -> bool:
+        return self._blocked(ip)
+
+    def failed(self, ip: str, name: str = "") -> None:
+        """A failed attempt outside the password login (e.g. a wrong invitation link) – same brake."""
+        self._fail(ip, name)
+
     def blocked_count(self) -> int:
         """Addresses (IPv6: /64 networks) blocked right now – for the health check."""
         now = self.clock()

@@ -346,6 +346,11 @@ from the home network; from outside the setup code from `docker logs hoerwerk` i
   Everyone starts on *Discover*; family accounts only see *Discover*, *Search* and *Requests* (the first time with a
   short three-step guide) – inbox, library, settings and log stay with admins. Below: the
   **admin log** (who changed what, when, with IP).
+* **Invitations** (*Settings → Accounts*, like Wizarr): create a link and send it e.g. via WhatsApp. Whoever opens it
+  picks their own name and password, gets a family account and is signed in right away. Per link: a note ("Mum"),
+  validity (1, 7, 30 days or unlimited), how often it can be used, quota. The list shows open, used (by whom), expired
+  or revoked; revoking works any time. A link never creates an admin. Wrong links count like wrong passwords (block
+  after 5 tries, `auth.log` → CrowdSec); a single-use link yields only one account even when opened at the same time.
 * **Account** (your name, top right, `/account`, everyone): change password, set up a **second factor** (authenticator app such
   as Aegis, 2FAS, Google/Microsoft Authenticator), own ntfy topic, see and sign out devices, and
   **How Hörwerk sees you** (your address, through which proxy, HTTPS) – to check a reverse proxy.
