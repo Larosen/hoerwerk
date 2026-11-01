@@ -197,6 +197,21 @@ class Notifier:
         self.last_error = None
         return t("Testnachricht gesendet")
 
+    def test_to(self, topic: str) -> str:
+        """Test message to a family member's own topic (sent right away, so errors can be shown)."""
+        if not self.configured():
+            raise NotifyError(t("Der Admin hat noch keinen ntfy-Server eingerichtet"))
+        if not re.fullmatch(r"[-_A-Za-z0-9]{1,64}", topic or ""):
+            raise NotifyError(t("Topic: nur Buchstaben, Ziffern, - und _ (max. 64 Zeichen)"))
+        c = self._load()
+        body = {"topic": topic, "title": t("Hörwerk: Test"), "message": t("Benachrichtigungen funktionieren."),
+                "tags": ["books"]}
+        try:
+            self._post(c["url"], body, self._headers(c))
+        except Exception as e:  # noqa: BLE001 – shown to the user
+            raise NotifyError(t("ntfy: {error}", error=e)) from e
+        return t("Testnachricht an „{topic}“ gesendet", topic=topic)
+
 
 class DownloadWatcher:
     """Tells about finished/failed SABnzbd downloads that were sent from the search."""

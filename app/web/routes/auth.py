@@ -145,6 +145,17 @@ def put_prefs(req: Req):
     return {"ok": True, "ntfy_topic": topic}
 
 
+@route("POST", "/api/auth/prefs/test", access="user")
+def test_prefs(req: Req):
+    """Test message to the own ntfy topic (the saved one, or the one typed in)."""
+    from notify import NotifyError
+    topic = str(req.get("ntfy_topic") or req.app.accounts.prefs(req.user["id"]).get("ntfy_topic") or "").strip()
+    try:
+        return {"ok": True, "message": req.app.notifier.test_to(topic)}
+    except NotifyError as e:
+        return {"ok": False, "message": str(e)}
+
+
 @route("GET", "/api/audit")
 def audit(req: Req):
     rows = req.app.db.all("SELECT time, user, ip, action, detail FROM audit ORDER BY id DESC LIMIT 300")
