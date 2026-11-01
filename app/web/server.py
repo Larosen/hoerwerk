@@ -45,7 +45,7 @@ LOGIN_PAGE = "/login"
 APP_PAGES = {"books": "admin", "search": "user", "discover": "user", "requests": "user",
              "account": "user", "settings": "admin"}
 SETTINGS_SECTIONS = frozenset({"health", "general", "library", "convert", "downloads", "services", "discover",
-                               "notify", "users", "logs"})
+                               "notify", "users", "stats", "logs"})
 # Without login only what the login page itself needs – no app code, no page shell
 PUBLIC_STATIC = frozenset({"style.css", "icon.svg", "icon.png", "theme.js", "core.js", "login.js"})
 

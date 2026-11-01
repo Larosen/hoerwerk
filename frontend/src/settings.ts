@@ -70,6 +70,7 @@ function showSettingsPage(section: string, entering: boolean): void {
   if (section === "library") showLibrarySettings();
   if (section === "users") loadUsers();
   if (section === "logs") showLogs();
+  if (section === "stats") loadStats();
   if (section === "health") runHealth();
 }
 

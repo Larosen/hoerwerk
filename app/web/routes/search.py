@@ -1,6 +1,7 @@
 """Indexer search -> SABnzbd, with the library cross-check."""
 from __future__ import annotations
 
+import re
 from typing import List, Optional
 
 import audible
@@ -121,18 +122,44 @@ def search_books(req: Req):
         books = wanted
     if not books and error:
         raise HTTPException(502, error)
-    keys = ("asin", "title", "subtitle", "authors", "narrators", "series", "series_position",
-            "runtime_min", "release_date", "cover_url", "format_type", "url", "source", "language", "isbn", "id", "region")
+    return {"books": _for_browser(req, books), "region": region}
+
+
+BOOK_OUT = ("asin", "title", "subtitle", "authors", "narrators", "series", "series_asin", "series_position",
+            "runtime_min", "release_date", "cover_url", "format_type", "url", "source", "language", "isbn", "id",
+            "region", "genres")
+
+
+def _for_browser(req: Req, books: List[dict]) -> List[dict]:
     requested = req.app.requests.status_by_key()
     out = []
     for b in books:
-        item = {k: b.get(k) for k in keys}
+        item = {k: b.get(k) for k in BOOK_OUT}
         owned = _owned(req.app.library_index.find(b))
         # family accounts learn *that* a book is there, not where it lies on the server
         item["owned"] = owned if req.is_admin else ({"title": owned["title"]} if owned else None)
         item["requested"] = requested.get(br.book_key(b))
         out.append(item)
-    return {"books": out, "region": region}
+    return out
+
+
+SERIES_ASIN = re.compile(r"^[A-Z0-9]{10}$")
+
+
+@route("POST", "/api/search/series", access="user")
+def search_series(req: Req):
+    """All released volumes of a series (from the store the book came from), in order – for a series request."""
+    asin = str(req.get("asin") or "").strip().upper()
+    region = req.get("region") or req.app.settings()["ab_region"]
+    language = {"de": "german", "en": "english"}.get(req.get("language") or "", "")
+    if not SERIES_ASIN.match(asin) or region not in audible.REGIONS:
+        raise HTTPException(400, t("Ungültige Daten"))
+    try:
+        series = req.app.pipeline.client.series(asin, region, language)
+    except audible.AudibleError as e:
+        raise HTTPException(502, str(e))
+    return {"series": {"asin": series["asin"], "title": series["title"], "region": region},
+            "books": _for_browser(req, series["books"])}
 
 
 @route("POST", "/api/search/send")

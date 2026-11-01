@@ -23,6 +23,7 @@ from notify import DownloadWatcher, Notifier
 from plex import Plex
 from pipeline import Pipeline
 from providers import Providers
+from stats import Stats
 from stores import Settings
 from uploads import Uploads
 from usenet import Usenet
@@ -73,6 +74,7 @@ class App:
                                  pending=self._pending_asins)
         self.requests = Requests(self.db, self.accounts, self.usenet, self.library_index, self.notifier, self.settings,
                                  jobs=lambda: list(self.pipeline.jobs))
+        self.stats = Stats(self.db, self.accounts, self.library_index)
         self.pipeline.open_requests = self.requests.open_for_matching
         self.pipeline.on_request = self.requests.on_job
         self.uploads = Uploads(config.inbox, on_done=self.pipeline.arrived)

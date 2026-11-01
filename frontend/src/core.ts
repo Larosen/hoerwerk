@@ -64,7 +64,7 @@ type Settings = Record<string, string | number | boolean>;
 
 interface Book {
   id?: string; asin: string | null; title: string; subtitle?: string | null; authors: string[]; narrators?: string[];
-  series?: string | null; series_position?: string | null; runtime_min?: number; release_date?: string | null;
+  series?: string | null; series_asin?: string | null; series_position?: string | null; runtime_min?: number; release_date?: string | null;
   cover_url?: string | null; match?: { score: number }; region?: string | null; url?: string | null;
   format_type?: string | null; publisher?: string | null; language?: string | null; genres?: string[];
   description?: string; source?: string; isbn?: string | null; owned?: Owned | null;

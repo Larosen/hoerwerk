@@ -307,6 +307,99 @@ class RequestsTest(unittest.TestCase):
         self.assertEqual(self.notifier.direct[-1][0], "eva-buecher")
 
 
+def volume(n, title=None, **kw):
+    return {"asin": f"B0SER0000{n}", "title": title or f"Das stille Haus {n}", "authors": ["Anna Autorin"],
+            "series": "Haus-Reihe", "series_asin": "B0SERIES01", "series_position": str(n), "runtime_min": 600,
+            "language": "german", **kw}
+
+
+class SeriesRequestTest(unittest.TestCase):
+    """A whole series at once: one request against the quota, approved together, fetched one after the other."""
+    setUp = RequestsTest.setUp
+
+    def series(self, user, books, title="Haus-Reihe"):
+        self.r.search_group_soon = lambda ids: [self.r.search(i) for i in ids]
+        return self.r.create_series(user, {"asin": "B0SERIES01", "title": title}, books)
+
+    def test_counts_once_and_is_approved_together(self):
+        self.settings["request_quota"] = 1
+        self.index.owned = {"Das stille Haus 2"}
+        res = self.series(self.eva, [volume(1), volume(2), volume(3), volume(4)])
+        self.assertEqual(res["status"], "pending")
+        self.assertEqual(res["skipped"], ["Das stille Haus 2"])                  # already in the library
+        self.assertEqual([i["book"]["series_position"] for i in res["items"]], ["1", "3", "4"])
+        self.assertEqual(self.notifier.sent, ["request_new"])                   # one message, not three
+        self.assertEqual(self.r.quota(self.eva), {"limit": 1, "used": 1, "left": 0})
+        with self.assertRaises(br.RequestError) as e:
+            self.r.create(self.eva, {**BOOK, "asin": None, "title": "Noch eins"})
+        self.assertEqual(e.exception.status, 429)
+        self.usenet.results = [{"id": f"v{n}", "title": f"Anna.Autorin-Das.stille.Haus.{n}.German.M4B", "size": 400 << 20,
+                                "language": "de"} for n in (1, 3, 4)]
+        self.r.approve(res["items"][1]["id"], self.admin)                      # any volume approves the series
+        states = [self.r.get(i["id"])["status"] for i in res["items"]]
+        self.assertEqual(states, ["downloading"] * 3)
+        self.assertEqual([s[0] for s in self.usenet.sent], ["v1", "v3", "v4"])   # each its own volume
+        out = br.summary(self.r.get(res["items"][0]["id"]), self.eva, False)
+        self.assertEqual((out["group"]["title"], out["group"]["count"]), ("Haus-Reihe", 3))
+
+    def test_declined_together_and_withdrawn_together(self):
+        res = self.series(self.eva, [volume(1), volume(2)])
+        self.r.decline(res["items"][0]["id"], self.admin, "zu viel")
+        self.assertEqual({self.r.get(i["id"])["status"] for i in res["items"]}, {"declined"})
+        res = self.series(self.eva, [volume(5), volume(6)])
+        with self.assertRaises(br.RequestError):
+            self.r.withdraw(res["items"][0]["id"], self.tom, True)              # not Tom's
+        self.assertEqual(self.r.withdraw(res["items"][0]["id"], self.eva, True), 2)
+        self.assertIsNone(self.r.get(res["items"][1]["id"]))
+
+    def test_nothing_new_is_refused(self):
+        self.r.create(self.eva, volume(1))
+        with self.assertRaises(br.RequestError) as e:
+            self.series(self.tom, [volume(1)])
+        self.assertEqual(e.exception.status, 409)
+        with self.assertRaises(br.RequestError):
+            self.series(self.tom, [])
+        with self.assertRaises(br.RequestError):
+            self.series(self.tom, [volume(n) for n in range(br.SERIES_MAX + 1)])
+
+    def test_a_pack_is_loaded_once_for_all_volumes(self):
+        self.usenet.results = [{"id": "pack", "title": "Anna Autorin - Das stille Haus 01 - 03 German", "size": 1200 << 20,
+                                "language": "de"}]
+        res = self.series(self.tom, [volume(1), volume(2), volume(3)])          # auto approve
+        self.assertEqual(len(self.usenet.sent), 1)                               # one download, not three
+        self.assertEqual(self.usenet.sent[0][1]["volumes"], [1, 2, 3])
+        second = self.r.get(res["items"][1]["id"])
+        self.assertEqual(second["status"], "searching")
+        self.assertIn("Paket", second["history"][-1]["text"])
+        self.index.owned = {"Das stille Haus 2", "Das stille Haus 3"}           # the pack arrived
+        self.r.tick()
+        self.assertEqual(self.r.get(res["items"][2]["id"])["status"], "available")
+
+
+class SeriesLookupTest(unittest.TestCase):
+    """Audible's series: released single volumes in order, one edition each, no box sets."""
+    def test_volumes(self):
+        def prod(asin, pos, title, **kw):
+            return {"asin": asin, "title": title, "authors": [{"name": "Anna Autorin"}], "language": kw.pop("language", "german"),
+                    "format_type": kw.pop("format_type", "unabridged"), "release_date": kw.pop("release_date", "2015-01-01"),
+                    "series": [{"asin": "B0SERIES01", "sequence": pos, "title": "Haus-Reihe"}], **kw}
+        products = [prod("B0A0000001", "2", "Zwei"), prod("B0A0000002", "1", "Eins"),
+                    prod("B0A0000003", "1-2", "Sammelband"), prod("B0A0000004", "1", "Eins gekürzt", format_type="abridged"),
+                    prod("B0A0000005", "3", "Drei", language="english"), prod("B0A0000006", "4", "Vier", release_date="2999-01-01")]
+        rel = [{"asin": p["asin"], "relationship_type": "series", "relationship_to_product": "child", "sort": str(i)}
+               for i, p in enumerate(products)]
+
+        def get(url):
+            if "/products/B0SERIES01" in url:
+                return {"product": {"asin": "B0SERIES01", "title": "Haus-Reihe", "relationships": rel}}
+            return {"products": products}
+        import audible
+        res = audible.AudibleClient(get=get).series("B0SERIES01", "de", "german")
+        self.assertEqual(res["title"], "Haus-Reihe")
+        self.assertEqual([(b["series_position"], b["title"]) for b in res["books"]], [("1", "Eins"), ("2", "Zwei")])
+        self.assertEqual(res["books"][0]["series_asin"], "B0SERIES01")
+
+
 class TotpTest(unittest.TestCase):
     def setUp(self):
         self.db = dbm.Database(os.path.join(tempfile.mkdtemp(), "t.db"))
@@ -423,6 +516,20 @@ class WebRequestsTest(unittest.TestCase):
         status, other = self.req("Tom", "POST", "/api/requests", {"book": {**BOOK, "asin": "B0PROBE02", "title": "Probe 2"},
                                                                   "user_id": self.eva["id"], "status": "available"})
         self.assertEqual((status, other["status"], other["mine"]), (200, "pending", True))
+
+    def test_series_through_the_web(self):
+        self.assertEqual(self.req("Eva", "POST", "/api/search/series", {"asin": "../../x", "region": "de"})[0], 400)
+        self.assertEqual(self.req("Eva", "POST", "/api/search/series", {"asin": "B0SERIES01", "region": "mars"})[0], 400)
+        status, res = self.req("Eva", "POST", "/api/requests/series", {"series": {"asin": "B0WEBSER01", "title": "Web-Reihe"},
+                                                                     "books": [volume(7, "Web 7"), volume(8, "Web 8")]})
+        self.assertEqual((status, res["status"], len(res["items"])), (200, "pending", 2))
+        self.assertEqual(self.req("Eva", "POST", "/api/requests/series", {"series": {}, "books": "alles"})[0], 400)
+        status, lst = self.req("Admin", "GET", "/api/requests")
+        mine = [i for i in lst["items"] if (i.get("group") or {}).get("title") == "Web-Reihe"]
+        self.assertEqual(len(mine), 2)
+        self.assertEqual(self.req("Tom", "DELETE", f"/api/requests/{mine[0]['id']}?group=1")[0], 404)
+        status, out = self.req("Eva", "DELETE", f"/api/requests/{mine[0]['id']}?group=1")
+        self.assertEqual((status, out["deleted"]), (200, 2))
 
     def test_admin_second_factor_can_be_required(self):
         self.app.update_settings({"admin_totp_required": True})

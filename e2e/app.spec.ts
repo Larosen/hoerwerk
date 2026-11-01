@@ -111,7 +111,7 @@ test("Einstellungen: Übersicht, Healthcheck mit ffmpeg und Proxy, Design bleibt
   const errors = await open(page);
   await page.locator("#settingsBtn").click();
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(10);
+  await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(11);
   await page.locator("#settingsHub").getByRole("link", { name: /Healthcheck/ }).click();
   await expect(page).toHaveURL(/\/settings\/health$/);
   await expect(page.locator("#healthList")).toContainText("ffmpeg");
@@ -287,7 +287,7 @@ test("Suchen: Deutsch oder Englisch – die Wahl geht mit, jede Kachel zeigt die
   await page.locator("#searchQuery").fill("Twilight");
   await page.locator("#bookLookupBtn").click();
   await expect(page.locator("#bookPick .pick")).toContainText("Bis(s) zum Morgengrauen");
-  await expect(page.locator("#bookPick .lang-tag")).toHaveText("Deutsch");
+  await expect(page.locator("#bookPick .lang-tag")).toHaveCount(0);                   // German is the normal case: no mark
   await page.locator("#bookLang").getByText("Englisch").click();                       // searches again at once
   await expect(page.locator("#bookPick .pick")).toContainText("Twilight");
   await expect(page.locator("#bookPick .lang-tag")).toHaveText("Englisch");
@@ -297,6 +297,59 @@ test("Suchen: Deutsch oder Englisch – die Wahl geht mit, jede Kachel zeigt die
   await expect(page.locator("#searchLang")).toHaveValue("en");
   await expect.poll(() => releaseSearch.map((x) => x.language)).toEqual(["en"]);     // the indexers are asked for English
   await page.locator("#bookLang").getByText("Deutsch").click();                         // back for the next tests
+  expect(errors).toEqual([]);
+});
+
+test("Suchen: ganze Reihe anfragen – Bände wählen, eine Karte unter Anfragen", async ({ page }) => {
+  const vol = (n: number) => ({ asin: `B0E2ESER0${n}`, title: `Glaswald ${n}`, authors: ["Mira Testfeld"], language: "English",
+    series: "Glaswald-Chroniken", series_asin: "B0E2ESERIE", series_position: String(n), runtime_min: 500, source: "audible", region: "us" });
+  await page.route("**/api/search/books", (r) => r.fulfill({ json: { region: "de", books: [vol(1)] } }));
+  const asked: { asin: string; region: string; language: string }[] = [];
+  await page.route("**/api/search/series", (r) => {
+    asked.push(r.request().postDataJSON());
+    return r.fulfill({ json: { series: { asin: "B0E2ESERIE", title: "Glaswald-Chroniken", region: "us" },
+      books: [vol(1), vol(2), { ...vol(3), owned: { title: "Glaswald 3" } }] } });
+  });
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();
+  await page.locator("#searchQuery").fill("Glaswald");
+  await page.locator("#bookLookupBtn").click();
+  const chip = page.locator("#bookPick .series-chip");
+  await expect(chip).toContainText("Glaswald-Chroniken");
+  await expect(chip.locator(".lang-tag")).toHaveText("Englisch");                     // an English series is marked
+  await chip.click();
+  const d = page.locator("#seriesDialog");
+  await expect(d.locator(".series-vol")).toHaveCount(3);
+  expect(asked[0]).toMatchObject({ asin: "B0E2ESERIE", region: "us", language: "en" });
+  await expect(d.locator(".series-vol").nth(2).locator("input")).toBeDisabled();     // already in the library
+  await expect(page.locator("#seriesOk")).toHaveText("2 Bände anfragen");
+  await page.locator("#seriesOk").click();
+  await expect(page.locator("#toast")).toContainText("Reihe angefragt (2 Bände)");
+  await page.locator("nav.tabs").getByRole("link", { name: "Anfragen" }).click();
+  const card = page.locator("li.request-group", { hasText: "Glaswald-Chroniken" });
+  await expect(card).toHaveCount(1);                                                  // one card, not two
+  await card.locator("summary").click();
+  await expect(card.locator(".group-vol")).toHaveText([/Band 1 · Glaswald 1/, /Band 2 · Glaswald 2/]);
+  await card.locator(".s-actions .icon-btn").click();
+  await page.locator("#confirmDialog button[value=ok]").click();
+  await expect(card).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Statistik: je Konto, Zeitraum wählbar, Monate als Balken und als Tabelle", async ({ page }) => {
+  const errors = await open(page);
+  await page.goto("/settings/stats");
+  await expect(page.locator("#settingsTitle")).toHaveText("Statistik");
+  await expect(page.locator("#statsTiles .stat-tile")).toHaveCount(5);
+  await expect(page.locator("#statsRows tr").first()).toContainText("admin");
+  await expect(page.locator("#statsChart .col")).toHaveCount(12);
+  const asked: string[] = [];
+  page.on("request", (r) => { if (r.url().includes("/api/stats")) asked.push(new URL(r.url()).searchParams.get("period") || ""); });
+  await page.locator("#statsPeriod").getByText("Gesamt").click();
+  await expect.poll(() => asked).toContain("all");
+  await page.locator(".stats-months summary").click();
+  await expect(page.locator("#statsMonthRows tr")).toHaveCount(12);
+  await page.locator("#statsPeriod").getByText("12 Monate").click();               // back for the next tests
   expect(errors).toEqual([]);
 });
 
