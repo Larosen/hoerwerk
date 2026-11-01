@@ -7,10 +7,12 @@ import json
 import mimetypes
 import os
 import sys
+import threading
+import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Optional
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import i18n
 from events import Stream
@@ -36,8 +38,28 @@ SECURITY_HEADERS = {
         "base-uri 'none'; form-action 'self'; frame-ancestors 'none'"),
 }
 COOKIE = "hw_session"
-# pages that need no login: the login page itself, the language catalog, and /static (the open-source UI code)
 LOGIN_PAGE = "/login"
+# Pages of the app – each address gets the same page shell, the browser shows the right part.
+# Who may open them (the API checks every right again): "user" = any account, "admin" = admins only.
+APP_PAGES = {"books": "admin", "search": "user", "discover": "user", "requests": "user",
+             "account": "user", "settings": "admin"}
+SETTINGS_SECTIONS = frozenset({"health", "general", "library", "convert", "downloads", "services", "discover",
+                               "notify", "users", "logs"})
+# Without login only what the login page itself needs – no app code, no page shell
+PUBLIC_STATIC = frozenset({"style.css", "icon.svg", "icon.png", "theme.js", "core.js", "login.js"})
+
+
+def page_access(path: str) -> Optional[str]:
+    """Who may open this app page ("user"/"admin"), None when it is no page of the app."""
+    parts = [p for p in path.split("/") if p]
+    if not parts or parts[0] not in APP_PAGES:
+        return None
+    if parts[0] == "settings":
+        if len(parts) > 2 or (len(parts) == 2 and parts[1] not in SETTINGS_SECTIONS):
+            return None
+    elif len(parts) > 1:
+        return None
+    return APP_PAGES[parts[0]]
 
 
 # always allowed as Host: a DNS-rebinding page arrives under its own name, never as these
@@ -49,7 +71,25 @@ class Server(ThreadingHTTPServer):
 
     def __init__(self, address, app) -> None:
         self.app = app
+        # proxies in the LAN/Docker network that send X-Forwarded-For but are not in TRUSTED_PROXIES
+        # (shown in the health check, logged once an hour each) – e.g. Newt after it got a new IP
+        if app is not None:
+            app.untrusted_proxies = {}
+        self._untrusted_lock = threading.Lock()
         super().__init__(address, Handler)
+
+    def note_untrusted(self, peer: str) -> None:
+        now = time.time()
+        with self._untrusted_lock:
+            seen = self.app.untrusted_proxies
+            last_logged = seen.get(peer, {}).get("logged", 0)
+            if len(seen) > 50 and peer not in seen:
+                return
+            seen[peer] = {"time": now, "logged": last_logged}
+            if now - last_logged < 3600:
+                return
+            seen[peer]["logged"] = now
+        applog.warn(t("{peer} schickt X-Forwarded-For, steht aber nicht in TRUSTED_PROXIES – alle Besucher über diesen Proxy erscheinen mit seiner Adresse (Anmelde-Sperre, CrowdSec). TRUSTED_PROXIES={peer} setzen.", peer=peer), "Anmeldung")  # noqa: E501
 
     def handle_error(self, request, client_address) -> None:
         """A client that hangs up (browser tab closed, health check done) is no error worth a traceback."""
@@ -115,6 +155,9 @@ class Handler(BaseHTTPRequestHandler):
         """The real client: behind a trusted proxy the right-most X-Forwarded-For entry it did not add itself."""
         peer = self._addr(self.client_address[0])
         if not self._trusted(peer):
+            # a proxy in the own network that is not trusted: the visitors' real addresses get lost – say so
+            if peer is not None and not peer.is_global and not peer.is_loopback and self._forwarded():
+                self.server.note_untrusted(str(peer))
             return str(peer) if peer else self.client_address[0]
         chain = [self._addr(p) for p in (self.headers.get("X-Forwarded-For") or "").split(",") if p.strip()]
         real = self._addr(self.headers.get("X-Real-IP") or "")
@@ -124,6 +167,17 @@ class Handler(BaseHTTPRequestHandler):
             if not self._trusted(ip):
                 return str(ip)
         return str(real or (chain[0] if chain and chain[0] else peer))
+
+    def _forwarded(self) -> bool:
+        return any(self.headers.get(h) for h in ("X-Forwarded-For", "Forwarded", "X-Real-IP"))
+
+    def conn_info(self) -> dict:
+        """How this request arrived – for the health check and "So sieht dich Hörwerk"."""
+        peer = self._addr(self.client_address[0])
+        return {"peer": str(peer or self.client_address[0]), "trusted": self._trusted(peer),
+                "proxied": self._forwarded(), "host": (self.headers.get("Host") or "")[:200],
+                "forwarded_for": (self.headers.get("X-Forwarded-For") or "")[:300],
+                "forwarded_proto": (self.headers.get("X-Forwarded-Proto") or "")[:20]}
 
     def is_https(self) -> bool:
         if self.config.cookie_secure in ("true", "false"):
@@ -219,6 +273,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, f"const ME = {json.dumps(me, ensure_ascii=False)};\n".encode(),
                               "text/javascript; charset=utf-8")
         if reading and url.path.startswith("/static/"):
+            if url.path[len("/static/"):] not in PUBLIC_STATIC and self._user(token) is None:
+                return self._json(401, {"error": t("Bitte anmelden"), "login": True})
             return self._static(url.path)
         if reading and url.path in ("/", LOGIN_PAGE):
             signed_in = self._user(token) is not None
@@ -227,6 +283,14 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == LOGIN_PAGE and signed_in:
                 return self._redirect("/")
             return self._static("/" if url.path == "/" else "/static/login.html")
+        access = page_access(url.path) if reading else None
+        if access:
+            user = self._user(token)
+            if user is None:                       # back to this page after signing in
+                return self._redirect(f"{LOGIN_PAGE}?next={quote(url.path, safe='/')}")
+            if access == "admin" and user["role"] != "admin":
+                return self._redirect("/")
+            return self._static("/")
         if self.command not in ("GET", "HEAD") and not self._same_origin():
             return self._json(403, {"error": t("Anfrage von fremder Seite abgelehnt")})
         try:
@@ -263,7 +327,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(400, {"error": t("Ungültiges JSON")})
         req = Req(self.server.app, body, query, user=user, ip=ip, https=self.is_https(), token=token,
                   agent=self.headers.get("User-Agent") or "",
-                  proxied=any(self.headers.get(h) for h in ("X-Forwarded-For", "Forwarded", "X-Real-IP")))
+                  proxied=self._forwarded(), conn=self.conn_info())
         if raw:
             req.stream, req.length = self.rfile, length          # the handler reads the body itself
             self.close_connection = True                          # never reuse: an aborted upload leaves bytes behind

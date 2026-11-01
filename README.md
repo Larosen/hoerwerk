@@ -329,7 +329,7 @@ Messages use the language of the interface.
 
 ## Log
 
-**Log** in the top bar shows what happened: books found, converted, matched and filed, media server scans, warnings
+**Settings → Log** (`/settings/logs`) shows what happened: books found, converted, matched and filed, media server scans, warnings
 and errors. Filter by level or text, follow it live, download it as a file. The same lines are in the container log
 (`docker logs hoerwerk`).
 
@@ -341,12 +341,13 @@ Without signing in Hörwerk only shows the login page. On the **first visit** yo
 from the home network; from outside the setup code from `docker logs hoerwerk` is needed). If you had
 `AUTH_USER`/`AUTH_PASS` set, they become the admin account automatically.
 
-* **Accounts** (top right, admins only): create family accounts (generate an initial password and pass it on), role,
+* **Accounts** (*Settings → Accounts*, `/settings/users`, admins only): create family accounts (generate an initial password and pass it on), role,
   rights (*see all requests*, *no approval*, *interactive search*), monthly quota, lock, reset password, delete.
-  Family accounts see *Search*, *Discover* and *Requests* – inbox, library, settings and log stay with admins. At the
-  bottom of the dialog: the **admin log** (who changed what, when, with IP).
-* **Account** (your name, top right, everyone): change password, set up a **second factor** (authenticator app such
-  as Aegis, 2FAS, Google/Microsoft Authenticator), own ntfy topic, see and sign out devices.
+  Family accounts see *Search*, *Discover* and *Requests* – inbox, library, settings and log stay with admins. Below: the
+  **admin log** (who changed what, when, with IP).
+* **Account** (your name, top right, `/account`, everyone): change password, set up a **second factor** (authenticator app such
+  as Aegis, 2FAS, Google/Microsoft Authenticator), own ntfy topic, see and sign out devices, and
+  **How Hörwerk sees you** (your address, through which proxy, HTTPS) – to check a reverse proxy.
   With *Admins need a second factor* (settings) admins without one only reach their account.
 * "Stay signed in" lasts 30 days (extended while used), otherwise 12 hours.
 
@@ -365,7 +366,25 @@ from the home network; from outside the setup code from `docker logs hoerwerk` i
 
 ## Configuration
 
-Almost everything can be changed in **⚙︎ Settings**; the environment only provides the starting values.
+Almost everything can be changed in **⚙︎ Settings** (`/settings`); the environment only provides the starting values.
+Settings are a page of their own with an overview: health check, general, inbox & library, M4B conversion, indexers &
+SABnzbd, Audiobookshelf & Plex, discover & requests, notifications, accounts and log – each area with its own address
+(e.g. `/settings/health`), so bookmarks and the browser's back/forward work. The same goes for the tabs: `/books`,
+`/search`, `/discover`, `/requests`.
+
+**Health check** (`/settings/health`, similar to Vaultwarden's diagnostics) shows at a glance:
+* **Connection & proxy:** which address Hörwerk sees you as, whether the reverse proxy is in `TRUSTED_PROXIES` (else an
+  error with the line to add), whether HTTPS arrives, `ALLOWED_HOSTS`, whether live updates get through the proxy,
+  whether the address in notifications fits. Proxies in the own network that send `X-Forwarded-For` but are not
+  trusted (e.g. Newt after a restart with a new IP) show up here and in the log.
+* **Security:** admins without a second factor, sign-in log for CrowdSec, addresses blocked right now.
+* **Storage:** inbox, library, config present, writable, free space.
+* **Services:** indexers, SABnzbd, Audiobookshelf, Plex (tested live), ntfy, Audible.
+* **System:** version, ffmpeg and sandbox, queues, clock (matters for second-factor codes).
+
+**Without signing in** there is only the login page and what it needs: no app page, no app code, no API (except signing
+in and `/api/health`, which without login only says `{"ok": true}` – no version). A bookmark to a sub-page leads to the
+login first and then exactly there. Settings and inbox are for admins only.
 Settings, presets, history, the audiobook list, the library index and all credentials live in the SQLite database
 `/config/hoerwerk.db` (permissions 600).
 

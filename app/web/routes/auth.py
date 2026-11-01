@@ -171,7 +171,10 @@ def logout(req: Req):
 
 @route("GET", "/api/auth/me", access="user")
 def me(req: Req):
-    return {**_me(req.user), "sessions": req.app.accounts.sessions(req.user["id"]), "session": req.user["session"]}
+    c = req.conn
+    return {**_me(req.user), "sessions": req.app.accounts.sessions(req.user["id"]), "session": req.user["session"],
+            "connection": {"ip": req.ip, "peer": c.get("peer", ""), "proxied": bool(c.get("proxied")),
+                           "trusted": bool(c.get("trusted")), "https": req.https}}
 
 
 @route("POST", "/api/auth/password", access="user")

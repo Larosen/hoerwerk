@@ -1,6 +1,6 @@
 "use strict";
 // ------------------------------------------------------------------------- //
-// Settings dialog (the audiobook views live in books.ts and search.ts)
+// The settings form (pages under /settings: settings.ts shows one part at a time; all parts are saved together)
 // ------------------------------------------------------------------------- //
 const state = {
   settings: {} as Settings,
@@ -18,19 +18,13 @@ function settingsInputs(): [string, HTMLInputElement | HTMLSelectElement][] {
   });
 }
 
-function openSettings(): void {
+/** Put the saved values into the form (when the settings pages are opened – not between two parts, so edits stay). */
+async function fillSettings(): Promise<void> {
+  try { await loadSettings(); } catch (e) { toast(errMsg(e), true); return; }
   for (const [k, input] of settingsInputs()) {
     const v = state.settings[k];
     if (input instanceof HTMLInputElement && input.type === "checkbox") input.checked = !!v; else input.value = String(v);
   }
-  $<HTMLDialogElement>("#settingsDialog").showModal();
-  api<SystemInfo>("GET", "/api/system").then((s) => {
-    const sb = s.sandbox;
-    const jail = !sb.active ? (sb.mode === "off" ? t("ffmpeg ohne Sandbox (FFMPEG_SANDBOX=off)") : t("ffmpeg ohne Sandbox – Kernel/Docker erlaubt kein Landlock"))
-      : sb.network_blocked ? t("ffmpeg abgeschottet (Landlock ABI {abi}, ohne Netz)", { abi: sb.landlock_abi })
-        : t("ffmpeg abgeschottet (Landlock ABI {abi})", { abi: sb.landlock_abi });
-    $("#systemInfo").textContent = t("Version {version} · ffmpeg {ffmpeg} · {jail}", { version: s.version, ffmpeg: s.ffmpeg, jail });
-  }).catch(() => { /* optional */ });
 }
 
 async function saveSettings(): Promise<void> {
@@ -48,10 +42,8 @@ async function saveSettings(): Promise<void> {
 }
 
 function init(): void {
-  $("#settingsBtn").addEventListener("click", openSettings);
-  const settingsDialog = $<HTMLDialogElement>("#settingsDialog");
-  settingsDialog.addEventListener("close", () => { if (settingsDialog.returnValue === "save") saveSettings(); });
-  loadSettings().catch((e) => toast(errMsg(e), true));
+  $("#settingsForm").addEventListener("submit", (e) => { e.preventDefault(); saveSettings(); });
+  if (IS_ADMIN) loadSettings().catch((e) => toast(errMsg(e), true));
 }
 
 init();

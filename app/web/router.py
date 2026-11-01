@@ -26,7 +26,8 @@ class Reply:
 class Req:
     """What a handler gets: the app (services), parsed JSON body, query string, who asks and from where."""
     def __init__(self, app, body, query: Dict[str, str], user: Optional[dict] = None, ip: str = "",
-                 https: bool = False, token: str = "", agent: str = "", proxied: bool = False) -> None:
+                 https: bool = False, token: str = "", agent: str = "", proxied: bool = False,
+                 conn: Optional[dict] = None) -> None:
         self.app = app
         self.body = body if body is not None else {}
         self.query = query
@@ -36,6 +37,7 @@ class Req:
         self.token = token
         self.agent = agent
         self.proxied = proxied          # came through a reverse proxy (any forwarding header)
+        self.conn = conn or {}          # peer, trusted, host, forwarding headers (health check)
         self.stream = None              # raw-body routes (uploads): the socket to read ``length`` bytes from
         self.length = 0
 

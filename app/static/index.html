@@ -33,18 +33,16 @@
     <img src="/static/icon.svg" width="26" height="26" alt="">
     <span>Hörwerk</span>
   </div>
-  <nav class="tabs" role="tablist" aria-label="Bereich">
-    <button class="tab admin-only" role="tab" data-view="books" aria-selected="true">Hörbücher <span id="reviewBadge" class="pill" hidden></span></button>
-    <button class="tab" role="tab" data-view="search" aria-selected="false">Suchen</button>
-    <button class="tab" role="tab" data-view="discover" aria-selected="false">Entdecken</button>
-    <button class="tab" role="tab" data-view="requests" aria-selected="false">Anfragen <span id="requestBadge" class="pill" hidden></span></button>
+  <nav class="tabs" aria-label="Bereich">
+    <a class="tab admin-only" href="/books" data-view="books">Hörbücher <span id="reviewBadge" class="pill" hidden></span></a>
+    <a class="tab" href="/search" data-view="search">Suchen</a>
+    <a class="tab" href="/discover" data-view="discover">Entdecken</a>
+    <a class="tab" href="/requests" data-view="requests">Anfragen <span id="requestBadge" class="pill" hidden></span></a>
   </nav>
   <div class="topbar-actions">
-    <button id="usersBtn" class="btn ghost admin-only" title="Nutzer verwalten"><svg class="ico" aria-hidden="true"><use href="#i-users"/></svg><span class="lbl">Konten</span></button>
-    <button id="logBtn" class="btn ghost admin-only" title="Protokoll"><svg class="ico" aria-hidden="true"><use href="#i-log"/></svg><span class="lbl">Protokoll</span></button>
     <button id="themeBtn" class="btn ghost" title="Design"><svg class="ico" aria-hidden="true"><use href="#i-contrast"/></svg><span class="lbl">Design</span></button>
-    <button id="settingsBtn" class="btn ghost admin-only" title="Einstellungen"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><span class="lbl">Einstellungen</span></button>
-    <button id="accountBtn" class="btn ghost" title="Konto"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl" id="accountName">Konto</span></button>
+    <a id="settingsBtn" class="btn ghost admin-only" href="/settings" data-view="settings" title="Einstellungen"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><span class="lbl">Einstellungen</span></a>
+    <a id="accountBtn" class="btn ghost" href="/account" data-view="account" title="Konto"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl" id="accountName">Konto</span></a>
   </div>
 </header>
 
@@ -94,7 +92,7 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Quellen</h2>
-        <button id="sourcesBtn" class="btn small ghost">Einrichten</button>
+        <a id="sourcesBtn" class="btn small ghost" href="/settings/downloads">Einrichten</a>
       </div>
       <div id="sourcesInfo" class="inbox-info"></div>
     </section>
@@ -199,237 +197,39 @@
   </section>
 </main>
 
-<dialog id="releasesDialog" class="wide">
-  <form method="dialog" class="dialog-body">
-    <h2>Releases für <span id="releasesTitle"></span></h2>
-    <p class="muted small">Hörwerk lädt von selbst das beste passende Release. Hier siehst du alle Treffer – auch die verworfenen, mit Grund – und kannst eins selbst wählen oder sperren.</p>
-    <div class="search-row">
-      <input id="releasesQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false">
-      <button type="button" class="btn" id="releasesGo">Neu suchen</button>
-    </div>
-    <p id="releasesNote" class="muted small"></p>
-    <div class="table-wrap">
-      <table class="results">
-        <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">kbit/s</th><th>Urteil</th><th class="c-act"></th></tr></thead>
-        <tbody id="releasesRows"></tbody>
-      </table>
-    </div>
-    <div class="dialog-actions"><button value="cancel" class="btn primary">Schließen</button></div>
-  </form>
-</dialog>
-
-<dialog id="uploadDialog" class="wide">
-  <form method="dialog" class="dialog-body">
-    <h2>Hörbuch hochladen</h2>
-    <p class="muted small">Z. B. von CD eingelesen: <b>ein Ordner pro Hörbuch</b>, am besten „Autor – Titel“, gern mit
-      Unterordnern <code>CD1</code>, <code>CD2</code> … Hörwerk erkennt das Buch an Ordnername und Tags, macht daraus eine
-      M4B mit Kapiteln, holt die Daten von Audible und legt es in die Bibliothek.</p>
-    <div id="uploadDrop" class="drop-zone" tabindex="0">
-      <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg>
-      <span>Ordner hierher ziehen</span>
-      <span class="muted small">oder</span>
-      <div class="row gap wrap">
-        <label class="btn small">Ordner wählen<input id="uploadFolder" type="file" webkitdirectory multiple hidden></label>
-        <label class="btn small ghost">Einzelne Dateien<input id="uploadFiles" type="file" multiple accept="audio/*,.m4b,.cue,image/*" hidden></label>
-      </div>
-    </div>
-    <label id="uploadNameRow" hidden>Name des Hörbuchs <small>für einzeln gewählte Dateien, z. B. „Theodor Storm – Der Schimmelreiter“</small>
-      <input id="uploadName" maxlength="150" spellcheck="false"></label>
-    <ul id="uploadList" class="upload-list"></ul>
-    <div class="progress" id="uploadProgress" hidden><span></span></div>
-    <p id="uploadNote" class="muted small"></p>
-    <div class="dialog-actions">
-      <button type="button" class="btn" id="uploadCancel">Abbrechen</button>
-      <button type="button" class="btn primary" id="uploadGo" disabled>Hochladen</button>
-    </div>
-  </form>
-</dialog>
-
-<dialog id="sourcesDialog">
-  <form method="dialog" class="dialog-body" id="sourcesForm">
-    <h2>Indexer, SABnzbd, Audiobookshelf &amp; Plex</h2>
-    <fieldset>
-      <legend>Newznab-Indexer</legend>
-      <p class="muted small">Optional, nur für die Suche: Newznab-Adresse deines Indexers (z. B. <code>https://indexer.example/api</code>) und dessen API-Key. Kategorie 3030 = Hörbuch.</p>
-      <div id="indexerRows" class="indexer-rows"></div>
-      <button type="button" id="addIndexerBtn" class="btn small">+ Indexer</button>
+<main class="books-layout settings-layout" id="viewSettings" hidden>
+  <aside class="sidebar">
+    <section class="panel">
+      <div class="panel-head"><h2><a href="/settings" class="plain">Einstellungen</a></h2></div>
+      <nav id="settingsNav" class="side-nav" aria-label="Einstellungen">
+        <a href="/settings/health" data-section="health">Healthcheck <small>Ist alles richtig eingerichtet?</small></a>
+        <a href="/settings/general" data-section="general">Allgemein <small>Sprache</small></a>
+        <a href="/settings/library" data-section="library">Eingang &amp; Bibliothek <small>Erkennung, Ordner, Dateien</small></a>
+        <a href="/settings/convert" data-section="convert">M4B-Konvertierung <small>Bitrate, Kapitel</small></a>
+        <a href="/settings/downloads" data-section="downloads">Indexer &amp; SABnzbd <small>Release-Suche und Download</small></a>
+        <a href="/settings/services" data-section="services">Audiobookshelf &amp; Plex <small>nach dem Ablegen neu einlesen</small></a>
+        <a href="/settings/discover" data-section="discover">Entdecken &amp; Anfragen <small>Qualität, Kontingent</small></a>
+        <a href="/settings/notify" data-section="notify">Benachrichtigungen <small>ntfy aufs Handy</small></a>
+        <a href="/settings/users" data-section="users">Konten <small>Familie, Rechte, Admin-Protokoll</small></a>
+        <a href="/settings/logs" data-section="logs">Protokoll <small>was gerade passiert</small></a>
+      </nav>
+    </section>
+  </aside>
+  <section class="panel settings-panel">
+    <div class="panel-head"><h2 id="settingsTitle">Einstellungen</h2>
+      <a href="/settings" class="btn small ghost settings-back" title="Alle Einstellungen">‹ Übersicht</a></div>
+    <div id="settingsHub" class="settings-hub"></div>
+    <form id="settingsForm" class="dialog-body page-body" novalidate>
+    <fieldset data-section="general">
+      <legend>Sprache / Language</legend>
+      <label class="lang-pick">Oberfläche und Benachrichtigungen
+        <select name="language">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </label>
     </fieldset>
-    <fieldset>
-      <legend>SABnzbd</legend>
-      <div class="grid2">
-        <label>Adresse <input name="sab_url" type="text" placeholder="http://192.168.1.10:8080" spellcheck="false"></label>
-        <label>API-Key <input name="sab_apikey" type="password" autocomplete="off" spellcheck="false"></label>
-        <label>Kategorie <small>deren Ordner = Hörbuch-Eingang</small><input name="sab_category" type="text" placeholder="audiobooks"></label>
-      </div>
-    </fieldset>
-    <fieldset>
-      <legend>Audiobookshelf <small class="muted">optional</small></legend>
-      <p class="muted small">Nach dem Ablegen neuer Bücher wird die Bibliothek in Audiobookshelf neu eingelesen – nötig, wenn dessen
-        Ordnerüberwachung auf Netzwerk-Shares nichts mitbekommt. API-Token: Audiobookshelf → Einstellungen → Benutzer → Admin → API-Token.</p>
-      <div class="grid2">
-        <label>Adresse <input name="abs_url" type="text" placeholder="http://192.168.1.10:13378" spellcheck="false"></label>
-        <label>API-Token <input name="abs_token" type="password" autocomplete="off" spellcheck="false"></label>
-        <label>Bibliothek <small>leer = wird beim Testen gewählt</small><input name="abs_library" type="text" list="absLibraries" spellcheck="false"></label>
-      </div>
-      <datalist id="absLibraries"></datalist>
-    </fieldset>
-    <fieldset>
-      <legend>Plex <small class="muted">optional</small></legend>
-      <p class="muted small">Nach dem Ablegen neuer Bücher wird die Hörbuch-Mediathek in Plex neu eingelesen. Mit „Papierkorb leeren“
-        verschwinden danach auch ersetzte MP3-Fassungen, die es auf der Platte nicht mehr gibt. Token: in Plex Web bei einem Titel
-        „…“ → „Informationen abrufen“ → „XML anzeigen“ – der Wert hinter <code>X-Plex-Token=</code> in der Adresse.</p>
-      <div class="grid2">
-        <label>Adresse <input name="plex_url" type="text" placeholder="http://192.168.1.10:32400" spellcheck="false"></label>
-        <label>Token <input name="plex_token" type="password" autocomplete="off" spellcheck="false"></label>
-        <label>Mediathek <small>leer = wird beim Testen gewählt</small><input name="plex_section" type="text" spellcheck="false"></label>
-        <label class="check"><input type="checkbox" name="plex_empty_trash"> Danach Papierkorb der Mediathek leeren</label>
-      </div>
-    </fieldset>
-    <p class="muted small">API-Keys und Token werden nur auf dem Server gespeichert (Datenbank in <code>/config</code>) und nie wieder angezeigt. Feld leer lassen = gespeicherten Key behalten.</p>
-    <div class="dialog-actions">
-      <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
-      <button value="save" class="btn primary">Speichern &amp; testen</button>
-    </div>
-  </form>
-</dialog>
-
-<dialog id="tracksDialog">
-  <div class="dialog-body">
-    <h2>Kapitel &amp; Namen: <span id="tracksTitle"></span></h2>
-    <p class="muted small"><code id="tracksPath"></code> – jede Datei wird ein Kapitel. Namen anpassen, dann zu M4B.
-      Danach wird das Buch bei Audible erkannt (oder kommt zur Prüfung), getaggt und ersetzt die alte Fassung.</p>
-    <div class="row gap wrap">
-      <span class="muted small">Vorlage:</span>
-      <button type="button" class="btn small" data-preset="auto">automatisch</button>
-      <button type="button" class="btn small" data-preset="tag">aus Tags</button>
-      <button type="button" class="btn small" data-preset="filename">Dateinamen</button>
-      <button type="button" class="btn small" data-preset="strip">ohne Nummer</button>
-      <button type="button" class="btn small" data-preset="numbered">Kapitel 1, 2, 3 …</button>
-    </div>
-    <div class="table-wrap tracks-wrap">
-      <table class="results tracks">
-        <thead><tr><th class="c-num">#</th><th>Datei</th><th class="c-num">Länge</th><th>Kapitelname</th></tr></thead>
-        <tbody id="tracksBody"></tbody>
-      </table>
-    </div>
-    <label class="check"><input type="checkbox" id="tracksRename"> Dateien vorher auch so umbenennen („01 - Kapitelname.mp3“)</label>
-    <div class="dialog-actions">
-      <button type="button" class="btn ghost" data-close>Abbrechen</button>
-      <button type="button" class="btn primary" id="tracksGo">Zu M4B</button>
-    </div>
-  </div>
-</dialog>
-
-<dialog id="manualDialog">
-  <form method="dialog" class="dialog-body" id="manualForm">
-    <h2 id="manualTitle">Selbst eintragen</h2>
-    <label>Link von Audible, BookBeat oder Thalia <small>füllt die Felder automatisch</small>
-      <span class="row gap">
-        <input id="manualLink" name="link" type="text" placeholder="https://www.bookbeat.com/de/book/…" spellcheck="false">
-        <button type="button" id="manualLinkBtn" class="btn small">Daten holen</button>
-      </span>
-    </label>
-    <div id="manualSource" class="manual-source" hidden></div>
-    <div class="grid2">
-      <label>Titel <input name="title" type="text"></label>
-      <label>Untertitel <input name="subtitle" type="text"></label>
-      <label>Autor(en) <small>kommagetrennt</small><input name="authors" type="text"></label>
-      <label>Sprecher <small>kommagetrennt</small><input name="narrators" type="text"></label>
-      <label>Serie <input name="series" type="text"></label>
-      <label>Band / Folge <input name="series_position" type="text"></label>
-      <label>Erscheinungsdatum <small>JJJJ-MM-TT</small><input name="release_date" type="text"></label>
-      <label>Verlag <input name="publisher" type="text"></label>
-    </div>
-    <label>Genres <small>kommagetrennt</small><input name="genres" type="text"></label>
-    <label>Beschreibung <textarea name="description" rows="4"></textarea></label>
-    <p class="muted small">Ohne Vorlage werden leere Felder aus den Tags der Dateien übernommen.</p>
-    <div class="dialog-actions">
-      <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
-      <button value="save" class="btn primary">Taggen &amp; ablegen</button>
-    </div>
-  </form>
-</dialog>
-
-<dialog id="accountDialog">
-  <form method="dialog" class="dialog-body">
-    <h2>Konto <span id="accountTitle" class="muted"></span></h2>
-    <fieldset>
-      <legend>Passwort ändern</legend>
-      <div class="grid2">
-        <label>Bisheriges Passwort <input id="pwOld" type="password" autocomplete="current-password" maxlength="256"></label>
-        <span></span>
-        <label>Neues Passwort <small>mindestens 10 Zeichen</small><input id="pwNew" type="password" autocomplete="new-password" maxlength="256"></label>
-        <label>Neues Passwort wiederholen <input id="pwNew2" type="password" autocomplete="new-password" maxlength="256"></label>
-      </div>
-      <div class="row gap"><button type="button" class="btn" id="pwSave">Passwort ändern</button>
-        <span class="muted small">Alle anderen Geräte werden dabei abgemeldet.</span></div>
-    </fieldset>
-    <fieldset>
-      <legend>Zweitfaktor</legend>
-      <div id="totpBox"></div>
-    </fieldset>
-    <fieldset>
-      <legend>Benachrichtigungen an mich</legend>
-      <label>Eigenes ntfy-Topic <small>dorthin meldet Hörwerk, wenn deine Anfragen da sind oder abgelehnt wurden (leer = keine)</small>
-        <input id="myTopic" maxlength="64" spellcheck="false" autocomplete="off" placeholder="z. B. eva-hoerbuecher"></label>
-      <div class="row gap"><button type="button" class="btn small" id="myTopicSave">Speichern</button>
-        <button type="button" class="btn small ghost" id="myTopicTest">Testnachricht senden</button></div>
-    </fieldset>
-    <fieldset>
-      <legend>Angemeldete Geräte</legend>
-      <ul id="sessionList" class="session-list"></ul>
-      <button type="button" class="btn small ghost" id="endOthers">Alle anderen Geräte abmelden</button>
-    </fieldset>
-    <div class="dialog-actions">
-      <button type="button" class="btn" id="logoutBtn">Abmelden</button>
-      <button value="cancel" class="btn primary">Schließen</button>
-    </div>
-  </form>
-</dialog>
-
-<dialog id="usersDialog" class="wide">
-  <form method="dialog" class="dialog-body">
-    <h2>Konten</h2>
-    <p class="muted small">Admins dürfen alles. Nutzer sehen <b>Entdecken</b> und – mit den Rechten unten – fremde Anfragen
-      oder die Release-Suche. Kontingent: Buchanfragen pro Monat (leer = Standard <span id="defaultQuota"></span>, 0 = keine).</p>
-    <div class="table-wrap">
-      <table class="users">
-        <thead><tr><th>Name</th><th>Rolle</th><th title="Sieht die Anfragen aller Nutzer">Alle Anfragen sehen</th>
-          <th title="Anfragen gehen ohne Freigabe los">Ohne Freigabe</th><th title="Darf Releases selbst ansehen und wählen">Interaktive Suche</th>
-          <th>Kontingent</th><th>Gesperrt</th><th title="Zweitfaktor (Authenticator-App)">2FA</th><th>Zuletzt da</th><th></th></tr></thead>
-        <tbody id="userRows"></tbody>
-      </table>
-    </div>
-    <fieldset>
-      <legend>Neues Konto</legend>
-      <div class="grid2">
-        <label>Name <input id="newUserName" maxlength="40" autocomplete="off" spellcheck="false"></label>
-        <label>Startpasswort <small>mindestens 10 Zeichen – bitte selbst ändern lassen</small>
-          <input id="newUserPw" type="text" maxlength="256" autocomplete="off" spellcheck="false"></label>
-        <label>Rolle <select id="newUserRole"><option value="user">Nutzer</option><option value="admin">Admin</option></select></label>
-        <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="newUserQuota" type="number" min="0" max="1000"></label>
-      </div>
-      <div class="row gap"><button type="button" class="btn" id="newUserPwGen">Passwort erzeugen</button>
-        <button type="button" class="btn primary" id="newUserSave">Konto anlegen</button></div>
-    </fieldset>
-    <details class="audit-box">
-      <summary>Admin-Protokoll <small class="muted">wer hat wann was geändert</small></summary>
-      <ul id="auditList" class="audit-list"></ul>
-    </details>
-    <div class="dialog-actions"><button value="cancel" class="btn primary">Schließen</button></div>
-  </form>
-</dialog>
-
-<dialog id="settingsDialog">
-  <form method="dialog" class="dialog-body" id="settingsForm">
-    <h2>Einstellungen</h2>
-    <label class="lang-pick">Sprache / Language
-      <select name="language">
-        <option value="de">Deutsch</option>
-        <option value="en">English</option>
-      </select>
-    </label>
-    <fieldset>
+    <fieldset data-section="convert">
       <legend>M4B-Konvertierung</legend>
       <div class="grid2">
         <label>AAC-Bitrate
@@ -448,7 +248,7 @@
       </div>
       <label class="check"><input type="checkbox" name="force_mono"> In Mono umwandeln (kleinere Datei)</label>
     </fieldset>
-    <fieldset>
+    <fieldset data-section="library">
       <legend>Hörbücher: Eingang → Bibliothek</legend>
       <p class="muted small" id="abPaths"></p>
       <label class="check"><input type="checkbox" name="ab_watch"> Eingangsordner automatisch überwachen</label>
@@ -526,7 +326,7 @@
         <input name="ab_settle" type="number" min="0" step="1">
       </label>
     </fieldset>
-    <fieldset>
+    <fieldset data-section="discover">
       <legend>Entdecken &amp; Anfragen</legend>
       <div class="grid2">
         <label>Mindestbewertung <small>Sterne, 0 – 5</small>
@@ -547,7 +347,7 @@
         </label>
       </div>
     </fieldset>
-    <fieldset id="notifyBox">
+    <fieldset id="notifyBox" data-section="notify">
       <legend>Benachrichtigungen (ntfy)</legend>
       <p class="muted small">Push-Nachrichten aufs Handy über <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a> – ntfy.sh oder ein eigener Server. Token bzw. Passwort bleiben auf dem Server.</p>
       <div class="grid2">
@@ -568,17 +368,78 @@
       <div class="grid2" id="notifyEvents"></div>
       <div class="row gap"><button type="button" class="btn small" id="notifyTestBtn">Testnachricht senden</button><span class="muted small" id="notifyState"></span></div>
     </fieldset>
-    <p class="muted small" id="systemInfo"></p>
-    <div class="dialog-actions">
-      <button value="cancel" formnovalidate class="btn ghost">Abbrechen</button>
-      <button value="save" class="btn primary">Speichern</button>
+    <div class="save-bar"><button type="submit" class="btn primary">Speichern</button></div>
+    </form>
+    <form id="sourcesForm" class="dialog-body page-body">
+    <fieldset data-section="downloads">
+      <legend>Newznab-Indexer</legend>
+      <p class="muted small">Optional, nur für die Suche: Newznab-Adresse deines Indexers (z. B. <code>https://indexer.example/api</code>) und dessen API-Key. Kategorie 3030 = Hörbuch.</p>
+      <div id="indexerRows" class="indexer-rows"></div>
+      <button type="button" id="addIndexerBtn" class="btn small">+ Indexer</button>
+    </fieldset>
+    <fieldset data-section="downloads">
+      <legend>SABnzbd</legend>
+      <div class="grid2">
+        <label>Adresse <input name="sab_url" type="text" placeholder="http://192.168.1.10:8080" spellcheck="false"></label>
+        <label>API-Key <input name="sab_apikey" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>Kategorie <small>deren Ordner = Hörbuch-Eingang</small><input name="sab_category" type="text" placeholder="audiobooks"></label>
+      </div>
+    </fieldset>
+    <fieldset data-section="services">
+      <legend>Audiobookshelf <small class="muted">optional</small></legend>
+      <p class="muted small">Nach dem Ablegen neuer Bücher wird die Bibliothek in Audiobookshelf neu eingelesen – nötig, wenn dessen
+        Ordnerüberwachung auf Netzwerk-Shares nichts mitbekommt. API-Token: Audiobookshelf → Einstellungen → Benutzer → Admin → API-Token.</p>
+      <div class="grid2">
+        <label>Adresse <input name="abs_url" type="text" placeholder="http://192.168.1.10:13378" spellcheck="false"></label>
+        <label>API-Token <input name="abs_token" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>Bibliothek <small>leer = wird beim Testen gewählt</small><input name="abs_library" type="text" list="absLibraries" spellcheck="false"></label>
+      </div>
+      <datalist id="absLibraries"></datalist>
+    </fieldset>
+    <fieldset data-section="services">
+      <legend>Plex <small class="muted">optional</small></legend>
+      <p class="muted small">Nach dem Ablegen neuer Bücher wird die Hörbuch-Mediathek in Plex neu eingelesen. Mit „Papierkorb leeren“
+        verschwinden danach auch ersetzte MP3-Fassungen, die es auf der Platte nicht mehr gibt. Token: in Plex Web bei einem Titel
+        „…“ → „Informationen abrufen“ → „XML anzeigen“ – der Wert hinter <code>X-Plex-Token=</code> in der Adresse.</p>
+      <div class="grid2">
+        <label>Adresse <input name="plex_url" type="text" placeholder="http://192.168.1.10:32400" spellcheck="false"></label>
+        <label>Token <input name="plex_token" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>Mediathek <small>leer = wird beim Testen gewählt</small><input name="plex_section" type="text" spellcheck="false"></label>
+        <label class="check"><input type="checkbox" name="plex_empty_trash"> Danach Papierkorb der Mediathek leeren</label>
+      </div>
+    </fieldset>
+    <p class="muted small">API-Keys und Token werden nur auf dem Server gespeichert (Datenbank in <code>/config</code>) und nie wieder angezeigt. Feld leer lassen = gespeicherten Key behalten.</p>
+    <div class="save-bar"><button type="submit" class="btn primary">Speichern &amp; testen</button></div>
+    </form>
+    <div class="dialog-body page-body" data-page="users">
+    <p class="muted small">Admins dürfen alles. Nutzer sehen <b>Entdecken</b> und – mit den Rechten unten – fremde Anfragen
+      oder die Release-Suche. Kontingent: Buchanfragen pro Monat (leer = Standard <span id="defaultQuota"></span>, 0 = keine).</p>
+    <div class="table-wrap">
+      <table class="users">
+        <thead><tr><th>Name</th><th>Rolle</th><th title="Sieht die Anfragen aller Nutzer">Alle Anfragen sehen</th>
+          <th title="Anfragen gehen ohne Freigabe los">Ohne Freigabe</th><th title="Darf Releases selbst ansehen und wählen">Interaktive Suche</th>
+          <th>Kontingent</th><th>Gesperrt</th><th title="Zweitfaktor (Authenticator-App)">2FA</th><th>Zuletzt da</th><th></th></tr></thead>
+        <tbody id="userRows"></tbody>
+      </table>
     </div>
-  </form>
-</dialog>
-
-<dialog id="logDialog">
-  <div class="dialog-body">
-    <h2>Protokoll</h2>
+    <fieldset>
+      <legend>Neues Konto</legend>
+      <div class="grid2">
+        <label>Name <input id="newUserName" maxlength="40" autocomplete="off" spellcheck="false"></label>
+        <label>Startpasswort <small>mindestens 10 Zeichen – bitte selbst ändern lassen</small>
+          <input id="newUserPw" type="text" maxlength="256" autocomplete="off" spellcheck="false"></label>
+        <label>Rolle <select id="newUserRole"><option value="user">Nutzer</option><option value="admin">Admin</option></select></label>
+        <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="newUserQuota" type="number" min="0" max="1000"></label>
+      </div>
+      <div class="row gap"><button type="button" class="btn" id="newUserPwGen">Passwort erzeugen</button>
+        <button type="button" class="btn primary" id="newUserSave">Konto anlegen</button></div>
+    </fieldset>
+    <details class="audit-box">
+      <summary>Admin-Protokoll <small class="muted">wer hat wann was geändert</small></summary>
+      <ul id="auditList" class="audit-list"></ul>
+    </details>
+    </div>
+    <div class="dialog-body page-body" data-page="logs">
     <div class="log-tools">
       <select id="logLevel" aria-label="Was">
         <option value="info">Alles</option>
@@ -591,11 +452,163 @@
     </div>
     <div id="logView" class="log-view" role="log" aria-live="polite"></div>
     <p class="muted small">Die letzten 3000 Einträge seit dem Start. Alles steht zusätzlich im Container-Log (<code>docker logs hoerwerk</code>).</p>
+    </div>
+    <div class="dialog-body page-body" data-page="health">
+      <div class="row gap wrap"><button type="button" class="btn small" id="healthRun"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Neu prüfen</button>
+        <span id="healthSummary" class="muted small"></span></div>
+      <div id="healthList" class="health-list"></div>
+    </div>
+  </section>
+</main>
+
+<main class="books-layout single" id="viewAccount" hidden>
+  <section class="panel account-panel">
+    <div class="panel-head"><h2>Konto <span id="accountTitle" class="muted"></span></h2>
+      <button type="button" class="btn small" id="logoutBtn">Abmelden</button></div>
+    <div class="dialog-body page-body">
+    <fieldset>
+      <legend>Passwort ändern</legend>
+      <div class="grid2">
+        <label>Bisheriges Passwort <input id="pwOld" type="password" autocomplete="current-password" maxlength="256"></label>
+        <span></span>
+        <label>Neues Passwort <small>mindestens 10 Zeichen</small><input id="pwNew" type="password" autocomplete="new-password" maxlength="256"></label>
+        <label>Neues Passwort wiederholen <input id="pwNew2" type="password" autocomplete="new-password" maxlength="256"></label>
+      </div>
+      <div class="row gap"><button type="button" class="btn" id="pwSave">Passwort ändern</button>
+        <span class="muted small">Alle anderen Geräte werden dabei abgemeldet.</span></div>
+    </fieldset>
+    <fieldset>
+      <legend>Zweitfaktor</legend>
+      <div id="totpBox"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Benachrichtigungen an mich</legend>
+      <label>Eigenes ntfy-Topic <small>dorthin meldet Hörwerk, wenn deine Anfragen da sind oder abgelehnt wurden (leer = keine)</small>
+        <input id="myTopic" type="text" maxlength="64" spellcheck="false" autocomplete="off" placeholder="z. B. eva-hoerbuecher"></label>
+      <div class="row gap"><button type="button" class="btn small" id="myTopicSave">Speichern</button>
+        <button type="button" class="btn small ghost" id="myTopicTest">Testnachricht senden</button></div>
+    </fieldset>
+    <fieldset>
+      <legend>So sieht dich Hörwerk</legend>
+      <p class="muted small">Hilft beim Einrichten eines Reverse-Proxys (z. B. Pangolin): Hier sollte deine echte Adresse stehen, nicht die des Proxys.</p>
+      <dl id="whoami" class="facts"></dl>
+    </fieldset>
+    <fieldset>
+      <legend>Angemeldete Geräte</legend>
+      <ul id="sessionList" class="session-list"></ul>
+      <button type="button" class="btn small ghost" id="endOthers">Alle anderen Geräte abmelden</button>
+    </fieldset>
+    </div>
+  </section>
+</main>
+
+<dialog id="releasesDialog" class="wide">
+  <form method="dialog" class="dialog-body">
+    <h2>Releases für <span id="releasesTitle"></span></h2>
+    <p class="muted small">Hörwerk lädt von selbst das beste passende Release. Hier siehst du alle Treffer – auch die verworfenen, mit Grund – und kannst eins selbst wählen oder sperren.</p>
+    <div class="search-row">
+      <input id="releasesQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false">
+      <button type="button" class="btn" id="releasesGo">Neu suchen</button>
+    </div>
+    <p id="releasesNote" class="muted small"></p>
+    <div class="table-wrap">
+      <table class="results">
+        <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">kbit/s</th><th>Urteil</th><th class="c-act"></th></tr></thead>
+        <tbody id="releasesRows"></tbody>
+      </table>
+    </div>
+    <div class="dialog-actions"><button value="cancel" class="btn primary">Schließen</button></div>
+  </form>
+</dialog>
+
+<dialog id="uploadDialog" class="wide">
+  <form method="dialog" class="dialog-body">
+    <h2>Hörbuch hochladen</h2>
+    <p class="muted small">Z. B. von CD eingelesen: <b>ein Ordner pro Hörbuch</b>, am besten „Autor – Titel“, gern mit
+      Unterordnern <code>CD1</code>, <code>CD2</code> … Hörwerk erkennt das Buch an Ordnername und Tags, macht daraus eine
+      M4B mit Kapiteln, holt die Daten von Audible und legt es in die Bibliothek.</p>
+    <div id="uploadDrop" class="drop-zone" tabindex="0">
+      <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg>
+      <span>Ordner hierher ziehen</span>
+      <span class="muted small">oder</span>
+      <div class="row gap wrap">
+        <label class="btn small">Ordner wählen<input id="uploadFolder" type="file" webkitdirectory multiple hidden></label>
+        <label class="btn small ghost">Einzelne Dateien<input id="uploadFiles" type="file" multiple accept="audio/*,.m4b,.cue,image/*" hidden></label>
+      </div>
+    </div>
+    <label id="uploadNameRow" hidden>Name des Hörbuchs <small>für einzeln gewählte Dateien, z. B. „Theodor Storm – Der Schimmelreiter“</small>
+      <input id="uploadName" maxlength="150" spellcheck="false"></label>
+    <ul id="uploadList" class="upload-list"></ul>
+    <div class="progress" id="uploadProgress" hidden><span></span></div>
+    <p id="uploadNote" class="muted small"></p>
     <div class="dialog-actions">
-      <button class="btn ghost" data-close>Schließen</button>
+      <button type="button" class="btn" id="uploadCancel">Abbrechen</button>
+      <button type="button" class="btn primary" id="uploadGo" disabled>Hochladen</button>
+    </div>
+  </form>
+</dialog>
+
+
+<dialog id="tracksDialog">
+  <div class="dialog-body">
+    <h2>Kapitel &amp; Namen: <span id="tracksTitle"></span></h2>
+    <p class="muted small"><code id="tracksPath"></code> – jede Datei wird ein Kapitel. Namen anpassen, dann zu M4B.
+      Danach wird das Buch bei Audible erkannt (oder kommt zur Prüfung), getaggt und ersetzt die alte Fassung.</p>
+    <div class="row gap wrap">
+      <span class="muted small">Vorlage:</span>
+      <button type="button" class="btn small" data-preset="auto">automatisch</button>
+      <button type="button" class="btn small" data-preset="tag">aus Tags</button>
+      <button type="button" class="btn small" data-preset="filename">Dateinamen</button>
+      <button type="button" class="btn small" data-preset="strip">ohne Nummer</button>
+      <button type="button" class="btn small" data-preset="numbered">Kapitel 1, 2, 3 …</button>
+    </div>
+    <div class="table-wrap tracks-wrap">
+      <table class="results tracks">
+        <thead><tr><th class="c-num">#</th><th>Datei</th><th class="c-num">Länge</th><th>Kapitelname</th></tr></thead>
+        <tbody id="tracksBody"></tbody>
+      </table>
+    </div>
+    <label class="check"><input type="checkbox" id="tracksRename"> Dateien vorher auch so umbenennen („01 - Kapitelname.mp3“)</label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" data-close>Abbrechen</button>
+      <button type="button" class="btn primary" id="tracksGo">Zu M4B</button>
     </div>
   </div>
 </dialog>
+
+<dialog id="manualDialog">
+  <form method="dialog" class="dialog-body" id="manualForm">
+    <h2 id="manualTitle">Selbst eintragen</h2>
+    <label>Link von Audible, BookBeat oder Thalia <small>füllt die Felder automatisch</small>
+      <span class="row gap">
+        <input id="manualLink" name="link" type="text" placeholder="https://www.bookbeat.com/de/book/…" spellcheck="false">
+        <button type="button" id="manualLinkBtn" class="btn small">Daten holen</button>
+      </span>
+    </label>
+    <div id="manualSource" class="manual-source" hidden></div>
+    <div class="grid2">
+      <label>Titel <input name="title" type="text"></label>
+      <label>Untertitel <input name="subtitle" type="text"></label>
+      <label>Autor(en) <small>kommagetrennt</small><input name="authors" type="text"></label>
+      <label>Sprecher <small>kommagetrennt</small><input name="narrators" type="text"></label>
+      <label>Serie <input name="series" type="text"></label>
+      <label>Band / Folge <input name="series_position" type="text"></label>
+      <label>Erscheinungsdatum <small>JJJJ-MM-TT</small><input name="release_date" type="text"></label>
+      <label>Verlag <input name="publisher" type="text"></label>
+    </div>
+    <label>Genres <small>kommagetrennt</small><input name="genres" type="text"></label>
+    <label>Beschreibung <textarea name="description" rows="4"></textarea></label>
+    <p class="muted small">Ohne Vorlage werden leere Felder aus den Tags der Dateien übernommen.</p>
+    <div class="dialog-actions">
+      <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
+      <button value="save" class="btn primary">Taggen &amp; ablegen</button>
+    </div>
+  </form>
+</dialog>
+
+
+
+
 
 <dialog id="packDialog">
   <form method="dialog" class="dialog-body">
@@ -622,6 +635,7 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="/static/core.js"></script>
+<script src="/static/router.js"></script>
 <script src="/static/live.js"></script>
 <script src="/static/app.js"></script>
 <script src="/static/books.js"></script>
@@ -632,5 +646,6 @@
 <script src="/static/logs.js"></script>
 <script src="/static/account.js"></script>
 <script src="/static/upload.js"></script>
+<script src="/static/settings.js"></script>
 </body>
 </html>

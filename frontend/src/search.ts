@@ -68,7 +68,8 @@ function indexerRow(i: Indexer = {}): HTMLDivElement {
   return row;
 }
 
-function openSources(): void {
+/** Fill the form on /settings/downloads and /settings/services with the saved sources. */
+function fillSources(): void {
   const s: Sources = search.sources || { indexers: [], sab: {}, configured: { indexers: 0, sab: false } };
   $("#indexerRows").replaceChildren(...(s.indexers.length ? s.indexers : [{}]).map((i) => indexerRow(i)));
   const f = $<HTMLFormElement>("#sourcesForm");
@@ -90,7 +91,6 @@ function openSources(): void {
   const plexToken = field(f, "plex_token");
   plexToken.value = "";
   plexToken.placeholder = plex?.token_set ? t("gespeichert – leer lassen") : "X-Plex-Token";
-  $<HTMLDialogElement>("#sourcesDialog").showModal();
 }
 
 async function saveSources(): Promise<void> {
@@ -320,7 +320,7 @@ function choosePackVolumes(r: Release): Promise<number[] | null> {
 }
 
 async function sendResult(r: Release, btn: HTMLButtonElement): Promise<void> {
-  if (!search.sources?.configured.sab) { toast(t("Erst SABnzbd einrichten"), true); openSources(); return; }
+  if (!search.sources?.configured.sab) { toast(t("Erst SABnzbd einrichten"), true); navigate("/settings/downloads"); return; }
   let volumes: number[] | undefined;
   if (r.pack) {
     const chosen = await choosePackVolumes(r);
@@ -377,10 +377,8 @@ function initSearch(): void {
   $("#searchForm").addEventListener("submit", lookupBooks);
   $("#releaseForm").addEventListener("submit", (e) => runSearch(e));
   $("#freeSearchBtn").addEventListener("click", () => runSearch(undefined, true));
-  $("#sourcesBtn").addEventListener("click", openSources);
   $("#addIndexerBtn").addEventListener("click", () => $("#indexerRows").append(indexerRow()));
-  const dialog = $<HTMLDialogElement>("#sourcesDialog");
-  dialog.addEventListener("close", () => { if (dialog.returnValue === "save") saveSources(); });
+  $("#sourcesForm").addEventListener("submit", (e) => { e.preventDefault(); saveSources(); });
   document.addEventListener("viewchange", (e) => {
     if ((e as CustomEvent<string>).detail === "search" && IS_ADMIN) { loadSources(); pollDownloads(true); }
   });

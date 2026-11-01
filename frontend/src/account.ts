@@ -1,6 +1,6 @@
 "use strict";
 // ------------------------------------------------------------------------- //
-// Own account (password, devices, sign out) and – for admins – the user list
+// Own account (/account: password, devices, sign out) and – for admins – the user list (/settings/users)
 // ------------------------------------------------------------------------- //
 interface SessionInfo { id: string; created: number; last_seen: number; ip: string; agent: string }
 interface UserInfo {
@@ -19,7 +19,17 @@ function deviceName(agent: string): string {
 
 async function openAccount(): Promise<void> {
   try {
-    const me = await api<{ name: string; role: string; sessions: SessionInfo[]; session: string }>("GET", "/api/auth/me");
+    const me = await api<{ name: string; role: string; sessions: SessionInfo[]; session: string;
+      connection?: { ip: string; peer: string; proxied: boolean; trusted: boolean; https: boolean } }>("GET", "/api/auth/me");
+    const c = me.connection;
+    if (c) {
+      const fact = (k: string, v: string, bad = false): HTMLElement[] => [el("dt", {}, k), el("dd", { class: bad ? "bad" : "" }, v)];
+      $("#whoami").replaceChildren(
+        ...fact(t("Deine Adresse"), c.ip),
+        ...fact(t("Verbindung"), c.proxied ? (c.trusted ? t("über Reverse-Proxy {peer} (vertrauenswürdig)", { peer: c.peer })
+          : t("über {peer} – nicht in TRUSTED_PROXIES, die echte Adresse fehlt", { peer: c.peer })) : t("direkt"), c.proxied && !c.trusted),
+        ...fact("HTTPS", c.https ? t("ja") : t("nein")));
+    }
     $("#accountTitle").textContent = `${me.name} · ${me.role === "admin" ? t("Admin") : t("Nutzer")}`;
     renderTotp(!!(me as { totp?: boolean }).totp);
     api<{ ntfy_topic: string; ntfy_server: boolean }>("GET", "/api/auth/prefs").then((p) => {
@@ -33,8 +43,6 @@ async function openAccount(): Promise<void> {
         : el("button", { type: "button", class: "btn small ghost", onclick: async () => {
           await api("POST", "/api/auth/sessions/end", { id: s.id }); openAccount();
         } }, t("Abmelden")))));
-    const d = $<HTMLDialogElement>("#accountDialog");
-    if (!d.open) d.showModal();
   } catch (e) { toast(errMsg(e), true); }
 }
 
@@ -176,7 +184,6 @@ async function createUser(): Promise<void> {
 function initAccount(): void {
   if (typeof ME === "undefined" || !ME) return;
   $("#accountName").textContent = ME.name;
-  $("#accountBtn").addEventListener("click", openAccount);
   $("#pwSave").addEventListener("click", changePassword);
   $("#endOthers").addEventListener("click", async () => {
     try { const r = await api<{ ended: number }>("POST", "/api/auth/sessions/end", {}); toast(t("{n} Geräte abgemeldet", { n: r.ended })); openAccount(); }
@@ -193,12 +200,12 @@ function initAccount(): void {
     try { await api("PUT", "/api/auth/prefs", { ntfy_topic: $<HTMLInputElement>("#myTopic").value }); toast(t("Gespeichert")); }
     catch (e) { toast(errMsg(e), true); }
   });
-  // admins that still need a second factor (setting): straight to the account dialog
+  document.addEventListener("viewchange", (e) => { if ((e as CustomEvent<string>).detail === "account") openAccount(); });
+  // admins that still need a second factor (setting): straight to the account page
   if (IS_ADMIN && ME && !(ME as Me & { totp?: boolean }).totp) {
-    api("GET", "/api/sources").catch((e) => { if (/Zweitfaktor|second factor/i.test(errMsg(e))) openAccount(); });
+    api("GET", "/api/sources").catch((e) => { if (/Zweitfaktor|second factor/i.test(errMsg(e))) navigate("/account"); });
   }
   if (!IS_ADMIN) return;
-  $("#usersBtn").addEventListener("click", () => { loadUsers(); $<HTMLDialogElement>("#usersDialog").showModal(); });
   $(".audit-box").addEventListener("toggle", (e) => { if ((e.target as HTMLDetailsElement).open) loadAudit(); });
   $("#newUserPwGen").addEventListener("click", () => { $<HTMLInputElement>("#newUserPw").value = randomPassword(); });
   $("#newUserSave").addEventListener("click", createUser);

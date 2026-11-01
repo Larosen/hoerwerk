@@ -69,7 +69,6 @@ function initNotify(): void {
       await loadNotify();
     } catch (e) { toast(errMsg(e), true); }
   });
-  $("#settingsBtn").addEventListener("click", loadNotify);
 }
 
 initNotify();

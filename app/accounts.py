@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import ipaddress
 import secrets
 import threading
 import time
@@ -31,6 +32,21 @@ SESSION_LONG = 30 * 24 * 3600
 TOUCH_EVERY = 300                # write last_seen at most every 5 minutes
 IP_FAILS = 5
 WINDOW = 15 * 60
+MAX_TRACKED = 10000       # addresses / names with failed logins kept in memory
+
+
+def ip_bucket(ip: str) -> str:
+    """What the login brake counts: an IPv4 address, or the /64 network of an IPv6 address
+    (one internet connection gets a whole /64 – otherwise every new address would mean 5 new tries)."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return ip
+    if addr.version == 4:
+        return str(addr)
+    if addr.ipv4_mapped:
+        return str(addr.ipv4_mapped)
+    return str(ipaddress.ip_network(f"{addr}/64", strict=False))
 SCRYPT = {"n": 2 ** 15, "r": 8, "p": 1}
 _MAXMEM = 64 * 1024 * 1024
 
@@ -291,17 +307,34 @@ class Accounts:
     def _blocked(self, ip: str) -> bool:
         now = self.clock()
         with self.lock:
-            q = self.ip_fails[ip]
+            q = self.ip_fails.get(ip_bucket(ip))
             while q and q[0] < now - WINDOW:
                 q.popleft()
-            return len(q) >= IP_FAILS
+            return bool(q) and len(q) >= IP_FAILS
+
+    def blocked_count(self) -> int:
+        """Addresses (IPv6: /64 networks) blocked right now – for the health check."""
+        now = self.clock()
+        with self.lock:
+            return sum(1 for q in self.ip_fails.values() if len([x for x in q if x >= now - WINDOW]) >= IP_FAILS)
 
     def _fail(self, ip: str, name: str) -> None:
+        now = self.clock()
         with self.lock:
-            self.ip_fails[ip].append(self.clock())
+            self.ip_fails[ip_bucket(ip)].append(now)
             self.user_fails[name.lower()] += 1
-            if len(self.ip_fails) > 10000:          # memory bound against address floods
-                self.ip_fails.clear()
+            if len(self.ip_fails) > MAX_TRACKED:
+                # memory bound against address floods – drop the oldest, never the whole table
+                # (wiping it would let an attacker with many addresses reset his own block)
+                expired = [k for k, q in self.ip_fails.items() if not q or q[-1] < now - WINDOW]
+                for k in expired:
+                    del self.ip_fails[k]
+                if len(self.ip_fails) > MAX_TRACKED:     # single tries first, blocked addresses last
+                    order = sorted(self.ip_fails, key=lambda k: (len(self.ip_fails[k]) >= IP_FAILS, self.ip_fails[k][-1]))
+                    for k in order[:len(self.ip_fails) - MAX_TRACKED]:
+                        del self.ip_fails[k]
+            if len(self.user_fails) > MAX_TRACKED:
+                self.user_fails = defaultdict(int, sorted(self.user_fails.items(), key=lambda kv: -kv[1])[:MAX_TRACKED // 2])
 
     def delay_for(self, name: str) -> float:
         """Growing pause after failed logins of one account (0, 0, 0, 1, 2, 4 … max 8 s)."""

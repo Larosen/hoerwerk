@@ -165,6 +165,99 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.req("PUT", "/api/settings", {"language": "en"}, self.OWN, cookie=False)[0], 401)
 
 
+class AccessTest(WebTest):
+    """Nothing without login: every API route, every app page, the UI code."""
+    PUBLIC_API = {("GET", "/api/health"), ("GET", "/api/auth/status"), ("POST", "/api/auth/setup"),
+                  ("POST", "/api/auth/login"), ("POST", "/api/auth/login/totp")}
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        eva = cls.app.accounts.create("eva", "test-password-456", "user")
+        cls.user_cookie = "hw_session=" + cls.app.accounts.start_session(eva["id"], False)
+
+    def _routes(self):
+        import re
+        from web import router
+        for method, rx, fn, access in router.ROUTES:
+            path = re.sub(r"\(\?P<\w+>[^)]*\)", "1", rx.pattern).lstrip("^").rstrip("$").replace("\\", "")
+            yield method, path, access
+
+    def test_every_api_route_needs_login(self):
+        """The registry of all routes: only the login itself and the health check are open."""
+        public = set()
+        for method, path, access in self._routes():
+            if access == "public":
+                public.add((method, path))
+                continue
+            status, _, body = self.req(method, path, {} if method != "GET" else None, self.OWN, cookie=False)
+            self.assertEqual(status, 401, f"{method} {path}")
+        self.assertEqual(public, self.PUBLIC_API)
+
+    def test_admin_routes_refuse_family_accounts(self):
+        for method, path, access in self._routes():
+            if access != "admin" or path == "/api/events":
+                continue
+            status, _, _ = self.req(method, path, {} if method != "GET" else None, self.OWN, cookie=self.user_cookie)
+            self.assertEqual(status, 403, f"{method} {path}")
+
+    def test_app_pages(self):
+        status, headers, _ = self.req("GET", "/settings/health", cookie=False)
+        self.assertEqual((status, headers["Location"]), (303, "/login?next=/settings/health"))
+        for path in ("/settings", "/settings/users", "/books", "/search", "/account"):
+            self.assertEqual(self.req("GET", path, cookie=False)[0], 303, path)
+            status, headers, body = self.req("GET", path)
+            self.assertEqual(status, 200, path)
+            self.assertIn(b'id="viewSettings"', body)
+        for path in ("/settings/nope", "/settings/health/x", "/search/x", "/admin", "/settings/../config"):
+            self.assertEqual(self.req("GET", path)[0], 404, path)
+        # family accounts: no settings page, no inbox – back to the start
+        for path in ("/settings", "/settings/health", "/books"):
+            status, headers, _ = self.req("GET", path, cookie=self.user_cookie)
+            self.assertEqual((status, headers.get("Location")), (303, "/"), path)
+        self.assertEqual(self.req("GET", "/account", cookie=self.user_cookie)[0], 200)
+
+    def test_ui_code_only_after_login(self):
+        for name in ("style.css", "icon.svg", "theme.js", "core.js", "login.js"):
+            self.assertEqual(self.req("GET", "/static/" + name, cookie=False)[0], 200, name)
+        for name in ("index.html", "app.js", "settings.js", "router.js", "i18n/en.json", "../web/server.py", "%2e%2e/main.py"):
+            self.assertEqual(self.req("GET", "/static/" + name, cookie=False)[0], 401, name)
+        self.assertEqual(self.req("GET", "/static/settings.js")[0], 200)
+        self.assertEqual(self.req("GET", "/static/../web/server.py")[0], 404)
+        self.assertEqual(self.req("GET", "/static/%2e%2e/main.py")[0], 404)
+
+    def test_health_tells_the_version_only_after_login(self):
+        self.assertEqual(json.loads(self.req("GET", "/api/health", cookie=False)[2]), {"ok": True})
+        self.assertEqual(json.loads(self.req("GET", "/api/health")[2])["version"], config.VERSION)
+
+    def test_diagnostics_and_proxy(self):
+        """The health check sees the proxy: trusted -> real address, not trusted -> error with the fix."""
+        xff = {"X-Forwarded-For": "203.0.113.7", "X-Forwarded-Proto": "https"}
+        checks = {c["id"]: c for c in json.loads(self.req("GET", "/api/diagnostics", headers=xff)[2])["checks"]}
+        self.assertEqual(checks["proxy"]["status"], "error")
+        self.assertEqual(checks["proxy"]["hint"], "TRUSTED_PROXIES=127.0.0.1")
+        old = self.app.config
+        self.app.config = dataclasses.replace(old, trusted_proxies=config.parse_networks("127.0.0.1"))
+        try:
+            res = json.loads(self.req("GET", "/api/diagnostics", headers=xff)[2])
+            checks = {c["id"]: c for c in res["checks"]}
+            self.assertEqual(checks["proxy"]["status"], "ok")
+            self.assertEqual(checks["https"]["status"], "ok")
+            self.assertIn("203.0.113.7", checks["ip"]["title"])
+            me = json.loads(self.req("GET", "/api/auth/me", headers=xff)[2])["connection"]
+            self.assertEqual((me["ip"], me["trusted"], me["https"]), ("203.0.113.7", True, True))
+        finally:
+            self.app.config = old
+        self.assertEqual(self.req("GET", "/api/diagnostics", cookie=self.user_cookie)[0], 403)
+
+    def test_untrusted_proxy_in_own_network_is_noted(self):
+        self.app.untrusted_proxies.clear()             # e.g. Newt with a new IP after a restart
+        self.server.note_untrusted("10.30.0.9")
+        self.assertIn("10.30.0.9", self.app.untrusted_proxies)
+        checks = {c["id"]: c for c in json.loads(self.req("GET", "/api/diagnostics")[2])["checks"]}
+        self.assertEqual(checks["untrusted-10.30.0.9"]["hint"], "TRUSTED_PROXIES=10.30.0.9")
+
+
 class DownloadTest(unittest.TestCase):
     """What a malicious download could try."""
 

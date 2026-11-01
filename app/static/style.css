@@ -199,7 +199,9 @@ legend { font-weight: 620; font-size: 14px; padding: 0 10px 0 0; color: var(--te
   box-shadow: inset 0 -2px 0 transparent; transition: color .15s, box-shadow .15s;
 }
 .tab:hover { color: var(--text); }
-.tab[aria-selected="true"] { color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+.tab[aria-current="page"] { color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+a.tab, a.btn { text-decoration: none; }
+.topbar-actions .btn[aria-current="page"] { background: var(--panel-2); }
 .pill { background: var(--accent); color: var(--accent-text); border-radius: 999px; font-size: 11px; font-weight: 650; padding: 0 6px; min-width: 18px; text-align: center; line-height: 17px; font-variant-numeric: tabular-nums; }
 .small { font-size: 12.5px; }
 code { font: 12px var(--mono); }
@@ -415,13 +417,14 @@ dialog#logDialog { width: min(1000px, calc(100vw - 32px)); }
 
 /* Entdecken */
 .side-nav { display: flex; flex-direction: column; padding: 6px; gap: 2px; }
-.side-nav button {
+.side-nav button, .side-nav a {
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left;
   border: 0; background: none; color: var(--text); font: inherit; font-weight: 550; padding: 8px 10px; border-radius: 7px; cursor: pointer;
 }
-.side-nav button small { color: var(--muted); font-weight: 400; font-size: 12px; }
-.side-nav button:hover { background: var(--hover); }
-.side-nav button[aria-current="true"] { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
+.side-nav a { text-decoration: none; }
+.side-nav button small, .side-nav a small { color: var(--muted); font-weight: 400; font-size: 12px; }
+.side-nav button:hover, .side-nav a:hover { background: var(--hover); }
+.side-nav button[aria-current="true"], .side-nav a[aria-current="true"] { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
 .discover-panel { min-height: 300px; overflow: auto; }
 .discover-grid { list-style: none; margin: 0; padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .discover-grid > li.empty { grid-column: 1 / -1; color: var(--muted); padding: 4px 2px; }
@@ -530,3 +533,40 @@ code.secret { font-size: 13px; word-break: break-all; }
 .upload-list li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
 .progress { height: 8px; border-radius: 99px; background: var(--panel-2); overflow: hidden; box-shadow: inset 0 0 0 1px var(--border); }
 .progress > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+/* Einstellungen & Konto als eigene Seiten */
+a.plain { color: inherit; text-decoration: none; }
+.settings-panel, .account-panel { overflow: auto; min-height: 300px; }
+.account-panel { width: min(860px, 100%); justify-self: center; }
+.settings-layout.hub { grid-template-columns: minmax(0, 1fr); }
+.settings-layout.hub .sidebar { display: none; }
+.page-body { max-width: 900px; }
+.page-body .grid2 label.check { color: var(--text); font-size: 13px; white-space: normal; }
+.save-bar { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 8px; padding: 12px 0 2px; background: var(--panel); border-top: 1px solid var(--border); }
+.settings-hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; padding: 16px; }
+.hub-tile { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); color: var(--text); text-decoration: none; }
+.hub-tile:hover { border-color: var(--accent); background: var(--hover); }
+.hub-tile[data-section="health"] { box-shadow: inset 3px 0 0 var(--accent); }
+.health-list { display: flex; flex-direction: column; gap: 18px; }
+.health-group h3 { font-size: 13px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; }
+.health-row { color: var(--text); display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; }
+.health-row + .health-row { border-top: 1px solid var(--border); border-radius: 0; }
+.health-icon { flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+.health-icon .ico { width: 14px; height: 14px; }
+.health-row.ok .health-icon { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok, #2ea043); }
+.health-row.warn .health-icon { background: rgba(210, 153, 34, .18); color: #c58a12; }
+.health-row.error .health-icon { background: var(--err-soft); color: var(--err); }
+.health-row.info .health-icon { background: var(--panel-2); color: var(--muted); }
+.health-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.health-text b { font-weight: 560; overflow-wrap: anywhere; }
+.health-hint { align-self: flex-start; font-size: 12px; padding: 2px 6px; border-radius: 5px; background: var(--panel-2); user-select: all; }
+dl.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13.5px; }
+dl.facts dt { color: var(--muted); }
+dl.facts dd { margin: 0; overflow-wrap: anywhere; }
+dl.facts dd.bad { color: var(--err); font-weight: 550; }
+.settings-back { display: none; }
+@media (max-width: 900px) {
+  /* phones: the overview is the menu – on an area page only the area, with the way back */
+  .settings-layout:not(.hub) .sidebar { display: none; }
+  .settings-layout:not(.hub) .settings-back { display: inline-flex; }
+}

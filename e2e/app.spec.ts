@@ -51,7 +51,7 @@ test.describe.configure({ mode: "serial" });
 
 test("Bibliothek: alle Bücher, mit Suche", async ({ page }) => {
   const errors = await open(page);
-  await expect(page.getByRole("tab", { name: /Hörbücher/ })).toHaveAttribute("aria-selected", "true");   // start page
+  await expect(page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toHaveAttribute("aria-current", "page");   // start page
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
   await expect(page.locator(".lib-row")).toHaveCount(1);
   await expect(page.locator(".lib-row")).toContainText("Altes Buch");
@@ -64,7 +64,7 @@ test("Bibliothek: alle Bücher, mit Suche", async ({ page }) => {
 
 test("Eingang → M4B → Bibliothek, Doppeltes wird erkannt", async ({ page }) => {
   const errors = await open(page);
-  await page.getByRole("tab", { name: /Hörbücher/ }).click();
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   const tags = { album: "Neues Buch", artist: "Erika Muster" };
   deliver("Erika Muster - Neues Buch", [["01.mp3", tags], ["02.mp3", tags]]);
   await page.locator("#scanBtn").click();
@@ -86,7 +86,7 @@ test("Eingang → M4B → Bibliothek, Doppeltes wird erkannt", async ({ page }) 
 
 test("Altes MP3-Buch mit eigenen Kapitelnamen zu M4B", async ({ page }) => {
   const errors = await open(page);
-  await page.getByRole("tab", { name: /Hörbücher/ }).click();
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   await page.locator("#bookFilter").getByRole("button", { name: /Nicht als M4B/ }).click();
   const book = page.locator("#bookList .book.uc", { hasText: "Altes Buch" });
   await book.getByRole("button", { name: "Kapitel & Namen …" }).click();
@@ -104,11 +104,23 @@ test("Altes MP3-Buch mit eigenen Kapitelnamen zu M4B", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("Einstellungen zeigen ffmpeg und Sandbox, Design bleibt nach Neuladen", async ({ page }) => {
+test("Einstellungen: Übersicht, Healthcheck mit ffmpeg und Proxy, Design bleibt nach Neuladen", async ({ page }) => {
   const errors = await open(page);
   await page.locator("#settingsBtn").click();
-  await expect(page.locator("#systemInfo")).toContainText("ffmpeg");
-  await page.locator("#settingsDialog button[value=cancel]").click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(10);
+  await page.locator("#settingsHub").getByRole("link", { name: /Healthcheck/ }).click();
+  await expect(page).toHaveURL(/\/settings\/health$/);
+  await expect(page.locator("#healthList")).toContainText("ffmpeg");
+  await expect(page.locator("#healthList")).toContainText("Hörwerk sieht dich als 127.0.0.1");
+  await expect(page.locator("#healthList")).toContainText("Live-Updates kommen an");
+  await page.locator("#settingsNav").getByRole("link", { name: /M4B-Konvertierung/ }).click();
+  await expect(page.locator("#settingsForm fieldset:not([hidden]) legend")).toHaveText(["M4B-Konvertierung"]);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/settings\/health$/);
+  await expect(page.locator("#healthList")).toBeVisible();
+  await page.goBack();
+  await expect(page.locator("#settingsHub")).toBeVisible();
   await page.locator("#themeBtn").click();          // auto -> light
   await page.locator("#themeBtn").click();          // light -> dark
   await page.reload();
@@ -120,20 +132,55 @@ test("Einstellungen zeigen ffmpeg und Sandbox, Design bleibt nach Neuladen", asy
 
 test("Oberfläche auf Englisch und zurück", async ({ page }) => {
   const errors = await open(page);
-  await page.locator("#settingsBtn").click();
-  await page.locator("#settingsDialog select[name=language]").selectOption("en");
-  await page.locator("#settingsDialog button[value=save]").click();
-  await expect(page.getByRole("tab", { name: /Audiobooks/ })).toBeVisible();
+  await page.goto("/settings/general");
+  await page.locator("#settingsForm select[name=language]").selectOption("en");
+  await page.locator("#settingsForm button[type=submit]").click();
+  await expect(page.locator("nav.tabs").getByRole("link", { name: /Audiobooks/ })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("#settingsBtn")).toContainText("Settings");
   // nothing German left in the visible chrome of the page
   const text = await page.locator("header.topbar").innerText();
   expect(text).not.toMatch(/Einstellungen|Hörbücher|Suchen|Protokoll/);
   await page.locator("#settingsBtn").click();
-  await expect(page.locator("#settingsDialog legend").first()).toHaveText("M4B conversion");
-  await page.locator("#settingsDialog select[name=language]").selectOption("de");
-  await page.locator("#settingsDialog button[value=save]").click();
-  await expect(page.getByRole("tab", { name: /Hörbücher/ })).toBeVisible();
+  await page.locator("#settingsHub").getByRole("link", { name: /M4B conversion/ }).click();
+  await expect(page.locator("#settingsForm fieldset:not([hidden]) legend")).toHaveText(["M4B conversion"]);
+  await expect(page).toHaveTitle("M4B conversion · Hörwerk");
+  await page.locator("#settingsNav").getByRole("link", { name: /General/ }).click();
+  await page.locator("#settingsForm select[name=language]").selectOption("de");
+  await page.locator("#settingsForm button[type=submit]").click();
+  await expect(page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("Seiten mit eigener Adresse: vor, zurück, Lesezeichen", async ({ page, browser }) => {
+  const errors = await open(page);
+  await expect(page).toHaveURL(/\/books$/);
+  await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();
+  await expect(page).toHaveURL(/\/search$/);
+  await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
+  await expect(page).toHaveURL(/\/discover$/);
+  await expect(page).toHaveTitle("Entdecken · Hörwerk");
+  await page.goBack();
+  await expect(page).toHaveURL(/\/search$/);
+  await expect(page.locator("#viewSearch")).toBeVisible();
+  await expect(page.locator("#viewDiscover")).toBeHidden();
+  await page.goForward();
+  await expect(page.locator("#viewDiscover")).toBeVisible();
+  // a bookmark without being signed in: first the login, then exactly that page
+  const ctx = await browser.newContext();
+  const other = await ctx.newPage();
+  await other.goto("/settings/logs");
+  await expect(other).toHaveURL(/\/login\?next=\/settings\/logs$/);
+  const form = other.locator("#loginForm");
+  await form.getByLabel("Name").fill(ADMIN.name);
+  await form.getByLabel("Passwort").fill(ADMIN.password);
+  await form.getByRole("button", { name: "Anmelden" }).click();
+  await expect(other).toHaveURL(/\/settings\/logs$/);
+  await expect(other.locator("#logView")).toBeVisible();
+  // a foreign "next" is ignored
+  await other.goto("/login?next=https://evil.example/");
+  await expect(other).toHaveURL(/\/books$/);
+  await ctx.close();
   expect(errors).toEqual([]);
 });
 
@@ -144,7 +191,7 @@ test("Fremde Seiten dürfen nichts ändern (CSRF)", async ({ page, request }) =>
     headers: { Origin: "http://evil.example" },
   });
   expect(res.status()).toBe(403);
-  await expect(page.getByRole("tab", { name: /Hörbücher/ })).toBeVisible();   // still German
+  await expect(page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toBeVisible();   // still German
 });
 
 test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
@@ -156,14 +203,14 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
   await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
   await page.route("**/api/search", (r) => r.fulfill({ json: { results: [], errors: [], queries: ["Autorin Das stille Haus"] } }));
   const errors = await open(page);
-  await page.getByRole("tab", { name: "Entdecken" }).click();
+  await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
   const card = page.locator(".suggestion");
   await expect(card).toHaveCount(1);
   await expect(card).toContainText("Das stille Haus");
   await expect(card).toContainText("★ 4.7");
   await expect(card).toContainText("Altes Buch");
   await card.getByRole("button", { name: "Suchen" }).click();
-  await expect(page.getByRole("tab", { name: "Suchen" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("nav.tabs").getByRole("link", { name: "Suchen" })).toHaveAttribute("aria-current", "page");
   await expect(page.locator("#releaseQuery")).toHaveValue("Autorin Das stille Haus");
   await expect(page.locator("#bookPick")).toContainText("B0TEST0001");
   expect(errors).toEqual([]);
@@ -184,7 +231,7 @@ test("Entdecken: Nach Genre startet mit einem Genre, Unterkategorien wie bei Aud
     r.fulfill({ json: { items: genre ? [item] : [], updated: 1_700_000_000, error: null, running: false } });
   });
   const errors = await open(page);
-  await page.getByRole("tab", { name: "Entdecken" }).click();
+  await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
   await page.locator("#discoverSections button[data-section=genre]").click();
   const sel = page.locator("#discoverGenre");
   await expect(sel).toHaveValue("2");                                   // no empty "–": fiction to start with
@@ -211,9 +258,11 @@ test("Anmeldung: falsches Passwort, dann richtig; ohne Anmeldung keine Daten", a
   await expect(page.locator("#loginError")).toHaveText("Name oder Passwort falsch");
   await form.getByLabel("Passwort").fill(ADMIN.password);
   await form.getByRole("button", { name: "Anmelden" }).click();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("tab", { name: /Hörbücher/ })).toBeVisible();
+  await expect(page).toHaveURL(/\/books$/);
+  await expect(page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toBeVisible();
   await page.locator("#accountBtn").click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.locator("#whoami")).toContainText("127.0.0.1");
   await expect(page.locator("#sessionList")).toContainText("dieses Gerät");
   await page.locator("#logoutBtn").click();
   await expect(page).toHaveURL(/\/login$/);
@@ -222,7 +271,7 @@ test("Anmeldung: falsches Passwort, dann richtig; ohne Anmeldung keine Daten", a
 
 test("Konten: Admin legt Familienkonto an, das sieht nur Entdecken", async ({ page, browser }) => {
   const errors = await open(page);
-  await page.locator("#usersBtn").click();
+  await page.goto("/settings/users");
   await page.locator("#newUserName").fill("Eva");
   await page.locator("#newUserPw").fill("evas-start-passwort");
   await page.locator("#newUserSave").click();
@@ -231,9 +280,11 @@ test("Konten: Admin legt Familienkonto an, das sieht nur Entdecken", async ({ pa
 
   const eva = await browser.newPage();
   const evaErrors = await open(eva, { name: "eva", password: "evas-start-passwort" });
-  await expect(eva.getByRole("tab", { name: "Entdecken" })).toHaveAttribute("aria-selected", "true");
-  for (const hidden of ["#settingsBtn", "#logBtn", "#usersBtn"]) await expect(eva.locator(hidden)).toBeHidden();
-  await expect(eva.getByRole("tab", { name: /Hörbücher/ })).toBeHidden();
+  await expect(eva.locator("nav.tabs").getByRole("link", { name: "Entdecken" })).toHaveAttribute("aria-current", "page");
+  await expect(eva.locator("#settingsBtn")).toBeHidden();
+  await eva.goto("/settings/users");                       // no settings for family accounts: back to the start
+  await expect(eva).toHaveURL(/\/discover$/);
+  await expect(eva.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toBeHidden();
   await expect(eva.locator("#accountName")).toHaveText("Eva");
   // the server refuses admin functions, whatever the page shows
   expect((await eva.request.get("/api/sources")).status()).toBe(403);
@@ -264,10 +315,10 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
     ratings: 500, runtime_min: 480, cover_url: null, url: null, because: [], source: "audible", requested: null };
   await mia.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
   const miaErrors = await open(mia, { name: "mia", password: "mias-passwort-123" });
-  await mia.getByRole("tab", { name: "Entdecken" }).click();
+  await mia.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
   await mia.locator(".suggestion").getByRole("button", { name: "Anfragen" }).click();
   await expect(mia.locator(".suggestion")).toContainText("Wartet auf Freigabe");
-  await mia.getByRole("tab", { name: /Anfragen/ }).click();
+  await mia.locator("nav.tabs").getByRole("link", { name: /Anfragen/ }).click();
   await expect(mia.locator(".request")).toContainText("Die leise Stadt");
   await expect(mia.locator("#requestQuota")).toContainText("noch 4 von 5");
   await expect(mia.locator(".request").getByRole("button", { name: "Releases" })).toHaveCount(0);   // no right for that
@@ -275,7 +326,7 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   // the admin sees the badge, approves; without an indexer the request then waits in "searching"
   await page.reload();
   await expect(page.locator("#requestBadge")).toHaveText("1");
-  await page.getByRole("tab", { name: /Anfragen/ }).click();
+  await page.locator("nav.tabs").getByRole("link", { name: /Anfragen/ }).click();
   await page.locator("#requestScope").check();
   const req = page.locator(".request", { hasText: "Die leise Stadt" });
   await expect(req).toContainText("von Mia");
