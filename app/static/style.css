@@ -570,3 +570,21 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
   .settings-layout:not(.hub) .sidebar { display: none; }
   .settings-layout:not(.hub) .settings-back { display: inline-flex; }
 }
+
+/* Start: Entdecken – a short guide for family accounts */
+.welcome { margin: 14px 14px 0; padding: 14px 16px; border-radius: 10px; background: var(--accent-soft); color: var(--text); line-height: 1.5; }
+.welcome ol { margin: 8px 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.welcome p { margin: 0 0 10px; }
+@media (max-width: 900px) {
+  /* phones: what matters first – the list; the inbox and library boxes come after it */
+  #viewBooks .sidebar { order: 2; }
+  /* Entdecken: the three lists side by side as one compact row, the explanation below the suggestions */
+  #viewDiscover .sidebar { display: contents; }
+  #viewDiscover .sidebar > .panel:first-child { order: 1; }
+  #viewDiscover .discover-panel { order: 2; }
+  #viewDiscover .sidebar .how { order: 3; }
+  #viewDiscover .sidebar > .panel:first-child .panel-head { display: none; }
+  #discoverSections { flex-direction: row; }
+  #discoverSections button { flex: 1; align-items: center; text-align: center; }
+  #discoverSections button small { display: none; }
+}

@@ -143,7 +143,15 @@ async function showDiscover(): Promise<void> {
   await loadDiscover();
 }
 
+/** A short "how it works" for family accounts – until it was read once (per browser). */
+function initWelcome(): void {
+  if (IS_ADMIN || store.get("welcomeRead", false)) return;
+  $("#welcome").hidden = false;
+  $("#welcomeOk").addEventListener("click", () => { store.set("welcomeRead", true); $("#welcome").hidden = true; });
+}
+
 function initDiscover(): void {
+  initWelcome();
   discover.section = store.get("discoverSection", "foryou");
   if (!(discover.section in DISCOVER_TITLES)) discover.section = "foryou";
   for (const b of document.querySelectorAll<HTMLElement>("#discoverSections button")) {

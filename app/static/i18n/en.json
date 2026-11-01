@@ -956,5 +956,19 @@
  "über Reverse-Proxy {peer} (vertrauenswürdig)": "via reverse proxy {peer} (trusted)",
  "über {peer} – nicht in TRUSTED_PROXIES, die echte Adresse fehlt": "via {peer} – not in TRUSTED_PROXIES, the real address is missing",
  "Alle Einstellungen": "All settings",
- "‹ Übersicht": "‹ Overview"
+ "‹ Übersicht": "‹ Overview",
+ ". Mehr musst du nicht tun.": ". That's all you need to do.",
+ "Du suchst ein bestimmtes Buch? Oben auf": "Looking for a particular book? Tap",
+ "Eingang, Verarbeitung und Bibliothek – nur für Admins": "Inbox, processing and library – admins only",
+ "Gefällt dir eins, tippe auf": "If you like one, tap",
+ "Hier stehen gute Hörbücher. Links bzw. oben kannst du wählen: passend zu unserer Sammlung, nach Genre oder von Kritikern empfohlen.": "Good audiobooks are listed here. On the left (or at the top) you can choose: matching our collection, by genre or recommended by critics.",
+ "Hören:": "Listen:",
+ "So einfach geht es:": "It's this easy:",
+ "Sobald das Buch da ist, steht es in der Hörbuch-App. Unter": "As soon as the book is here, it shows up in the audiobook app. Under",
+ "Stöbern:": "Browse:",
+ "Verstanden": "Got it",
+ "Willkommen bei Hörwerk!": "Welcome to Hörwerk!",
+ "Wünschen:": "Wish:",
+ "siehst du, wie weit es ist.": "you can see how far along it is.",
+ "tippen und Titel oder Autor eingeben.": "at the top and enter a title or author."
 }

@@ -25,9 +25,9 @@ function settingsSections(): string[] {
   return [...document.querySelectorAll<HTMLElement>("#settingsNav [data-section]")].map((a) => a.dataset.section || "");
 }
 
+/** Everyone starts with what is good to hear – the inbox and library are one tab further for admins. */
 function defaultView(): string {
-  const saved = store.get("view", IS_ADMIN ? "books" : "discover");
-  return MAIN_VIEWS.includes(saved) && (IS_ADMIN || saved !== "books") ? saved : (IS_ADMIN ? "books" : "discover");
+  return "discover";
 }
 
 /** Which page an address means – anything unknown or not allowed leads to the start page. */

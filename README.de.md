@@ -353,7 +353,8 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
 
 * **Konten** (*Einstellungen → Konten*, `/settings/users`, nur für Admins): Familienkonten anlegen (Startpasswort erzeugen und weitergeben),
   Rolle, Rechte (*Alle Anfragen sehen*, *Ohne Freigabe*, *Interaktive Suche*), Kontingent pro Monat, sperren,
-  Passwort neu setzen, Zweitfaktor zurücksetzen, löschen. Familienkonten sehen *Suchen*, *Entdecken* und *Anfragen*
+  Passwort neu setzen, Zweitfaktor zurücksetzen, löschen. Alle starten auf *Entdecken*; Familienkonten sehen nur *Entdecken*, *Suchen* und *Anfragen* (beim ersten Mal mit einer
+  kurzen Anleitung in drei Schritten)
   – Eingang, Bibliothek, Einstellungen und Protokoll bleiben Admins vorbehalten. Darunter: das
   **Admin-Protokoll** (wer hat wann was geändert, mit IP).
 * **Konto** (Name oben rechts, `/account`, für alle): Passwort ändern, **Zweitfaktor** (Authenticator-App wie Aegis, 2FAS,

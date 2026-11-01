@@ -34,10 +34,10 @@
     <span>Hörwerk</span>
   </div>
   <nav class="tabs" aria-label="Bereich">
-    <a class="tab admin-only" href="/books" data-view="books">Hörbücher <span id="reviewBadge" class="pill" hidden></span></a>
-    <a class="tab" href="/search" data-view="search">Suchen</a>
     <a class="tab" href="/discover" data-view="discover">Entdecken</a>
+    <a class="tab" href="/search" data-view="search">Suchen</a>
     <a class="tab" href="/requests" data-view="requests">Anfragen <span id="requestBadge" class="pill" hidden></span></a>
+    <a class="tab admin-only" href="/books" data-view="books" title="Eingang, Verarbeitung und Bibliothek – nur für Admins">Hörbücher <span id="reviewBadge" class="pill" hidden></span></a>
   </nav>
   <div class="topbar-actions">
     <button id="themeBtn" class="btn ghost" title="Design"><svg class="ico" aria-hidden="true"><use href="#i-contrast"/></svg><span class="lbl">Design</span></button>
@@ -175,8 +175,18 @@
       <div class="row gap wrap">
         <label class="inline-setting" id="discoverGenreWrap" hidden>Genre <select id="discoverGenre"></select></label>
         <span id="discoverState" class="muted small"></span>
-        <button id="discoverRefresh" class="btn small ghost" title="Liste neu laden"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Aktualisieren</button>
+        <button id="discoverRefresh" class="btn small ghost admin-only" title="Liste neu laden"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Aktualisieren</button>
       </div>
+    </div>
+    <div id="welcome" class="welcome" hidden>
+      <b>Willkommen bei Hörwerk!</b> So einfach geht es:
+      <ol>
+        <li><b>Stöbern:</b> Hier stehen gute Hörbücher. Links bzw. oben kannst du wählen: passend zu unserer Sammlung, nach Genre oder von Kritikern empfohlen.</li>
+        <li><b>Wünschen:</b> Gefällt dir eins, tippe auf <b>Anfragen</b>. Mehr musst du nicht tun.</li>
+        <li><b>Hören:</b> Sobald das Buch da ist, steht es in der Hörbuch-App. Unter <b>Anfragen</b> siehst du, wie weit es ist.</li>
+      </ol>
+      <p>Du suchst ein bestimmtes Buch? Oben auf <b>Suchen</b> tippen und Titel oder Autor eingeben.</p>
+      <button type="button" class="btn small primary" id="welcomeOk">Verstanden</button>
     </div>
     <p id="discoverNote" class="discover-note" hidden>Sachbuch: Sterne sagen, wie gut ein Buch ankommt – nicht, ob es inhaltlich stimmt. Im Zweifel lieber „Aus der Kritik“.</p>
     <ul id="discoverList" class="discover-grid"></ul>
