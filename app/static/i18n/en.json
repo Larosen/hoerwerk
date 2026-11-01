@@ -1070,5 +1070,12 @@
  "für beliebig viele Personen": "for any number of people",
  "noch niemand angemeldet": "nobody signed up yet",
  "{n} Bücher in Arbeit – Fortschritt unter „Laufend“": "{n} books in progress – see “Running”",
- "über Einladung „{note}“": "via invitation “{note}”"
+ "über Einladung „{note}“": "via invitation “{note}”",
+ "Französisch": "French",
+ "Spanisch": "Spanish",
+ "Italienisch": "Italian",
+ "Sprache des Hörbuchs": "Language of the audiobook",
+ "anderer Band ({found} statt {vol})": "other volume ({found} instead of {vol})",
+ "Band {n} passt": "volume {n} fits",
+ "verlustfrei, aber viel zu klein für {h} h Laufzeit ({kbps} kbit/s)": "lossless, but far too small for {h} h runtime ({kbps} kbit/s)"
 }

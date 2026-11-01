@@ -190,6 +190,16 @@ function genreTag(b: { genres?: string[] | null }): HTMLElement | null {
   return g ? el("span", { class: "genre-tag", title: (b.genres || []).join(" · ") }, g) : null;
 }
 
+/** A label when a book is not in German – so nobody requests the English edition by mistake. */
+function langTag(b: { language?: string | null }): HTMLElement | null {
+  const lang = (b.language || "").toLowerCase();
+  if (!lang || lang === "german" || lang === "deutsch") return null;
+  const names: Record<string, () => string> = {
+    english: () => t("Englisch"), french: () => t("Französisch"), spanish: () => t("Spanisch"), italian: () => t("Italienisch"),
+  };
+  return el("span", { class: "lang-tag", title: t("Sprache des Hörbuchs") }, names[lang]?.() || b.language || "");
+}
+
 /** Stand-in cover for books without artwork: a calm tile coloured by the title, with its initial. */
 function coverArt(title: string, author = "", tag = ""): HTMLDivElement {
   const clean = title.replace(/^[\s\d._-]+/, "").replace(/^(der|die|das|ein|eine|the|a|an|le|la|les|el|il)\s+/i, "") || title;

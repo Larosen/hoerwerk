@@ -374,6 +374,16 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   await expect(rows.first()).toContainText("Sprache passt");
   await expect(rows.nth(1)).toContainText("gekürzte Fassung");
   await expect(page.locator("#releasesNote")).toContainText("2 Releases, davon 1 passend");
+  // the whole release name is readable (wrapped, not cut off)
+  const name = rows.first().locator(".c-title span").first();
+  expect(await name.evaluate((n) => n.scrollWidth <= n.clientWidth + 1)).toBe(true);
+  // Enter in the search field searches again – the window stays open
+  let searches = 0;
+  page.on("request", (q) => { if (q.url().endsWith("/releases")) searches++; });
+  await page.locator("#releasesQuery").fill("Beispiel Stadt");
+  await page.locator("#releasesQuery").press("Enter");
+  await expect.poll(() => searches).toBe(1);
+  await expect(page.locator("#releasesDialog")).toBeVisible();
   await page.locator("#releasesDialog button[value=cancel]").click();
 
   // Mia sees the new state – and can't see other people's requests

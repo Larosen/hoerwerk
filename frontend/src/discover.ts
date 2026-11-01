@@ -49,7 +49,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
       el("span", { class: "s-author" }, (b.authors || []).join(", ")),
-      genreTag(b),
+      el("span", { class: "tag-row" }, genreTag(b), langTag(b)),
       b.narrators?.length ? el("span", { class: "muted small" }, t("gelesen von {names}", { names: b.narrators.slice(0, 2).join(", ") })) : null,
       b.rating ? el("span", { class: "rating", title: plural(b.ratings || 0, t("1 Bewertung bei Audible"), t("{n} Bewertungen bei Audible", { n: fmtCount(b.ratings || 0) })) },
         `★ ${b.rating.toFixed(1)}`, el("span", { class: "muted" }, ` (${fmtCount(b.ratings || 0)})`)) : null,

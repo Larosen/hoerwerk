@@ -7,7 +7,8 @@
 """
 from __future__ import annotations
 
-from typing import Iterable, List, Optional
+import re
+from typing import Iterable, List, Optional, Set
 
 import packs
 from i18n import t
@@ -38,6 +39,25 @@ def _volumes(book: dict) -> Optional[int]:
         return int(float(str(book.get("series_position") or "").replace(",", ".")))
     except ValueError:
         return None
+
+
+# "Band 5", "Teil 05", "Folge 5", "Book 5", "Vol. 5", "#5", "Saga 5" – a volume number in a release name
+_VOL_WORDS = r"band|bd|teil|folge|buch|book|vol|volume|nr|saga|reihe|serie|series|episode|ep"
+_VOL = re.compile(rf"(?:\b(?:{_VOL_WORDS})\b\.?|#)\s*0*(\d{{1,3}})(?![\da-z])", re.I)
+
+
+def release_volumes(name: str, book: dict) -> Set[int]:
+    """Volume numbers a release name states – after a volume word, or right after the series name
+    ("Twilight-Saga 5", "Harry Potter 3", "Die drei ??? Folge 12"). Years and "4CD" are not volumes."""
+    text = re.sub(r"[-_.+]", " ", name or "")
+    found = {int(m) for m in _VOL.findall(text)}
+    # right after a word of the series or the title: "Twilight 4", "Twilight.1", "Harry Potter 3"
+    anchors = {w for w in match_words(book.get("series") or "") + title_words(book.get("title") or "")
+               if len(w) >= 4 and not w.isdigit() and w not in STOP}
+    plain = " ".join(match_words(text))
+    for w in anchors:
+        found |= {int(m) for m in re.findall(rf"\b{re.escape(w)}\s+0*(\d{{1,3}})(?![\da-z])", plain)}
+    return {n for n in found if 0 < n < 500}
 
 
 def evaluate(release: dict, book: dict, prefer_language: str = "de", unabridged: bool = True,
@@ -72,11 +92,22 @@ def evaluate(release: dict, book: dict, prefer_language: str = "de", unabridged:
         if vol is None or vol not in pack["volumes"]:
             return no(t("Paket ohne diesen Band ({first}–{last})", first=pack["volumes"][0], last=pack["volumes"][-1]))
         notes.append(t("Paket – nur Band {n} wird übernommen", n=vol))
+    else:
+        # a series book: a release that names another volume is another book ("Twilight-Saga 5" for Band 1)
+        vol = _volumes(book)
+        stated = release_volumes(name, book)
+        if vol is not None and stated and vol not in stated:
+            return no(t("anderer Band ({found} statt {vol})", found=", ".join(str(n) for n in sorted(stated)), vol=vol))
+        if vol is not None and vol in stated:
+            notes.append(t("Band {n} passt", n=vol))
     if unabridged and release.get("abridged"):
         return no(t("gekürzte Fassung"))
     lang = release.get("language")
     if prefer_language and lang and lang != prefer_language:
         return no(t("andere Sprache ({lang})", lang=lang))
+    if check_size and kbps is not None and (release.get("format") or "").upper() in ("FLAC", "LOSSLESS", "WAV") and kbps < 200:
+        # lossless audio of the whole book is far bigger – a small FLAC is something else (e.g. a music album)
+        return no(t("verlustfrei, aber viel zu klein für {h} h Laufzeit ({kbps} kbit/s)", h=round(runtime / 60, 1), kbps=kbps))
     if check_size and kbps is not None:
         if kbps < MIN_KBPS:
             return no(t("zu klein für {h} h Laufzeit ({kbps} kbit/s)", h=round(runtime / 60, 1), kbps=kbps))
@@ -92,6 +123,8 @@ def evaluate(release: dict, book: dict, prefer_language: str = "de", unabridged:
         score += 5
     score += min(int(release.get("grabs") or 0), 200) / 20
     score += share * 5 - (8 if pack else 0)
+    if not pack and _volumes(book) is not None and _volumes(book) in release_volumes(name, book):
+        score += 20                     # names the very volume – worth more than a format or language tag
     return {"ok": True, "score": round(score, 2), "reason": None, "notes": notes, "kbps": kbps}
 
 

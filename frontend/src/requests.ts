@@ -103,7 +103,7 @@ function requestCard(r: BookRequest): HTMLLIElement {
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
       el("span", { class: "s-author" }, (b.authors || []).join(", ")),
-      genreTag(b),
+      el("span", { class: "tag-row" }, genreTag(b), langTag(b)),
       el("span", { class: "req-line" }, el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
         r.user && !r.mine ? el("span", { class: "muted small" }, t("von {name}", { name: r.user })) : null,
         el("span", { class: "muted small" }, fmtAgo(r.created))),
@@ -209,6 +209,12 @@ function initRequests(): void {
   requests.filter = store.get("requestFilter", "open");
   if (!(requests.filter in REQ_FILTERS)) requests.filter = "open";
   $("#releasesGo").addEventListener("click", () => { if (requests.current) openReleases(requests.current, $<HTMLInputElement>("#releasesQuery").value); });
+  // Enter in the search field searches again – it must not submit (and so close) the window
+  $("#releasesQuery").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    $("#releasesGo").click();
+  });
   document.addEventListener("viewchange", (e) => {
     if ((e as CustomEvent<string>).detail === "requests") loadRequests(); else clearTimeout(requests.timer);
   });
