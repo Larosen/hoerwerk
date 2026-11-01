@@ -12,6 +12,12 @@ function showError(text: string): void {
 
 let ticket = "";
 
+/** Where to go after signing in: the page that was asked for – only own pages, never another site. */
+function nextPage(): string {
+  const next = new URLSearchParams(location.search).get("next") || "";
+  return /^\/(books|search|discover|requests|account|settings(\/[a-z]+)?)$/.test(next) ? next : "/";
+}
+
 async function submitForm(form: HTMLFormElement, url: string, body: Record<string, unknown>): Promise<void> {
   const btn = form.querySelector<HTMLButtonElement>("button[type=submit]");
   if (btn) btn.disabled = true;
@@ -27,7 +33,7 @@ async function submitForm(form: HTMLFormElement, url: string, body: Record<strin
       field(totp, "code").focus();
       return;
     }
-    location.replace("/");
+    location.replace(nextPage());
   } catch (e) {
     showError(errMsg(e));
     const pw = form.querySelector<HTMLInputElement>("input[type=password]");
@@ -38,7 +44,7 @@ async function submitForm(form: HTMLFormElement, url: string, body: Record<strin
 async function initLogin(): Promise<void> {
   let st: AuthStatus;
   try { st = await api<AuthStatus>("GET", "/api/auth/status"); } catch (e) { showError(errMsg(e)); return; }
-  if (st.user) { location.replace("/"); return; }
+  if (st.user) { location.replace(nextPage()); return; }
   const login = $<HTMLFormElement>("#loginForm");
   const setup = $<HTMLFormElement>("#setupForm");
   login.hidden = st.setup;

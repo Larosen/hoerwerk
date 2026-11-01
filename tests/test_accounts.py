@@ -70,6 +70,33 @@ class AccountsTest(unittest.TestCase):
         self.clock.now += acc.WINDOW + 1
         self.assertEqual(self.a.authenticate("admin", PW, "6.6.6.6")["name"], "Admin")
 
+    def test_brake_counts_ipv6_per_64(self):
+        """One connection has a whole /64 – a new address in it must not mean five new tries."""
+        for n in range(acc.IP_FAILS):
+            with self.assertRaises(acc.AuthError):
+                self.a.authenticate("admin", "falsch-falsch", f"2001:db8:1:2::{n + 1:x}")
+        with self.assertRaises(acc.AuthError) as e:
+            self.a.authenticate("admin", PW, "2001:db8:1:2:ffff::99")
+        self.assertEqual(e.exception.status, 429)
+        self.assertEqual(self.a.authenticate("admin", PW, "2001:db8:1:3::1")["name"], "Admin")   # neighbour /64
+        self.assertEqual(self.a.blocked_count(), 1)
+
+    def test_address_flood_does_not_reset_a_block(self):
+        for _ in range(acc.IP_FAILS):
+            with self.assertRaises(acc.AuthError):
+                self.a.authenticate("admin", "falsch-falsch", "6.6.6.6")
+        old = acc.MAX_TRACKED
+        acc.MAX_TRACKED = 50
+        try:
+            self.clock.now += 1
+            for n in range(200):                          # many other addresses, one try each
+                self.a._fail(f"10.0.{n // 250}.{n % 250}", "x")
+        finally:
+            acc.MAX_TRACKED = old
+        with self.assertRaises(acc.AuthError) as e:     # the block of 6.6.6.6 is still there
+            self.a.authenticate("admin", PW, "6.6.6.6")
+        self.assertEqual(e.exception.status, 429)
+
     def test_reasons_and_account_delay(self):
         with self.assertRaises(acc.AuthError) as e:
             self.a.authenticate("niemand", PW, "1.1.1.1")

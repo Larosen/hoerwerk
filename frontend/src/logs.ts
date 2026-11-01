@@ -1,5 +1,5 @@
 "use strict";
-// Protokoll: the app log, live while the dialog is open.
+// Protokoll (/settings/logs): the app log, live while the page is open.
 
 interface LogEntry { id: number; time: number; level: "info" | "warn" | "error"; source: string; text: string }
 
@@ -48,8 +48,7 @@ function renderLogs(): void {
 
 function followLogs(): void {
   clearTimeout(logs.timer);
-  const dialog = $<HTMLDialogElement>("#logDialog");
-  if (!dialog.open || !$<HTMLInputElement>("#logFollow").checked) return;
+  if (!logsVisible() || !$<HTMLInputElement>("#logFollow").checked) return;
   logs.timer = setTimeout(async () => { await loadLogs(); followLogs(); }, 2000);
 }
 
@@ -63,15 +62,18 @@ function downloadLogs(): void {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 
+function logsVisible(): boolean {
+  return router.current?.view === "settings" && router.current.section === "logs";
+}
+
+/** The log page was opened: newest entries, then follow live. */
+async function showLogs(): Promise<void> {
+  delete $("#logView").dataset.seen;
+  await loadLogs(true);
+  followLogs();
+}
+
 function initLogs(): void {
-  const dialog = $<HTMLDialogElement>("#logDialog");
-  $("#logBtn").addEventListener("click", async () => {
-    delete $("#logView").dataset.seen;
-    dialog.showModal();
-    await loadLogs(true);
-    followLogs();
-  });
-  dialog.addEventListener("close", () => clearTimeout(logs.timer));
   $<HTMLSelectElement>("#logLevel").addEventListener("change", (e) => {
     logs.level = (e.target as HTMLSelectElement).value;
     loadLogs(true);

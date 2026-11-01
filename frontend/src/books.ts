@@ -33,19 +33,6 @@ function isActive(status: BookStatus): boolean {
   return ACTIVE_STATES.includes(status);
 }
 
-function setView(view: string): void {
-  if (!["books", "search", "discover", "requests"].includes(view)) view = "books";
-  if (!IS_ADMIN && view === "books") view = "discover";
-  $("#viewBooks").hidden = view !== "books";
-  $("#viewSearch").hidden = view !== "search";
-  $("#viewDiscover").hidden = view !== "discover";
-  $("#viewRequests").hidden = view !== "requests";
-  for (const t of document.querySelectorAll<HTMLElement>(".tab")) t.setAttribute("aria-selected", String(t.dataset.view === view));
-  store.set("view", view);
-  if (view === "books") pollBooks(true);
-  document.dispatchEvent(new CustomEvent<string>("viewchange", { detail: view }));
-}
-
 function applyBooks(data: AudiobooksStatus, force = false): void {
   const json = JSON.stringify(data);
   if (force || json !== books.lastJson) {
@@ -614,6 +601,13 @@ async function removeBook(j: AudiobookJob): Promise<void> {
 }
 
 let pathTimer: number | undefined;
+/** Settings page "Eingang & Bibliothek": the docker paths and a preview of the folder template. */
+function showLibrarySettings(): void {
+  updatePathPreview();
+  const d = books.data;
+  $("#abPaths").textContent = d ? t("Eingang: {inbox} · Bibliothek: {library} (über Docker-Pfade einstellen)", { inbox: d.inbox || "–", library: d.library || "–" }) : "";
+}
+
 function updatePathPreview(): void {
   clearTimeout(pathTimer);
   pathTimer = setTimeout(async () => {
@@ -628,8 +622,7 @@ function updatePathPreview(): void {
 }
 
 function initBooks(): void {
-  for (const t of document.querySelectorAll<HTMLElement>(".tab")) t.addEventListener("click", () => setView(t.dataset.view || ""));
-  if (!IS_ADMIN) { setView(store.get("view", "discover")); return; }   // family accounts: search, discover, requests
+  if (!IS_ADMIN) return;   // family accounts: search, discover, requests
   $("#scanBtn").addEventListener("click", async () => {
     try { await api("POST", "/api/audiobooks/scan"); toast(t("Eingang wird geprüft")); setTimeout(() => pollBooks(true), 800); }
     catch (e) { toast(errMsg(e), true); }
@@ -654,14 +647,7 @@ function initBooks(): void {
   const f = $<HTMLFormElement>("#settingsForm");
   field(f, "ab_folder_template").addEventListener("input", updatePathPreview);
   field(f, "ab_file_template").addEventListener("input", updatePathPreview);
-  $("#settingsBtn").addEventListener("click", () => {
-    updatePathPreview();
-    const d = books.data;
-    $("#abPaths").textContent = d ? t("Eingang: {inbox} · Bibliothek: {library} (über Docker-Pfade einstellen)", { inbox: d.inbox || "–", library: d.library || "–" }) : "";
-  });
   loadUnconverted();
-  setView(store.get("view", "books"));
-  pollBooks(true);
 }
 
 initBooks();

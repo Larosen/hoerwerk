@@ -339,7 +339,7 @@ Nachrichten kommen in der Sprache der Oberfläche.
 
 ## Protokoll
 
-**Protokoll** oben in der Leiste zeigt, was passiert ist: gefundene, konvertierte, erkannte und abgelegte Bücher,
+**Einstellungen → Protokoll** (`/settings/logs`) zeigt, was passiert ist: gefundene, konvertierte, erkannte und abgelegte Bücher,
 Scans der Medienserver, Warnungen und Fehler. Nach Stufe oder Text filtern, live mitlesen, als Datei herunterladen.
 Dieselben Zeilen stehen im Container-Log (`docker logs hoerwerk`).
 
@@ -351,13 +351,14 @@ Ohne Anmeldung zeigt Hörwerk nur die Login-Seite. Beim **ersten Aufruf** legst 
 Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs hoerwerk`). Wer bisher
 `AUTH_USER`/`AUTH_PASS` gesetzt hatte, bekommt daraus automatisch das Admin-Konto.
 
-* **Konten** (oben rechts, nur für Admins): Familienkonten anlegen (Startpasswort erzeugen und weitergeben),
+* **Konten** (*Einstellungen → Konten*, `/settings/users`, nur für Admins): Familienkonten anlegen (Startpasswort erzeugen und weitergeben),
   Rolle, Rechte (*Alle Anfragen sehen*, *Ohne Freigabe*, *Interaktive Suche*), Kontingent pro Monat, sperren,
   Passwort neu setzen, Zweitfaktor zurücksetzen, löschen. Familienkonten sehen *Suchen*, *Entdecken* und *Anfragen*
-  – Eingang, Bibliothek, Einstellungen und Protokoll bleiben Admins vorbehalten. Unten im Dialog: das
+  – Eingang, Bibliothek, Einstellungen und Protokoll bleiben Admins vorbehalten. Darunter: das
   **Admin-Protokoll** (wer hat wann was geändert, mit IP).
-* **Konto** (Name oben rechts, für alle): Passwort ändern, **Zweitfaktor** (Authenticator-App wie Aegis, 2FAS,
-  Google/Microsoft Authenticator) einrichten, eigenes ntfy-Topic, angemeldete Geräte sehen und abmelden.
+* **Konto** (Name oben rechts, `/account`, für alle): Passwort ändern, **Zweitfaktor** (Authenticator-App wie Aegis, 2FAS,
+  Google/Microsoft Authenticator) einrichten, eigenes ntfy-Topic, angemeldete Geräte sehen und abmelden,
+  und **So sieht dich Hörwerk** (deine Adresse, über welchen Proxy, HTTPS) – zum Prüfen eines Reverse-Proxys.
   Mit *Admins brauchen einen Zweitfaktor* (Einstellungen) kommen Admins ohne Zweitfaktor nur noch an ihr Konto.
 * „Angemeldet bleiben“ hält 30 Tage (verlängert sich bei Nutzung), sonst 12 Stunden.
 
@@ -376,7 +377,25 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
 
 ## Konfiguration
 
-Fast alles lässt sich unter **⚙︎ Einstellungen** ändern; die Umgebungsvariablen liefern nur die Startwerte.
+Fast alles lässt sich unter **⚙︎ Einstellungen** (`/settings`) ändern; die Umgebungsvariablen liefern nur die
+Startwerte. Die Einstellungen sind eine eigene Seite mit Übersicht: Healthcheck, Allgemein, Eingang & Bibliothek,
+M4B-Konvertierung, Indexer & SABnzbd, Audiobookshelf & Plex, Entdecken & Anfragen, Benachrichtigungen, Konten und
+Protokoll – jeder Bereich mit eigener Adresse (z. B. `/settings/health`), Lesezeichen und Vor/Zurück im Browser
+funktionieren. Das gilt auch für die Reiter: `/books`, `/search`, `/discover`, `/requests`.
+
+**Healthcheck** (`/settings/health`, ähnlich der Diagnose von Vaultwarden) prüft auf einen Blick:
+* **Verbindung & Proxy:** als welche Adresse Hörwerk dich sieht, ob der Reverse-Proxy in `TRUSTED_PROXIES` steht
+  (sonst Fehler mit der fertigen Zeile zum Eintragen), ob HTTPS ankommt, `ALLOWED_HOSTS`, ob Live-Updates durch den
+  Proxy kommen, ob die Adresse in Benachrichtigungen passt. Proxys im eigenen Netz, die `X-Forwarded-For` schicken,
+  aber nicht vertrauenswürdig sind (z. B. Newt nach einem Neustart mit neuer IP), stehen hier und im Protokoll.
+* **Sicherheit:** Admins ohne Zweitfaktor, Anmelde-Protokoll für CrowdSec, gerade gesperrte Adressen.
+* **Speicher:** Eingang, Bibliothek, Konfiguration vorhanden, beschreibbar, freier Platz.
+* **Dienste:** Indexer, SABnzbd, Audiobookshelf, Plex (werden live getestet), ntfy, Audible.
+* **System:** Version, ffmpeg und Sandbox, Warteschlangen, Uhrzeit (wichtig für Zweitfaktor-Codes).
+
+**Ohne Anmeldung** gibt es nur die Login-Seite und das, was sie braucht: keine Seite der App, keinen App-Code, keine
+API (bis auf Anmeldung und `/api/health`, das ohne Anmeldung nur `{"ok": true}` sagt – ohne Version). Ein Lesezeichen
+auf eine Unterseite führt erst zur Anmeldung und danach genau dorthin. Einstellungen und Eingang sind nur für Admins.
 Einstellungen, Voreinstellungen, Verlauf, Hörbuch-Liste, Bibliotheks-Index und alle Zugangsdaten liegen in der
 SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 
