@@ -17,7 +17,7 @@ import db as dbm  # noqa: E402
 import services  # noqa: E402
 from web import server  # noqa: E402
 
-PW = "korrekt-pferd-batterie"
+PW = "korrekt pferd batterie heftklammer"
 
 
 class Clock:
@@ -56,6 +56,18 @@ class AccountsTest(unittest.TestCase):
             self.a.create("bad\nname", PW)
         with self.assertRaises(ValueError):
             self.a.create("Eva", PW, role="root")
+
+    def test_password_rules(self):
+        """Dad's "Pudding" and Mum's "Hörwerk" don't get through – a passphrase or a manager's password does."""
+        bad = {"Pudding": "vater", "Hörwerk": "mama", "Pudding2024!": "vater", "2024Pudding!": "vater",
+               "Hoerwerk-Kaffee-1": "x", "Passwort1234!": "x", "Mama-Kaffee-42!": "mama", "aaaaaaaaaaaaaaaaaaaaaa": "x",
+               "kaffeegartenhund": "x"}
+        for pw, name in bad.items():
+            self.assertTrue(acc.password_problems(pw, name), pw)
+            with self.assertRaises(ValueError):
+                self.a.create(name if len(name) > 2 else "Neu", pw)
+        for pw in ("kaffee garten hund fahrrad", "Lila-Kaffee-42", "Tr7x-Kp9m-Qw2z-Ha5n", "Vier Wörter sind lang genug"):
+            self.assertEqual(acc.password_problems(pw, "eva"), [], pw)
 
     def test_login_and_brake_per_ip(self):
         self.assertEqual(self.a.authenticate("admin", PW, "1.2.3.4")["name"], "Admin")
@@ -125,7 +137,7 @@ class AccountsTest(unittest.TestCase):
         self.assertIsNotNone(self.a.session_user(long))                   # used: extended
         self.clock.now += acc.SESSION_LONG - 100
         self.assertIsNotNone(self.a.session_user(long))
-        self.a.set_password(self.admin["id"], "ein-neues-passwort")       # signs out everywhere
+        self.a.set_password(self.admin["id"], "Ein-neues-Wort-43")       # signs out everywhere
         self.assertIsNone(self.a.session_user(long))
 
     def test_disable_ends_sessions_and_last_admin_is_protected(self):
@@ -229,10 +241,10 @@ class WebAuthTest(unittest.TestCase):
             self.assertIn(part, raw)
         self.assertEqual(self.req("GET", "/api/sources", cookie=admin)[0], 200)
 
-        status, _, body = self.req("POST", "/api/users", {"name": "Eva", "password": "evas-passwort-1"}, cookie=admin)
+        status, _, body = self.req("POST", "/api/users", {"name": "Eva", "password": "Lila-Tasse-71!"}, cookie=admin)
         self.assertEqual(status, 200)
         eva_id = json.loads(body)["id"]
-        _, raw, eva = self.login("eva", "evas-passwort-1")
+        _, raw, eva = self.login("eva", "Lila-Tasse-71!")
         self.assertNotIn("Secure", raw)                                      # plain http: no Secure flag
         self.assertEqual(self.req("GET", "/api/discover?section=critics", cookie=eva)[0], 200)
         for method, path in (("GET", "/api/sources"), ("GET", "/api/users"), ("PUT", "/api/settings"),

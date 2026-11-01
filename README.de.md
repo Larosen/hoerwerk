@@ -361,7 +361,10 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
   Wer ihn öffnet, wählt selbst Name und Passwort, bekommt ein Familienkonto und ist sofort angemeldet. Je Link:
   Notiz („Mama“), Gültigkeit (1, 7, 30 Tage oder unbegrenzt), wie oft nutzbar, Kontingent. Die Liste zeigt offen,
   benutzt (von wem), abgelaufen oder widerrufen; Widerrufen geht jederzeit. Über einen Link entsteht nie ein Admin.
-  Falsche Links zählen wie falsche Passwörter (Sperre nach 5 Versuchen, `auth.log` → CrowdSec), ein einmal nutzbarer
+  Die Links zeigen immer auf die öffentliche Adresse (*Einstellungen → Allgemein*), auch wenn du sie zu Hause
+  erstellst; fehlt sie noch, sagt der Bereich Einladungen, wo man sie einträgt.
+  Passwörter müssen den Regeln genügen (mind. 12 Zeichen, gemischt oder ein Satz, kein Name, kein „Hörwerk“) – eine
+  Checkliste zeigt beim Tippen, was fehlt, mit Hinweis auf Passwort-Manager. Falsche Links zählen wie falsche Passwörter (Sperre nach 5 Versuchen, `auth.log` → CrowdSec), ein einmal nutzbarer
   Link kann auch bei gleichzeitigem Öffnen nur ein Konto ergeben.
 * **Konto** (Name oben rechts, `/account`, für alle): Passwort ändern, **Zweitfaktor** (Authenticator-App wie Aegis, 2FAS,
   Google/Microsoft Authenticator) einrichten, eigenes ntfy-Topic, angemeldete Geräte sehen und abmelden,

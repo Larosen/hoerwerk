@@ -10,7 +10,7 @@ import time
 import audible
 import i18n
 import sandbox
-from config import CHOICES, VERSION
+from config import CHOICES, VERSION, public_url
 from i18n import t
 from web.router import HTTPException, Req, route
 
@@ -33,6 +33,11 @@ def write_settings(req: Req):
             clean[k] = v if kind is str or isinstance(v, kind) and kind is not int else kind(v)
         except (TypeError, ValueError):
             raise HTTPException(400, t("Ungültiger Wert für {key}", key=k))
+    if "public_url" in clean:
+        url = public_url(clean["public_url"])
+        if clean["public_url"].strip() and not url:
+            raise HTTPException(400, t("Öffentliche Adresse: bitte so angeben: https://hoerwerk.example.de"))
+        clean["public_url"] = url
     for k, allowed in {**CHOICES, "ab_region": tuple(audible.REGIONS)}.items():
         if clean.get(k) not in (None,) + allowed:
             raise HTTPException(400, t("Ungültiger Wert für {key}", key=k))
@@ -140,6 +145,24 @@ def diagnostics(req: Req):
             add("connection", "warn", t("Der Proxy meldet kein HTTPS"), id="https",
                 detail=t("Ohne „X-Forwarded-Proto: https“ vom vertrauenswürdigen Proxy wird das Anmelde-Cookie ohne „Secure“ gesetzt."),
                 hint="COOKIE_SECURE=true")
+    pub = app.settings().get("public_url", "")
+    if pub:
+        import ipaddress
+        from urllib.parse import urlsplit
+        pub_host = urlsplit(pub).hostname or ""
+        try:
+            local = not ipaddress.ip_address(pub_host).is_global
+        except ValueError:
+            local = pub_host in ("localhost", "tower") or "." not in pub_host
+        add("connection", "warn" if local or pub.startswith("http:") else "ok",
+            t("Öffentliche Adresse: {url}", url=pub), id="public_url",
+            detail=t("Das ist keine Adresse aus dem Internet – Einladungslinks funktionieren so nur zu Hause.") if local
+            else t("Ohne HTTPS gehen Passwörter unverschlüsselt durchs Netz.") if pub.startswith("http:") else
+            t("Einladungslinks zeigen hierher."))
+    else:
+        add("connection", "warn", t("Keine öffentliche Adresse eingetragen – Einladungslinks gehen erst danach"), id="public_url",
+            detail=t("Einstellungen → Allgemein, oder Hörwerk einmal über den Reverse-Proxy öffnen."),
+            hint="https://hoerwerk.example.de")
     host = conn.get("host", "").rsplit(":", 1)[0].strip("[]").lower()
     if cfg.allowed_hosts:
         add("connection", "ok", t("Erlaubte Namen: {hosts}", hosts=", ".join(sorted(cfg.allowed_hosts))), id="hosts",

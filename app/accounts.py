@@ -13,6 +13,7 @@ import base64
 import hashlib
 import hmac
 import ipaddress
+import re
 import secrets
 import threading
 import time
@@ -24,7 +25,8 @@ from i18n import t
 
 ROLES = ("admin", "user")
 PERMS = ("see_all_requests", "auto_approve", "interactive_search")
-MIN_PASSWORD = 10
+MIN_PASSWORD = 12
+PASSPHRASE = 20          # this long, a password may be just words ("Kaffee Garten Hund Fahrrad")
 MAX_PASSWORD = 256
 NAME_MAX = 40
 SESSION_SHORT = 12 * 3600
@@ -83,13 +85,45 @@ def verify_password(password: str, stored: str) -> bool:
 _DUMMY = hash_password(secrets.token_urlsafe(16))
 
 
-def check_password_rules(password: str, name: str = "") -> None:
-    if not isinstance(password, str) or len(password) < MIN_PASSWORD:
-        raise ValueError(t("Das Passwort braucht mindestens {n} Zeichen", n=MIN_PASSWORD))
+# Words that make a password easy to guess here, wherever they stand in it
+OBVIOUS = ("hörwerk", "hoerwerk", "horwerk", "passwort", "password", "kennwort", "123456", "qwertz", "qwerty",
+           "asdfgh", "hörbuch", "hoerbuch", "audiobook")
+_ONE_WORD = re.compile(r"^[\d\W_]*[^\W\d_]{1,10}[\d\W_]*$")     # one word, numbers/signs around it
+
+
+def password_problems(password: str, name: str = "") -> List[str]:
+    """What is wrong with a new password (empty = fine). The same rules run in the browser as a checklist.
+
+    Long enough, mixed – or a long passphrase ("Kaffee Garten Hund Fahrrad") –, no name, no app name,
+    not one word with a number ("Pudding2024!")."""
+    if not isinstance(password, str):
+        return [t("Bitte ein Passwort eingeben")]
     if len(password) > MAX_PASSWORD:
-        raise ValueError(t("Das Passwort ist zu lang"))
-    if name and password.strip().lower() == name.strip().lower():
-        raise ValueError(t("Das Passwort darf nicht der Name sein"))
+        return [t("Das Passwort ist zu lang")]
+    out: List[str] = []
+    low = password.lower()
+    if len(password) < MIN_PASSWORD:
+        out.append(t("mindestens {n} Zeichen", n=MIN_PASSWORD))
+    kinds = sum(bool(re.search(rx, password)) for rx in (r"[a-zäöüß]", r"[A-ZÄÖÜ]", r"\d", r"[^\w\s]|_|\s"))
+    if kinds < 3 and len(password) < PASSPHRASE:
+        out.append(t("drei von vier: Kleinbuchstaben, Großbuchstaben, Ziffern, Sonderzeichen – oder ein Satz ab {n} Zeichen",
+                     n=PASSPHRASE))
+    clean_name = (name or "").strip().lower()
+    if len(clean_name) >= 3 and clean_name in low:
+        out.append(t("nicht der eigene Name"))
+    if any(w in low for w in OBVIOUS):
+        out.append(t("nicht „Hörwerk“, „Passwort“, „123456“ oder Ähnliches"))
+    if _ONE_WORD.match(password.strip()):
+        out.append(t("nicht nur ein Wort mit Zahlen oder Zeichen drumherum"))
+    if len(set(low)) < 6:
+        out.append(t("nicht immer dieselben Zeichen"))
+    return out
+
+
+def check_password_rules(password: str, name: str = "") -> None:
+    problems = password_problems(password, name)
+    if problems:
+        raise ValueError(t("Passwort zu schwach – es braucht: {rules}", rules="; ".join(problems)))
 
 
 def check_name(name: str) -> str:

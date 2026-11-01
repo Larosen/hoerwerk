@@ -16,7 +16,7 @@ import services  # noqa: E402
 import uploads  # noqa: E402
 from web import server  # noqa: E402
 
-PW = "korrekt-pferd-batterie"
+PW = "korrekt pferd batterie heftklammer"
 
 
 class UploadsTest(unittest.TestCase):

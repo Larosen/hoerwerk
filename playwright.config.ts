@@ -33,7 +33,7 @@ export default defineConfig({
       MATCH_MODE: "off", METADATA_FALLBACK: "false", SETTLE_SECONDS: "0", SCAN_INTERVAL: "2",
       DUPLICATES: "ask", AUDIOBOOK_WATCH: "true", LIBRARY_RESCAN_HOURS: "6",
       // the admin account of the tests (older-style variables become the first admin)
-      AUTH_USER: "admin", AUTH_PASS: "e2e-admin-passwort",
+      AUTH_USER: "admin", AUTH_PASS: "E2E-Admin-Kaffee-1",
     },
   },
 });

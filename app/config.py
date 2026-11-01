@@ -8,7 +8,7 @@ from typing import FrozenSet, Mapping, Tuple
 
 import library
 
-VERSION = "7.5.0"
+VERSION = "7.5.1"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
@@ -79,11 +79,30 @@ class Config:
         return bool(self.auth_user and self.auth_pass)
 
 
+def public_url(text: str) -> str:
+    """``https://host[:port]`` (no path, no trailing slash) or "" – anything else is no usable address."""
+    from urllib.parse import urlsplit
+    text = str(text or "").strip()
+    if not text:
+        return ""
+    try:
+        u = urlsplit(text if "://" in text else "https://" + text)
+        port = u.port
+    except ValueError:
+        return ""
+    if u.scheme not in ("http", "https") or not u.hostname or u.username or u.password or u.path.strip("/") or u.query:
+        return ""
+    host = f"[{u.hostname}]" if ":" in u.hostname else u.hostname
+    return f"{u.scheme}://{host}" + (f":{port}" if port else "")
+
+
 def default_settings(env: Mapping[str, str] = os.environ) -> dict:
     """Settings the UI can change; the environment only provides the starting values."""
     b = lambda key, default: _bool(env, key, default)  # noqa: E731
     return {
         "language": env.get("APP_LANGUAGE", "de").lower(),  # de|en
+        # the address from the internet (behind Pangolin & co.) – invitation links always point there
+        "public_url": "",          # set under Einstellungen → Allgemein, or taken over from the reverse proxy
         # M4B encoding
         "bitrate": env.get("AAC_BITRATE", "auto"),          # auto|64k|96k|…
         "force_mono": b("FORCE_MONO", False),

@@ -17,7 +17,7 @@ import invites as inv  # noqa: E402
 import services  # noqa: E402
 from web import server  # noqa: E402
 
-PW = "ein-gutes-passwort"
+PW = "Ein-gutes-Wort-42"
 
 
 class Clock:
@@ -118,7 +118,7 @@ class InviteWebTest(unittest.TestCase):
         cls.app = services.App(config.Config.from_env({**env, "AUDIOBOOK_WATCH": "false"}), start_workers=False)
         cls.server = server.make_server(cls.app, "127.0.0.1", 0)
         cls.port = cls.server.server_address[1]
-        admin = cls.app.accounts.create("admin", "test-password-123", "admin")
+        admin = cls.app.accounts.create("admin", "Test-Kaffee-123", "admin")
         cls.cookie = "hw_session=" + cls.app.accounts.start_session(admin["id"], False)
         threading.Thread(target=cls.server.serve_forever, daemon=True).start()
 
@@ -139,10 +139,35 @@ class InviteWebTest(unittest.TestCase):
         c.close()
         return out
 
+    def setUp(self):
+        self.app.update_settings({"public_url": "https://hoerwerk.example.de"})
+
+    def test_links_always_point_to_the_public_address(self):
+        self.app.update_settings({"public_url": ""})
+        self.assertEqual(self.req("POST", "/api/invites", {"days": 1})[0], 400)     # no address from outside: no link
+        # opened once through the trusted proxy over HTTPS: that address is taken over
+        old = self.app.config
+        import dataclasses
+        self.app.config = dataclasses.replace(old, trusted_proxies=config.parse_networks("127.0.0.1"))
+        try:
+            c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+            c.request("GET", "/api/invites", headers={"Host": "hoerwerk.example.org", "Cookie": self.cookie,
+                                                      "X-Forwarded-For": "203.0.113.9", "X-Forwarded-Proto": "https"})
+            self.assertEqual(json.loads(c.getresponse().read())["public_url"], "https://hoerwerk.example.org")
+            c.close()
+        finally:
+            self.app.config = old
+        link = json.loads(self.req("POST", "/api/invites", {"days": 1})[2])["link"]
+        self.assertTrue(link.startswith("https://hoerwerk.example.org/invite/"), link)   # also when made from home
+        # invalid addresses are refused in the settings
+        status, _, _ = self.req("PUT", "/api/settings", {"public_url": "javascript:alert(1)"})
+        self.assertEqual(status, 400)
+
     def test_admin_creates_person_accepts(self):
         status, _, body = self.req("POST", "/api/invites", {"note": "Mama", "days": 7, "uses": 1})
         self.assertEqual(status, 200)
         token = json.loads(body)["token"]
+        self.assertEqual(json.loads(body)["link"], f"https://hoerwerk.example.de/invite/{token}")
         # the page itself is open (no account yet), and shows the sign-up form
         status, headers, page = self.req("GET", f"/invite/{token}", cookie=False)
         self.assertEqual(status, 200)

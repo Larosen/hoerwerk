@@ -298,3 +298,43 @@ for (const d of document.querySelectorAll<HTMLDialogElement>("dialog")) {
   });
   d.prepend(x);
 }
+
+// ------------------------------------------------------------------------- //
+// Password rules – the same as on the server (accounts.password_problems), shown as a live checklist
+// ------------------------------------------------------------------------- //
+const PW_MIN = 12;
+const PW_PHRASE = 20;
+const PW_OBVIOUS = ["hörwerk", "hoerwerk", "horwerk", "passwort", "password", "kennwort", "123456", "qwertz", "qwerty",
+  "asdfgh", "hörbuch", "hoerbuch", "audiobook"];
+
+function passwordRules(pw: string, name = ""): { text: string; ok: boolean }[] {
+  const low = pw.toLowerCase();
+  const kinds = [/[a-zäöüß]/, /[A-ZÄÖÜ]/, /\d/, /[^\p{L}\p{N}\s]|_|\s/u].filter((rx) => rx.test(pw)).length;
+  const clean = name.trim().toLowerCase();
+  return [
+    { text: t("mindestens {n} Zeichen", { n: PW_MIN }), ok: pw.length >= PW_MIN },
+    { text: t("drei von vier: Kleinbuchstaben, Großbuchstaben, Ziffern, Sonderzeichen – oder ein Satz ab {n} Zeichen", { n: PW_PHRASE }),
+      ok: kinds >= 3 || pw.length >= PW_PHRASE },
+    { text: t("nicht der eigene Name"), ok: clean.length < 3 || !low.includes(clean) },
+    { text: t("nicht „Hörwerk“, „Passwort“, „123456“ oder Ähnliches"), ok: !PW_OBVIOUS.some((w) => low.includes(w)) },
+    { text: t("nicht nur ein Wort mit Zahlen oder Zeichen drumherum"), ok: !/^[^\p{L}]*\p{L}{1,10}[^\p{L}]*$/u.test(pw.trim()) },
+    { text: t("nicht immer dieselben Zeichen"), ok: new Set(low).size >= 6 },
+  ];
+}
+
+/** A checklist under a new-password field that ticks off the rules while typing. */
+function attachPasswordRules(input: HTMLInputElement, name: () => string = () => ""): void {
+  const list = el("ul", { class: "pw-rules", "aria-live": "polite" });
+  const hint = el("p", { class: "pw-hint muted small" },
+    t("Tipp: Am einfachsten lässt du ein Passwort erzeugen und merken – vom Passwort-Manager (z. B. Bitwarden, Vaultwarden, KeePassXC) oder am iPhone/Mac von Safari („Starkes Passwort“). Oder nimm einen Satz aus vier Wörtern, z. B. „Kaffee Garten Hund Fahrrad“."));
+  const render = (): void => {
+    list.replaceChildren(...passwordRules(input.value, name()).map((r) =>
+      el("li", { class: r.ok ? "ok" : "" }, icon(r.ok ? "check" : "x"), r.text)));
+    list.hidden = !input.value;
+  };
+  input.addEventListener("input", render);
+  input.setAttribute("passwordrules", `minlength: ${PW_MIN}; required: lower; required: upper; required: digit; required: [-_.!];`);
+  // below the whole group of fields (in a two-column grid the list would squeeze into one cell)
+  (input.closest(".grid2") || input.closest("label") || input).after(hint, list);
+  render();
+}

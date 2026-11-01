@@ -80,7 +80,7 @@ class StreamTest(unittest.TestCase):
         cls.app.events.interval = 0.05
         cls.server = server.make_server(cls.app, "127.0.0.1", 0)
         cls.port = cls.server.server_address[1]
-        admin = cls.app.accounts.create("admin", "test-password-123", "admin")
+        admin = cls.app.accounts.create("admin", "Test-Kaffee-123", "admin")
         cls.cookie = "hw_session=" + cls.app.accounts.start_session(admin["id"], False)
         threading.Thread(target=cls.server.serve_forever, daemon=True).start()
 

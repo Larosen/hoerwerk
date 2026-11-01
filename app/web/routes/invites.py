@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 
 import authlog
+from config import public_url
 from i18n import t
 from invites import InviteError
 from web.router import HTTPException, Reply, Req, route
@@ -18,21 +19,41 @@ def _iid(value: str) -> int:
 
 
 # -- admin -------------------------------------------------------------------------
+def _public_url(req: Req) -> str:
+    """Where invitation links point: always the address from the internet, never the LAN one.
+
+    Not set yet, but this very request came through the trusted reverse proxy over HTTPS? Then that is the
+    public address – remembered, so links made later from home point there too."""
+    url = req.app.settings().get("public_url", "")
+    if not url and req.https and req.conn.get("trusted"):
+        url = public_url("https://" + req.conn.get("host", ""))
+        if url:
+            req.app.update_settings({"public_url": url})
+    return url
+
+
+def _with_link(invite: dict, base: str) -> dict:
+    return {**invite, "link": f"{base}/invite/{invite['token']}" if base else ""}
+
+
 @route("GET", "/api/invites")
 def list_invites(req: Req):
-    # the address in notifications is the public one – links should point there, not to the LAN address
-    return {"invites": req.app.invites.list(), "app_url": req.app.notifier.public_config().get("app_url", "")}
+    base = _public_url(req)
+    return {"invites": [_with_link(i, base) for i in req.app.invites.list()], "public_url": base}
 
 
 @route("POST", "/api/invites")
 def create_invite(req: Req):
+    base = _public_url(req)
+    if not base:
+        raise HTTPException(400, t("Erst die öffentliche Adresse eintragen (Einstellungen → Allgemein), z. B. https://hoerwerk.example.de – Einladungslinks zeigen immer dorthin."))
     try:
         invite = req.app.invites.create(req.user["name"], req.get("note") or "", req.get("days", 7),
                                         req.get("uses", 1), req.get("quota"))
     except (TypeError, ValueError) as e:
         raise HTTPException(400, str(e))
     authlog.event("invite_created", by=req.user["name"], ip=req.ip, invite=invite["id"])
-    return invite
+    return _with_link(invite, base)
 
 
 @route("POST", "/api/invites/{iid}/revoke")

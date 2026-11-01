@@ -614,3 +614,10 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
 .invite-link { display: flex; gap: 6px; }
 .invite-link input { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12.5px; }
 .invite-list .rtag { font-size: 12px; }
+
+/* Password rules: a live checklist under new-password fields */
+.pw-rules { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--err); }
+.pw-rules li { display: flex; gap: 6px; align-items: flex-start; }
+.pw-rules li.ok { color: var(--ok); }
+.pw-rules .ico { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.pw-hint { margin: 2px 0 0; }

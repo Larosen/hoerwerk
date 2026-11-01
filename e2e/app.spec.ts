@@ -33,7 +33,7 @@ function watchErrors(page: Page): string[] {
   return errors;
 }
 
-const ADMIN = { name: "admin", password: "e2e-admin-passwort" };
+const ADMIN = { name: "admin", password: "E2E-Admin-Kaffee-1" };
 const OWN = { "X-Requested-With": "Hoerwerk" };
 
 /** Sign in through the API (cookie lands in the page's context), then open the app. */
@@ -291,13 +291,13 @@ test("Konten: Admin legt Familienkonto an, das sieht nur Entdecken", async ({ pa
   const errors = await open(page);
   await page.goto("/settings/users");
   await page.locator("#newUserName").fill("Eva");
-  await page.locator("#newUserPw").fill("evas-start-passwort");
+  await page.locator("#newUserPw").fill("Gruene-Tasse-72");
   await page.locator("#newUserSave").click();
   await expect(page.locator("#userRows")).toContainText("Eva");
   expect(errors).toEqual([]);
 
   const eva = await browser.newPage();
-  const evaErrors = await open(eva, { name: "eva", password: "evas-start-passwort" });
+  const evaErrors = await open(eva, { name: "eva", password: "Gruene-Tasse-72" });
   await expect(eva.locator("nav.tabs").getByRole("link", { name: "Entdecken" })).toHaveAttribute("aria-current", "page");
   // a short guide for family accounts, once – and none of the admin boxes
   await expect(eva.locator("#welcome")).toBeVisible();
@@ -335,12 +335,12 @@ function totp(secret: string, offset = 0): string {
 test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", async ({ page, browser }) => {
   const admin = await open(page);
   // a family account (created through the API of the admin session)
-  expect((await page.request.post("/api/users", { headers: OWN, data: { name: "Mia", password: "mias-passwort-123" } })).status()).toBe(200);
+  expect((await page.request.post("/api/users", { headers: OWN, data: { name: "Mia", password: "Gelbe-Tasse-123" } })).status()).toBe(200);
   const mia = await browser.newPage();
   const suggestion = { asin: "B0TEST0002", title: "Die leise Stadt", authors: ["Bea Beispiel"], narrators: [], rating: 4.6,
     ratings: 500, runtime_min: 480, cover_url: null, url: null, because: [], source: "audible", requested: null };
   await mia.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
-  const miaErrors = await open(mia, { name: "mia", password: "mias-passwort-123" });
+  const miaErrors = await open(mia, { name: "mia", password: "Gelbe-Tasse-123" });
   await mia.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
   await mia.locator(".suggestion").getByRole("button", { name: "Anfragen" }).click();
   await expect(mia.locator(".suggestion")).toContainText("Wartet auf Freigabe");
@@ -383,7 +383,16 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
 
 test("Einladung per Link: Admin erstellt, Eingeladene wählt Name und Passwort", async ({ page, browser }) => {
   const errors = await open(page);
+  // without a public address there are no links – here the test server is that address
   await page.goto("/settings/users");
+  await expect(page.locator("#invitePublic")).toBeVisible();
+  await expect(page.locator("#inviteCreate")).toBeDisabled();
+  await page.goto("/settings/general");
+  await page.locator("#settingsForm input[name=public_url]").fill(new URL(page.url()).origin);
+  await page.locator("#settingsForm button[type=submit]").click();
+  await expect(page.locator("#toast")).toContainText("gespeichert");
+  await page.goto("/settings/users");
+  await expect(page.locator("#invitePublic")).toBeHidden();
   await page.locator("#inviteNote").fill("Oma");
   await page.locator("#inviteCreate").click();
   const row = page.locator("#inviteList li", { hasText: "Oma" });
@@ -400,13 +409,19 @@ test("Einladung per Link: Admin erstellt, Eingeladene wählt Name und Passwort",
   await expect(form).toBeVisible();
   await expect(oma.locator("#loginForm")).toBeHidden();
   await form.getByLabel("Dein Name").fill("Oma");
-  await form.getByLabel("Passwort", { exact: false }).first().fill("omas-geheimes-passwort");
-  await form.getByLabel("Passwort wiederholen").fill("omas-geheimes-passwort");
+  // too weak: the checklist says what is missing, the server refuses it as well
+  await form.getByLabel("Passwort", { exact: false }).first().fill("Pudding2024!");
+  await expect(form.locator(".pw-rules")).toContainText("nicht nur ein Wort");
+  await form.getByLabel("Passwort wiederholen").fill("Pudding2024!");
+  await form.getByRole("button", { name: "Konto anlegen" }).click();
+  await expect(oma.locator("#loginError")).toContainText("Passwort zu schwach");
+  await form.getByLabel("Passwort", { exact: false }).first().fill("Rote-Tasse-74!");
+  await form.getByLabel("Passwort wiederholen").fill("Rote-Tasse-74!");
   await form.getByRole("button", { name: "Konto anlegen" }).click();
   await expect(oma).toHaveURL(/\/discover$/);                       // signed in, straight to Entdecken
   await expect(oma.locator("#accountName")).toHaveText("Oma");
   await expect(oma.locator("#welcome")).toBeVisible();
-  expect(omaErrors).toEqual([]);
+  expect(omaErrors.filter((e) => !e.includes("400"))).toEqual([]);   // the refused weak password answers 400
   // the link is used up now
   const again = await ctx.newPage();
   await again.context().clearCookies();
@@ -421,9 +436,9 @@ test("Einladung per Link: Admin erstellt, Eingeladene wählt Name und Passwort",
 
 test("Zweitfaktor: einrichten, dann Anmeldung nur mit Code", async ({ page, browser }) => {
   const errors = await open(page);
-  expect((await page.request.post("/api/users", { headers: OWN, data: { name: "Ole", password: "oles-passwort-123" } })).status()).toBe(200);
+  expect((await page.request.post("/api/users", { headers: OWN, data: { name: "Ole", password: "Blaue-Tasse-73" } })).status()).toBe(200);
   const ole = await browser.newPage();
-  await open(ole, { name: "ole", password: "oles-passwort-123" });
+  await open(ole, { name: "ole", password: "Blaue-Tasse-73" });
   await ole.locator("#accountBtn").click();
   await ole.locator("#totpBox").getByRole("button", { name: "Einrichten" }).click();
   const secret = (await ole.locator("code.secret").innerText()).replace(/\s/g, "");
@@ -434,7 +449,7 @@ test("Zweitfaktor: einrichten, dann Anmeldung nur mit Code", async ({ page, brow
   await expect(ole).toHaveURL(/\/login$/);
   const form = ole.locator("#loginForm");
   await form.getByLabel("Name").fill("ole");
-  await form.getByLabel("Passwort").fill("oles-passwort-123");
+  await form.getByLabel("Passwort").fill("Blaue-Tasse-73");
   await form.getByRole("button", { name: "Anmelden" }).click();
   const code = ole.locator("#totpForm");
   await expect(code).toBeVisible();
