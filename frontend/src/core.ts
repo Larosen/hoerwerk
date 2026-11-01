@@ -179,6 +179,12 @@ function icon(name: string, label?: string): SVGSVGElement {
   return svg;
 }
 
+/** The main category of a book (Audible's top genre, e.g. "Krimis & Thriller") as a small label. */
+function genreTag(b: { genres?: string[] | null }): HTMLElement | null {
+  const g = (b.genres || [])[0];
+  return g ? el("span", { class: "genre-tag", title: (b.genres || []).join(" · ") }, g) : null;
+}
+
 /** Stand-in cover for books without artwork: a calm tile coloured by the title, with its initial. */
 function coverArt(title: string, author = "", tag = ""): HTMLDivElement {
   const clean = title.replace(/^[\s\d._-]+/, "").replace(/^(der|die|das|ein|eine|the|a|an|le|la|les|el|il)\s+/i, "") || title;

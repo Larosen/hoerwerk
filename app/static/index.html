@@ -199,7 +199,6 @@
       <h2>Anfragen</h2>
       <div class="row gap wrap">
         <div id="requestFilter" class="chips" role="group" aria-label="Status-Filter"></div>
-        <label class="inline-setting" id="requestScopeWrap" hidden><input type="checkbox" id="requestScope"> von allen</label>
       </div>
     </div>
     <p id="requestQuota" class="muted small pad-x"></p>
@@ -448,6 +447,12 @@
           <select id="inviteUses"><option value="1" selected>einmal</option><option value="5">5-mal</option>
             <option value="20">20-mal</option></select></label>
         <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="inviteQuota" type="number" min="0" max="1000"></label>
+      </div>
+      <div class="invite-perms" id="invitePerms">
+        <span class="small">Rechte des neuen Kontos <small class="muted">(später unter Konten änderbar)</small></span>
+        <label class="check"><input type="checkbox" data-perm="auto_approve"> Ohne Freigabe – Anfragen gehen sofort los</label>
+        <label class="check"><input type="checkbox" data-perm="see_all_requests"> Alle Anfragen sehen – auch die der anderen</label>
+        <label class="check"><input type="checkbox" data-perm="interactive_search"> Interaktive Suche – Releases selbst ansehen und wählen</label>
       </div>
       <p id="invitePublic" class="discover-note" hidden>Einladungslinks zeigen immer auf die Adresse aus dem Internet. Bitte erst
         unter <a href="/settings/general">Einstellungen → Allgemein</a> die öffentliche Adresse eintragen (z. B.

@@ -102,7 +102,7 @@ class NotifierTest(unittest.TestCase):
         self.assertEqual((path, auth), ("/", "Bearer tk_1"))
         self.assertEqual(body["topic"], "t")
         self.assertEqual(body["title"], "Hörbuch abgelegt")          # UTF-8 in the JSON body
-        self.assertEqual(body["click"], "http://tower:8080")
+        self.assertEqual(body["click"], "http://tower:8080/books")          # straight to the page it is about
         self.assertEqual(body["tags"], ["books"])
 
     def test_basic_auth_and_test_message(self):

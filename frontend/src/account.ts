@@ -168,6 +168,7 @@ function userRow(u: UserInfo): HTMLTableRowElement {
 interface Invite {
   id: number; token: string; note: string; created: number; created_by: string; expires: number | null;
   max_uses: number; uses: number; quota: number | null; used_by: { name: string; time: number }[];
+  perms: Record<string, boolean>;
   status: "open" | "used" | "expired" | "revoked";
 }
 const INVITE_STATUS: Record<Invite["status"], () => string> = {
@@ -209,6 +210,7 @@ function inviteRow(inv: Invite): HTMLLIElement {
         t("{n} von {max} genutzt", { n: inv.uses, max: inv.max_uses }),
         inv.used_by.length ? t("von {names}", { names: inv.used_by.map((u) => u.name).join(", ") }) : "",
       ].filter(Boolean).join(" · "))),
+    el("span", { class: "muted small" }, t("Startrechte: {rights}", { rights: inviteRights(inv) })),
     active ? el("div", { class: "invite-link" }, input,
       el("button", { type: "button", class: "btn small primary", onclick: () => copyInvite(inv, input) }, t("Kopieren")), share) : null,
     el("div", { class: "row gap" },
@@ -220,6 +222,16 @@ function inviteRow(inv: Invite): HTMLLIElement {
         try { await api("DELETE", `/api/invites/${inv.id}`); } catch (e) { toast(errMsg(e), true); }
         loadInvites();
       } }, t("Aus der Liste entfernen"))));
+}
+
+const PERM_NAMES: Record<string, () => string> = {
+  auto_approve: () => t("ohne Freigabe"), see_all_requests: () => t("alle Anfragen sehen"),
+  interactive_search: () => t("interaktive Suche"),
+};
+
+function inviteRights(inv: Invite): string {
+  const on = Object.keys(PERM_NAMES).filter((p) => inv.perms?.[p]).map((p) => PERM_NAMES[p]());
+  return on.length ? on.join(", ") : t("nur anfragen, mit Freigabe");
 }
 
 async function loadInvites(): Promise<void> {
@@ -238,6 +250,8 @@ async function createInvite(): Promise<void> {
     const inv = await api<Invite>("POST", "/api/invites", {
       note: $<HTMLInputElement>("#inviteNote").value, days: Number($<HTMLSelectElement>("#inviteDays").value),
       uses: Number($<HTMLSelectElement>("#inviteUses").value), quota: quota === "" ? null : Number(quota),
+      perms: Object.fromEntries([...document.querySelectorAll<HTMLInputElement>("#invitePerms input[data-perm]")]
+        .map((box) => [box.dataset.perm || "", box.checked])),
     });
     $<HTMLInputElement>("#inviteNote").value = "";
     await loadInvites();

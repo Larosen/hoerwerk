@@ -36,8 +36,8 @@ def _out(req: Req, item: dict) -> dict:
 @route("GET", "/api/requests", access="user")
 def list_requests(req: Req):
     rq = req.app.requests
-    everyone = req.query.get("scope") == "all"
-    return {"items": [_out(req, r) for r in rq.list(req.user, everyone)], "quota": rq.quota(req.user),
+    # whoever may see all requests (admins, or the right) always sees all – no switch that could hide approvals
+    return {"items": [_out(req, r) for r in rq.list(req.user, rq.sees_all(req.user))], "quota": rq.quota(req.user),
             "sees_all": rq.sees_all(req.user), "may_search": rq.may_search(req.user),
             "pending": rq.pending_count() if req.is_admin else None,
             "interval": rq.interval_hours()}

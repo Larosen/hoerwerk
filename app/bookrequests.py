@@ -29,7 +29,8 @@ from usenet import UsenetError, match_words
 OPEN = ("pending", "searching", "downloading", "processing")
 STATUSES = OPEN + ("available", "declined", "failed")
 BOOK_KEYS = ("asin", "title", "subtitle", "authors", "narrators", "series", "series_position", "runtime_min",
-             "release_date", "cover_url", "url", "source", "region", "isbn", "language", "format_type", "id")
+             "release_date", "cover_url", "url", "source", "region", "isbn", "language", "format_type", "id",
+             "genres")
 MAX_ATTEMPTS = 5            # releases tried before a request counts as failed
 DOWNLOAD_TIMEOUT = 2 * 86400
 

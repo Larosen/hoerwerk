@@ -102,6 +102,7 @@ function requestCard(r: BookRequest): HTMLLIElement {
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
       el("span", { class: "s-author" }, (b.authors || []).join(", ")),
+      genreTag(b),
       el("span", { class: "req-line" }, el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
         r.user && !r.mine ? el("span", { class: "muted small" }, t("von {name}", { name: r.user })) : null,
         el("span", { class: "muted small" }, fmtAgo(r.created))),
@@ -132,7 +133,6 @@ function renderRequests(): void {
       requests.filter = key; store.set("requestFilter", key); renderRequests();
     } }, label(), " ", el("span", { class: "n" }, String(n)));
   }));
-  $("#requestScopeWrap").hidden = !d.sees_all;
   const q = d.quota;
   $("#requestQuota").textContent = q.limit === null ? t("Du kannst unbegrenzt anfragen.")
     : t("Diesen Monat noch {left} von {limit} Anfragen frei.", { left: q.left ?? 0, limit: q.limit });
@@ -146,8 +146,7 @@ function renderRequests(): void {
 async function loadRequests(): Promise<void> {
   clearTimeout(requests.timer);
   try {
-    const all = (document.getElementById("requestScope") as HTMLInputElement | null)?.checked;
-    requests.data = await api<RequestList>("GET", "/api/requests" + (all ? "?scope=all" : ""));
+    requests.data = await api<RequestList>("GET", "/api/requests");
     for (const r of requests.data.items) requests.keys[requestKey(r.book)] = r.status;
     renderRequests();
   } catch { /* keep the last state */ }
@@ -208,7 +207,6 @@ function releaseRow(r: BookRequest, x: JudgedRelease): HTMLTableRowElement {
 function initRequests(): void {
   requests.filter = store.get("requestFilter", "open");
   if (!(requests.filter in REQ_FILTERS)) requests.filter = "open";
-  $("#requestScope").addEventListener("change", loadRequests);
   $("#releasesGo").addEventListener("click", () => { if (requests.current) openReleases(requests.current, $<HTMLInputElement>("#releasesQuery").value); });
   document.addEventListener("viewchange", (e) => {
     if ((e as CustomEvent<string>).detail === "requests") loadRequests(); else clearTimeout(requests.timer);

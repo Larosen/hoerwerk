@@ -49,6 +49,18 @@ class InvitesTest(unittest.TestCase):
             self.inv.accept(i["token"], "Papa", PW)
         self.assertIsNone(self.accounts.by_name("Papa"))
 
+    def test_starting_rights(self):
+        """The invitation decides what the new account may do – but never more than the family rights."""
+        i = self.inv.create("admin", "Papa", perms={"auto_approve": True, "interactive_search": True, "admin": True})
+        self.assertEqual(i["perms"], {"see_all_requests": False, "auto_approve": True, "interactive_search": True})
+        user = self.inv.accept(i["token"], "Papa", PW)
+        self.assertEqual((user["role"], user["perms"]),
+                         ("user", {"see_all_requests": False, "auto_approve": True, "interactive_search": True}))
+        plain = self.inv.accept(self.inv.create("admin")["token"], "Oma", PW)
+        self.assertFalse(any(plain["perms"].values()))                      # default: request only, with approval
+        with self.assertRaises(ValueError):
+            self.inv.create("admin", perms="alles")
+
     def test_expiry_and_unlimited(self):
         short = self.inv.create("admin", days=1)
         forever = self.inv.create("admin", days=0, uses=5)

@@ -217,6 +217,7 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
     asin: "B0TEST0001", title: "Das stille Haus", authors: ["Anna Autorin"], narrators: ["Sam Sprecher"],
     rating: 4.7, ratings: 1234, runtime_min: 600, release_date: "2026-03-01", cover_url: null,
     url: "https://www.audible.de/pd/B0TEST0001", because: ["Altes Buch"], source: "audible",
+    genres: ["Krimis & Thriller", "Literatur & Belletristik"],
   };
   await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
   await page.route("**/api/search", (r) => r.fulfill({ json: { results: [], errors: [], queries: ["Autorin Das stille Haus"] } }));
@@ -226,6 +227,7 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
   await expect(card).toHaveCount(1);
   await expect(card).toContainText("Das stille Haus");
   await expect(card).toContainText("★ 4.7");
+  await expect(card.locator(".genre-tag")).toHaveText("Krimis & Thriller");          // the main category
   await expect(card).toContainText("Altes Buch");
   await card.getByRole("button", { name: "Suchen" }).click();
   await expect(page.locator("nav.tabs").getByRole("link", { name: "Suchen" })).toHaveAttribute("aria-current", "page");
@@ -353,7 +355,8 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   await page.reload();
   await expect(page.locator("#requestBadge")).toHaveText("1");
   await page.locator("nav.tabs").getByRole("link", { name: /Anfragen/ }).click();
-  await page.locator("#requestScope").check();
+  // admins always see everyone's requests – there is no switch that could hide a waiting approval
+  await expect(page.locator("#requestScope")).toHaveCount(0);
   const req = page.locator(".request", { hasText: "Die leise Stadt" });
   await expect(req).toContainText("von Mia");
   await req.getByRole("button", { name: "Freigeben" }).click();
@@ -394,9 +397,11 @@ test("Einladung per Link: Admin erstellt, Eingeladene wählt Name und Passwort",
   await page.goto("/settings/users");
   await expect(page.locator("#invitePublic")).toBeHidden();
   await page.locator("#inviteNote").fill("Oma");
+  await page.locator("#invitePerms input[data-perm=auto_approve]").check();       // Oma's wishes go straight off
   await page.locator("#inviteCreate").click();
   const row = page.locator("#inviteList li", { hasText: "Oma" });
   await expect(row).toContainText("offen");
+  await expect(row).toContainText("Startrechte: ohne Freigabe");
   const link = await row.locator("input").inputValue();
   expect(link).toMatch(/\/invite\/[A-Za-z0-9_-]{30,}$/);
   expect(errors).toEqual([]);
