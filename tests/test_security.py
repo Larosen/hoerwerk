@@ -218,6 +218,8 @@ class AccessTest(WebTest):
         self.assertEqual(self.req("GET", "/account", cookie=self.user_cookie)[0], 200)
 
     def test_ui_code_only_after_login(self):
+        status, headers, _ = self.req("GET", "/favicon.ico", cookie=False)
+        self.assertEqual((status, headers["Content-Type"]), (200, "image/png"))
         for name in ("style.css", "icon.svg"):
             self.assertEqual(self.req("GET", "/static/" + name, cookie=False)[0], 200, name)
         for name in ("theme.js", "core.js", "login.js"):        # built from TypeScript: 404 until built, never 401
