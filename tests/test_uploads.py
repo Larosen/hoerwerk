@@ -63,6 +63,22 @@ class UploadsTest(unittest.TestCase):
         with self.assertRaises(uploads.UploadError):
             self.put("../../etc", "A/01.mp3")
 
+    def test_disguised_files_are_refused_by_content(self):
+        """An .exe, a PDF, an archive or a script renamed to .mp3 is refused by its first bytes – nothing stays."""
+        uid = self.u.start("admin")
+        for name, data in (("Buch/01.mp3", b"MZ\x90\x00" + b"\x00" * 500), ("Buch/02.mp3", b"%PDF-1.7\n"),
+                           ("Buch/03.mp3", b"PK\x03\x04" + b"\x00" * 50), ("Buch/04.mp3", b"#!/bin/sh\nrm -rf /\n"),
+                           ("Buch/05.mp3", b"just some text, no audio"), ("Buch/cover.jpg", b"ID3\x04"),
+                           ("Buch/chapters.txt", b"\x00\x01\x02binary"), ("Buch/x.cue", b"<html><script>")):
+            with self.assertRaises(uploads.UploadError, msg=name):
+                self.put(uid, name, data)
+        self.assertEqual(os.listdir(os.path.join(self.inbox, f".upload-{uid}", "Buch")), [])      # not even a .part
+        for name, data in (("Buch/01.mp3", b"\xff\xfb\x90\x00" + b"\x00" * 64), ("Buch/02.m4b", b"\x00\x00\x00\x20ftypM4B "),
+                           ("Buch/03.flac", b"fLaC\x00"), ("Buch/04.ogg", b"OggS\x00"), ("Buch/cover.png", b"\x89PNG\r\n\x1a\n"),
+                           ("Buch/a.cue", "TITLE \"Fräulein\"\n".encode("cp1252"))):
+            self.put(uid, name, data)
+        self.assertEqual(len(os.listdir(os.path.join(self.inbox, f".upload-{uid}", "Buch"))), 6)
+
     def test_stale_staging_is_removed(self):
         old = os.path.join(self.inbox, ".upload-0000000000000000")
         os.makedirs(old)

@@ -32,8 +32,73 @@ CHUNK = 1 << 20
 _PART = re.compile(r"^[^\x00-\x1f/\\\\:*?\"<>|]{1,200}$")
 
 
+TEXT_EXTS = {"cue", "txt", "yml", "yaml", "json", "nfo"}
+IMAGE_EXTS = {"jpg", "jpeg", "png", "webp"}
+MAX_TEXT = 1 << 20                     # chapter lists, cue sheets, metadata: small
+# Content that never belongs in an audiobook – recognised by its first bytes, whatever the name says
+DANGEROUS = (
+    (b"MZ", "exe"), (b"\x7fELF", "elf"), (b"%PDF", "pdf"), (b"PK\x03\x04", "zip"), (b"Rar!", "archive"),
+    (b"7z\xbc\xaf\x27\x1c", "archive"), (b"\x1f\x8b", "archive"), (b"BZh", "archive"), (b"\xfd7zXZ", "archive"),
+    (b"#!", "script"), (b"\xca\xfe\xba\xbe", "mac"), (b"\xcf\xfa\xed\xfe", "mac"), (b"\xfe\xed\xfa", "mac"),
+    (b"\xd0\xcf\x11\xe0", "office"), (b"{\\rtf", "office"),
+)
+
+
+def _what(kind: str) -> str:
+    return {"exe": t("ein Windows-Programm (.exe/.dll)"), "elf": t("ein Linux-Programm"), "pdf": t("ein PDF-Dokument"),
+            "zip": t("ein ZIP-Archiv (auch .docx/.jar/.apk)"), "archive": t("ein Archiv"), "script": t("ein Skript"),
+            "mac": t("ein macOS-Programm"), "office": t("ein Office-Dokument")}[kind]
+
+
 class UploadError(Exception):
     pass
+
+
+def _is_audio(head: bytes) -> bool:
+    if head[:3] == b"ID3" or head[:4] in (b"fLaC", b"OggS") or head[4:8] == b"ftyp":
+        return True
+    if head[:4] == b"RIFF" and head[8:12] == b"WAVE":
+        return True
+    if head[:16] == bytes.fromhex("3026b2758e66cf11a6d900aa0062ce6c"):     # WMA (ASF)
+        return True
+    # MPEG audio / AAC (ADTS) frame sync near the start (some rips begin with a little padding)
+    for i in range(min(len(head) - 1, 4096)):
+        if head[i] == 0xFF and head[i + 1] & 0xE0 == 0xE0 and head[i + 1] & 0x06 != 0x06 or \
+                head[i] == 0xFF and head[i + 1] in (0xF1, 0xF9):
+            return True
+    return False
+
+
+def _is_image(head: bytes) -> bool:
+    return head[:3] == b"\xff\xd8\xff" or head[:8] == b"\x89PNG\r\n\x1a\n" or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")
+
+
+def check_content(name: str, head: bytes, size: int) -> None:
+    """The file must really be what its name says: audio, a cover image or a small text file.
+
+    A program, document or archive renamed to ``.mp3`` is refused here – by its first bytes."""
+    for magic, kind in DANGEROUS:
+        if head.startswith(magic):
+            raise UploadError(t("{name} ist {what} – nicht erlaubt", name=name, what=_what(kind)))
+    ext = os.path.splitext(name)[1][1:].lower()
+    if ext in TEXT_EXTS:
+        if size > MAX_TEXT or b"\x00" in head:
+            raise UploadError(t("{name} ist keine Textdatei", name=name))
+        try:
+            head.decode("utf-8")
+        except UnicodeDecodeError as e:
+            if e.start < len(head) - 4:                  # a split character at the very end is fine
+                try:
+                    head.decode("cp1252")                # old cue sheets
+                except UnicodeDecodeError:
+                    raise UploadError(t("{name} ist keine Textdatei", name=name))
+        if head.lstrip()[:9].lower().startswith((b"<html", b"<script", b"<!doctype")):
+            raise UploadError(t("{name} ist keine Textdatei", name=name))
+    elif ext in IMAGE_EXTS:
+        if not _is_image(head):
+            raise UploadError(t("{name} ist kein Bild (JPEG, PNG oder WebP)", name=name))
+    elif not _is_audio(head):
+        raise UploadError(t("{name} ist keine Audiodatei", name=name))
 
 
 def clean_path(rel: str) -> List[str]:
@@ -94,12 +159,23 @@ class Uploads:
         os.makedirs(os.path.dirname(target), exist_ok=True)
         tmp = target + ".part"
         left = length
+        first = True
         try:
             with open(tmp, "wb") as fh:
                 while left > 0:
                     chunk = stream.read(min(CHUNK, left))
                     if not chunk:
                         raise UploadError(t("Upload abgebrochen"))
+                    if first:
+                        # the start of the file decides – before anything lands on the disk
+                        head = chunk
+                        while len(head) < min(65536, length) and left - len(head) > 0:
+                            more = stream.read(min(65536 - len(head), left - len(head)))
+                            if not more:
+                                raise UploadError(t("Upload abgebrochen"))
+                            head += more
+                        check_content(parts[-1], head, length)
+                        chunk, first = head, False
                     fh.write(chunk)
                     left -= len(chunk)
             os.replace(tmp, target)

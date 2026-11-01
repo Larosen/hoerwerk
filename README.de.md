@@ -124,7 +124,8 @@ Falsch einsortiert? **Korrigieren** holt das Buch aus der Bibliothek zurück in 
 Hörbücher, die du selbst hast – etwa von CD eingelesen –, lädst du direkt im Browser hoch: *Hörbücher → Eingang →
 **Hochladen***. Einen Ordner pro Hörbuch hineinziehen oder auswählen, am besten „Autor – Titel“, gern mit
 Unterordnern `CD1`, `CD2` …; einzelne Dateien gehen auch (dann den Namen eintragen). Hörwerk übernimmt Audio-Dateien,
-Cover, Cue-Sheets und `chapters.txt`/`metadata.yml`; alles andere wird übersprungen.
+Cover, Cue-Sheets und `chapters.txt`/`metadata.yml`; alles andere wird übersprungen. Geprüft wird auch der
+**Inhalt**: Eine in `.mp3` umbenannte `.exe`, ein PDF, ein Archiv oder ein Skript wird abgelehnt.
 
 Die Dateien landen zuerst in einem versteckten Ordner und werden erst nach dem letzten in einem Schritt in den Eingang
 verschoben – ohne Wartezeit beginnt dann der gewohnte Weg: Ordnername und Tags → Audible → M4B mit Kapiteln → Bibliothek.

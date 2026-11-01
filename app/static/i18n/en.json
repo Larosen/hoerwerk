@@ -847,5 +847,17 @@
  "oder": "or",
  "{n} Dateien werden übersprungen (keine Audio- oder Cover-Dateien).": "{n} files are skipped (no audio or cover files).",
  "{n} Dateien · {size}": "{n} files · {size}",
- "… Hörwerk erkennt das Buch an Ordnername und Tags, macht daraus eine M4B mit Kapiteln, holt die Daten von Audible und legt es in die Bibliothek.": "… Hörwerk recognises the book by folder name and tags, turns it into an M4B with chapters, fetches the data from Audible and files it in the library."
+ "… Hörwerk erkennt das Buch an Ordnername und Tags, macht daraus eine M4B mit Kapiteln, holt die Daten von Audible und legt es in die Bibliothek.": "… Hörwerk recognises the book by folder name and tags, turns it into an M4B with chapters, fetches the data from Audible and files it in the library.",
+ "ein Archiv": "an archive",
+ "ein Linux-Programm": "a Linux program",
+ "ein Office-Dokument": "an Office document",
+ "ein PDF-Dokument": "a PDF document",
+ "ein Skript": "a script",
+ "ein Windows-Programm (.exe/.dll)": "a Windows program (.exe/.dll)",
+ "ein ZIP-Archiv (auch .docx/.jar/.apk)": "a ZIP archive (also .docx/.jar/.apk)",
+ "ein macOS-Programm": "a macOS program",
+ "{name} ist kein Bild (JPEG, PNG oder WebP)": "{name} is not an image (JPEG, PNG or WebP)",
+ "{name} ist keine Audiodatei": "{name} is not an audio file",
+ "{name} ist keine Textdatei": "{name} is not a text file",
+ "{name} ist {what} – nicht erlaubt": "{name} is {what} – not allowed"
 }
