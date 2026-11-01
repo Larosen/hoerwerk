@@ -70,6 +70,8 @@ class App:
                                  pending=self._pending_asins)
         self.requests = Requests(self.db, self.accounts, self.usenet, self.library_index, self.notifier, self.settings,
                                  jobs=lambda: list(self.pipeline.jobs))
+        self.pipeline.open_requests = self.requests.open_for_matching
+        self.pipeline.on_request = self.requests.on_job
         self.uploads = Uploads(config.inbox, on_done=self.pipeline.arrived)
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
         self.events.provide("library", self.library_index.stats)

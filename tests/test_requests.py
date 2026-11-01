@@ -179,6 +179,20 @@ class RequestsTest(unittest.TestCase):
         self.assertEqual(self.r.get(req["id"])["status"], "failed")
         self.assertIn("request_failed", self.notifier.sent)
 
+    def test_book_found_in_the_inbox_fulfils_the_request(self):
+        """Not downloaded by Hörwerk, but the recognition linked it: searching stops, available when filed."""
+        self.usenet.indexers = 0                                  # nothing to download
+        req = self.r.create(self.tom, BOOK)
+        self.assertEqual(self.r.get(req["id"])["status"], "searching")
+        self.assertEqual([r["id"] for r in self.r.open_for_matching()], [req["id"]])
+        job = Job(req["id"], "converting")
+        self.r.on_job(job)
+        self.assertEqual(self.r.get(req["id"])["status"], "processing")
+        job.status, job.dest = "done", "/audiobooks/Anna Autorin/Das stille Haus"
+        self.r.on_job(job)
+        self.assertEqual(self.r.get(req["id"])["status"], "available")
+        self.assertEqual(self.r.open_for_matching(), [])
+
     def test_quota_duplicates_owned(self):
         self.settings["request_quota"] = 2
         a = self.r.create(self.eva, BOOK)

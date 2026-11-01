@@ -279,6 +279,12 @@ Hörwerk does the rest – the **Requests** tab shows where it stands:
 * **Telling the requester:** whoever enters their own ntfy topic under *Account* hears when their audiobook has
   arrived or was declined.
 
+**Books that reach the inbox another way** (uploaded, from JDownloader or similar): the recognition also compares
+every book with the open requests. If it clearly is a requested book (at least the configured *minimum certainty*,
+default 80 %), it is linked, filed and the request set to *Available* automatically; the search for it stops. Below
+that it waits under *Audiobooks → To review* for an admin – the requested book is offered first with "Request by …",
+**Take** fulfils the request, **Edit** corrects the recognition first.
+
 A "Wanted" list from version 5.3 is taken over as the admin's requests on first start.
 
 ---

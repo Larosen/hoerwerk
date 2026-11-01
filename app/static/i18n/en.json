@@ -859,5 +859,9 @@
  "{name} ist kein Bild (JPEG, PNG oder WebP)": "{name} is not an image (JPEG, PNG or WebP)",
  "{name} ist keine Audiodatei": "{name} is not an audio file",
  "{name} ist keine Textdatei": "{name} is not a text file",
- "{name} ist {what} – nicht erlaubt": "{name} is {what} – not allowed"
+ "{name} ist {what} – nicht erlaubt": "{name} is {what} – not allowed",
+ "Anfrage von {name}": "Request by {name}",
+ "Dieses Buch wurde angefragt – Übernehmen erfüllt die Anfrage": "This book was requested – taking it fulfils the request",
+ "Gehört zur Anfrage von {name}": "Belongs to the request by {name}",
+ "Im Eingang gefunden: {name}": "Found in the inbox: {name}"
 }

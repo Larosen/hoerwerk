@@ -213,6 +213,9 @@ class Pipeline:
                  on_event: Optional[Callable[["Job"], None]] = None) -> None:
         self.on_filed = on_filed               # e.g. ask Audiobookshelf to scan
         self.on_event = on_event               # a job ended up done / review / failed (notifications)
+        # open book requests [{id, user, key, book}] and "this job belongs to a request now" (set by the app)
+        self.open_requests: Callable[[], list] = lambda: []
+        self.on_request: Callable[["Job"], None] = lambda job: None
         self.engine = engine                   # Engine: runs the stages (None: tests call process())
         self.notify = notify or (lambda: None)  # live updates for the browser
         self.hint_provider = hint_provider     # search info for folders that came from a download
@@ -377,9 +380,10 @@ class Pipeline:
                 or self.client.product(asin, region)
         if book is None:
             raise KeyError(cand_id or asin)
-        job.match = {k: v for k, v in book.items() if k != "match"}
+        job.match = {k: v for k, v in book.items() if k not in ("match", "request_id", "request_user")}
         job.duplicate = job.dup_decision = None     # another book: check the library again
         job.say(t("Ausgewählt: {title} ({source})", title=book["title"], source=book.get("source") or "audible"))
+        self._link_request(job, book)
         self._requeue_if_waiting(job)
         return job
 
@@ -761,13 +765,19 @@ class Pipeline:
         ranked, notes = self.providers.lookup(job.hints, region)
         for note in notes:
             job.say(note)
+        threshold = float(s.get("ab_threshold") or 0.8)
+        ranked = self._with_requests(job, ranked, region)
         job.candidates = ranked[:12]
         job.region = region
-        best = prov.auto_match(ranked, float(s.get("ab_threshold") or 0.8)) if mode == "auto" else None
+        best = prov.auto_match(ranked, threshold) if mode == "auto" else None
+        if mode == "auto" and not best and ranked and ranked[0].get("request_id"):
+            # a requested book from another shop (BookBeat): clearly the best, certain enough → take it
+            best = audible.best_match(ranked, threshold)
         if best:
-            job.match = {k: v for k, v in best.items() if k != "match"}
+            job.match = {k: v for k, v in best.items() if k not in ("match", "request_id", "request_user")}
             job.say(t("Erkannt: {title} – {authors} (Sicherheit {score} %)", title=best["title"],
                       authors=", ".join(best["authors"]), score=round(best["match"]["score"] * 100)))
+            self._link_request(job, best)
         elif ranked and ranked[0].get("source") not in prov.AUTO_SOURCES:
             job.say(t("Nur Treffer außerhalb von Audible – bitte prüfen (ohne Laufzeit und Sprecher)"))
         elif ranked:
@@ -775,6 +785,45 @@ class Pipeline:
         else:
             job.say(t("Kein Treffer"))
         self.save()
+
+    def _with_requests(self, job: Job, ranked: List[dict], region: str) -> List[dict]:
+        """Mark candidates that are an open book request; add requested books the shop search missed."""
+        if job.hints.get("request_id"):
+            return ranked                      # downloaded for a request already: nothing to guess
+        try:
+            reqs = self.open_requests() or []
+        except Exception:  # noqa: BLE001 – matching works without requests
+            return ranked
+        if not reqs:
+            return ranked
+        import bookrequests
+        by_key = {r["key"]: r for r in reqs}
+        out = []
+        for c in ranked:
+            r = by_key.pop(bookrequests.book_key(c), None)
+            out.append({**c, "request_id": r["id"], "request_user": r["user"]} if r else c)
+        for r in by_key.values():
+            book = r["book"]
+            if book.get("asin"):
+                try:                           # the full Audible data (runtime, narrators, chapters)
+                    book = {**self.client.product(book["asin"], region), "source": "audible"}
+                except Exception:  # noqa: BLE001 – then the request's own data
+                    pass
+            score = audible.score(book, job.hints)
+            if score["score"] >= 0.5:
+                out.append({**book, "source": book.get("source") or "audible", "match": score,
+                            "request_id": r["id"], "request_user": r["user"]})
+        out.sort(key=lambda b: (-b["match"]["score"], b.get("format_type") != "unabridged", not b.get("request_id")))
+        return out
+
+    def _link_request(self, job: Job, book: dict) -> None:
+        if book.get("request_id") and not job.hints.get("request_id"):
+            job.hints["request_id"] = book["request_id"]
+            job.say(t("Gehört zur Anfrage von {name}", name=book.get("request_user") or "–"))
+            try:
+                self.on_request(job)
+            except Exception as e:  # noqa: BLE001
+                applog.warn(t("Anfragen: {error}", error=e), "Anfragen")
 
     def _convert(self, job: Job) -> None:
         s = self.get_settings()
