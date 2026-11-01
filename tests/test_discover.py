@@ -169,7 +169,8 @@ class DiscoverTest(unittest.TestCase):
                             book("R2", "Die Geschichte der Wolken", author="Bert Berger", genres=["Geschichte"]),
                             book("R3", "Das stille Haus", author="Jemand Anderes")]
         got = self.items("critics")
-        self.assertEqual([i["asin"] for i in got], ["R1", "R2"])     # non-fiction allowed from the editorial source
+        self.assertEqual(sorted(i["asin"] for i in got), ["R1", "R2"])     # non-fiction allowed from the editorial source
+        got = sorted(got, key=lambda i: i["asin"])
         self.assertEqual(got[0]["review"]["link"], "https://www.deutschlandfunkkultur.de/a-100.html")
         self.assertEqual(got[0]["review"]["source"], "Deutschlandfunk Kultur")
 
@@ -222,6 +223,11 @@ class DiscoverTest(unittest.TestCase):
         self.assertEqual(gs[2]["children"], [])                         # no adult subcategory either
         self.items("genre", "12")                                       # nothing German there at all …
         self.assertEqual([c["name"] for c in self.d.genres()[0]["children"]], ["Krimis"])   # … so it is left out
+
+    def test_critics_sources_take_turns(self):
+        reviews = [{"source": "DLF", "date": f"Fri, {d} Oct 2026", "n": d} for d in (23, 30, 16)] + \
+                  [{"source": "PT", "date": "", "seen": 1, "n": 1}]
+        self.assertEqual([r["n"] for r in discover._mix_sources(reviews)], [30, 1, 23, 16])
 
     def test_review_title_with_subline(self):
         p = discover.parse_review_title

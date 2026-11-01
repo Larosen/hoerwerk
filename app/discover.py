@@ -19,6 +19,7 @@ Lists are cached in the database and refreshed in the background (at most once a
 """
 from __future__ import annotations
 
+import calendar
 import re
 import threading
 import html
@@ -125,6 +126,28 @@ def parse_pt_list(text: str) -> List[dict]:
         notes = _PT_NOTES.search(m.group("rest"))
         out.append({"title": title, "author": html.unescape(m.group("author")).strip(),
                     "link": PT_BASE + m.group("href"), "notes": int(notes.group(1)) if notes else 0})
+    return out
+
+
+def _review_time(review: dict) -> float:
+    """When a review appeared: the feed date, else when it was first seen (lists have no date)."""
+    try:                                   # stored shortened: "Fri, 30 Oct 2026"
+        return calendar.timegm(time.strptime((review.get("date") or "")[:16], "%a, %d %b %Y"))
+    except ValueError:
+        return review.get("seen", 0)
+
+
+def _mix_sources(reviews: List[dict]) -> List[dict]:
+    """Newest first within each source, the sources taking turns – so one busy feed does not push out the others."""
+    by_source: Dict[str, List[dict]] = {}
+    for r in sorted(reviews, key=lambda r: -_review_time(r)):
+        by_source.setdefault(r.get("source") or "", []).append(r)
+    queues = list(by_source.values())
+    out: List[dict] = []
+    while queues:
+        for q in queues:
+            out.append(q.pop(0))
+        queues = [q for q in queues if q]
     return out
 
 
@@ -359,7 +382,7 @@ class Discover:
             self.db.put("discover_reviews", memory)
         out: List[dict] = []
         seen = set()
-        for _, r in fresh:
+        for r in _mix_sources([v for _, v in fresh]):
             book = r.get("book")
             if not book or book["asin"] in seen or not self._good(book, from_store=False):
                 continue
