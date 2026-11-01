@@ -217,7 +217,12 @@ You only need SABnzbd; searching is optional.
 **Search** (with a Newznab indexer): you search for an **audiobook**, not a release – matches come from Audible and
 BookBeat. Only once you pick one Hörwerk searches the indexers; you can change the term for that if nothing comes up
 (e.g. title only or surname only). Releases are merged, ranked (preferred language, unabridged before abridged, M4B
-before MP3) and compared with your library; umlauts in every spelling. The ASIN (or title and author) goes along with
+before MP3) and compared with your library; umlauts in every spelling.
+**Categories:** besides the ones entered (default `3030`), Hörwerk automatically searches each indexer's **whole audio
+area** – old free readings (Goethe & co.) often sit under "Audio > Lossless" or "MP3" – plus its own audiobook
+categories (from its category list, e.g. "Hörbuch DE", "Hörspiele"). Music albums that come along are sorted out by the
+release verdict (author and title). If nothing turns up there, it searches all categories and keeps only results from
+the audio area. *Test* on an indexer shows which categories were found. The ASIN (or title and author) goes along with
 the download – so the inbox recognises the book safely, whatever the release is called.
 For books that aren't in any shop: **search the indexers directly**.
 

@@ -221,7 +221,13 @@ Du brauchst nur SABnzbd; die Suche ist optional.
 **Suchen** (mit einem Newznab-Indexer): Du suchst ein **Hörbuch**, nicht ein Release – Treffer kommen von Audible und
 BookBeat. Erst wenn du eins auswählst, sucht Hörwerk bei den Indexern; den Suchbegriff dafür kannst du ändern, wenn
 nichts kommt (z. B. nur Titel oder nur Nachname). Releases werden zusammengeführt, sortiert (bevorzugte Sprache,
-ungekürzt vor gekürzt, M4B vor MP3) und mit deiner Bibliothek abgeglichen; Umlaute in allen Schreibweisen. Beim
+ungekürzt vor gekürzt, M4B vor MP3) und mit deiner Bibliothek abgeglichen; Umlaute in allen Schreibweisen.
+**Kategorien:** Neben den eingetragenen (Standard `3030`) durchsucht Hörwerk automatisch den **ganzen Audio-Bereich**
+jedes Indexers – alte freie Lesungen (Goethe & Co.) liegen oft unter „Audio > Lossless“ oder „MP3“ – und dessen eigene
+Hörbuch-Kategorien (aus der Kategorienliste, z. B. „Hörbuch DE“, „Hörspiele“). Mitgefundene Musikalben sortiert die
+Release-Bewertung über Autor und Titel aus. Findet sich dort nichts, sucht Hörwerk über alle Kategorien und behält
+nur Treffer aus dem Audio-Bereich. *Testen* beim Indexer zeigt,
+welche Kategorien gefunden wurden. Beim
 Download gehen ASIN bzw. Titel und Autor mit – so erkennt der Eingang das Buch sicher, egal wie das Release heißt.
 Für Bücher, die es in keinem Shop gibt: **Direkt bei den Indexern suchen**.
 
