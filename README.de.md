@@ -45,7 +45,7 @@ Die Oberfläche gibt es auf **Deutsch und Englisch**.
 | Tags & Dateien | Titel, Autor, Sprecher, Serie + Band, Genre, Verlag, Datum, Beschreibung, ASIN, Cover in voller Größe; `metadata.json` für Audiobookshelf |
 | Bibliothek | Alle Bücher durchsuchen, Ordner-Vorlage, nutzt vorhandene Autoren-/Serienordner, erkennt Doppelte, macht alte MP3-Bücher zu M4B und räumt die MP3s sicher weg |
 | Downloads | Schickt NZBs an SABnzbd, beobachtet die Kategorie, nach dem Download übernimmt der Eingang; Newznab-Suche optional |
-| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik (Deutschlandfunk Kultur, Perlentaucher) – nur gut bewertet, ungekürzt, nichts, was du schon hast; **Anfragen** wie bei Overseerr: Familie wünscht, Hörwerk besorgt (mit Freigabe, Kontingent, interaktiver Suche) |
+| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik (Deutschlandfunk, Deutschlandfunk Kultur, Perlentaucher) – nur gut bewertet, ungekürzt, nichts, was du schon hast; **Anfragen** wie bei Overseerr: Familie wünscht, Hörwerk besorgt (mit Freigabe, Kontingent, interaktiver Suche) |
 | Medienserver | Audiobookshelf und Plex lesen ihre Bibliothek nach dem Ablegen neu ein; Plex leert auf Wunsch den Papierkorb, damit ersetzte MP3s verschwinden |
 | Benachrichtigungen | ntfy-Push-Nachrichten, elf Ereignisse, jedes einzeln an oder aus |
 | Protokoll | Alles, was passiert ist – filterbar und als Datei herunterladbar, direkt in der App |
@@ -245,12 +245,18 @@ Der Reiter **Entdecken** schlägt neue Hörbücher vor:
 
 * **Für dich** – Titel, die Audible-Hörer mit den (bis zu 30 neuesten) Büchern deiner Bibliothek verbinden. Je mehr
   deiner Bücher auf denselben Titel zeigen, desto weiter oben steht er; „Passt zu …“ nennt sie.
-* **Nach Genre** – Bestseller und Neuheiten eines Audible-Genres; das gewählte Genre wird gemerkt.
+* **Nach Genre** – alle Genres und Unterkategorien wie im Audible-Shop (z. B. *Krimis & Thriller → Thriller*):
+  Bestseller, Bestbewertete und Neuheiten. Kleine Bereiche werden mit Titeln aufgefüllt, die genauso gut (ab 4,0),
+  aber von weniger Hörern bewertet sind – so zeigt jedes Genre Vorschläge; Unterkategorien ganz ohne deutsches Hörbuch
+  (z. B. *Cricket*) werden ausgeblendet. Alle Listen werden einmal am Tag im Hintergrund vorbereitet. Das gewählte
+  Genre merkt sich der Browser.
 * **Aus der Kritik** – besprochene Bücher, die es bei Audible als Hörbuch gibt (gleicher Titel, gleicher Autor), mit Link
-  zur Besprechung. Quellen: der RSS-Feed „Buchkritik“ von Deutschlandfunk Kultur, die Perlentaucher-Liste
-  [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) (mit Anzahl
-  der Pressekritiken) und die Bücherschau/Bücherbriefe aus dem Perlentaucher-Feed. Übernommen werden nur Autor und Titel;
-  gesehene Besprechungen merkt sich Hörwerk 90 Tage, die Liste wächst also mit der Zeit.
+  zur Besprechung. Quellen: die RSS-Feeds „Buchkritik“ und „Lesart“ (Deutschlandfunk Kultur) und „Büchermarkt“
+  (Deutschlandfunk), die Perlentaucher-Listen
+  [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) und
+  [Sachbuch aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-sachbuch-aktuell.html) (mit Anzahl der
+  Pressekritiken) und die Bücherschau/Bücherbriefe aus dem Perlentaucher-Feed. Übernommen werden nur Autor und Titel;
+  gesehene Besprechungen merkt sich Hörwerk 180 Tage, gezeigt werden die neuesten rund 40 Hörbücher.
 
 **Suchen** auf einer Karte springt in den Reiter *Suchen*, mit dem Buch schon ausgewählt (Titel, Autor und ASIN helfen
 später beim Taggen).
@@ -261,13 +267,13 @@ Bücher in der Bibliothek (auch in anderer Schreibweise), Downloads der letzten 
 Büchern aus der Kritik entfällt die Bewertungsregel – sie sind oft neu und noch kaum bewertet.
 
 **Ehrlich gesagt:** Ob ein Sachbuch inhaltlich stimmt, kann keine Software zuverlässig prüfen – auch Bewertungen
-messen nur Beliebtheit. Deshalb kommen Sachbücher standardmäßig **nur aus der redaktionellen Quelle** (Kritik),
-nicht aus Bestsellerlisten; Sachbuch-Genres sind ausgeblendet, bis du sie in den Einstellungen erlaubst.
+messen nur Beliebtheit. Deshalb lässt *Für dich* Sachbücher standardmäßig weg (umschaltbar in den Einstellungen); in *Nach Genre*
+erscheinen sie nur, wenn du selbst ein Sachbuch-Genre wählst – mit dem Hinweis, dass Sterne kein Faktencheck sind.
 BookBeat ist nicht angebunden, weil es keine offene Schnittstelle hat.
 
 Die Listen werden im Hintergrund zusammengestellt, höchstens einmal am Tag erneuert (oder mit **Aktualisieren**) und
 in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-API des gewählten Shops,
-`www.deutschlandfunkkultur.de` und `www.perlentaucher.de` (HTTPS).
+`www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de` und `www.perlentaucher.de` (HTTPS).
 
 ### Anfragen (wie bei Overseerr/Jellyseerr)
 
@@ -400,7 +406,7 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `WRITE_COVER` | `true` | `cover.jpg` schreiben (Audiobookshelf und Plex nutzen es) |
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Entdecken: Mindestbewertung und -anzahl Bewertungen |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Entdecken: nur ungekürzt / nur deutschsprachig |
-| `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: Sachbücher auch aus Audible-Listen |
+| `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: Sachbücher auch in „Für dich“ |
 | `WANTED_INTERVAL_HOURS` | `12` | Anfragen ohne Treffer: Abstand der erneuten Suche |
 | `ADMIN_TOTP_REQUIRED` | `false` | Admins brauchen einen Zweitfaktor |
 | `CPU_CORES` | halbe Kernzahl | Parallele ffmpeg-Prozesse pro Buch |

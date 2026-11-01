@@ -5,15 +5,17 @@
 // ------------------------------------------------------------------------- //
 interface Suggestion extends Book {
   requested?: string | null;
-  rating?: number; ratings?: number; because?: string[];
+  rating?: number; ratings?: number; because?: string[]; loose?: boolean;
   review?: { source: string; link: string; date: string; notes?: number };
 }
 interface DiscoverAnswer { items: Suggestion[]; updated: number | null; error: string | null; running: boolean }
-interface Genre { id: string; name: string; nonfiction: boolean }
+interface SubGenre { id: string; name: string }
+interface Genre extends SubGenre { nonfiction: boolean; children: SubGenre[] }
 const discover = {
   section: "foryou",
   genre: "",
   genres: [] as Genre[],
+  nonfiction: new Set<string>(),    // ids of non-fiction genres and their subcategories
   timer: undefined as number | undefined,
 };
 
@@ -71,11 +73,14 @@ function renderDiscover(res: DiscoverAnswer): void {
   const when = res.updated ? new Date(res.updated * 1000).toLocaleString(LANG, { dateStyle: "short", timeStyle: "short" }) : "";
   state.textContent = res.running ? t("Wird zusammengestellt …") : res.error ? t("Fehler: {errors}", { errors: res.error })
     : when ? t("Stand: {time}", { time: when }) : "";
+  $("#discoverNote").hidden = !(discover.section === "genre" && discover.nonfiction.has(discover.genre));
   if (res.items.length) {
     list.replaceChildren(...res.items.map(suggestionCard));
     return;
   }
-  let text = t("Keine Vorschläge, die alle Qualitätsregeln erfüllen.");
+  let text = discover.section === "genre"
+    ? t("In diesem Bereich gibt es bei Audible gerade keine gut bewerteten deutschen Hörbücher, die du noch nicht hast.")
+    : t("Keine Vorschläge, die alle Qualitätsregeln erfüllen.");
   if (res.running) text = t("Vorschläge werden zusammengestellt – das dauert beim ersten Mal etwas.");
   else if (discover.section === "genre" && !discover.genre) text = t("Genre wählen.");
   else if (discover.section === "foryou" && !res.updated) text = t("Noch keine Bücher mit ASIN in der Bibliothek.");
@@ -100,19 +105,27 @@ async function loadDiscover(): Promise<void> {
 async function loadGenres(): Promise<void> {
   if (discover.genres.length) return;
   try {
-    const [g, s] = await Promise.all([api<{ genres: Genre[] }>("GET", "/api/discover/genres"), api<Settings>("GET", "/api/settings")]);
+    const [g, s] = await Promise.all([api<{ genres: Genre[] }>("GET", "/api/discover/genres"),
+      api<Settings>("GET", "/api/settings").catch(() => ({} as Settings))]);
     discover.genres = g.genres;
+    discover.nonfiction = new Set(g.genres.filter((x) => x.nonfiction).flatMap((x) => [x.id, ...x.children.map((c) => c.id)]));
     const sel = $<HTMLSelectElement>("#discoverGenre");
-    sel.replaceChildren(el("option", { value: "" }, "–"),
-      ...g.genres.map((x) => el("option", { value: x.id }, x.name + (x.nonfiction ? ` (${t("Sachbuch")})` : ""))));
-    const saved = String(s.discover_genre || "");
-    if (g.genres.some((x) => x.id === saved)) { sel.value = saved; discover.genre = saved; }
+    // like the Audible shop: each genre as a group – the whole genre first, then its subcategories
+    sel.replaceChildren(...g.genres.map((x) => el("optgroup", { label: x.name + (x.nonfiction ? ` (${t("Sachbuch")})` : "") },
+      el("option", { value: x.id }, t("{genre} – alle", { genre: x.name })),
+      ...x.children.map((c) => el("option", { value: c.id }, c.name)))));
+    const ids = new Set(g.genres.flatMap((x) => [x.id, ...x.children.map((c) => c.id)]));
+    const saved = store.get("discoverGenre", String(s.discover_genre || ""));
+    // nothing picked yet: start with fiction, so the list is never empty
+    const first = g.genres.find((x) => /Literatur|Fiction/.test(x.name)) || g.genres.find((x) => !x.nonfiction) || g.genres[0];
+    discover.genre = ids.has(saved) ? saved : first?.id || "";
+    sel.value = discover.genre;
   } catch { /* the store is down: the genre list stays empty */ }
 }
 
 async function chooseGenre(): Promise<void> {
   discover.genre = $<HTMLSelectElement>("#discoverGenre").value;
-  api<Settings>("PUT", "/api/settings", { discover_genre: discover.genre }).catch(() => { /* only a preselection */ });
+  store.set("discoverGenre", discover.genre);       // per browser, also for family accounts
   await loadDiscover();
 }
 

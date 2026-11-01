@@ -169,6 +169,36 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("Entdecken: Nach Genre startet mit einem Genre, Unterkategorien wie bei Audible", async ({ page }) => {
+  const genres = [
+    { id: "1", name: "Geschichte", nonfiction: true, children: [{ id: "11", name: "Antike" }] },
+    { id: "2", name: "Literatur & Belletristik", nonfiction: false, children: [{ id: "21", name: "Klassiker" }] },
+  ];
+  const asked: string[] = [];
+  await page.route("**/api/discover/genres", (r) => r.fulfill({ json: { genres } }));
+  await page.route("**/api/discover?*", (r) => {
+    const q = new URL(r.request().url()).searchParams;
+    const genre = q.get("section") === "genre" ? q.get("genre") || "" : "";
+    if (q.get("section") === "genre") asked.push(genre);
+    const item = { asin: `B0GENRE00${genre}`, title: `Buch aus ${genre}`, authors: ["Anna Autorin"], rating: 4.5, ratings: 80, source: "audible" };
+    r.fulfill({ json: { items: genre ? [item] : [], updated: 1_700_000_000, error: null, running: false } });
+  });
+  const errors = await open(page);
+  await page.getByRole("tab", { name: "Entdecken" }).click();
+  await page.locator("#discoverSections button[data-section=genre]").click();
+  const sel = page.locator("#discoverGenre");
+  await expect(sel).toHaveValue("2");                                   // no empty "–": fiction to start with
+  await expect(page.locator(".suggestion")).toContainText("Buch aus 2");
+  await expect(sel.locator("optgroup")).toHaveCount(2);
+  await expect(sel.locator("option")).toHaveText(["Geschichte – alle", "Antike", "Literatur & Belletristik – alle", "Klassiker"]);
+  await expect(page.locator("#discoverNote")).toBeHidden();
+  await sel.selectOption("11");
+  await expect(page.locator(".suggestion")).toContainText("Buch aus 11");
+  await expect(page.locator("#discoverNote")).toBeVisible();            // non-fiction: stars are no fact check
+  expect(asked).not.toContain("");
+  expect(errors).toEqual([]);
+});
+
 test("Anmeldung: falsches Passwort, dann richtig; ohne Anmeldung keine Daten", async ({ page, request }) => {
   const errors = watchErrors(page);
   expect((await request.get("/api/settings")).status()).toBe(401);
