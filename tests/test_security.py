@@ -122,8 +122,12 @@ class WebTest(unittest.TestCase):
         old = self.app.config
         self.app.config = dataclasses.replace(old, allowed_hosts=frozenset({"tower"}))
         try:
-            self.assertEqual(self.req("GET", "/api/health")[0], 421)
-            self.assertEqual(self.req("GET", "/api/health", headers={"Host": "tower:8080"})[0], 200)
+            self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "evil.example"})[0], 421)
+            self.assertEqual(self.req("GET", "/", headers={"Host": "hoerwerk"})[0], 421)
+            self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "tower:8080"})[0], 200)
+            self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "127.0.0.1:8080"})[0], 200)
+            # health checks of Docker (127.0.0.1) and Pangolin/Newt (target name) always get through
+            self.assertEqual(self.req("GET", "/api/health", headers={"Host": "hoerwerk:8080"})[0], 200)
         finally:
             self.app.config = old
 

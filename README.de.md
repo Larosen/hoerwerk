@@ -366,7 +366,8 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
    Pangolins eigene Anmeldung kann zusätzlich davor bleiben – sicherer, aber zweimal anmelden.
 2. `TRUSTED_PROXIES` auf die Adresse setzen, von der Newt/Pangolin bei Hörwerk ankommt (z. B. `172.18.0.0/16`
    für das Docker-Netz oder die IP des Newt-Containers). Nur dann steht im Protokoll die echte IP der Besucher.
-3. `ALLOWED_HOSTS` um den öffentlichen Namen ergänzen, z. B. `tower,192.168.1.10,hoerbuecher.example.de`.
+3. Falls du `ALLOWED_HOSTS` nutzt: den öffentlichen Namen ergänzen, z. B. `tower,192.168.1.10,hoerbuecher.example.de`.
+   In Pangolin als Pfad des Health Checks `/api/health` eintragen.
 4. **CrowdSec:** Jeder Fehlversuch steht mit IP in `/config/logs/auth.log`. Parser, Szenarien und Beispiele für
    Vector bzw. den CrowdSec-Agenten liegen in [contrib/crowdsec](contrib/crowdsec/README.md). Hörwerk selbst sperrt
    eine IP nach 5 Fehlversuchen für 15 Minuten; CrowdSec sperrt sie dann schon am VPS.
@@ -422,7 +423,7 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `COOKIE_SECURE` | `auto` | Anmelde-Cookie nur über HTTPS: `auto` (wenn der Proxy HTTPS meldet), `true`, `false` |
 | `REQUEST_QUOTA` | `5` | Buchanfragen pro Nutzer und Monat (je Konto änderbar) |
 | `AUTH_USER` / `AUTH_PASS` | – | Nur noch für den Umstieg: wird beim ersten Start zum Admin-Konto |
-| `ALLOWED_HOSTS` | – | Nur unter diesen Hostnamen/IPs antworten, z. B. `tower,192.168.1.10` |
+| `ALLOWED_HOSTS` | – | Nur unter diesen Hostnamen/IPs antworten, z. B. `tower,192.168.1.10` (`localhost` geht immer, und `/api/health` antwortet unter jedem Namen – für die Health Checks von Docker und Pangolin) |
 
 SABnzbd, der optionale Indexer, Audiobookshelf, Plex und ntfy werden in der Oberfläche eingerichtet, nicht über Variablen.
 

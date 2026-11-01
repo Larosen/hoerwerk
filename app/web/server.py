@@ -40,6 +40,10 @@ COOKIE = "hw_session"
 LOGIN_PAGE = "/login"
 
 
+# always allowed as Host: a DNS-rebinding page arrives under its own name, never as these
+LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
 class Server(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -140,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
             return True
         host = (self.headers.get("Host") or "").lower()
         host = host.rsplit(":", 1)[0] if not host.endswith("]") else host
-        return host.strip("[]") in allowed
+        return host.strip("[]") in allowed | LOOPBACK_NAMES
 
     def _same_origin(self) -> bool:
         """Changing requests must come from our own page (CSRF protection).
@@ -197,7 +201,8 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         # Early refusals leave the request body unread: don't reuse such a connection
         self.close_connection = True
-        if not self._host_ok():
+        # the health check answers under any name: Docker asks as 127.0.0.1, Pangolin/Newt under the target name
+        if not self._host_ok() and not (url.path == "/api/health" and self.command in ("GET", "HEAD")):
             return self._send(421, b"Unbekannter Host", "text/plain")
         token = self._token()
         reading = self.command in ("GET", "HEAD")
