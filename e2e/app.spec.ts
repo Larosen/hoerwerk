@@ -51,7 +51,10 @@ test.describe.configure({ mode: "serial" });
 
 test("Bibliothek: alle Bücher, mit Suche", async ({ page }) => {
   const errors = await open(page);
-  await expect(page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toHaveAttribute("aria-current", "page");   // start page
+  await expect(page).toHaveURL(/\/discover$/);                                        // everyone starts with Entdecken
+  await expect(page.locator("#welcome")).toBeHidden();                                 // the guide is for family accounts
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await expect(page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toHaveAttribute("aria-current", "page");
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
   await expect(page.locator(".lib-row")).toHaveCount(1);
   await expect(page.locator(".lib-row")).toContainText("Altes Buch");
@@ -165,16 +168,20 @@ test("Oberfläche auf Englisch und zurück", async ({ page }) => {
 
 test("Seiten mit eigener Adresse: vor, zurück, Lesezeichen", async ({ page, browser }) => {
   const errors = await open(page);
-  await expect(page).toHaveURL(/\/books$/);
+  await expect(page).toHaveURL(/\/discover$/);
   await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();
   await expect(page).toHaveURL(/\/search$/);
+  await page.locator("nav.tabs").getByRole("link", { name: "Anfragen" }).click();
   await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
   await expect(page).toHaveURL(/\/discover$/);
   await expect(page).toHaveTitle("Entdecken · Hörwerk");
   await page.goBack();
+  await expect(page).toHaveURL(/\/requests$/);
+  await page.goBack();
   await expect(page).toHaveURL(/\/search$/);
   await expect(page.locator("#viewSearch")).toBeVisible();
   await expect(page.locator("#viewDiscover")).toBeHidden();
+  await page.goForward();
   await page.goForward();
   await expect(page.locator("#viewDiscover")).toBeVisible();
   // a bookmark without being signed in: first the login, then exactly that page
@@ -190,7 +197,7 @@ test("Seiten mit eigener Adresse: vor, zurück, Lesezeichen", async ({ page, bro
   await expect(other.locator("#logView")).toBeVisible();
   // a foreign "next" is ignored
   await other.goto("/login?next=https://evil.example/");
-  await expect(other).toHaveURL(/\/books$/);
+  await expect(other).toHaveURL(/\/discover$/);
   await ctx.close();
   expect(errors).toEqual([]);
 });
@@ -269,7 +276,7 @@ test("Anmeldung: falsches Passwort, dann richtig; ohne Anmeldung keine Daten", a
   await expect(page.locator("#loginError")).toHaveText("Name oder Passwort falsch");
   await form.getByLabel("Passwort").fill(ADMIN.password);
   await form.getByRole("button", { name: "Anmelden" }).click();
-  await expect(page).toHaveURL(/\/books$/);
+  await expect(page).toHaveURL(/\/discover$/);
   await expect(page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toBeVisible();
   await page.locator("#accountBtn").click();
   await expect(page).toHaveURL(/\/account$/);
@@ -292,6 +299,14 @@ test("Konten: Admin legt Familienkonto an, das sieht nur Entdecken", async ({ pa
   const eva = await browser.newPage();
   const evaErrors = await open(eva, { name: "eva", password: "evas-start-passwort" });
   await expect(eva.locator("nav.tabs").getByRole("link", { name: "Entdecken" })).toHaveAttribute("aria-current", "page");
+  // a short guide for family accounts, once – and none of the admin boxes
+  await expect(eva.locator("#welcome")).toBeVisible();
+  await expect(eva.locator("#welcome")).toContainText("Wünschen");
+  await expect(eva.locator("#scanBtn")).toBeHidden();
+  await expect(eva.locator("#discoverRefresh")).toBeHidden();
+  await eva.locator("#welcomeOk").click();
+  await eva.reload();
+  await expect(eva.locator("#welcome")).toBeHidden();
   await expect(eva.locator("#settingsBtn")).toBeHidden();
   await eva.goto("/settings/users");                       // no settings for family accounts: back to the start
   await expect(eva).toHaveURL(/\/discover$/);
@@ -402,6 +417,7 @@ test("Hochladen: CD-Hörbuch als Ordner hochladen, landet als M4B in der Bibliot
   const tags = { album: "Die Funkenstadt", artist: "Clara Clever" };
   tone(join(dir, "CD1", "01 Anfang.mp3"), 1.0, tags);
   tone(join(dir, "CD2", "01 Ende.mp3"), 1.0, tags);
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   await page.locator("#uploadBtn").click();
   await page.locator("#uploadFolder").setInputFiles(dir);
   await expect(page.locator("#uploadList")).toContainText("Clara Clever - Die Funkenstadt");

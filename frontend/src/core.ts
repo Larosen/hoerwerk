@@ -287,3 +287,14 @@ translateDom(document.body);
 for (const btn of document.querySelectorAll<HTMLElement>("dialog [data-close]")) {
   btn.addEventListener("click", () => btn.closest("dialog")?.close());
 }
+
+// Every window gets a close button at the top – on a phone the buttons at the bottom can be out of reach.
+// It does what the window's own "Abbrechen"/"Schließen" does (e.g. stops a running upload).
+for (const d of document.querySelectorAll<HTMLDialogElement>("dialog")) {
+  const x = el("button", { type: "button", class: "dialog-x", title: t("Schließen"), "aria-label": t("Schließen") }, icon("x"));
+  x.addEventListener("click", () => {
+    const own = d.querySelector<HTMLButtonElement>("#uploadCancel, [data-close], button[value=cancel]");
+    if (own) own.click(); else d.close("cancel");
+  });
+  d.prepend(x);
+}

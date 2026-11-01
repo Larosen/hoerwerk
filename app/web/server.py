@@ -265,6 +265,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(421, b"Unbekannter Host", "text/plain")
         token = self._token()
         reading = self.command in ("GET", "HEAD")
+        if reading and url.path == "/favicon.ico":         # Safari & co. ask for it on their own – the logo, no 404
+            return self._static("/static/icon.png")
         if reading and url.path == "/i18n.js":
             return self._i18n()
         if reading and url.path == "/me.js":

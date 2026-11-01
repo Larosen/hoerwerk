@@ -343,7 +343,8 @@ from the home network; from outside the setup code from `docker logs hoerwerk` i
 
 * **Accounts** (*Settings → Accounts*, `/settings/users`, admins only): create family accounts (generate an initial password and pass it on), role,
   rights (*see all requests*, *no approval*, *interactive search*), monthly quota, lock, reset password, delete.
-  Family accounts see *Search*, *Discover* and *Requests* – inbox, library, settings and log stay with admins. Below: the
+  Everyone starts on *Discover*; family accounts only see *Discover*, *Search* and *Requests* (the first time with a
+  short three-step guide) – inbox, library, settings and log stay with admins. Below: the
   **admin log** (who changed what, when, with IP).
 * **Account** (your name, top right, `/account`, everyone): change password, set up a **second factor** (authenticator app such
   as Aegis, 2FAS, Google/Microsoft Authenticator), own ntfy topic, see and sign out devices, and

@@ -160,6 +160,18 @@ label.check { display: inline-flex; gap: 6px; align-items: center; cursor: point
 
 /* Dialogs */
 dialog { border: 1px solid var(--border); border-radius: 14px; background: var(--panel); color: var(--text); padding: 0; width: min(600px, calc(100vw - 32px)); max-height: calc(100vh - 48px); box-shadow: var(--shadow-pop); }
+/* phones: 100vh is taller than what Safari shows – use the visible height, scroll inside the window */
+dialog { max-height: calc(100dvh - 32px); overflow: auto; overscroll-behavior: contain; }
+.dialog-x { position: sticky; top: 8px; float: right; z-index: 2; margin: 8px 8px -44px 0; width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--panel); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.dialog-x:hover { color: var(--text); background: var(--hover); }
+.dialog-x .ico { width: 18px; height: 18px; }
+dialog .dialog-body > h2:first-child, dialog .dialog-body > h2 { padding-right: 40px; }
+@media (max-width: 720px) {
+  dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+  .dialog-body { padding: 18px 16px; }
+  .dialog-actions { margin: 6px -16px -18px; padding: 12px 16px; }
+}
 dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(2px); }
 dialog[open] { animation: pop .16s ease-out; }
 @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(.985); } }
@@ -569,4 +581,27 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
   /* phones: the overview is the menu – on an area page only the area, with the way back */
   .settings-layout:not(.hub) .sidebar { display: none; }
   .settings-layout:not(.hub) .settings-back { display: inline-flex; }
+}
+
+/* Start: Entdecken – a short guide for family accounts */
+.welcome { margin: 14px 14px 0; padding: 14px 16px; border-radius: 10px; background: var(--accent-soft); color: var(--text); line-height: 1.5; }
+.welcome ol { margin: 8px 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.welcome p { margin: 0 0 10px; }
+@media (max-width: 900px) {
+  /* phones: what matters first – the list; the inbox and library boxes come after it */
+  #viewBooks .sidebar { order: 2; }
+  /* Entdecken: the three lists side by side as one compact row, the explanation below the suggestions */
+  #viewDiscover .sidebar { display: contents; }
+  #viewDiscover .sidebar > .panel:first-child { order: 1; }
+  #viewDiscover .discover-panel { order: 2; }
+  #viewDiscover .sidebar .how { order: 3; }
+  #viewDiscover .sidebar > .panel:first-child .panel-head { display: none; }
+  #discoverSections { flex-direction: row; }
+  #discoverSections button { flex: 1; align-items: center; text-align: center; }
+  #discoverSections button small { display: none; }
+}
+@media (max-width: 900px) {
+  /* phones: the page scrolls, not the panel – so the save bar can stay at the bottom of the screen */
+  .settings-panel, .account-panel { overflow: visible; }
+  .save-bar { padding: 10px 0 calc(10px + env(safe-area-inset-bottom)); }
 }
