@@ -344,7 +344,7 @@ class WebRequestsTest(unittest.TestCase):
         self.assertEqual(self.req("Eva", "POST", f"/api/requests/{rid}/approve")[0], 403)
         self.assertEqual(self.req("Eva", "POST", f"/api/requests/{rid}/grab", {"release_id": "x"})[0], 403)
         # the admin sees everyone's, with the name, and approves – which lands in the audit log
-        status, lst = self.req("Admin", "GET", "/api/requests?scope=all")
+        status, lst = self.req("Admin", "GET", "/api/requests")                # admins always see all
         self.assertEqual(lst["items"][0]["user"], "Eva")
         self.assertGreaterEqual(lst["pending"], 1)
         self.assertEqual(self.req("Admin", "POST", f"/api/requests/{rid}/approve")[0], 200)

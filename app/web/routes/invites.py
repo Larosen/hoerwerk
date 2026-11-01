@@ -49,7 +49,7 @@ def create_invite(req: Req):
         raise HTTPException(400, t("Erst die öffentliche Adresse eintragen (Einstellungen → Allgemein), z. B. https://hoerwerk.example.de – Einladungslinks zeigen immer dorthin."))
     try:
         invite = req.app.invites.create(req.user["name"], req.get("note") or "", req.get("days", 7),
-                                        req.get("uses", 1), req.get("quota"))
+                                        req.get("uses", 1), req.get("quota"), req.get("perms") or {})
     except (TypeError, ValueError) as e:
         raise HTTPException(400, str(e))
     authlog.event("invite_created", by=req.user["name"], ip=req.ip, invite=invite["id"])

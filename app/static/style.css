@@ -621,3 +621,8 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
 .pw-rules li.ok { color: var(--ok); }
 .pw-rules .ico { width: 14px; height: 14px; flex: none; margin-top: 2px; }
 .pw-hint { margin: 2px 0 0; }
+.invite-perms { display: flex; flex-direction: column; gap: 6px; }
+.invite-perms label.check { color: var(--text); font-size: 13.5px; }
+/* the main category of a book on its card */
+.genre-tag { align-self: flex-start; font-size: 11.5px; font-weight: 550; line-height: 1.5; padding: 0 8px; border-radius: 99px;
+  color: var(--accent); background: var(--accent-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
