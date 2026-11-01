@@ -118,6 +118,24 @@ class WebTest(unittest.TestCase):
             status, _, body = self.req("GET", "/api/library/tracks?path=" + p)
             self.assertEqual(status, 404, (p, body))
 
+    def test_connection_reuse_like_a_proxy(self):
+        """Traefik (Pangolin) keeps connections open: either they work again, or the answer says close."""
+        c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        try:
+            for path in ("/login", "/static/icon.png", "/i18n.js", "/", "/api/health", "/api/settings"):
+                c.request("GET", path, headers={"Host": f"127.0.0.1:{self.port}", "Cookie": self.cookie})
+                r = c.getresponse()
+                r.read()
+                self.assertIn(r.status, (200, 303), path)
+                self.assertNotEqual(r.getheader("Connection"), "close", path)
+            # a refused request with a body: closed, and the answer says so
+            c.request("POST", "/api/settings", body=b"{}", headers={"Host": f"127.0.0.1:{self.port}", "Content-Type": "application/json"})
+            r = c.getresponse()
+            r.read()
+            self.assertEqual((r.status, r.getheader("Connection")), (403, "close"))
+        finally:
+            c.close()
+
     def test_allowed_hosts(self):
         old = self.app.config
         self.app.config = dataclasses.replace(old, allowed_hosts=frozenset({"tower"}))

@@ -86,6 +86,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header(k, v)
         for k, v in (extra or {}).items():
             self.send_header(k, v)
+        if self.close_connection:
+            # without this a reverse proxy reuses the connection we are about to close -> 502 Bad Gateway
+            self.send_header("Connection", "close")
         self.end_headers()
 
     def _send(self, status: int, body: bytes, ctype: str, extra: Optional[dict] = None) -> None:
@@ -199,8 +202,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def _dispatch(self) -> None:
         url = urlparse(self.path)
-        # Early refusals leave the request body unread: don't reuse such a connection
-        self.close_connection = True
+        # Early refusals leave a request body unread: such a connection is not reused (and says so, see
+        # _headers). Requests without a body stay open for the next one – proxies like Traefik reuse them.
+        self.close_connection = (self.headers.get("Content-Length") or "0").strip() != "0" \
+            or bool(self.headers.get("Transfer-Encoding"))
         # the health check answers under any name: Docker asks as 127.0.0.1, Pangolin/Newt under the target name
         if not self._host_ok() and not (url.path == "/api/health" and self.command in ("GET", "HEAD")):
             return self._send(421, b"Unbekannter Host", "text/plain")
