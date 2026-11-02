@@ -111,7 +111,7 @@ test("Einstellungen: Übersicht, Healthcheck mit ffmpeg und Proxy, Design bleibt
   const errors = await open(page);
   await page.locator("#settingsBtn").click();
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(11);
+  await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(12);
   await page.locator("#settingsHub").getByRole("link", { name: /Healthcheck/ }).click();
   await expect(page).toHaveURL(/\/settings\/health$/);
   await expect(page.locator("#healthList")).toContainText("ffmpeg");
@@ -333,6 +333,40 @@ test("Suchen: ganze Reihe anfragen – Bände wählen, eine Karte unter Anfragen
   await card.locator(".s-actions .icon-btn").click();
   await page.locator("#confirmDialog button[value=ok]").click();
   await expect(card).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Downloads: eigene Seite in den Einstellungen, Fertige ausblenden und aufräumen", async ({ page }) => {
+  const errors = await open(page);
+  let items = [
+    { id: "a", name: "Buch A", status: "Downloading", progress: 0.42, done: false, size: "400 MB", left: "0:01:10", finished: null, error: null },
+    { id: "c", name: "Buch C", status: "Completed", progress: 1, done: true, size: "300 MB", left: "", finished: 1761000000, error: null },
+    { id: "d", name: "Buch D", status: "Failed", progress: 0, done: true, size: "1 GB", left: "", finished: null, error: "Out of retention" },
+  ];
+  const cleared: string[][] = [];
+  await page.route("**/api/downloads?*", (r) => r.fulfill({ json: { configured: true, speed: "12.3 M", paused: false, items } }));
+  await page.route("**/api/downloads/clear", async (r) => {
+    const ids: string[] = r.request().postDataJSON().ids;
+    cleared.push(ids);
+    const gone = ids.length ? ids : items.filter((i) => i.done).map((i) => i.id);
+    items = items.filter((i) => !gone.includes(i.id));
+    await r.fulfill({ json: { removed: gone.length, kept: 0 } });
+  });
+  await page.goto("/search");
+  await expect(page.locator("#dlList")).toBeHidden();                              // no longer part of the search
+  await page.goto("/settings/transfers");
+  await expect(page.locator("#settingsTitle")).toHaveText("Downloads");
+  await expect(page.locator("#dlList .job")).toHaveCount(3);
+  await page.locator("#dlHideDone").check();
+  await expect(page.locator("#dlList .job")).toHaveCount(1);
+  await page.locator("#dlHideDone").uncheck();
+  await page.locator("#dlList .job", { hasText: "Buch D" }).locator(".icon-btn").click();   // one entry
+  await expect(page.locator("#dlList .job")).toHaveCount(2);
+  await page.locator("#dlClear").click();                                          // all finished – after asking
+  await page.locator("#confirmDialog button[value=ok]").click();
+  await expect(page.locator("#dlList .job")).toHaveCount(1);
+  expect(cleared).toEqual([["d"], []]);
+  await expect(page.locator("#dlClear")).toBeDisabled();
   expect(errors).toEqual([]);
 });
 

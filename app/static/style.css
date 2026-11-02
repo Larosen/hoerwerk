@@ -332,7 +332,11 @@ details.log pre { font: 11.5px/1.45 var(--mono); white-space: pre-wrap; margin: 
 
 /* Search */
 .search-panel { flex: 1 1 360px; min-height: 320px; }
-.dl-panel { flex: 0 1 auto; max-height: 34vh; }
+/* Einstellungen → Downloads */
+.dl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 10px; }
+.dl-tools #dlSpeed { margin-right: auto; }
+.dl-list { padding: 0; max-height: 70vh; }
+.dl-list .job-top .row { flex: none; }
 .pad { padding: 10px 12px; }
 .pad-x { padding: 0 12px 8px; }
 table.results { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }

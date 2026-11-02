@@ -151,13 +151,6 @@
         </table>
       </div>
     </section>
-    <section class="panel dl-panel admin-only">
-      <div class="panel-head">
-        <h2>Downloads (SABnzbd)</h2>
-        <span id="dlSpeed" class="muted small"></span>
-      </div>
-      <ul id="dlList" class="job-list"><li class="empty">–</li></ul>
-    </section>
   </div>
 </main>
 
@@ -231,6 +224,7 @@
         <a href="/settings/library" data-section="library">Eingang &amp; Bibliothek <small>Erkennung, Ordner, Dateien</small></a>
         <a href="/settings/convert" data-section="convert">M4B-Konvertierung <small>Bitrate, Kapitel</small></a>
         <a href="/settings/downloads" data-section="downloads">Indexer &amp; SABnzbd <small>Release-Suche und Download</small></a>
+        <a href="/settings/transfers" data-section="transfers">Downloads <small>was SABnzbd lädt, Verlauf aufräumen</small></a>
         <a href="/settings/services" data-section="services">Audiobookshelf &amp; Plex <small>nach dem Ablegen neu einlesen</small></a>
         <a href="/settings/discover" data-section="discover">Entdecken &amp; Anfragen <small>Qualität, Kontingent</small></a>
         <a href="/settings/notify" data-section="notify">Benachrichtigungen <small>ntfy aufs Handy</small></a>
@@ -507,6 +501,16 @@
       <summary>Admin-Protokoll <small class="muted">wer hat wann was geändert</small></summary>
       <ul id="auditList" class="audit-list"></ul>
     </details>
+    </div>
+    <div class="dialog-body page-body" data-page="transfers">
+    <div class="dl-tools">
+      <span id="dlSpeed" class="muted small"></span>
+      <label class="check"><input type="checkbox" id="dlHideDone"> Fertige ausblenden</label>
+      <button id="dlClear" class="btn small" type="button" title="Fertige und fehlgeschlagene Downloads aus dem SABnzbd-Verlauf nehmen – die Dateien bleiben">Fertige aufräumen</button>
+    </div>
+    <ul id="dlList" class="job-list dl-list"><li class="empty">–</li></ul>
+    <p class="muted small">Nur die Hörbuch-Kategorie von SABnzbd. Aufräumen nimmt die Einträge aus dem SABnzbd-Verlauf, die Dateien bleiben liegen.
+      Downloads, auf die eine Anfrage noch wartet, bleiben stehen, bis Hörwerk sie übernommen hat.</p>
     </div>
     <div class="dialog-body page-body" data-page="logs">
     <div class="log-tools">
@@ -806,6 +810,7 @@
 <script src="/static/discover.js"></script>
 <script src="/static/notify.js"></script>
 <script src="/static/logs.js"></script>
+<script src="/static/downloads.js"></script>
 <script src="/static/stats.js"></script>
 <script src="/static/listening.js"></script>
 <script src="/static/account.js"></script>

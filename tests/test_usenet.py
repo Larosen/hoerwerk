@@ -173,6 +173,16 @@ class UsenetTest(unittest.TestCase):
         self.assertAlmostEqual(a["items"][0]["progress"], 0.42)
         self.assertEqual(a["items"][2]["error"], "Out of retention")
 
+    def test_clear_finished_downloads(self):
+        out = self.u.clear_finished(keep={"d"})              # "d" still followed by a request
+        self.assertEqual(out, {"removed": 1, "kept": 1})
+        deletes = [q for p, q in Fake.calls if q.get("mode") == "history" and q.get("name") == "delete"]
+        self.assertEqual([(q["value"], q["del_files"]) for q in deletes], [("c", "0")])   # files stay on disk
+        Fake.calls.clear()
+        out = self.u.clear_finished(["c", "a", "fremd"])     # running or foreign ids are never removed
+        self.assertEqual(out["removed"], 1)
+        self.assertEqual([q["value"] for p, q in Fake.calls if q.get("name") == "delete"], ["c"])
+
     def test_wrong_sab_key(self):
         self.u.update_config({"indexers": [], "sab": {"url": f"{self.base}/sab", "apikey": "nope"}})
         with self.assertRaises(usenet.UsenetError) as cm:

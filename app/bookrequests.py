@@ -523,6 +523,15 @@ class Requests:
             except Exception as e:  # noqa: BLE001 – one request must not stop the others
                 applog.warn(t("Anfrage {id}: {error}", id=rid, error=e), "Anfragen")
 
+    def waiting_downloads(self) -> set:
+        """SABnzbd ids that requests still follow – their history entry must stay until they saw it finish."""
+        out = set()
+        for row in self.db.all("SELECT data FROM requests WHERE status='downloading'"):
+            nzo = (dbm.loads(row["data"], {}) or {}).get("nzo_id")
+            if nzo:
+                out.add(str(nzo))
+        return out
+
     def _activity(self) -> List[dict]:
         try:
             return self.usenet.activity().get("items", []) if self.usenet.configured()["sab"] else []

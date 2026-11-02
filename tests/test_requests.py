@@ -216,6 +216,7 @@ class RequestsTest(unittest.TestCase):
         req = self.r.approve(req["id"], self.admin)
         req = self.r.get(req["id"])
         self.assertEqual(req["status"], "downloading")
+        self.assertEqual(self.r.waiting_downloads(), {req["nzo_id"]})   # its SABnzbd entry must not be tidied away
         rid, hints = self.usenet.sent[0]
         self.assertEqual(rid, "r1")                                # M4B in German beats MP3
         self.assertEqual((hints["asin"], hints["request_id"]), ("B0REQ00001", req["id"]))
@@ -687,6 +688,9 @@ class WebRequestsTest(unittest.TestCase):
         self.assertIn("request_approved", actions)
         self.assertIn(f"POST /api/requests/{rid}/approve", actions)
         self.assertEqual(self.req("Eva", "GET", "/api/audit")[0], 403)
+        # downloads (SABnzbd queue and history) are the admins' business only
+        self.assertEqual(self.req("Eva", "GET", "/api/downloads")[0], 403)
+        self.assertEqual(self.req("Eva", "POST", "/api/downloads/clear", {})[0], 403)
 
     def test_ids_can_not_be_probed(self):
         """Unknown and foreign ids answer the same 404 – nobody learns which requests exist."""
