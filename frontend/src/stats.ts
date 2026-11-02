@@ -50,26 +50,47 @@ function renderStats(s: StatsAnswer): void {
   const listening = !!s.listen?.linked;
   for (const th of document.querySelectorAll<HTMLElement>(".stats-table th.listen-col")) th.hidden = !listening;
   $("#statsListenNote").hidden = !listening && !s.listen;
-  const listenCells = (u: UserStats): HTMLElement[] => !listening ? [] : u.listen ? [
-    el("td", { class: "num", title: u.listen.errors.join(" · ") }, fmtListen(u.listen.seconds)),
-    el("td", { class: "num" }, u.listen.books ? `${u.listen.books}${u.listen.finished ? ` (${u.listen.finished})` : ""}` : "–"),
-    el("td", { class: "when" }, u.listen.last ? new Date(u.listen.last * 1000).toLocaleDateString(LOCALE) : "–"),
-  ] : [el("td", { class: "num muted", title: t("nicht verknüpft") }, "·"), el("td", { class: "num muted" }, "·"), el("td", { class: "muted" }, "·")];
-  const rows = s.users.map((u) => el("tr", { class: u.books || u.listen?.seconds ? "" : "quiet" },
-    el("td", { class: "name" }, el("b", {}, u.name), u.role === "admin" ? el("span", { class: "muted small" }, " · Admin") : null),
-    el("td", { class: "num" }, u.requests ? String(u.requests) : "–", u.series ? el("small", { class: "muted", title: t("davon Reihen") }, ` (${u.series} ${t("Reihen")})`) : null),
-    el("td", { class: "num" }, String(u.books || "–")),
-    el("td", { class: "num" }, String(u.available || "–")),
-    el("td", { class: "num" }, String(u.open || "–")),
-    el("td", { class: "num" }, u.declined + u.failed ? `${u.declined} / ${u.failed}` : "–"),
-    el("td", { class: "num" }, fmtHours(u.minutes)),
-    el("td", { class: "num" }, u.bytes ? fmtSize(u.bytes) : "–"),
-    el("td", { class: "num" }, fmtWait(u.wait_median)),
-    ...listenCells(u),
-    el("td", { class: "num" }, u.books ? `${Math.round((u.english / u.books) * 100)} %` : "–"),
-    el("td", { class: "genre", title: u.top_genres.join(", ") }, u.top_genres[0] || "–"),
-    el("td", { class: "when" }, u.last ? new Date(u.last * 1000).toLocaleDateString(LOCALE) : "–")));
-  $("#statsRows").replaceChildren(...(rows.length ? rows : [el("tr", {}, el("td", { colspan: "15", class: "empty-row" }, t("Noch keine Konten.")))]));
+  const date = (ts: number | null | undefined): string => ts
+    ? new Date(ts * 1000).toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", year: "2-digit" }) : "–";
+  const rows = s.users.flatMap((u) => {
+    const active = Math.max(u.last || 0, u.listen?.last || 0) || null;
+    const facts: [string, string][] = [
+      [t("Anfragen"), u.requests ? String(u.requests) + (u.series ? ` (${t("davon Reihen")}: ${u.series})` : "") : "–"],
+      [t("Verfügbar"), String(u.available || "–")],
+      [t("Spielzeit"), fmtHours(u.minutes)],
+      [t("Offen"), String(u.open || "–")],
+      [t("Abgelehnt / fehlgeschlagen"), u.declined + u.failed ? `${u.declined} / ${u.failed}` : "–"],
+      [t("Speicher"), u.bytes ? fmtSize(u.bytes) : "–"],
+      [t("Wartezeit"), fmtWait(u.wait_median)],
+      [t("Englisch"), u.books ? `${Math.round((u.english / u.books) * 100)} %` : "–"],
+      [t("Häufigstes Genre"), u.top_genres.join(", ") || "–"],
+      [t("Zuletzt angefragt"), date(u.last)],
+      ...(listening ? [
+        [t("Bücher gehört"), u.listen ? (u.listen.books ? `${u.listen.books}${u.listen.finished ? ` (${t("davon fertig")}: ${u.listen.finished})` : ""}` : "–") : t("nicht verknüpft")],
+        [t("Zuletzt gehört"), u.listen ? date(u.listen.last) : "–"],
+      ] as [string, string][] : []),
+    ];
+    const details = el("tr", { class: "stats-details", hidden: true },
+      el("td", { colspan: "7" }, el("dl", { class: "stats-facts" }, ...facts.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v)]))));
+    const chev = el("button", { type: "button", class: "icon-btn chev", "aria-expanded": "false", "aria-label": t("Details zu {name}", { name: u.name }) },
+      icon("chevron"));
+    const row = el("tr", { class: "stats-row" + (u.books || u.listen?.seconds ? "" : " quiet") },
+      el("td", { class: "name" }, el("b", {}, u.name), u.role === "admin" ? el("span", { class: "muted small" }, " · Admin") : null),
+      el("td", { class: "num" }, String(u.books || "–")),
+      el("td", { class: "num wide-only" }, String(u.available || "–")),
+      el("td", { class: "num wide-only" }, fmtHours(u.minutes)),
+      listening ? el("td", { class: "num", title: u.listen?.errors.join(" · ") || "" }, u.listen ? fmtListen(u.listen.seconds) : "·") : null,
+      el("td", { class: "when" }, date(active)),
+      el("td", { class: "chev-col" }, chev));
+    const toggle = (): void => {
+      details.hidden = !details.hidden;
+      chev.setAttribute("aria-expanded", String(!details.hidden));
+      row.classList.toggle("open", !details.hidden);
+    };
+    row.addEventListener("click", toggle);
+    return [row, details];
+  });
+  $("#statsRows").replaceChildren(...(rows.length ? rows : [el("tr", {}, el("td", { colspan: "7", class: "empty-row" }, t("Noch keine Konten.")))]));
   renderMonthChart(s.months);
 }
 

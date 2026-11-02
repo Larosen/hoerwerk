@@ -356,7 +356,10 @@
         </label>
         <label class="check"><input type="checkbox" name="discover_unabridged"> nur ungekürzte Hörbücher</label>
         <label class="check"><input type="checkbox" name="discover_german"> nur deutschsprachige</label>
-        <label class="check"><input type="checkbox" name="discover_nonfiction_store"> Sachbücher auch in „Für dich“</label>
+        <label class="check"><input type="checkbox" name="discover_nonfiction_store"> Alle Sachbücher in „Für dich“ (sonst nur von anerkannten Autoren)</label>
+        <label>Weitere anerkannte Sachbuch-Autoren <small>Ihre Sachbücher erscheinen in „Für dich“. Schon dabei: alle, deren Bücher im Feuilleton besprochen wurden (Perlentaucher – FAZ, SZ, Zeit, Deutschlandfunk …) oder in den Kritiken unter „Aus der Kritik“ vorkommen, dazu Yuval Noah Harari, Stefanie Stahl, Robert Habeck, Richard David Precht, Matthias Brandt, Constantin Schreiber und Rüdiger Maas. Ein Name pro Zeile oder mit Komma getrennt. Das ist eine Prüfung des Rufs, keine Prüfung der Inhalte.</small>
+          <textarea name="discover_trusted_authors" rows="3" spellcheck="false" placeholder="z. B. Mai Thi Nguyen-Kim, Harald Lesch"></textarea>
+        </label>
         <label>Anfragen pro Monat <small>Standard je Familienkonto</small>
           <input name="request_quota" type="number" min="0" max="1000" step="1">
         </label>
@@ -514,20 +517,12 @@
       <table class="stats-table">
         <thead><tr>
           <th>Konto</th>
-          <th class="num" title="Eine Reihe zählt als eine Anfrage">Anfragen</th>
-          <th class="num">Bücher</th>
-          <th class="num">Verfügbar</th>
-          <th class="num">Offen</th>
-          <th class="num" title="Abgelehnt / fehlgeschlagen">Abgel./Fehl.</th>
-          <th class="num" title="Spielzeit aller nicht abgelehnten Bücher">Spielzeit</th>
-          <th class="num" title="Platz der verfügbaren Bücher in der Bibliothek">Speicher</th>
-          <th class="num" title="Median: von der Anfrage bis verfügbar">Wartezeit</th>
+          <th class="num" title="Angefragte Bücher (eine Reihe zählt als eine Anfrage)">Bücher</th>
+          <th class="num wide-only">Verfügbar</th>
+          <th class="num wide-only" title="Spielzeit aller nicht abgelehnten Bücher">Spielzeit</th>
           <th class="num listen-col" title="Hörzeit laut Audiobookshelf und Plex">Gehört</th>
-          <th class="num listen-col" title="Gehörte Bücher (davon fertig)">Bücher gehört</th>
-          <th class="listen-col">Zuletzt gehört</th>
-          <th class="num">Englisch</th>
-          <th>Häufigstes Genre</th>
-          <th>Zuletzt</th>
+          <th>Zuletzt aktiv</th>
+          <th class="chev-col"><span class="sr-only">Details</span></th>
         </tr></thead>
         <tbody id="statsRows"></tbody>
       </table>

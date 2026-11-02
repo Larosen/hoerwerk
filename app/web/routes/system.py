@@ -33,6 +33,8 @@ def write_settings(req: Req):
             clean[k] = v if kind is str or isinstance(v, kind) and kind is not int else kind(v)
         except (TypeError, ValueError):
             raise HTTPException(400, t("Ungültiger Wert für {key}", key=k))
+    if "discover_trusted_authors" in clean:
+        clean["discover_trusted_authors"] = str(clean["discover_trusted_authors"] or "")[:4000]
     if "public_url" in clean:
         url = public_url(clean["public_url"])
         if clean["public_url"].strip() and not url:
