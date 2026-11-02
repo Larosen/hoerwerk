@@ -303,8 +303,8 @@ function renderResults(): void {
           el("span", { class: "muted" }, [r.indexer, ...(r.also || [])].join(", ")),
           r.details ? el("a", { href: r.details, target: "_blank", rel: "noopener noreferrer" }, t("Details")) : null)),
       el("td", { class: "c-num" }, fmtSize(r.size)),
-      el("td", { class: "c-num", title: r.published ? new Date(r.published * 1000).toLocaleString(LOCALE) : "" }, fmtAge(r.published)),
-      el("td", { class: "c-num" }, r.grabs ?? "–"),
+      el("td", { class: "c-num", "data-label": t("Alter"), title: r.published ? new Date(r.published * 1000).toLocaleString(LOCALE) : "" }, fmtAge(r.published)),
+      el("td", { class: "c-num", "data-label": "Grabs" }, r.grabs ?? "–"),
       el("td", { class: "c-act" }, btn)));
   }
 }

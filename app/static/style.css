@@ -784,3 +784,19 @@ legend .help-q { margin-left: 6px; vertical-align: 1px; }
 .progress-mini > span { display: block; height: 100%; background: var(--accent); }
 table.stats-table td.name a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
 table.stats-table td.name a:hover { text-decoration-color: currentColor; }
+
+/* release lists on a phone: one card per release – the full name across the width, the numbers below it */
+@media (max-width: 640px) {
+  table.results { table-layout: auto; }
+  table.results thead { display: none; }
+  table.results, table.results tbody { display: block; }
+  table.results tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+  table.results td { display: block; padding: 0; border: 0; width: auto; }
+  table.results td:first-child { flex: 1 0 100%; min-width: 0; }
+  table.results td.empty-row { flex: 1 0 100%; padding: 12px 0; }
+  table.results .c-num, table.results .c-num:nth-child(3), table.results .c-num:nth-child(4) { display: block; width: auto; font-size: 12.5px; }
+  table.results .c-num[data-label]::before { content: attr(data-label) " "; color: var(--muted); }
+  table.results td.c-verdict { flex: 1 1 0; min-width: 0; }
+  table.results .c-act { width: auto; margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .rel-title, #releasesDialog .c-title span:first-child { word-break: normal; overflow-wrap: anywhere; }
+}

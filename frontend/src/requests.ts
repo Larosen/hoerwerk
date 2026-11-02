@@ -368,9 +368,9 @@ function releaseRow(r: BookRequest, x: JudgedRelease): HTMLTableRowElement {
     el("td", { class: "c-title" }, el("span", { title: x.title }, x.title),
       el("span", { class: "muted small" }, [x.indexer, x.format, x.language].filter(Boolean).join(" · "))),
     el("td", { class: "c-num" }, fmtSize(x.size)),
-    el("td", { class: "c-num", title: x.published ? new Date(x.published * 1000).toLocaleString(LOCALE) : "" }, fmtAge(x.published)),
-    el("td", { class: "c-num" }, v.kbps === null ? "–" : String(v.kbps)),
-    el("td", {}, v.ok ? el("span", { class: "verdict ok" }, icon("check"), v.notes.join(" · ") || t("passt"))
+    el("td", { class: "c-num", "data-label": t("Alter"), title: x.published ? new Date(x.published * 1000).toLocaleString(LOCALE) : "" }, fmtAge(x.published)),
+    el("td", { class: "c-num", "data-label": "kbit/s" }, v.kbps === null ? "–" : String(v.kbps)),
+    el("td", { class: "c-verdict" }, v.ok ? el("span", { class: "verdict ok" }, icon("check"), v.notes.join(" · ") || t("passt"))
       : el("span", { class: "verdict no" }, v.reason || "")),
     el("td", { class: "c-act" }, grab, block));
 }

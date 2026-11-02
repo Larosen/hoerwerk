@@ -1254,5 +1254,6 @@
  "{n} fertig": "{n} finished",
  "{n} verknüpfte Konten": "{n} linked accounts",
  "Älteste zuerst": "Oldest first",
- "‹ Alle Konten": "‹ All accounts"
+ "‹ Alle Konten": "‹ All accounts",
+ "{name}: zu viele Anfragen – Pause bis {time}": "{name}: too many requests – paused until {time}"
 }
