@@ -46,7 +46,8 @@ SUSPICIOUS_EXTS = (".exe", ".com", ".bat", ".cmd", ".scr", ".pif", ".msi", ".dll
                    ".app", ".dmg", ".iso", ".reg", ".docm", ".xlsm")
 CANDIDATE_KEYS = ("asin", "title", "subtitle", "authors", "narrators", "series", "series_position",
                   "runtime_min", "release_date", "cover_url", "match", "region", "url", "format_type",
-                  "publisher", "language", "genres", "description", "source", "isbn")
+                  "publisher", "language", "genres", "description", "source", "isbn", "mismatch",
+                  "request_id", "request_user")
 EDITABLE = ("title", "subtitle", "authors", "narrators", "series", "series_position", "release_date",
             "publisher", "genres", "description", "language")
 SIDECARS = ("desc.txt", "reader.txt", "cover.jpg", "cover.png", absm.METADATA_FILE)
@@ -355,7 +356,7 @@ class Pipeline:
         job = self.get(job_id)
         hints = {**job.hints, "query": audible.clean_query(query) or query, "title": "", "author": "",
                  "asin": audible.find_asin(query)}
-        job.candidates = self.providers.search(hints, region)[:12]
+        job.candidates = self._demote_mismatches(job, self.providers.search(hints, region))[:12]
         job.region = region
         job.say(t("{n} Treffer für „{query}“ ({region})", n=len(job.candidates), query=query, region=region))
         self.save()
@@ -780,6 +781,14 @@ class Pipeline:
         threshold = float(s.get("ab_threshold") or 0.8)
         ranked = self._with_requests(job, ranked, region)
         ranked = self._demote_mismatches(job, ranked)
+        if ranked and all(c.get("mismatch") for c in ranked[:5]):
+            # the shop found books – but none of them is this one (other volume, language, runtime): search by content
+            better = self._search_by_content(job, region)
+            if better:
+                ids = {candidate_id(c) for c in better}
+                ranked = better + [c for c in ranked if candidate_id(c) not in ids]
+            else:
+                job.say(t("Kein Treffer passt zu den Dateien – bitte selbst suchen oder eintragen"))
         job.candidates = ranked[:12]
         job.region = region
         best = prov.auto_match(ranked, threshold) if mode == "auto" else None
@@ -809,6 +818,20 @@ class Pipeline:
             self.on_wrong_download(int(rid), os.path.basename(job.source), why)
         except Exception as e:  # noqa: BLE001
             applog.warn(t("Anfragen: {error}", error=e), "Anfragen")
+
+    def _search_by_content(self, job: Job, region: str) -> List[dict]:
+        """Shorter searches from the folder's own words (without labels, the title after the volume number);
+        the first one that finds something fitting wins."""
+        for q in audible.fallback_queries(job.hints.get("query") or "", job.hints):
+            try:
+                found, _ = self.providers.lookup({**job.hints, "query": q, "title": "", "asin": None}, region)
+            except Exception:  # noqa: BLE001 – one search less
+                continue
+            fitting = [c for c in self._demote_mismatches(job, found) if not c.get("mismatch")]
+            if fitting:
+                job.say(t("Passende Treffer mit „{query}“", query=q))
+                return fitting
+        return []
 
     def _demote_mismatches(self, job: Job, ranked: List[dict]) -> List[dict]:
         """Candidates the download clearly can't be (other volume, language, runtime) go down, never auto."""

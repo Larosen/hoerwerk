@@ -281,6 +281,32 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(j.candidates[0]["asin"], "B0BISS0005", j.log)
         self.assertTrue(any("Passt nicht" in line for line in j.log))
 
+    def test_only_wrong_volumes_found_then_search_by_content(self):
+        """Real case (7.9.1, after "Entfernen"): the shop search found only other Twilight volumes and editions.
+        They are marked as not fitting (also in the browser), and the shorter search finds the right book."""
+        twilight = [product("B004V0T0VK", "Twilight", ["Stephenie Meyer"], 12.0, language="English",
+                            series="The Twilight Saga", series_position="1"),
+                    product("B0058HTSN0", "Bis(s) zum Morgengrauen", ["Stephenie Meyer"], 13.0,
+                            series="Twilight", series_position="1")]
+        right = product("B0BISS0005", "Bis(s) zum ersten Sonnenstrahl", ["Stephenie Meyer"], 4.0,
+                        series="Twilight", series_position="5")
+
+        class ShopSearch(FakeClient):
+            def search(self, region, keywords="", title="", author="", limit=10):
+                text = " ".join([keywords, title])
+                return [dict(b) for b in (twilight if "Twilight" in text or "Biss" in text else [right])]
+        self.client = ShopSearch(twilight + [right])
+        self.p = self.make()
+        name = "Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl-4CD-mp3-DE-2010"
+        tone(os.path.join(self.inbox, name, "a.mp3"), 4.0)
+        j = self.run_all()[0]
+        self.assertEqual(j.candidates[0]["asin"], "B0BISS0005", j.log)
+        self.assertTrue(any("zum ersten Sonnenstrahl" in line for line in j.log))
+        shown = j.to_dict(full=False)["candidates"]                     # what the browser gets
+        wrong = [c for c in shown if c["asin"] == "B004V0T0VK"][0]
+        self.assertIn("anderer Band", wrong["mismatch"])
+        self.assertIsNone(shown[0]["mismatch"])
+
     def test_existing_author_folder_is_reused(self):
         os.makedirs(os.path.join(self.lib, "Storm, Theodor"))
         tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "a.mp3"), 4.0)

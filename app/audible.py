@@ -573,6 +573,9 @@ def fallback_queries(query: str, hints: dict) -> List[str]:
         rest = [w for w in m.group(1).split() if w.strip(",") not in author.replace(",", " ").split()]
         if len(rest) >= 2:
             out.append(" ".join(rest[:6] + ([surname] if surname else [])))
+        if len(rest) >= 3:
+            # without its first word: "Biss" in the files, "Bis(s)" in the shop
+            out.append(" ".join(rest[1:6] + ([surname] if surname else [])))
     if len(words) > 3:
         out.append(" ".join(words[-3:]))
     return list(dict.fromkeys(q for q in out if q and q != query))

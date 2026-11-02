@@ -1203,5 +1203,7 @@
  "passende neue vor. Nur du und die Admins sehen deine Hörzeit.": ". Only you and the admins see your listening time.",
  "und die Hörzeit in der": "and the listening time in",
  "verbinden.": ".",
- "{books} · {n} verknüpfte Konten": "{books} · {n} linked accounts"
+ "{books} · {n} verknüpfte Konten": "{books} · {n} linked accounts",
+ "Kein Treffer passt zu den Dateien – bitte selbst suchen oder eintragen": "No match fits the files – please search or enter it yourself",
+ "Passende Treffer mit „{query}“": "Fitting matches with “{query}”"
 }
