@@ -322,6 +322,15 @@ function renderInbox(d: AudiobooksStatus): void {
       el("div", { class: "kv" }, el("span", {}, t("Ablegen")), el("span", {}, q(d.queues.io))));
   }
   if (d.scan_note) box.append(el("div", { class: "muted small" }, d.scan_note));
+  if (d.ignored?.length) {
+    const back = el("button", { type: "button", class: "btn small ghost" }, t("Wieder aufnehmen"));
+    back.addEventListener("click", async () => {
+      try { await api("POST", "/api/inbox/unignore", {}); toast(t("Wird beim nächsten Prüfen wieder aufgenommen")); pollBooks(true); }
+      catch (e) { toast(errMsg(e), true); }
+    });
+    box.append(el("div", { class: "kv" }, el("span", {}, t("Ignoriert")),
+      el("span", { title: d.ignored.join("\n") }, plural(d.ignored.length, t("1 Ordner"), t("{n} Ordner", { n: d.ignored.length }))), back));
+  }
   if (d.waiting.length) {
     box.append(el("div", { class: "small" }, t("Wird noch kopiert / wartet auf Ruhe:")),
       el("ul", { class: "waiting" }, d.waiting.map((w) => el("li", {}, w.name))));
@@ -389,10 +398,13 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
     }, t("Korrigieren")));
   }
   if (!isActive(j.status)) {
-    tools.append(el("button", {
-      class: "btn small ghost", title: t("Aus der Liste entfernen (Dateien bleiben, wie sie sind)"),
-      onclick: () => removeBook(j),
-    }, t("Entfernen")));
+    if (j.origin === "inbox" && j.status !== "done") {
+      // still in the inbox: really delete it – or leave it there and never pick it up again
+      tools.append(el("button", { class: "btn small ghost danger", onclick: () => deleteFromInbox(j) }, t("Aus Eingang löschen")),
+        el("button", { class: "btn small ghost", onclick: () => ignoreInInbox(j) }, t("Ignorieren")));
+    } else {
+      tools.append(el("button", { class: "btn small ghost", onclick: () => removeBook(j) }, t("Aus Liste entfernen")));
+    }
   }
   if (j.status !== "review") {
     tools.append(el("button", {
@@ -600,9 +612,28 @@ async function bookAction(j: AudiobookJob, action: "cancel" | "retry"): Promise<
 }
 
 async function removeBook(j: AudiobookJob): Promise<void> {
-  const inInbox = j.origin === "inbox" && ["review", "cancelled"].includes(j.status);
-  if (inInbox && !(await confirmBox(t("Aus der Liste entfernen? Liegt der Ordner noch im Eingang, wird er beim nächsten Prüfen erneut aufgenommen."), t("Entfernen")))) return;
   try { await api("DELETE", `/api/audiobooks/${j.id}`); books.open.delete(j.id); pollBooks(true); } catch (e) { toast(errMsg(e), true); }
+}
+
+/** Delete the download itself (folder and files) from the inbox – it can't come back. */
+async function deleteFromInbox(j: AudiobookJob): Promise<void> {
+  if (!(await confirmBox(t("„{name}“ endgültig aus dem Eingang löschen? Die Dateien sind danach weg.", { name: j.name }), t("Löschen")))) return;
+  try {
+    await api("POST", `/api/audiobooks/${j.id}/delete-source`);
+    books.open.delete(j.id);
+    toast(t("Gelöscht: {name}", { name: j.name }));
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+/** Leave the download in the inbox, but Hörwerk won't pick it up again. */
+async function ignoreInInbox(j: AudiobookJob): Promise<void> {
+  try {
+    await api("POST", `/api/audiobooks/${j.id}/ignore`);
+    books.open.delete(j.id);
+    toast(t("Wird ab jetzt ignoriert: {name}", { name: j.name }));
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
 }
 
 let pathTimer: number | undefined;

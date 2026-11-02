@@ -309,6 +309,7 @@ class Pipeline:
                         for p, v in list(self.seen.items()) if not self._known(p)],
             "jobs": jobs,
             "review": sum(1 for j in jobs if j["status"] == "review"),
+            "ignored": sorted(self.ignored()),
         }
 
     def get(self, job_id: str) -> Job:
@@ -516,6 +517,66 @@ class Pipeline:
             self.engine.discard(job.id)
         self.save()
 
+    def _inbox_entry(self, job: Job) -> str:
+        """The top-level inbox entry this job came from – only that may be deleted or ignored, nothing else."""
+        if job.origin != "inbox" or not self.inbox:
+            raise ValueError(t("Nur für Einträge aus dem Eingang"))
+        real = os.path.realpath(job.source)
+        if os.path.dirname(real) != self.inbox or os.path.islink(job.source):
+            raise ValueError(t("Teil eines größeren Downloads – bitte den ganzen Ordner im Eingang löschen"))
+        return real
+
+    def delete_from_inbox(self, job_id: str) -> str:
+        """Delete the download itself (folder or file) from the inbox – and its entry. Returns the name."""
+        with self.lock:
+            job = self.get(job_id)
+            if job.status in ACTIVE:
+                raise ValueError(t("Läuft noch – erst abbrechen"))
+            path = self._inbox_entry(job)
+            gone = [j for j in self.jobs if j.origin == "inbox" and os.path.realpath(j.source) == path]
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        elif os.path.exists(path):
+            os.remove(path)
+        with self.lock:
+            for j in gone:
+                self._cleanup_work(j)
+                if j in self.jobs:
+                    self.jobs.remove(j)
+            self.seen.pop(path, None)
+        if self.engine:
+            for j in gone:
+                self.engine.discard(j.id)
+        self.save()
+        applog.info(t("Aus dem Eingang gelöscht"), os.path.basename(path))
+        return os.path.basename(path)
+
+    def ignored(self) -> Dict[str, float]:
+        data = self.db.get("inbox_ignored") or {}
+        return data if isinstance(data, dict) else {}
+
+    def ignore(self, job_id: str) -> str:
+        """Leave the download where it is, but never pick it up again (until un-ignored)."""
+        with self.lock:
+            job = self.get(job_id)
+            if job.status in ACTIVE:
+                raise ValueError(t("Läuft noch – erst abbrechen"))
+            name = os.path.basename(self._inbox_entry(job))
+        self.db.put("inbox_ignored", {**self.ignored(), name: _now()})
+        self.remove(job_id)
+        applog.info(t("Wird im Eingang ignoriert"), name)
+        return name
+
+    def unignore(self, name: str = "") -> int:
+        """Pick an ignored download up again (or all of them)."""
+        ignored = self.ignored()
+        keep = {} if not name else {k: v for k, v in ignored.items() if k != name}
+        self.db.put("inbox_ignored", keep)
+        with self.lock:
+            self._force_scan = True
+            self.wake.notify_all()
+        return len(ignored) - len(keep)
+
     def clear_finished(self) -> None:
         with self.lock:
             self.jobs = [j for j in self.jobs if j.status != "done"]
@@ -523,7 +584,9 @@ class Pipeline:
 
     # -- internals ---------------------------------------------------------
     def _known(self, path: str) -> bool:
-        """Inbox entries that already have a job (cancelled ones stay known until removed)."""
+        """Inbox entries that already have a job (cancelled ones stay known until removed) – or are ignored."""
+        if os.path.dirname(path) == self.inbox and os.path.basename(path) in self.ignored():
+            return True
         with self.lock:
             return any(j.source == path or j.source.startswith(path + os.sep) for j in self.jobs
                        if j.status != "done" and j.origin == "inbox")
@@ -625,6 +688,10 @@ class Pipeline:
             if p not in present:
                 self.seen.pop(p, None)
                 self.ready_at.pop(p, None)
+        ignored = self.ignored()
+        if ignored and any(os.path.join(self.inbox, n) not in present for n in ignored):
+            # deleted by hand meanwhile: no need to remember it
+            self.db.put("inbox_ignored", {n: v for n, v in ignored.items() if os.path.join(self.inbox, n) in present})
         self.scan_note = (t("1 neues Hörbuch") if len(added) == 1 else t("{n} neue Hörbücher", n=len(added))) if added else t("Nichts Neues")
         self.notify()
         return added

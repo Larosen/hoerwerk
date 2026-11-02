@@ -374,6 +374,39 @@ class PipelineTest(unittest.TestCase):
                         break
                     self.assertTrue(c.get("mismatch"), (name, c["title"]))
 
+    def test_delete_from_inbox_and_ignore(self):
+        """"Entfernen" only took the entry away – the folder came back at the next check. Now: delete it for real,
+        or ignore it (stays on disk, never picked up again, until un-ignored)."""
+        for name in ("Unbekannt - Erstes Rätsel", "Unbekannt - Zweites Rätsel"):
+            tone(os.path.join(self.inbox, name, "a.mp3"), 2.0)
+        first, second = sorted(self.run_all(), key=lambda j: j.name)
+        self.assertEqual((first.status, second.status), ("review", "review"))
+        self.assertEqual(self.p.delete_from_inbox(first.id), "Unbekannt - Erstes Rätsel")
+        self.assertFalse(os.path.exists(os.path.join(self.inbox, "Unbekannt - Erstes Rätsel")))
+        self.assertEqual(self.p.ignore(second.id), "Unbekannt - Zweites Rätsel")
+        self.assertTrue(os.path.isdir(os.path.join(self.inbox, "Unbekannt - Zweites Rätsel")))     # still there
+        self.assertEqual(self.p.jobs, [])
+        self.assertEqual(self.p.scan_once(settle=0), [])                                            # neither comes back
+        self.assertEqual(self.p.status()["ignored"], ["Unbekannt - Zweites Rätsel"])
+        self.assertEqual(self.p.unignore(), 1)
+        again = self.p.scan_once(settle=0)
+        self.assertEqual([j.name for j in again], ["Unbekannt - Zweites Rätsel"])
+
+    def test_delete_only_top_level_inbox_entries(self):
+        """Nothing outside the inbox, nothing inside a bigger download, nothing from the library."""
+        tone(os.path.join(self.inbox, "Unbekannt - Kram", "a.mp3"), 2.0)
+        j = self.run_all()[0]
+        j.source = os.path.join(self.inbox, "Unbekannt - Kram", "a.mp3")          # e.g. one volume of a pack
+        with self.assertRaises(ValueError):
+            self.p.delete_from_inbox(j.id)
+        j.source = self.lib
+        with self.assertRaises(ValueError):
+            self.p.delete_from_inbox(j.id)
+        j.source, j.origin = os.path.join(self.inbox, "Unbekannt - Kram"), "library"
+        with self.assertRaises(ValueError):
+            self.p.ignore(j.id)
+        self.assertTrue(os.path.isdir(self.lib) and os.path.isdir(os.path.join(self.inbox, "Unbekannt - Kram")))
+
     def test_existing_author_folder_is_reused(self):
         os.makedirs(os.path.join(self.lib, "Storm, Theodor"))
         tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "a.mp3"), 4.0)

@@ -85,6 +85,7 @@ interface QueueStat { workers: number; running: number; waiting: number }
 interface AudiobooksStatus {
   enabled: boolean; inbox: string; library: string; inbox_ok: boolean; library_ok: boolean;
   last_scan: number | null; scan_note: string; waiting: { name: string; since: number; ready_in: number }[];
+  ignored?: string[];
   jobs: AudiobookJob[]; review: number; queues?: { encode: QueueStat; io: QueueStat };
 }
 interface LibraryStats { books: number; m4b: number; other: number; last_scan: number | null; scanning: boolean }
@@ -306,6 +307,65 @@ const SOURCE_NAMES: Record<string, string> = {
 };
 
 translateDom(document.body);
+
+// ------------------------------------------------------------------------- //
+// Help behind a small "?": explanations are there for whoever needs them, out of the way for everyone else.
+// Short hints ("Stunden", "kommagetrennt") stay visible on the label's own line.
+// ------------------------------------------------------------------------- //
+const SHORT_HINT = 26;
+
+function helpToggle(content: Node[]): [HTMLButtonElement, HTMLElement] {
+  const tip = el("span", { class: "help-tip", hidden: true }, ...content);
+  const btn = el("button", { type: "button", class: "help-q", "aria-label": t("Erklärung"), "aria-expanded": "false",
+    title: t("Erklärung") }, "?");
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    tip.hidden = !tip.hidden;
+    btn.setAttribute("aria-expanded", String(!tip.hidden));
+  });
+  return [btn, tip];
+}
+
+/** The text of a label (everything before its field) on one line, with its hint or its "?" next to it. */
+function labelLine(label: HTMLElement): HTMLElement {
+  const existing = label.querySelector<HTMLElement>(":scope > .label-line");
+  if (existing) return existing;
+  const line = el("span", { class: "label-line" });
+  const lead: ChildNode[] = [];
+  for (const n of Array.from(label.childNodes)) {
+    if (n instanceof HTMLElement && n.matches("input, select, textarea, div, button:not(.help-q), .seg, .row")) break;
+    lead.push(n);
+  }
+  label.insertBefore(line, lead[0] || label.firstChild);
+  for (const n of lead) line.append(n);
+  return line;
+}
+
+function initHelp(root: ParentNode = document.body): void {
+  for (const small of Array.from(root.querySelectorAll<HTMLElement>("label:not(.check) > small"))) {
+    const label = small.parentElement as HTMLElement;
+    const line = labelLine(label);
+    if ((small.textContent || "").trim().length <= SHORT_HINT) {
+      small.classList.add("hint");                       // a unit or a format: stays visible, same line
+      continue;
+    }
+    const [btn, tip] = helpToggle(Array.from(small.childNodes));
+    small.replaceWith(btn);
+    line.after(tip);
+  }
+  // the introduction of a section: behind a "?" at its heading
+  for (const legend of Array.from(root.querySelectorAll<HTMLElement>("fieldset > legend"))) {
+    const p = legend.nextElementSibling as HTMLElement | null;
+    if (!p || !p.matches("p.muted.small") || p.id || p.dataset.keep !== undefined) continue;
+    const [btn, tip] = helpToggle(Array.from(p.childNodes));
+    tip.classList.add("help-block");
+    legend.append(btn);
+    p.replaceWith(tip);
+  }
+}
+
+initHelp();
 
 for (const btn of document.querySelectorAll<HTMLElement>("dialog [data-close]")) {
   btn.addEventListener("click", () => btn.closest("dialog")?.close());
