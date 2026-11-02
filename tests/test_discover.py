@@ -131,6 +131,13 @@ class DiscoverTest(unittest.TestCase):
         self.items("foryou")
         self.assertEqual(len(self.pt_asked), asked)                    # remembered, not asked again
         self.assertEqual(discover.pt_slug("Rüdiger Maas"), "ruediger-maas")
+        # the fixed list: the owner's names and many more – nobody twice, no empty entries
+        from trusted_authors import TRUSTED_AUTHORS
+        for name in ("Stefanie Stahl", "Mai Thi Nguyen-Kim", "Christopher Clark", "Giulia Enders", "Hans Rosling"):
+            self.assertIn(name, TRUSTED_AUTHORS)
+        self.assertGreater(len(TRUSTED_AUTHORS), 150)
+        self.assertEqual(len(TRUSTED_AUTHORS), len(set(TRUSTED_AUTHORS)))
+        self.assertTrue(all(a.strip() == a and a for a in TRUSTED_AUTHORS))
         self.assertFalse(discover.pt_has_books("<h1>Buchautor-Übersicht</h1> 12 Bücher"))
 
     def test_review_titles(self):

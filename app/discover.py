@@ -34,6 +34,7 @@ import applog
 import audible
 import db as dbm
 from i18n import t
+from trusted_authors import TRUSTED_AUTHORS
 
 MAX_AGE = 24 * 3600
 SECTIONS = ("foryou", "genre", "critics")
@@ -66,12 +67,10 @@ NONFICTION = {
     "Business & Careers", "Science & Engineering",
 }
 HIDDEN_GENRES = {"Erotik", "Erotica"}
-# Non-fiction authors whose books may appear outside a chosen non-fiction genre ("Für dich"): the established
-# ones. Besides this list (and the admin's own in the settings) an author counts when Perlentaucher has an
-# author page with books reviewed in the Feuilleton (FAZ, SZ, Zeit, DLF …) or when the review feeds name them.
+# Non-fiction may appear outside a chosen non-fiction genre ("Für dich") when its author is an established one:
+# on the list in trusted_authors.py (or the admin's own in the settings), with a Perlentaucher author page with
+# books reviewed in the Feuilleton (FAZ, SZ, Zeit, DLF …), or named in the review feeds.
 # That is a reputation test, not a fact check – but it keeps out what no serious paper ever reviewed.
-TRUSTED_AUTHORS = ("Yuval Noah Harari", "Stefanie Stahl", "Robert Habeck", "Richard David Precht", "Matthias Brandt",
-                   "Constantin Schreiber", "Rüdiger Maas")
 PT_AUTHOR_URL = "https://www.perlentaucher.de/autor/{slug}.html"
 PT_AUTHOR_DAYS = 60       # how long a Perlentaucher answer is remembered
 PT_LOOKUPS = 25           # new author lookups per list (gently – the rest follow next time)

@@ -1239,7 +1239,6 @@
  "{n} Einträge aufgeräumt": "{n} entries tidied up",
  "{n} bleiben, bis Hörwerk sie übernommen hat": "{n} stay until Hörwerk has taken them over",
  "Alle Sachbücher in „Für dich“ (sonst nur von anerkannten Autoren)": "All non-fiction in “For you” (otherwise only from established authors)",
- "Ihre Sachbücher erscheinen in „Für dich“. Schon dabei: alle, deren Bücher im Feuilleton besprochen wurden (Perlentaucher – FAZ, SZ, Zeit, Deutschlandfunk …) oder in den Kritiken unter „Aus der Kritik“ vorkommen, dazu Yuval Noah Harari, Stefanie Stahl, Robert Habeck, Richard David Precht, Matthias Brandt, Constantin Schreiber und Rüdiger Maas. Ein Name pro Zeile oder mit Komma getrennt. Das ist eine Prüfung des Rufs, keine Prüfung der Inhalte.": "Their non-fiction appears in “For you”. Already included: everyone whose books were reviewed in the arts pages (Perlentaucher – FAZ, SZ, Zeit, Deutschlandfunk …) or who appears in the reviews under “From the critics”, plus Yuval Noah Harari, Stefanie Stahl, Robert Habeck, Richard David Precht, Matthias Brandt, Constantin Schreiber and Rüdiger Maas. One name per line or separated by commas. This checks reputation, not content.",
  "Weitere anerkannte Sachbuch-Autoren": "More established non-fiction authors",
  "z. B. Mai Thi Nguyen-Kim, Harald Lesch": "e.g. Mai Thi Nguyen-Kim, Harald Lesch",
  "1 Konto verknüpft": "1 account linked",
@@ -1259,5 +1258,6 @@
  "davon schon da": "already here",
  "noch nicht aktiv": "not active yet",
  "{h} Spielzeit": "{h} running time",
- "{n} Konten verknüpft": "{n} accounts linked"
+ "{n} Konten verknüpft": "{n} accounts linked",
+ "Ihre Sachbücher erscheinen in „Für dich“. Schon dabei: alle, deren Bücher im Feuilleton besprochen wurden (Perlentaucher – FAZ, SZ, Zeit, Deutschlandfunk …) oder in den Kritiken unter „Aus der Kritik“ vorkommen, dazu eine feste Liste von rund 200 Autoren seriöser Sachbücher der letzten zehn Jahre (z. B. Yuval Noah Harari, Stefanie Stahl, Mai Thi Nguyen-Kim, Harald Lesch, Christopher Clark, Giulia Enders). Ein Name pro Zeile oder mit Komma getrennt. Das ist eine Prüfung des Rufs, keine Prüfung der Inhalte.": "Their non-fiction appears in “For you”. Already included: everyone whose books were reviewed in the arts pages (Perlentaucher – FAZ, SZ, Zeit, Deutschlandfunk …) or who appears in the reviews under “From the critics”, plus a fixed list of about 200 authors of serious non-fiction from the last ten years (e.g. Yuval Noah Harari, Stefanie Stahl, Mai Thi Nguyen-Kim, Harald Lesch, Christopher Clark, Giulia Enders). One name per line or separated by commas. This checks reputation, not content."
 }
