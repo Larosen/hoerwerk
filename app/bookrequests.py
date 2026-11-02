@@ -475,6 +475,16 @@ class Requests:
         self.search_soon(req["id"])
         return req
 
+    def wrong_download(self, rid: int, release_name: str, why: str) -> None:
+        """The inbox found that a download for this request is another book: block it, search on."""
+        req = self.get(rid)
+        if not req or req["status"] not in OPEN:
+            return
+        req["release"] = req.get("release") or release_name
+        if release_name and release_name != req["release"]:
+            req["blocked"] = ((req.get("blocked") or []) + [release_name[:300]])[-50:]
+        self._failed_release(req, t("Falscher Inhalt geladen: {why}", why=why))
+
     # -- following the download --------------------------------------------
     def interval_hours(self) -> int:
         return max(1, int(self.settings().get("wanted_interval_hours") or 12))

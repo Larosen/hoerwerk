@@ -494,7 +494,9 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
         (c.authors || []).join(", "),
         narrators.length ? t("Sprecher: {names}", { names: narrators.slice(0, 3).join(", ") + (narrators.length > 3 ? " …" : "") }) : "",
       ].filter(Boolean).join(" · ")),
+      c.mismatch ? el("div", { class: "cand-warn" }, icon("alert"), t("Passt vermutlich nicht: {why}", { why: c.mismatch })) : null,
       el("div", { class: "cand-meta" },
+        langTag(c),
         c.request_id ? el("span", { class: "rtag req-pending", title: t("Dieses Buch wurde angefragt – Übernehmen erfüllt die Anfrage") }, t("Anfrage von {name}", { name: c.request_user || "–" })) : null,
         c.series ? el("span", { class: "tag" }, `${c.series}${c.series_position ? " #" + c.series_position : ""}`) : null,
         c.format_type && c.format_type !== "unabridged" ? el("span", { class: "tag soft" }, c.format_type === "abridged" ? t("gekürzt") : c.format_type) : null,
@@ -510,7 +512,7 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
       el("span", { class: "score " + (score >= 80 ? "hi" : score >= 60 ? "mid" : "lo"), style: `--p:${score}%`, title: t("Übereinstimmung mit den Dateien") }, score + " %"),
       el("div", { class: "row gap" },
         el("button", { class: "btn small ghost", title: t("Angaben vor dem Übernehmen ändern"), onclick: () => manualBook(j, c) }, t("Bearbeiten …")),
-        el("button", { class: best ? "btn small primary" : "btn small accent", onclick: () => chooseBook(j, c) }, t("Übernehmen")))));
+        el("button", { class: best && !c.mismatch ? "btn small primary" : "btn small accent", onclick: () => chooseBook(j, c) }, t("Übernehmen")))));
 }
 
 async function chooseBook(j: AudiobookJob, c: Book): Promise<void> {

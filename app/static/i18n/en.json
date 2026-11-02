@@ -1154,5 +1154,10 @@
  "{n} Bücher": "{n} books",
  "{n} Tage": "{n} days",
  "{n} min": "{n} min",
- "{n} noch offen": "{n} still open"
+ "{n} noch offen": "{n} still open",
+ "Anfrage sucht weiter, dieses Release ist gesperrt": "The request keeps searching, this release is blocked",
+ "Falscher Inhalt geladen: {why}": "Wrong content downloaded: {why}",
+ "Laufzeit passt nicht ({have} statt {want} min)": "running time doesn't fit ({have} instead of {want} min)",
+ "Passt nicht zu „{title}“ (ASIN {asin}): {why} – suche nach dem Inhalt": "Doesn't fit “{title}” (ASIN {asin}): {why} – searching by the content",
+ "Passt vermutlich nicht: {why}": "Probably doesn't fit: {why}"
 }

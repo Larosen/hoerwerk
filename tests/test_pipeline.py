@@ -259,6 +259,28 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual((j.hints["request_id"], linked), (9, [j]))
         self.assertNotIn("request_id", j.match)
 
+    def test_wrong_download_for_a_request_is_not_taken_as_the_requested_book(self):
+        """Real case: English "Twilight" (book 1) was requested, "Twilight-Saga 5" in German came. The ASIN of
+        the request must not decide – the request blocks the release, the files are recognised as what they are."""
+        self.client.books += [
+            product("B004V0T0VK", "Twilight", ["Stephenie Meyer"], 12.0, language="English",
+                    series="The Twilight Saga", series_position="1"),
+            product("B0BISS0005", "Biss zum ersten Sonnenstrahl", ["Stephenie Meyer"], 4.0,
+                    series="Twilight-Saga", series_position="5"),
+        ]
+        name = "Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl-4CD-mp3-DE-2010"
+        tone(os.path.join(self.inbox, name, "a.mp3"), 4.0)
+        self.p.hint_provider = lambda folder: ({"asin": "B004V0T0VK", "title": "Twilight", "author": "Stephenie Meyer",
+                                                "request_id": 7} if folder == name else None)
+        wrong = []
+        self.p.on_wrong_download = lambda rid, rel, why: wrong.append((rid, rel, why))
+        j = self.run_all()[0]
+        self.assertEqual(wrong, [(7, name, "anderer Band (5 statt 1)")])
+        self.assertNotIn("request_id", j.hints)                       # not filed as Theresa's request
+        self.assertNotEqual((j.match or {}).get("asin"), "B004V0T0VK")
+        self.assertEqual(j.candidates[0]["asin"], "B0BISS0005", j.log)
+        self.assertTrue(any("Passt nicht" in line for line in j.log))
+
     def test_existing_author_folder_is_reused(self):
         os.makedirs(os.path.join(self.lib, "Storm, Theodor"))
         tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "a.mp3"), 4.0)

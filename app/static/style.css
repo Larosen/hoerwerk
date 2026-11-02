@@ -721,3 +721,5 @@ table.stats-table td.name, table.stats-table th:first-child { position: sticky; 
 .chart-tip[hidden] { display: none; }
 .stats-months { margin: 4px 0 12px; font-size: 13px; }
 .stats-months > summary { cursor: pointer; color: var(--accent); font-weight: 550; margin-bottom: 6px; }
+.cand-warn { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--err); margin: 2px 0; }
+.cand-warn .ico { width: 14px; height: 14px; flex: none; }

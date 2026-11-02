@@ -22,6 +22,7 @@ import library
 import links
 import packs
 import providers as prov
+import releases
 import tagger
 from meta import cache as meta_cache
 from natsort import natural_key
@@ -216,6 +217,8 @@ class Pipeline:
         # open book requests [{id, user, key, book}] and "this job belongs to a request now" (set by the app)
         self.open_requests: Callable[[], list] = lambda: []
         self.on_request: Callable[["Job"], None] = lambda job: None
+        # a download for a request turned out to be another book: (request id, folder name, why)
+        self.on_wrong_download: Callable[[int, str, str], None] = lambda rid, name, why: None
         self.engine = engine                   # Engine: runs the stages (None: tests call process())
         self.notify = notify or (lambda: None)  # live updates for the browser
         self.hint_provider = hint_provider     # search info for folders that came from a download
@@ -763,10 +766,20 @@ class Pipeline:
         region = job.region or s.get("ab_region", "de")
         job.say(t("Suche bei Audible ({region}) …", region=region))
         ranked, notes = self.providers.lookup(job.hints, region)
+        if job.hints.get("asin") and ranked:
+            # the ASIN of the download (or of the requested book) – but is that really what came?
+            why = releases.mismatch(job.name, ranked[0], job.duration)
+            if why:
+                job.say(t("Passt nicht zu „{title}“ (ASIN {asin}): {why} – suche nach dem Inhalt", title=ranked[0]["title"],
+                          asin=job.hints["asin"], why=why))
+                self._wrong_request_download(job, why)
+                job.hints["asin"] = None
+                ranked, notes = self.providers.lookup(job.hints, region)
         for note in notes:
             job.say(note)
         threshold = float(s.get("ab_threshold") or 0.8)
         ranked = self._with_requests(job, ranked, region)
+        ranked = self._demote_mismatches(job, ranked)
         job.candidates = ranked[:12]
         job.region = region
         best = prov.auto_match(ranked, threshold) if mode == "auto" else None
@@ -785,6 +798,29 @@ class Pipeline:
         else:
             job.say(t("Kein Treffer"))
         self.save()
+
+    def _wrong_request_download(self, job: Job, why: str) -> None:
+        """Downloaded for a request, but it is another book: the request blocks this release and searches on."""
+        rid = job.hints.pop("request_id", None)
+        if not rid:
+            return
+        job.say(t("Anfrage sucht weiter, dieses Release ist gesperrt"))
+        try:
+            self.on_wrong_download(int(rid), os.path.basename(job.source), why)
+        except Exception as e:  # noqa: BLE001
+            applog.warn(t("Anfragen: {error}", error=e), "Anfragen")
+
+    def _demote_mismatches(self, job: Job, ranked: List[dict]) -> List[dict]:
+        """Candidates the download clearly can't be (other volume, language, runtime) go down, never auto."""
+        out = []
+        for c in ranked:
+            why = releases.mismatch(job.name, c, job.duration)
+            if why:
+                match = c.get("match") or {}
+                c = {**c, "mismatch": why, "match": {**match, "score": round(float(match.get("score") or 0) * 0.5, 3)}}
+            out.append(c)
+        out.sort(key=lambda b: bool(b.get("mismatch")))          # stable: the shop's order stays otherwise
+        return out
 
     def _with_requests(self, job: Job, ranked: List[dict], region: str) -> List[dict]:
         """Mark candidates that are an open book request; add requested books the shop search missed."""
@@ -810,7 +846,7 @@ class Pipeline:
                 except Exception:  # noqa: BLE001 – then the request's own data
                     pass
             score = audible.score(book, job.hints)
-            if score["score"] >= 0.5:
+            if score["score"] >= 0.5 and not releases.mismatch(job.name, book, job.duration):
                 out.append({**book, "source": book.get("source") or "audible", "match": score,
                             "request_id": r["id"], "request_user": r["user"]})
         out.sort(key=lambda b: (-b["match"]["score"], b.get("format_type") != "unabridged", not b.get("request_id")))

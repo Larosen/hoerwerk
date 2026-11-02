@@ -547,6 +547,37 @@ def best_match(ranked: Sequence[dict], threshold: float) -> Optional[dict]:
     return top
 
 
+# a word glued from two ("HörbucHHamburg", "AudioBookLabel"): a label or tag in the files, not part of the title
+_GLUED = re.compile(r"^\w*[a-zäöüß][A-ZÄÖÜ]{2,}[a-zäöüß]\w*$")
+
+
+def fallback_queries(query: str, hints: dict) -> List[str]:
+    """Shorter searches when the full one finds nothing – the shop's search wants every word to match.
+
+    1. without glued label words ("HörbucHHamburg")
+    2. the title after a volume number ("Twilight Saga 5 Biss zum ersten Sonnenstrahl" -> "Biss zum ersten
+       Sonnenstrahl") with the author's surname
+    3. the last three words (the old last resort)"""
+    out: List[str] = []
+    words = (query or "").split()
+    clean = [w for w in words if not _GLUED.match(w.strip(",.;:"))]
+    if clean != words:
+        out.append(" ".join(clean))
+    surname = ""
+    author = hints.get("author") or ""
+    if author:
+        parts = author.split(",")[0].split() if "," in author else author.split()
+        surname = parts[-1] if parts else ""
+    m = re.search(r"(?:^|\s)\d{1,3}\s*[-:.]?\s+(.+)$", " ".join(clean))
+    if m:
+        rest = [w for w in m.group(1).split() if w.strip(",") not in author.replace(",", " ").split()]
+        if len(rest) >= 2:
+            out.append(" ".join(rest[:6] + ([surname] if surname else [])))
+    if len(words) > 3:
+        out.append(" ".join(words[-3:]))
+    return list(dict.fromkeys(q for q in out if q and q != query))
+
+
 def lookup(client: AudibleClient, hints: dict, region: str, limit: int = 10) -> List[dict]:
     """Search strategy: ASIN -> title+author -> keywords; results ranked."""
     asin = hints.get("asin")
@@ -563,12 +594,11 @@ def lookup(client: AudibleClient, hints: dict, region: str, limit: int = 10) -> 
     if query and len(results) < 3:
         for b in client.search(region, keywords=query, limit=limit):
             results.setdefault(b["asin"], b)
-    if not results and query:
-        # Last resort: fewer words (drop the first chunk, often the author or a number)
-        words = query.split()
-        if len(words) > 3:
-            for b in client.search(region, keywords=" ".join(words[-3:]), limit=limit):
-                results.setdefault(b["asin"], b)
+    for q in fallback_queries(query, hints) if not results else []:
+        for b in client.search(region, keywords=q, limit=limit):
+            results.setdefault(b["asin"], b)
+        if results:
+            break
     if not results and hints.get("alt_query"):
         # e.g. the term typed into the search when the release name led nowhere: then it is the query
         for b in client.search(region, keywords=hints["alt_query"], limit=limit):
