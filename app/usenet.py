@@ -343,6 +343,20 @@ class Sabnzbd:
             raise UsenetError(t("SABnzbd hat den Download nicht angenommen"))
         return ids[0]
 
+    def history_ids(self, limit: int = 500) -> List[str]:
+        """The finished downloads (completed or failed) of our category."""
+        hist = self._call(mode="history", limit=limit, category=self.category or None).get("history") or {}
+        return [str(s.get("nzo_id")) for s in hist.get("slots") or [] if s.get("nzo_id")]
+
+    def remove_history(self, ids: List[str]) -> int:
+        """Take finished downloads out of SABnzbd's history – the files stay where they are (del_files=0).
+        Only entries of our category: other categories are someone else's business."""
+        ours = set(self.history_ids())
+        todo = [i for i in dict.fromkeys(ids) if i in ours]
+        for start in range(0, len(todo), 50):
+            self._call(mode="history", name="delete", value=",".join(todo[start:start + 50]), del_files=0)
+        return len(todo)
+
     def activity(self, limit: int = 15) -> dict:
         queue = self._call(mode="queue", limit=50).get("queue") or {}
         hist = self._call(mode="history", limit=limit, category=self.category or None).get("history") or {}
@@ -584,5 +598,14 @@ class Usenet:
                           (dbm.grab_key(folder_name),))
         return dbm.loads(row["data"]) if row else None
 
-    def activity(self) -> dict:
-        return self._sab().activity()
+    def activity(self, limit: int = 15) -> dict:
+        return self._sab().activity(limit)
+
+    def clear_finished(self, ids: Optional[List[str]] = None, keep: Optional[set] = None) -> dict:
+        """Remove finished downloads from SABnzbd's history (all of our category, or just ``ids``);
+        ``keep``: entries something still waits for (a request that hasn't seen its download finish)."""
+        sab = self._sab()
+        wanted = list(ids) if ids else sab.history_ids()
+        kept = [i for i in wanted if i in (keep or set())]
+        removed = sab.remove_history([i for i in wanted if i not in (keep or set())])
+        return {"removed": removed, "kept": len(kept)}

@@ -5,7 +5,6 @@
 // ------------------------------------------------------------------------- //
 const search = {
   sources: null as Sources | null,
-  dlTimer: undefined as number | undefined,
   results: [] as Release[],
   book: null as Book | null,
 };
@@ -137,7 +136,6 @@ async function saveSources(): Promise<void> {
   }
   const lines = await Promise.all(tests.map((p) => p.catch((e: unknown) => "✗ " + errMsg(e))));
   if (lines.length) toast(lines.join(" · "), lines.some((l) => l.startsWith("✗") || l.includes(": ✗")));
-  pollDownloads(true);
 }
 
 function surname(name: string | undefined): string {
@@ -369,37 +367,8 @@ async function sendResult(r: Release, btn: HTMLButtonElement): Promise<void> {
       ...(volumes ? { volumes } : {}),
     });
     btn.textContent = t("✓ gesendet");
-    toast(t("An SABnzbd geschickt: {title}", { title: r.title }));
-    pollDownloads(true);
+    toast(t("An SABnzbd geschickt: {title} – zu sehen unter Einstellungen › Downloads", { title: r.title }));
   } catch (e) { btn.disabled = false; toast(errMsg(e), true); }
-}
-
-async function pollDownloads(force = false): Promise<void> {
-  clearTimeout(search.dlTimer);
-  const visible = !$("#viewSearch").hidden;
-  if (!visible && !force) return;
-  let data: Downloads;
-  try { data = await api<Downloads>("GET", "/api/downloads"); } catch { data = { items: [], error: t("Server nicht erreichbar") }; }
-  const list = $("#dlList");
-  list.replaceChildren();
-  $("#dlSpeed").textContent = data.speed && data.speed !== "0 " ? `${data.speed}B/s${data.paused ? " · " + t("pausiert") : ""}` : data.paused ? t("pausiert") : "";
-  if (!data.configured) list.append(el("li", { class: "empty" }, t("SABnzbd ist nicht eingerichtet.")));
-  else if (data.error) list.append(el("li", { class: "empty err" }, data.error));
-  else if (!data.items.length) list.append(el("li", { class: "empty" }, t("Keine Downloads in dieser Kategorie.")));
-  for (const d of data.items || []) {
-    const pct = Math.round((d.progress || 0) * 100);
-    const failed = d.status === "Failed";
-    list.append(el("li", { class: "job " + (failed ? "error" : d.done ? "done" : "running") },
-      el("div", { class: "job-top" },
-        el("span", { class: "job-name", title: d.name }, d.name),
-        el("span", { class: "badge " + (failed ? "error" : d.done ? "done" : "running") },
-          d.done ? (failed ? t("fehlgeschlagen") : t("fertig → Eingang")) : `${d.status} ${pct}%`)),
-      d.error ? el("div", { class: "job-msg" }, d.error)
-        : el("div", { class: "job-msg" }, [d.size, d.left && !d.done ? t("noch {time}", { time: d.left }) : "", d.finished ? fmtAgo(d.finished) : ""].filter(Boolean).join(" · ")),
-      !d.done ? el("div", { class: "bar" }, el("i", { style: `width:${pct}%` })) : null));
-  }
-  const busy = (data.items || []).some((d) => !d.done);
-  if (visible) search.dlTimer = setTimeout(pollDownloads, busy ? 3000 : 15000);
 }
 
 function initSearch(): void {
@@ -417,9 +386,9 @@ function initSearch(): void {
   $("#addIndexerBtn").addEventListener("click", () => $("#indexerRows").append(indexerRow()));
   $("#sourcesForm").addEventListener("submit", (e) => { e.preventDefault(); saveSources(); });
   document.addEventListener("viewchange", (e) => {
-    if ((e as CustomEvent<string>).detail === "search" && IS_ADMIN) { loadSources(); pollDownloads(true); }
+    if ((e as CustomEvent<string>).detail === "search" && IS_ADMIN) loadSources();
   });
-  if (!$("#viewSearch").hidden && IS_ADMIN) { loadSources(); pollDownloads(true); }
+  if (!$("#viewSearch").hidden && IS_ADMIN) loadSources();
 }
 
 initSearch();

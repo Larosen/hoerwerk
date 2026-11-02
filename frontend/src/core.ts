@@ -137,7 +137,7 @@ function initReleaseSort(sel: HTMLSelectElement, render: () => void): void {
 }
 
 interface Download {
-  name: string; status: string; progress: number; done: boolean; size: string; left: string;
+  id?: string | null; name: string; status: string; progress: number; done: boolean; size: string; left: string;
   finished: number | null; error: string | null;
 }
 interface Downloads { configured?: boolean; items: Download[]; error?: string; speed?: string; paused?: boolean }

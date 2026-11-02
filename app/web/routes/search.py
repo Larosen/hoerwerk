@@ -198,6 +198,26 @@ def downloads(req: Req):
     if not usenet.configured()["sab"]:
         return {"configured": False, "items": []}
     try:
-        return {"configured": True, **usenet.activity()}
+        limit = min(max(int(req.query.get("limit") or 15), 1), 200)
+    except ValueError:
+        limit = 15
+    try:
+        return {"configured": True, **usenet.activity(limit)}
     except UsenetError as e:
         return {"configured": True, "error": str(e), "items": []}
+
+
+@route("POST", "/api/downloads/clear")
+def clear_downloads(req: Req):
+    """Tidy SABnzbd's history: all finished downloads of our category, or the given ids. Files stay; entries a
+    request still waits for stay too (it notices the end of its download there)."""
+    usenet = req.app.usenet
+    if not usenet.configured()["sab"]:
+        raise HTTPException(400, t("SABnzbd ist nicht eingerichtet"))
+    ids = [str(i)[:100] for i in (req.get("ids") or []) if isinstance(i, (str, int))][:200]
+    try:
+        out = usenet.clear_finished(ids or None, keep=req.app.requests.waiting_downloads())
+    except UsenetError as e:
+        raise HTTPException(502, str(e))
+    req.app.audit(req, "downloads_cleared", str(out["removed"]))
+    return out

@@ -72,6 +72,7 @@ function showSettingsPage(section: string, entering: boolean): void {
   if (section === "library") showLibrarySettings();
   if (section === "users") { loadUsers(); loadListenMap(); }
   if (section === "logs") showLogs();
+  if (section === "transfers") pollDownloads(true);
   if (section === "health") runHealth();
 }
 
