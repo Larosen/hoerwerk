@@ -20,8 +20,9 @@ MONTHS = 12
 
 
 class Stats:
-    def __init__(self, db: dbm.Database, accounts, index, clock=time.time) -> None:
+    def __init__(self, db: dbm.Database, accounts, index, clock=time.time, listening=None) -> None:
         self.db = db
+        self.listening = listening               # what each account heard (Audiobookshelf / Plex) – optional
         self.accounts = accounts
         self.index = index                       # library index (root + entries) – may be None in tests
         self.clock = clock
@@ -133,9 +134,22 @@ class Stats:
                     s["bytes"] += size
                     s["wait"].append(wait)
         out = [self._finish(s) for s in users.values()]
+        heard_total = {"seconds": 0, "books": 0, "finished": 0, "linked": 0}
+        errors: List[str] = []
+        for s in out:
+            s["listen"] = None
+            if self.listening and s["id"] is not None:
+                h = self.listening.summary(s["id"], since)
+                if h["linked"]:
+                    s["listen"] = h
+                    heard_total["linked"] += 1
+                    for k in ("seconds", "books", "finished"):
+                        heard_total[k] += h[k]
+                    errors += [e for e in h["errors"] if e not in errors]
         out.sort(key=lambda s: (-s["books"], -s["minutes"], s["name"].lower()))
         lib = getattr(self.index, "entries", None)
         return {"period": period, "since": since or None, "users": out, "total": self._finish(total),
+                "listen": heard_total if self.listening else None, "listen_errors": errors[:5],
                 "months": [months[k] for k in month_keys],
                 "library_books": len(lib) if isinstance(lib, dict) else None}
 

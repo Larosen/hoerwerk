@@ -353,6 +353,39 @@ test("Statistik: je Konto, Zeitraum wählbar, Monate als Balken und als Tabelle"
   expect(errors).toEqual([]);
 });
 
+test("Hörverlauf: Audiobookshelf im Konto verbinden, Für dich sagt, wie es persönlich wird", async ({ page }) => {
+  let linked = false;
+  const sent: { username: string; password: string }[] = [];
+  await page.route("**/api/me/listening", (r) => r.fulfill({ json: {
+    available: { abs: true, plex: true },
+    links: { abs: linked ? { id: "u-1", name: "admin-abs" } : null, plex: null },
+    recent: linked ? { linked: ["abs"], seconds: 5 * 3600, books: 2, finished: 1, last: null, errors: [] } : null } }));
+  await page.route("**/api/me/listening/abs", (r) => {
+    const body = r.request().postDataJSON();
+    sent.push(body);
+    if (body.password !== "richtig") return r.fulfill({ status: 400, json: { error: "Audiobookshelf: Benutzername oder Passwort falsch" } });
+    linked = true;
+    return r.fulfill({ json: { links: { abs: { id: "u-1", name: "admin-abs" }, plex: null } } });
+  });
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
+  await expect(page.locator("#discoverPersonal")).toContainText("Persönlich werden sie");
+  await page.goto("/account");
+  const box = page.locator("#listenBox");
+  await expect(page.locator("#listenFieldset")).toBeVisible();
+  await expect(box).toContainText("Plex-Profil ordnet ein Admin");
+  await box.getByLabel("Benutzername in Audiobookshelf").fill("admin-abs");
+  await box.getByLabel("Passwort in Audiobookshelf").fill("falsch");
+  await box.getByRole("button", { name: "Verbinden" }).click();
+  await expect(page.locator("#toast")).toContainText("Passwort falsch");
+  await box.getByLabel("Passwort in Audiobookshelf").fill("richtig");
+  await box.getByLabel("Passwort in Audiobookshelf").press("Enter");
+  await expect(box).toContainText("Verbunden mit dem Audiobookshelf-Konto „admin-abs“");
+  await expect(box).toContainText("5 h gehört, 2 Bücher");
+  expect(sent.map((x) => x.password)).toEqual(["falsch", "richtig"]);
+  expect(errors.filter((e) => !e.includes("status of 400"))).toEqual([]);   // the wrong password on purpose
+});
+
 test("Anmeldung: falsches Passwort, dann richtig; ohne Anmeldung keine Daten", async ({ page, request }) => {
   const errors = watchErrors(page);
   expect((await request.get("/api/settings")).status()).toBe(401);

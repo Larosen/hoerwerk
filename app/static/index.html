@@ -193,6 +193,7 @@
       <p>Du suchst ein bestimmtes Buch? Oben auf <b>Suchen</b> tippen und Titel oder Autor eingeben.</p>
       <button type="button" class="btn small primary" id="welcomeOk">Verstanden</button>
     </div>
+    <p id="discoverPersonal" class="discover-note personal" hidden></p>
     <p id="discoverNote" class="discover-note" hidden>Sachbuch: Sterne sagen, wie gut ein Buch ankommt – nicht, ob es inhaltlich stimmt. Im Zweifel lieber „Aus der Kritik“.</p>
     <ul id="discoverList" class="discover-grid"></ul>
   </section>
@@ -439,6 +440,18 @@
         <tbody id="userRows"></tbody>
       </table>
     </div>
+    <fieldset id="listenMapFieldset" hidden>
+      <legend>Hörverlauf zuordnen</legend>
+      <p class="muted small">Welches Audiobookshelf-Konto und welches Plex-Profil gehört zu wem? Daraus entstehen der persönliche Bereich
+        <b>Für dich</b> und die Hörzeit in der <b>Statistik</b>. Audiobookshelf-Konten kann jede Person auch selbst unter <b>Konto</b> verbinden.</p>
+      <p id="listenMapErrors" class="err small" hidden></p>
+      <div class="table-wrap">
+        <table class="users listen-map">
+          <thead><tr><th>Hörwerk-Konto</th><th id="listenMapAbsHead">Audiobookshelf</th><th id="listenMapPlexHead">Plex-Profil</th></tr></thead>
+          <tbody id="listenMapRows"></tbody>
+        </table>
+      </div>
+    </fieldset>
     <fieldset>
       <legend>Sicherheit</legend>
       <label class="check"><input type="checkbox" id="adminTotpRequired"><span>Admins brauchen einen Zweitfaktor
@@ -509,6 +522,9 @@
           <th class="num" title="Spielzeit aller nicht abgelehnten Bücher">Spielzeit</th>
           <th class="num" title="Platz der verfügbaren Bücher in der Bibliothek">Speicher</th>
           <th class="num" title="Median: von der Anfrage bis verfügbar">Wartezeit</th>
+          <th class="num listen-col" title="Hörzeit laut Audiobookshelf und Plex">Gehört</th>
+          <th class="num listen-col" title="Gehörte Bücher (davon fertig)">Bücher gehört</th>
+          <th class="listen-col">Zuletzt gehört</th>
           <th class="num">Englisch</th>
           <th>Häufigstes Genre</th>
           <th>Zuletzt</th>
@@ -522,6 +538,8 @@
       <table class="stats-table"><thead><tr><th>Monat</th><th class="num">Bücher</th><th class="num">Spielzeit</th></tr></thead>
         <tbody id="statsMonthRows"></tbody></table>
     </details>
+    <p id="statsListenNote" class="muted small" hidden>Hörzeit: Audiobookshelf zählt jede gehörte Minute. Plex merkt sich nur, was bis zum Ende
+      gehört wurde – bei einer M4B je Buch also fertige Bücher. Zuordnen unter <a href="/settings/users">Konten</a>.</p>
     <p class="muted small">Gezählt werden Anfragen. Spielzeit laut Shop; Speicher und Wartezeit nur für Bücher, die schon in der Bibliothek liegen. Abgelehnte Bücher zählen bei der Spielzeit nicht mit.</p>
     </div>
     <div class="dialog-body page-body" data-page="logs">
@@ -572,6 +590,12 @@
         <input id="myTopic" type="text" maxlength="64" spellcheck="false" autocomplete="off" placeholder="z. B. eva-hoerbuecher"></label>
       <div class="row gap"><button type="button" class="btn small" id="myTopicSave">Speichern</button>
         <button type="button" class="btn small ghost" id="myTopicTest">Testnachricht senden</button></div>
+    </fieldset>
+    <fieldset id="listenFieldset" hidden>
+      <legend>Was du hörst</legend>
+      <p class="muted small">Verbunden sieht Hörwerk, welche Hörbücher du in Audiobookshelf oder Plex gehört hast – und schlägt dir unter
+        <b>Entdecken → Für dich</b> passende neue vor. Nur du und die Admins sehen deine Hörzeit.</p>
+      <div id="listenBox"></div>
     </fieldset>
     <fieldset>
       <legend>So sieht dich Hörwerk</legend>
@@ -743,6 +767,7 @@
 <script src="/static/notify.js"></script>
 <script src="/static/logs.js"></script>
 <script src="/static/stats.js"></script>
+<script src="/static/listening.js"></script>
 <script src="/static/account.js"></script>
 <script src="/static/upload.js"></script>
 <script src="/static/settings.js"></script>

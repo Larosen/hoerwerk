@@ -11,7 +11,8 @@ import json
 import os
 import re
 import threading
-from typing import Callable, List, Optional
+import time
+from typing import Callable, Dict, List, Optional
 from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
@@ -117,6 +118,28 @@ def _call(method: str, url: str, token: str, timeout: float = 15) -> dict:
         return {}
 
 
+def _login(url: str, username: str, password: str, timeout: float = 15) -> dict:
+    """POST /login – only to check that someone owns an account; the answer's tokens are thrown away."""
+    body = json.dumps({"username": username, "password": password}).encode()
+    req = request.Request(url, data=body, method="POST", headers={
+        "Content-Type": "application/json", "Accept": "application/json", "User-Agent": "Hoerwerk/5"})
+    try:
+        with request.build_opener(_NoRedirect).open(req, timeout=timeout) as resp:
+            data = json.loads(resp.read(1024 * 1024) or b"{}")
+    except HTTPError as e:
+        if e.code in (401, 403):
+            raise AbsError(t("Audiobookshelf: Benutzername oder Passwort falsch")) from e
+        if e.code == 429:
+            raise AbsError(t("Audiobookshelf: zu viele Versuche – bitte später noch einmal")) from e
+        raise AbsError(f"Audiobookshelf: HTTP {e.code}") from e
+    except (URLError, OSError, ValueError) as e:
+        raise AbsError(t("Audiobookshelf nicht erreichbar: {reason}", reason=getattr(e, "reason", e))) from e
+    user = (data or {}).get("user") or {}
+    if not user.get("id"):
+        raise AbsError(t("Audiobookshelf: unerwartete Antwort"))
+    return {"id": str(user["id"]), "name": str(user.get("username") or username)}
+
+
 class Audiobookshelf:
     """Connection settings (in the database; the token never goes to the browser)."""
     SECRET = "token"
@@ -131,6 +154,8 @@ class Audiobookshelf:
         self._lock = threading.Lock()
         self.last: Optional[str] = None  # last scan result for the UI
         self.scan_timeout = 10.0
+        self._login_call: Callable[[str, str, str], dict] = _login
+        self._items_cache: Optional[tuple] = None
 
     def _load(self) -> dict:
         data = self.db.get("abs") or {}
@@ -193,6 +218,58 @@ class Audiobookshelf:
             applog.warn(str(e), "Audiobookshelf")
             if self.on_error:
                 self.on_error(str(e))
+
+    # -- listening (who heard what) ------------------------------------------
+    def _api(self, path: str) -> dict:
+        c = self._load()
+        if not c.get("url") or not c.get(self.SECRET):
+            raise AbsError(t("Audiobookshelf ist noch nicht eingerichtet"))
+        return self._call("GET", f"{_base(c['url'])}{path}", c[self.SECRET])
+
+    def users(self) -> List[dict]:
+        data = self._api("/api/users")
+        users = data.get("users") if isinstance(data, dict) else data
+        return [{"id": str(u["id"]), "name": str(u.get("username") or ""), "active": u.get("isActive", True)}
+                for u in users or [] if isinstance(u, dict) and u.get("id")]
+
+    def progress(self, user_id: str) -> List[dict]:
+        """The user's progress per book: libraryItemId, progress (0–1), isFinished, lastUpdate/finishedAt (ms)."""
+        data = self._api(f"/api/users/{parse.quote(user_id)}")
+        return [p for p in (data or {}).get("mediaProgress") or [] if isinstance(p, dict) and not p.get("episodeId")]
+
+    def listening_stats(self, user_id: str) -> dict:
+        """{totalTime, days: {"YYYY-MM-DD": seconds}, items: {libraryItemId: {timeListening, mediaMetadata}}}"""
+        data = self._api(f"/api/users/{parse.quote(user_id)}/listening-stats")
+        return data if isinstance(data, dict) else {}
+
+    def library_items(self) -> Dict[str, dict]:
+        """id -> {title, author, asin, duration} of the chosen library (cached for 10 minutes)."""
+        c = self._load()
+        hit = self._items_cache
+        if hit and hit[0] > time.time() - 600 and hit[1] == c.get("library"):
+            return hit[2]
+        out: Dict[str, dict] = {}
+        if c.get("library"):
+            for page in range(200):
+                data = self._api(f"/api/libraries/{parse.quote(c['library'])}/items?minified=1&limit=500&page={page}")
+                results = (data or {}).get("results") or []
+                for item in results:
+                    media = item.get("media") or {}
+                    meta = media.get("metadata") or {}
+                    out[str(item.get("id"))] = {"title": meta.get("title") or "", "author": meta.get("authorName") or "",
+                                                "asin": (meta.get("asin") or "").upper() or None,
+                                                "duration": float(media.get("duration") or 0)}
+                if len(results) < 500:
+                    break
+        self._items_cache = (time.time(), c.get("library"), out)
+        return out
+
+    def check_login(self, username: str, password: str) -> dict:
+        """{id, name} of the Audiobookshelf account these credentials belong to (nothing is stored)."""
+        c = self._load()
+        if not c.get("url"):
+            raise AbsError(t("Audiobookshelf ist noch nicht eingerichtet"))
+        return self._login_call(f"{_base(c['url'])}/login", username, password)
 
     def request_scan(self) -> None:
         """A book was filed: scan once things have calmed down."""

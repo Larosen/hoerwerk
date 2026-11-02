@@ -723,3 +723,16 @@ table.stats-table td.name, table.stats-table th:first-child { position: sticky; 
 .stats-months > summary { cursor: pointer; color: var(--accent); font-weight: 550; margin-bottom: 6px; }
 .cand-warn { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--err); margin: 2px 0; }
 .cand-warn .ico { width: 14px; height: 14px; flex: none; }
+
+/* -- listening history (Konto, Konten, Entdecken) -- */
+.listen-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0; }
+.listen-row > .ico { width: 16px; height: 16px; color: var(--ok); flex: none; }
+.listen-row > span { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.listen-form { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
+table.listen-map { table-layout: fixed; width: 100%; }
+table.listen-map th:first-child { width: 34%; }
+table.listen-map td:first-child { overflow-wrap: anywhere; }
+.listen-map select { width: 100%; min-width: 0; }
+#statsListenNote a { color: var(--accent); }
+.discover-note.personal { color: var(--muted); }
+.discover-note.personal a { color: var(--accent); }

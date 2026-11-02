@@ -176,6 +176,7 @@ class Discover:
         self.settings = settings
         self.fetch = fetch or self._fetch_feed
         self.pending = pending or set     # ASINs being downloaded or processed right now
+        self.seeds: Callable[[int], List[dict]] = lambda user_id: []   # what an account heard (listening.py)
         self.lock = threading.Lock()
         self.running: set = set()
         self._known: set = set()          # genre ids of the store
@@ -192,22 +193,40 @@ class Discover:
         data = self.db.get(f"discover:{key}") or {}
         return data if isinstance(data, dict) else {}
 
-    def get(self, section: str, genre: str = "") -> dict:
-        """The cached list; refreshed in the background when it is missing or older than a day."""
-        key = self._key(section, genre)
+    def _personal_seeds(self, user_id: Optional[int]) -> List[dict]:
+        """What this account heard (Audiobookshelf / Plex) – the seeds of its own "Für dich"."""
+        if not user_id:
+            return []
+        try:
+            return self.seeds(user_id) or []
+        except Exception as e:  # noqa: BLE001 – then the suggestions for the whole library
+            applog.warn(t("Entdecken: Hörverlauf nicht lesbar: {error}", error=e), "Entdecken")
+            return []
+
+    def get(self, section: str, genre: str = "", user_id: Optional[int] = None) -> dict:
+        """The cached list; refreshed in the background when it is missing or older than a day.
+
+        "Für dich" is personal when the account's listening history is known (linked Audiobookshelf / Plex)."""
+        seeds = self._personal_seeds(user_id) if section == "foryou" else []
+        key = f"foryou:u{user_id}" if seeds else self._key(section, genre)
         entry = self._entry(key)
         if not entry or time.time() - entry.get("time", 0) > MAX_AGE:
-            self.refresh(section, genre)
+            self.refresh(section, genre, seeds=seeds, key=key)
         with self.lock:
             running = key in self.running
         busy = self._busy()
         items = [i for i in entry.get("items") or [] if i.get("asin") not in busy and not self._owned(i)]   # got it meanwhile
-        return {"items": items, "updated": entry.get("time"), "error": entry.get("error"), "running": running}
+        return {"items": items, "updated": entry.get("time"), "error": entry.get("error"), "running": running,
+                "personal": bool(seeds)}
 
-    def refresh(self, section: str, genre: str = "", wait: bool = False) -> None:
+    def refresh(self, section: str, genre: str = "", wait: bool = False, seeds: Optional[List[dict]] = None,
+                key: str = "", user_id: Optional[int] = None) -> None:
         if section not in SECTIONS or (section == "genre" and not (genre and self.known_genre(genre))):
             return
-        key = self._key(section, genre)
+        if section == "foryou" and user_id and seeds is None:
+            seeds = self._personal_seeds(user_id)
+            key = f"foryou:u{user_id}" if seeds else ""
+        key = key or self._key(section, genre)
         with self.lock:
             if key in self.running:
                 return
@@ -215,7 +234,7 @@ class Discover:
 
         def run() -> None:
             try:
-                items = {"foryou": self._for_you, "critics": self._critics}.get(section, lambda: self._genre(genre))()
+                items = {"foryou": lambda: self._for_you(seeds), "critics": self._critics}.get(section, lambda: self._genre(genre))()
                 entry = {"time": time.time(), "items": items, "error": None}
             except Exception as e:  # noqa: BLE001 – a source being down must not break the page
                 source = " / ".join(dict.fromkeys(n for n, _, _ in FEEDS)) if section == "critics" else "Audible"
@@ -279,11 +298,13 @@ class Discover:
         return {**{k: book.get(k) for k in ITEM_KEYS}, **extra}
 
     # -- sources ---------------------------------------------------------------
-    def _for_you(self) -> List[dict]:
-        """Audible's similar titles for the newest books of the library, counted across all of them."""
-        with self.index.lock:
-            seeds = sorted((e for e in self.index.entries.values() if e.get("asin")),
-                           key=lambda e: -(e.get("mtime") or 0))[:30]
+    def _for_you(self, seeds: Optional[List[dict]] = None) -> List[dict]:
+        """Audible's similar titles, counted across the seeds: the books this account heard (personal), or else
+        the newest books of the library."""
+        if not seeds:
+            with self.index.lock:
+                seeds = sorted((e for e in self.index.entries.values() if e.get("asin")),
+                               key=lambda e: -(e.get("mtime") or 0))[:30]
         if not seeds:
             return []
         region = self._region()

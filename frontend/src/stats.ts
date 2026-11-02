@@ -6,10 +6,12 @@ interface UserStats {
   id: number | null; name: string; role: string; requests: number; books: number; available: number; open: number;
   declined: number; failed: number; series: number; minutes: number; minutes_available: number; bytes: number;
   english: number; wait_median: number | null; last: number | null; top_genres: string[];
+  listen?: { seconds: number; books: number; finished: number; last: number | null; linked: string[]; errors: string[] } | null;
 }
 interface StatsAnswer {
   period: string; since: number | null; users: UserStats[]; total: UserStats;
   months: { month: string; books: number; minutes: number }[]; library_books: number | null;
+  listen: { seconds: number; books: number; finished: number; linked: number } | null; listen_errors?: string[];
 }
 
 function fmtHours(min: number): string {
@@ -41,8 +43,19 @@ function renderStats(s: StatsAnswer): void {
     statTile(String(tot.available), t("davon verfügbar"), tot.open ? t("{n} noch offen", { n: tot.open }) : ""),
     statTile(fmtHours(tot.minutes), t("Spielzeit angefragt"), tot.minutes_available ? t("{h} schon da", { h: fmtHours(tot.minutes_available) }) : ""),
     statTile(tot.bytes ? fmtSize(tot.bytes) : "–", t("Speicher der Anfragen"), s.library_books !== null ? t("Bibliothek: {n} Bücher", { n: s.library_books }) : ""),
-    statTile(fmtWait(tot.wait_median), t("typische Wartezeit"), t("von der Anfrage bis verfügbar")));
-  const rows = s.users.map((u) => el("tr", { class: u.books ? "" : "quiet" },
+    statTile(fmtWait(tot.wait_median), t("typische Wartezeit"), t("von der Anfrage bis verfügbar")),
+    ...(s.listen?.linked ? [statTile(fmtListen(s.listen.seconds), t("gehört"),
+      t("{books} · {n} verknüpfte Konten", { books: plural(s.listen.books, t("1 Buch"), t("{n} Bücher", { n: s.listen.books })), n: s.listen.linked }))] : []));
+  // the listening columns only when someone is linked to Audiobookshelf or Plex
+  const listening = !!s.listen?.linked;
+  for (const th of document.querySelectorAll<HTMLElement>(".stats-table th.listen-col")) th.hidden = !listening;
+  $("#statsListenNote").hidden = !listening && !s.listen;
+  const listenCells = (u: UserStats): HTMLElement[] => !listening ? [] : u.listen ? [
+    el("td", { class: "num", title: u.listen.errors.join(" · ") }, fmtListen(u.listen.seconds)),
+    el("td", { class: "num" }, u.listen.books ? `${u.listen.books}${u.listen.finished ? ` (${u.listen.finished})` : ""}` : "–"),
+    el("td", { class: "when" }, u.listen.last ? new Date(u.listen.last * 1000).toLocaleDateString(LOCALE) : "–"),
+  ] : [el("td", { class: "num muted", title: t("nicht verknüpft") }, "·"), el("td", { class: "num muted" }, "·"), el("td", { class: "muted" }, "·")];
+  const rows = s.users.map((u) => el("tr", { class: u.books || u.listen?.seconds ? "" : "quiet" },
     el("td", { class: "name" }, el("b", {}, u.name), u.role === "admin" ? el("span", { class: "muted small" }, " · Admin") : null),
     el("td", { class: "num" }, u.requests ? String(u.requests) : "–", u.series ? el("small", { class: "muted", title: t("davon Reihen") }, ` (${u.series} ${t("Reihen")})`) : null),
     el("td", { class: "num" }, String(u.books || "–")),
@@ -52,10 +65,11 @@ function renderStats(s: StatsAnswer): void {
     el("td", { class: "num" }, fmtHours(u.minutes)),
     el("td", { class: "num" }, u.bytes ? fmtSize(u.bytes) : "–"),
     el("td", { class: "num" }, fmtWait(u.wait_median)),
+    ...listenCells(u),
     el("td", { class: "num" }, u.books ? `${Math.round((u.english / u.books) * 100)} %` : "–"),
     el("td", { class: "genre", title: u.top_genres.join(", ") }, u.top_genres[0] || "–"),
     el("td", { class: "when" }, u.last ? new Date(u.last * 1000).toLocaleDateString(LOCALE) : "–")));
-  $("#statsRows").replaceChildren(...(rows.length ? rows : [el("tr", {}, el("td", { colspan: "12", class: "empty-row" }, t("Noch keine Konten.")))]));
+  $("#statsRows").replaceChildren(...(rows.length ? rows : [el("tr", {}, el("td", { colspan: "15", class: "empty-row" }, t("Noch keine Konten.")))]));
   renderMonthChart(s.months);
 }
 
