@@ -1271,7 +1271,6 @@
  "verlustfrei": "lossless",
  "{n} Dateien, {codec} unverändert übernommen": "{n} files, {codec} kept unchanged",
  "1 besprochenes Buch wartet noch auf sein Hörbuch": "1 reviewed book is still waiting for its audiobook",
- ": Bücher, die Deutschlandfunk, Deutschlandfunk Kultur (auch „Die Bücher des Monats“) oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt – die neuesten rund 40. Gibt es noch kein Hörbuch, merkt sich Hörwerk das Buch zwei Jahre lang und schaut einmal im Monat nach; erscheint es oder ist es angekündigt, taucht es hier wieder oben auf.": ": books reviewed by Deutschlandfunk, Deutschlandfunk Kultur (including “Die Bücher des Monats”) or the press (according to Perlentaucher) that exist as audiobooks – the newest 40 or so. If there is no audiobook yet, Hörwerk remembers the book for two years and checks once a month; once it is out or announced, it shows up here at the top again.",
  "Buch des Monats bei {source}": "Book of the month at {source}",
  "Das Buch wurde früher besprochen – das Hörbuch ist erst jetzt erschienen": "The book was reviewed earlier – the audiobook has only come out now",
  "Das Hörbuch ist angekündigt, aber noch nicht erschienen": "The audiobook is announced but not out yet",
@@ -1280,5 +1279,8 @@
  "Entdecken: {n} besprochene Bücher gibt es jetzt als Hörbuch": "Discover: {n} reviewed books are now available as audiobooks",
  "erscheint {date}": "out {date}",
  "jetzt als Hörbuch": "now as audiobook",
- "{n} besprochene Bücher warten noch auf ihr Hörbuch": "{n} reviewed books are still waiting for their audiobook"
+ "{n} besprochene Bücher warten noch auf ihr Hörbuch": "{n} reviewed books are still waiting for their audiobook",
+ ": Bücher, die Deutschlandfunk, Deutschlandfunk Kultur (auch „Die Bücher des Monats“ mit den Bestenlisten für Sachbuch und Krimi) oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt – die neuesten rund 40. Gibt es noch kein Hörbuch, merkt sich Hörwerk das Buch zwei Jahre lang und schaut einmal im Monat nach; erscheint es oder ist es angekündigt, taucht es hier wieder oben auf.": ": books reviewed by Deutschlandfunk, Deutschlandfunk Kultur (including “Die Bücher des Monats” with the best-of lists for non-fiction and crime) or the press (according to Perlentaucher) that exist as audiobooks – the newest 40 or so. If there is no audiobook yet, Hörwerk remembers the book for two years and checks once a month; once it is out or announced, it shows up here at the top again.",
+ "Platz {rank}: {list} ({source})": "No. {rank}: {list} ({source})",
+ "Liste ansehen": "View list"
 }

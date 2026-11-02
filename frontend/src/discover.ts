@@ -6,7 +6,7 @@
 interface Suggestion extends Book {
   requested?: string | null;
   rating?: number; ratings?: number; because?: string[]; loose?: boolean;
-  review?: { source: string; link: string; date: string; notes?: number; month?: boolean };
+  review?: { source: string; link: string; date: string; notes?: number; month?: boolean; list?: string; rank?: number };
   later?: boolean; announced?: string | null;
 }
 interface DiscoverAnswer { items: Suggestion[]; updated: number | null; error: string | null; running: boolean; personal?: boolean; linked?: boolean; waiting?: number }
@@ -42,9 +42,10 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     reason = el("p", { class: "reason" }, t("Passt zu: {titles}", { titles: b.because.map((x) => `„${x}“`).join(", ") }));
   } else if (b.review) {
     reason = el("p", { class: "reason" },
-      b.review.month ? t("Buch des Monats bei {source}", { source: b.review.source }) : t("Besprochen bei {source}", { source: b.review.source }),
+      b.review.list ? t("Platz {rank}: {list} ({source})", { rank: b.review.rank || "?", list: b.review.list, source: b.review.source })
+      : b.review.month ? t("Buch des Monats bei {source}", { source: b.review.source }) : t("Besprochen bei {source}", { source: b.review.source }),
       b.review.notes ? " · " + plural(b.review.notes, t("1 Kritik in der Presse"), t("{n} Kritiken in der Presse", { n: b.review.notes })) : null,
-      b.review.link ? el("span", {}, " · ", el("a", { href: b.review.link, target: "_blank", rel: "noopener noreferrer" }, t("Kritik lesen"))) : null);
+      b.review.link ? el("span", {}, " · ", el("a", { href: b.review.link, target: "_blank", rel: "noopener noreferrer" }, b.review.list ? t("Liste ansehen") : t("Kritik lesen"))) : null);
   }
   return el("li", { class: "suggestion" },
     b.cover_url ? el("img", { class: "cover", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, author),

@@ -35,6 +35,7 @@ from urllib import parse
 import applog
 import audible
 import db as dbm
+import pdftext
 from i18n import t
 from trusted_authors import TRUSTED_AUTHORS
 
@@ -50,6 +51,10 @@ FEEDS = (("Deutschlandfunk Kultur", "https://www.deutschlandfunkkultur.de/buchkr
          ("Perlentaucher", "https://www.perlentaucher.de/index.rss", "rss"))
 PT_BASE = "https://www.perlentaucher.de"
 MONTH_LINK = "https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html"
+# the monthly best-of lists ("Die besten Sachbücher / Krimis im …") are PDFs on Deutschlandfunk's picture server;
+# each is read once – the non-fiction list comes at the end of the month, the crime list a few days later
+PDF_HOST = "bilder.deutschlandfunk.de"
+PDF_PER_RUN = 6
 _PT_BOOK = re.compile(r'<h2>\s*<a href="(?P<href>/buch/[^"]+\.html)">\s*(?P<author>[^<:]{2,80}):\s*<span>(?P<title>[^<]{1,200})</span>'
                       r'(?P<rest>.*?)</article>', re.S)
 _PT_NOTES = re.compile(r"<span>\s*(\d{1,3})\s+Notiz")
@@ -61,7 +66,7 @@ MAX_REVIEWS = 3000
 CRITICS_MAX = 40          # newest reviewed audiobooks shown (older remembered reviews keep the list long)
 # Perlentaucher items that recommend books (the feed also carries film, debates, essays …)
 PT_CATEGORIES = ("BÜCHERSCHAU", "BÜCHERBRIEF", "TASCHENBÜCHERBRIEF")
-FEED_HOSTS = {parse.urlparse(u).hostname for _, u, _ in FEEDS}
+FEED_HOSTS = {parse.urlparse(u).hostname for _, u, _ in FEEDS} | {PDF_HOST}
 # Top-level genres that are non-fiction (German and English store names)
 NONFICTION = {
     "Beziehungen, Elternschaft & persönliche Entwicklung", "Bildung & Lernen", "Biografien & Erinnerungen",
@@ -180,6 +185,35 @@ def parse_dlf_month(text: str) -> List[dict]:
         if one and (one["author"], one["title"]) not in seen:
             seen.add((one["author"], one["title"]))
             out.append({**one, "date": ""})
+    return out
+
+
+_DLF_LIST = re.compile(r'href="(?P<url>https://bilder\.deutschlandfunk\.de/[\w./-]{1,300}\.pdf)"[^<>]*>(?P<name>[^<>]{3,200}?'
+                       r'bestenliste[^<>]{0,200}?) \(PDF\)</a>\s*\([^()]{0,80}?(?P<d>\d\d)\.(?P<m>\d\d)\.(?P<y>20\d\d)\)', re.I)
+
+
+def dlf_best_lists(text: str) -> List[dict]:
+    """The best-of lists on "Die Bücher des Monats": [{name, url, date}] – "Die besten Sachbücher im November 2026"."""
+    page = html.unescape(text or "").replace('\\"', '"')
+    out: Dict[str, dict] = {}
+    for m in _DLF_LIST.finditer(page):
+        name = re.split(r"\s+[-–:]\s+|:\s+", m.group("name").strip(), maxsplit=1)[-1].strip()
+        try:
+            day = time.strftime("%a, %d %b %Y", time.strptime(f"{m.group('y')}-{m.group('m')}-{m.group('d')}", "%Y-%m-%d"))
+        except ValueError:
+            day = ""
+        out.setdefault(m.group("url"), {"name": name, "url": m.group("url"), "date": day})
+    return list(out.values())
+
+
+def best_list_reviews(raw: bytes, best: dict) -> List[dict]:
+    """The books of one best-of list PDF as reviews (first author, title without subtitle, place on the list)."""
+    out = []
+    for e in pdftext.best_list(raw):
+        author = re.split(r",|\bund\b|\s&\s|\(", e["author"])[0].strip()
+        if author and e["title"]:
+            out.append({"title": _main_title(e["title"]), "author": author, "date": best["date"], "link": best["url"],
+                        "list": best["name"], "rank": e["rank"], "month": True})
     return out
 
 
@@ -477,8 +511,9 @@ class Discover:
         if kind == "list":
             return [{**r, "source": source, "date": ""} for r in parse_pt_list(raw.decode("utf-8", "replace"))]
         if kind == "month":
-            return [{**r, "source": source, "link": MONTH_LINK, "month": True}
-                    for r in parse_dlf_month(raw.decode("utf-8", "replace"))]
+            text = raw.decode("utf-8", "replace")
+            return ([{**r, "source": source, "link": MONTH_LINK, "month": True} for r in parse_dlf_month(text)]
+                    + [{**r, "source": source} for r in self._best_lists(text)])
         if re.search(rb"<!DOCTYPE|<!ENTITY", raw[:4096], re.I):
             raise ValueError(t("Antwort enthält eine DTD – abgelehnt"))
         out: List[dict] = []
@@ -517,7 +552,7 @@ class Discover:
                 if key not in memory:
                     memory[key] = {**r, "seen": now, "checked": now, "book": self._audiobook_for(r, region)}
                 else:                                   # still listed: keep it fresh, newest review count
-                    memory[key].update({k: r[k] for k in ("notes", "month") if r.get(k)}, seen=max(memory[key].get("seen", 0), now - 1))
+                    memory[key].update({k: r[k] for k in ("notes", "month", "list", "rank") if r.get(k)}, seen=max(memory[key].get("seen", 0), now - 1))
         if not fetched and errors:
             raise RuntimeError("; ".join(errors))
         self._recheck_waiting(memory, region, now)
@@ -537,9 +572,25 @@ class Discover:
             if not book or book["asin"] in seen or not self._good(book, from_store=False):
                 continue
             seen.add(book["asin"])
-            out.append(self._item(book, source="review", review={k: r.get(k) for k in ("source", "link", "date", "notes", "month")},
+            out.append(self._item(book, source="review", review={k: r.get(k) for k in ("source", "link", "date", "notes", "month", "list", "rank")},
                                   later=bool(r.get("found")), announced=_announced(book)))
         return out[:CRITICS_MAX]
+
+    def _best_lists(self, page: str) -> List[dict]:
+        """Books of the best-of list PDFs not read yet (each PDF once; a failed one is tried again the next day)."""
+        done = self.db.get("discover_lists") or {}
+        out: List[dict] = []
+        for best in [b for b in dlf_best_lists(page) if b["url"] not in done][:PDF_PER_RUN]:
+            try:
+                out += best_list_reviews(self.fetch(best["url"]), best)
+            except Exception as e:  # noqa: BLE001 – one list unreadable: the others still count
+                applog.warn(t("Entdecken: {source} nicht erreichbar: {error}", source=best["name"], error=e), "Entdecken")
+                continue
+            done[best["url"]] = time.time()
+        if len(done) > 500:
+            done = dict(sorted(done.items(), key=lambda kv: -kv[1])[:400])
+        self.db.put("discover_lists", done)
+        return out
 
     def _recheck_waiting(self, memory: Dict[str, dict], region: str, now: float) -> None:
         """Reviewed books without an audiobook: look again once a month whether one came out or is announced."""

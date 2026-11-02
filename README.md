@@ -250,7 +250,8 @@ The **Discover** tab suggests new audiobooks:
   out. All lists are prepared in the background once a day. The chosen genre is remembered per browser.
 * **From the critics** – reviewed books that exist as an audiobook on Audible (same title, same author), with a link to
   the review. Sources: the RSS feeds "Buchkritik" and "Lesart" (Deutschlandfunk Kultur), the page
-  [Die Bücher des Monats](https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html), "Büchermarkt"
+  [Die Bücher des Monats](https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html) with its monthly
+  best-of lists for non-fiction and crime (PDFs, each read once; shown with their place), "Büchermarkt"
   (Deutschlandfunk), Perlentaucher's lists
   [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) and
   [Sachbuch aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-sachbuch-aktuell.html) (with the number of press
@@ -274,8 +275,8 @@ with a note that stars are no fact check. BookBeat is not connected – it
 has no open API.
 
 Lists are put together in the background, refreshed at most once a day (or with **Refresh**) and cached in the database.
-Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de` and
-`www.perlentaucher.de` (HTTPS).
+Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de`,
+`bilder.deutschlandfunk.de` (the best-of list PDFs) and `www.perlentaucher.de` (HTTPS).
 
 ### Requests (like Overseerr/Jellyseerr)
 

@@ -257,7 +257,8 @@ Der Reiter **Entdecken** schlägt neue Hörbücher vor:
   Genre merkt sich der Browser.
 * **Aus der Kritik** – besprochene Bücher, die es bei Audible als Hörbuch gibt (gleicher Titel, gleicher Autor), mit Link
   zur Besprechung. Quellen: die RSS-Feeds „Buchkritik“ und „Lesart“ (Deutschlandfunk Kultur), die Seite
-  [Die Bücher des Monats](https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html), „Büchermarkt“
+  [Die Bücher des Monats](https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html) mit den monatlichen
+  Bestenlisten für Sachbuch und Krimi (PDFs, jede wird einmal gelesen; angezeigt mit Platz), „Büchermarkt“
   (Deutschlandfunk), die Perlentaucher-Listen
   [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) und
   [Sachbuch aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-sachbuch-aktuell.html) (mit Anzahl der
@@ -285,7 +286,8 @@ BookBeat ist nicht angebunden, weil es keine offene Schnittstelle hat.
 
 Die Listen werden im Hintergrund zusammengestellt, höchstens einmal am Tag erneuert (oder mit **Aktualisieren**) und
 in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-API des gewählten Shops,
-`www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de` und `www.perlentaucher.de` (HTTPS).
+`www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de`, `bilder.deutschlandfunk.de` (PDFs der Bestenlisten)
+und `www.perlentaucher.de` (HTTPS).
 
 ### Anfragen (wie bei Overseerr/Jellyseerr)
 
