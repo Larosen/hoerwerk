@@ -7,16 +7,16 @@
 // ------------------------------------------------------------------------- //
 interface Route { view: string; section: string }
 
-const VIEWS = ["books", "search", "discover", "requests", "settings", "account"];
+const VIEWS = ["books", "search", "discover", "requests", "settings", "account", "stats"];
 const VIEW_ELEMENTS: Record<string, string> = {
   books: "#viewBooks", search: "#viewSearch", discover: "#viewDiscover", requests: "#viewRequests",
-  settings: "#viewSettings", account: "#viewAccount",
+  settings: "#viewSettings", account: "#viewAccount", stats: "#viewStats",
 };
 /** The main tabs – the last one used is where "/" leads. */
 const MAIN_VIEWS = ["books", "search", "discover", "requests"];
 const VIEW_TITLES: Record<string, () => string> = {
   books: () => t("Hörbücher"), search: () => t("Suchen"), discover: () => t("Entdecken"), requests: () => t("Anfragen"),
-  settings: () => t("Einstellungen"), account: () => t("Konto"),
+  settings: () => t("Einstellungen"), account: () => t("Konto"), stats: () => t("Statistik"),
 };
 
 const router = { current: null as Route | null };
@@ -35,7 +35,10 @@ function parseRoute(path: string): Route {
   const [view = "", section = ""] = path.split("/").filter(Boolean);
   if (!VIEWS.includes(view)) return { view: defaultView(), section: "" };
   if (!IS_ADMIN && (view === "books" || view === "settings")) return { view: defaultView(), section: "" };
+  if (view === "settings" && section === "stats") return { view: "stats", section: "" };    // where it used to be
   if (view === "settings") return { view, section: settingsSections().includes(section) ? section : "" };
+  // /stats/7: one account in detail – admins only (everyone else has their own on /stats)
+  if (view === "stats") return { view, section: IS_ADMIN && /^\d{1,9}$/.test(section) ? section : "" };
   return { view, section: "" };
 }
 

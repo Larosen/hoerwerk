@@ -81,27 +81,36 @@ def release_info(title: str) -> dict:
 # German titles: umlauts in release names
 # --------------------------------------------------------------------------- #
 
-_DIGRAPHS = {"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss"}
+_DIGRAPHS = {"ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue", "ß": "ss",
+             "ø": "oe", "Ø": "Oe", "å": "aa", "Å": "Aa", "æ": "ae", "Æ": "Ae", "œ": "oe", "Œ": "Oe"}
 _PLAIN = str.maketrans({"ä": "a", "ö": "o", "ü": "u", "Ä": "A", "Ö": "O", "Ü": "U"})
+# letters that Unicode does not split into letter + accent: "Nesbø" -> "Nesbo", "Łódź" -> "Lodz"
+_SPECIAL = str.maketrans({"ø": "o", "Ø": "O", "æ": "ae", "Æ": "Ae", "œ": "oe", "Œ": "Oe", "ł": "l", "Ł": "L",
+                          "đ": "d", "Đ": "D", "ð": "d", "þ": "th", "Þ": "Th", "ı": "i"})
+
+
+def _no_accents(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s.translate(_SPECIAL))
+    return "".join(c for c in s if not unicodedata.combining(c))
 
 
 def query_variants(query: str) -> List[str]:
-    """Release names spell "Fräulein" as "Fräulein", "Fraeulein" or "Fraulein" – search all three."""
+    """Release names spell "Fräulein" as "Fräulein", "Fraeulein" or "Fraulein", "Nesbø" as "Nesbø", "Nesboe" or
+    "Nesbo" and "Céline" as "Céline" or "Celine" – search every spelling."""
     q = " ".join(query.split())
     out = [q]
-    if re.search(r"[äöüÄÖÜß]", q):
-        out.append("".join(_DIGRAPHS.get(c, c) for c in q))
-        out.append(q.replace("ß", "ss").translate(_PLAIN))
+    if re.search(r"[^\x00-\x7f]", q):
+        out.append(_no_accents("".join(_DIGRAPHS.get(c, c) for c in q)))
+        out.append(_no_accents(q.replace("ß", "ss").translate(_PLAIN)))
     return list(dict.fromkeys(out))
 
 
 def match_words(text: str) -> List[str]:
     """Spelling-insensitive words: "Fräulein", "Fraeulein", "Fraulein" and "FRAULEIN" all become "fraulein"."""
     s = re.sub(r"(?<=\w)\((\w{1,3})\)(?=\W|$)", r"\1", text or "")    # "Bis(s)" is one word: "biss"
-    s = s.lower().replace("ß", "ss").translate(_PLAIN)
+    s = s.lower().replace("ß", "ss").translate(_PLAIN).translate(_SPECIAL)
     s = re.sub(r"([aou])e", r"\1", s)
-    s = unicodedata.normalize("NFKD", s)
-    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = _no_accents(s)
     return re.findall(r"[a-z0-9]+", s)
 
 
@@ -426,15 +435,17 @@ class Usenet:
         raise UsenetError(t("Indexer nicht gefunden"))
 
     # -- search ------------------------------------------------------------
-    def search(self, query: str, language: str = "", extra: Optional[List[str]] = None) -> dict:
-        """Search every indexer for the query (plus ``extra`` queries), in all umlaut spellings."""
+    def search(self, query: str, language: str = "", extra: Optional[List[str]] = None,
+               variants: bool = True, limit: int = 6) -> dict:
+        """Search every indexer for the query (plus ``extra`` queries), in all umlaut spellings
+        (``variants=False``: exactly these queries – the caller made the spellings itself)."""
         indexers = self._indexers()
         if not indexers:
             raise UsenetError(t("Noch kein Indexer eingerichtet"))
         queries: List[str] = []
         for q in [query] + [e for e in extra or [] if e and e.strip()]:
-            queries += query_variants(q)
-        queries = list(dict.fromkeys(queries))[:6]
+            queries += query_variants(q) if variants else [" ".join(q.split())]
+        queries = list(dict.fromkeys(queries))[:max(1, limit)]
         results, errors = [], {}
         with ThreadPoolExecutor(max_workers=min(8, len(indexers) * len(queries))) as pool:
             jobs = [(i, pool.submit(i.search, q)) for i in indexers for q in queries]
@@ -463,6 +474,32 @@ class Usenet:
                 self._results[rid] = {**r, "query": query}
                 out.append({**{k: v for k, v in r.items() if k != "link"}, "id": rid})
         return {"results": out, "errors": list(errors.values()), "queries": queries}
+
+    def search_stages(self, stages: List[List[str]], fits: Callable[[List[dict]], bool], language: str = "",
+                      budget: int = 9) -> dict:
+        """Search round by round (see ``releases.search_stages``) until ``fits`` likes the results so far.
+        All spellings of a query count against the budget – a book never costs more than ``budget`` queries
+        per indexer. A round in which every indexer failed ends the search: the next one would fail as well."""
+        results: Dict[str, dict] = {}
+        errors: List[str] = []
+        asked: List[str] = []
+        rounds = 0
+        for stage in stages:
+            todo = [v for q in stage for v in query_variants(q)]
+            todo = [q for q in dict.fromkeys(todo) if q not in asked][:budget - len(asked)]
+            if not todo:
+                continue
+            res = self.search(todo[0], language, todo[1:], variants=False, limit=len(todo))
+            rounds += 1
+            asked += todo
+            errors += [e for e in res["errors"] if e not in errors]
+            for r in res["results"]:
+                results.setdefault(re.sub(r"[\W_]+", "", r["title"].lower()) + str(r["size"] // (1 << 20)), r)
+            found = list(results.values())
+            all_failed = not res["results"] and len(res["errors"]) >= len(self._indexers())
+            if (found and fits(found)) or all_failed or len(asked) >= budget:
+                break
+        return {"results": list(results.values()), "errors": errors, "queries": asked, "rounds": rounds}
 
     @staticmethod
     def _rank(r: dict, query: str, language: str) -> tuple:

@@ -1,4 +1,8 @@
-"""Statistics per family account: who asked for how many books, when, how many hours, how much space.
+"""Statistics per family account: who asked for how many books, when, how many hours, how much space,
+and what they heard (Audiobookshelf / Plex).
+
+* Admins see every account, can open each one (its requests and what it heard) and the totals.
+* Everyone else sees their own numbers and the family's totals – without who asked or heard how much.
 
 Everything comes from the requests table; sizes are read from the book folders in the library (once per
 folder and change, cached). Only folders inside the library are measured.
@@ -86,6 +90,7 @@ class Stats:
         groups: Dict = {}
         month_keys = self._months(now)
         months = {k: {"month": k, "books": 0, "minutes": 0} for k in month_keys}
+        per_user_months: Dict = {}
         for row in self.db.all("SELECT user_id, book, status, created, updated, data FROM requests ORDER BY created"):
             book = dbm.loads(row["book"], {}) or {}
             data = dbm.loads(row["data"], {}) or {}
@@ -94,6 +99,9 @@ class Stats:
             if key in months and row["status"] != "declined":
                 months[key]["books"] += 1
                 months[key]["minutes"] += minutes
+                mine = per_user_months.setdefault(row["user_id"], {}).setdefault(key, [0, 0])
+                mine[0] += 1
+                mine[1] += minutes
             if row["created"] < since:
                 continue
             uid = row["user_id"]
@@ -148,10 +156,60 @@ class Stats:
                     errors += [e for e in h["errors"] if e not in errors]
         out.sort(key=lambda s: (-s["books"], -s["minutes"], s["name"].lower()))
         lib = getattr(self.index, "entries", None)
+        for s in out:
+            got = per_user_months.get(s["id"], {})
+            s["months"] = [{"month": k, "books": got.get(k, [0, 0])[0], "minutes": got.get(k, [0, 0])[1]} for k in month_keys]
         return {"period": period, "since": since or None, "users": out, "total": self._finish(total),
                 "listen": heard_total if self.listening else None, "listen_errors": errors[:5],
                 "months": [months[k] for k in month_keys],
                 "library_books": len(lib) if isinstance(lib, dict) else None}
+
+    # -- what each one sees -----------------------------------------------------------
+    def overview(self, period: str = "365") -> dict:
+        """For admins: every account (without the month rows – those are in ``account``)."""
+        s = self.summary(period)
+        for u in s["users"]:
+            u.pop("months", None)
+        return s | {"scope": "all"}
+
+    def personal(self, uid: int, period: str = "365") -> dict:
+        """For a family member: their own numbers next to everyone's together – nobody else by name."""
+        s = self.summary(period)
+        me = next((u for u in s["users"] if u["id"] == uid), None) or self._finish(self._blank(uid, ""))
+        mine = {m["month"]: m for m in me.pop("months", [])}
+        months = [m | {"mine": mine.get(m["month"], {}).get("books", 0)} for m in s["months"]]
+        return {"scope": "own", "period": s["period"], "since": s["since"], "me": me, "total": s["total"],
+                "accounts": len(s["users"]), "listen": s["listen"], "months": months,
+                "library_books": s["library_books"]}
+
+    def account(self, uid: int, period: str = "365") -> Optional[dict]:
+        """One account in detail: its numbers, its requests and what it heard – None when there is no such account
+        (a deleted account whose requests are still there is found too)."""
+        s = self.summary(period)
+        user = next((u for u in s["users"] if u["id"] == uid), None)
+        if user is None:
+            return None
+        since = s["since"] or 0
+        reqs = []
+        for row in self.db.all("SELECT id, book, status, created, updated, data FROM requests WHERE user_id=? "
+                               "AND created>=? ORDER BY created DESC LIMIT 500", (uid, since)):
+            book = dbm.loads(row["book"], {}) or {}
+            data = dbm.loads(row["data"], {}) or {}
+            reqs.append({"id": row["id"], "title": book.get("title") or "", "authors": book.get("authors") or [],
+                         "series": book.get("series"), "series_position": book.get("series_position"),
+                         "cover_url": book.get("cover_url"), "language": book.get("language"),
+                         "runtime_min": int(book.get("runtime_min") or 0), "status": row["status"],
+                         "created": row["created"], "updated": row["updated"],
+                         "group": (data.get("group") or {}).get("title"),
+                         "bytes": self.size(data.get("path") or "", book) if row["status"] == "available" else 0})
+        heard: List[dict] = []
+        if self.listening:
+            for b in self.listening.history(uid)["books"]:
+                if (b.get("last") or 0) >= since and (b["progress"] >= 0.02 or b["finished"]):
+                    heard.append({k: b.get(k) for k in ("title", "author", "progress", "finished", "finished_at",
+                                                         "last", "source")})
+        return {"period": s["period"], "since": s["since"], "user": user, "months": user.pop("months"),
+                "requests": reqs, "heard": heard[:500]}
 
     @staticmethod
     def _finish(s: dict) -> dict:

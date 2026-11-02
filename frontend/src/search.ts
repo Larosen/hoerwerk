@@ -145,11 +145,21 @@ function surname(name: string | undefined): string {
   return parts[parts.length - 1] || "";
 }
 
-function bookQueries(b: Book): { query: string; extra: string[] } {
-  const author = surname((b.authors || [])[0]);
-  const extra = [b.title];
-  if (b.series && b.series_position) extra.push(`${b.series} ${b.series_position}`);
-  return { query: `${author} ${b.title}`.trim(), extra };
+/** The shop title without the series remark it often carries – "Schneewittchen muss sterben (Ein Bodenstein-Kirchhoff-Krimi 4)"
+ *  is "Schneewittchen muss sterben" in release names (the server does the same, see releases.clean_title). */
+function cleanTitle(title: string): string {
+  let s = title.split(/\s+/).join(" ").trim();
+  for (;;) {
+    const shorter = s.replace(/\s*[([][^()[\]]*[)\]]\s*$/, "")
+      .replace(/\s*[,:\-–—]\s*(?:band|bd|teil|folge|buch|book|vol|volume|nr)\.?\s*\d{1,3}\s*$/i, "").trim();
+    if (shorter === s || !/\p{L}|\d/u.test(shorter)) return s;
+    s = shorter;
+  }
+}
+
+/** The first search term for a book; when it stays unchanged, the server searches round by round with variants. */
+function bookQueries(b: Book): { query: string } {
+  return { query: `${surname((b.authors || [])[0])} ${cleanTitle(b.title)}`.trim() };
 }
 
 async function lookupBooks(e?: Event): Promise<void> {
@@ -240,9 +250,9 @@ async function runSearch(e?: Event, free = false): Promise<void> {
   const lang = $<HTMLSelectElement>("#searchLang").value;
   store.set("searchLang", lang);
   try {
-    // the book's title (and series) as extra searches – only while the term is still the suggested one
-    const extra = search.book && q === bookQueries(search.book).query ? bookQueries(search.book).extra : [];
-    const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, extra });
+    // while the term is still the suggested one, the server tries more spellings and broader terms if nothing fits
+    const book = search.book && q === bookQueries(search.book).query ? search.book : null;
+    const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, book });
     search.results = res.results;
     renderResults();
     const queries = res.queries || [];
@@ -276,7 +286,7 @@ function renderResults(): void {
     body.append(el("tr", {}, el("td", { colspan: "5", class: "empty-row" }, t("Keine Treffer – anders formulieren (weniger Wörter, ohne Band-Nummer)."))));
     return;
   }
-  for (const r of search.results) {
+  for (const r of sortReleases(search.results, $<HTMLSelectElement>("#searchSort").value)) {
     const tags = [
       r.format, r.language === "de" ? t("Deutsch") : r.language === "en" ? t("Englisch") : null,
       r.bitrate ? r.bitrate + " kbps" : null, r.abridged ? t("gekürzt") : null, r.drama ? t("Hörspiel") : null,
@@ -402,6 +412,7 @@ function initSearch(): void {
   }
   $("#searchForm").addEventListener("submit", lookupBooks);
   $("#releaseForm").addEventListener("submit", (e) => runSearch(e));
+  initReleaseSort($<HTMLSelectElement>("#searchSort"), () => { if (search.results.length) renderResults(); });
   $("#freeSearchBtn").addEventListener("click", () => runSearch(undefined, true));
   $("#addIndexerBtn").addEventListener("click", () => $("#indexerRows").append(indexerRow()));
   $("#sourcesForm").addEventListener("submit", (e) => { e.preventDefault(); saveSources(); });

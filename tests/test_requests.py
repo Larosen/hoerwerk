@@ -16,6 +16,7 @@ import config  # noqa: E402
 import db as dbm  # noqa: E402
 import releases  # noqa: E402
 import services  # noqa: E402
+import usenet  # noqa: E402
 from web import server  # noqa: E402
 
 PW = "korrekt pferd batterie heftklammer"
@@ -71,6 +72,8 @@ class ReleaseVerdictTest(unittest.TestCase):
 class FakeUsenet:
     def __init__(self):
         self.results = []
+        self.by_query = None          # {query: [results]} – then only these queries find something
+        self.asked = []
         self.sent = []
         self.items = []
         self.indexers = 1
@@ -78,12 +81,24 @@ class FakeUsenet:
     def configured(self):
         return {"indexers": self.indexers, "sab": True}
 
-    def search(self, query, language="", extra=None):
-        return {"results": [dict(r) for r in self.results], "errors": [], "queries": [query]}
+    def _indexers(self):
+        return [None] * self.indexers
+
+    def search(self, query, language="", extra=None, variants=True, limit=6):
+        queries = [query] + list(extra or [])
+        self.asked += queries
+        if self.by_query is None:
+            found = self.results
+        else:
+            found = [r for q in queries for r in self.by_query.get(q, [])]
+        return {"results": [dict(r) for r in found], "errors": [], "queries": queries}
+
+    search_stages = usenet.Usenet.search_stages
 
     def send(self, rid, hints=None):
         self.sent.append((rid, hints))
-        return {"nzo_id": f"nzo{len(self.sent)}", "title": next(r["title"] for r in self.results if r["id"] == rid)}
+        known = self.results + [r for found in (self.by_query or {}).values() for r in found]
+        return {"nzo_id": f"nzo{len(self.sent)}", "title": next(r["title"] for r in known if r["id"] == rid)}
 
     def activity(self):
         return {"items": self.items}
@@ -379,6 +394,54 @@ class ReleaseQualityTest(unittest.TestCase):
             {"title": "Stephenie Meyer - Twilight - Unabridged 2021 MP3", "size": self.size(96), "format": "MP3"},
         ], self.BOOK, prefer_language="en")
         self.assertIn("2021", ranked[0]["title"])
+
+
+class SearchRoundsTest(unittest.TestCase):
+    """The shop's title has the series in brackets – release names don't. Broader searches only when needed."""
+    SNOW = {"asin": "b0snow0004", "title": "Schneewittchen muss sterben (Ein Bodenstein-Kirchhoff-Krimi 4)",
+            "authors": ["Nele Neuhaus"], "series": "Ein Bodenstein-Kirchhoff-Krimi", "series_position": "4",
+            "runtime_min": 600, "language": "german"}
+    REL = {"id": "s1", "title": "Nele Neuhaus - Bodenstein & Kirchhoff - Band 04 - Schneewittchen muss sterben",
+           "size": int(0.4 * GB), "format": "MP3", "language": "de"}
+
+    def test_title_without_the_series_remark(self):
+        self.assertEqual(releases.clean_title(self.SNOW["title"]), "Schneewittchen muss sterben")
+        self.assertEqual(releases.clean_title("Die Tribute von Panem: Band 2"), "Die Tribute von Panem")
+        self.assertEqual(releases.clean_title("(Ohne Titel)"), "(Ohne Titel)")          # nothing left: kept
+        self.assertEqual(releases.series_core(self.SNOW["series"]), "Bodenstein Kirchhoff")
+        self.assertTrue(releases.evaluate(self.REL, self.SNOW)["ok"])
+
+    def test_rounds(self):
+        stages = releases.search_stages(self.SNOW)
+        self.assertEqual(stages, [["Neuhaus Schneewittchen muss sterben"],
+                                  ["Schneewittchen muss sterben", "Neuhaus Bodenstein Kirchhoff"], ["Neuhaus"]])
+        nesbo = releases.search_stages({"title": "Durst", "authors": ["Jo Nesbø"], "series": "Harry Hole"})
+        self.assertEqual(nesbo, [["Nesbø Durst"], ["Nesbø Harry Hole"], ["Nesbø"]])   # "Durst" alone: too broad
+
+    def test_broader_only_while_nothing_fits(self):
+        RequestsTest.setUp(self)
+        self.usenet.by_query = {"Neuhaus": [self.REL]}            # only the author's name finds it
+        req = self.r.create(self.tom, self.SNOW)
+        self.assertEqual(self.r.get(req["id"])["status"], "downloading")
+        self.assertEqual(self.usenet.asked, ["Neuhaus Schneewittchen muss sterben", "Schneewittchen muss sterben",
+                                             "Neuhaus Bodenstein Kirchhoff", "Neuhaus"])
+        self.usenet.asked.clear()
+        self.usenet.by_query = {"Neuhaus Schneewittchen muss sterben": [self.REL]}
+        other = self.r.create(self.admin, {**self.SNOW, "asin": "b0snow0005"})
+        self.assertEqual(self.r.get(other["id"])["status"], "downloading")
+        self.assertEqual(self.usenet.asked, ["Neuhaus Schneewittchen muss sterben"])   # first round fits: done
+
+    def test_budget_holds_with_all_spellings(self):
+        RequestsTest.setUp(self)
+        self.usenet.by_query = {}
+        req = self.r.create(self.tom, {"asin": "b0nesbo001", "title": "Der Schneemann (Harry Hole 7)",
+                                       "authors": ["Jo Nesbø"], "series": "Harry Hole", "series_position": "7"})
+        self.assertLessEqual(len(self.usenet.asked), releases.SEARCH_BUDGET)
+        self.assertIn("Nesboe Der Schneemann", self.usenet.asked)
+        self.assertIn("Nesbo Der Schneemann", self.usenet.asked)
+        item = self.r.get(req["id"])
+        self.assertEqual(item["status"], "searching")
+        self.assertIn("Suchbegriffe", item["history"][-1]["text"])
 
 
 class MismatchTest(unittest.TestCase):
