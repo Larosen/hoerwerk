@@ -19,7 +19,7 @@ const VIEW_TITLES: Record<string, () => string> = {
   settings: () => t("Einstellungen"), account: () => t("Konto"), stats: () => t("Statistik"),
 };
 
-const router = { current: null as Route | null };
+const router = { current: null as Route | null, ready: false };
 
 function settingsSections(): string[] {
   return [...document.querySelectorAll<HTMLElement>("#settingsNav [data-section]")].map((a) => a.dataset.section || "");
@@ -84,6 +84,9 @@ function isAppPath(path: string): boolean {
 function initRouter(): void {
   // own links open as a page change; new tab, middle click & co. stay with the browser
   document.addEventListener("click", (e) => {
+    // until every script has registered its listeners, a click is a normal page load – otherwise the page
+    // would change before e.g. the settings listen, and their form would stay empty
+    if (!router.ready) return;
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
     if (!a || a.target || a.hasAttribute("download")) return;
@@ -92,9 +95,10 @@ function initRouter(): void {
     e.preventDefault();
     navigate(url.pathname);
   });
-  window.addEventListener("popstate", () => navigate(location.pathname, false));
+  window.addEventListener("popstate", () => { if (router.ready) navigate(location.pathname, false); });
   // after every script registered its listeners
   document.addEventListener("DOMContentLoaded", () => {
+    router.ready = true;
     navigate(location.pathname === "/" ? "/" + defaultView() : location.pathname, false);
   });
 }
