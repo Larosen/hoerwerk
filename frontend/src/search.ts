@@ -5,7 +5,6 @@
 // ------------------------------------------------------------------------- //
 const search = {
   sources: null as Sources | null,
-  dlTimer: undefined as number | undefined,
   results: [] as Release[],
   book: null as Book | null,
 };
@@ -137,7 +136,6 @@ async function saveSources(): Promise<void> {
   }
   const lines = await Promise.all(tests.map((p) => p.catch((e: unknown) => "✗ " + errMsg(e))));
   if (lines.length) toast(lines.join(" · "), lines.some((l) => l.startsWith("✗") || l.includes(": ✗")));
-  pollDownloads(true);
 }
 
 function surname(name: string | undefined): string {
@@ -145,11 +143,21 @@ function surname(name: string | undefined): string {
   return parts[parts.length - 1] || "";
 }
 
-function bookQueries(b: Book): { query: string; extra: string[] } {
-  const author = surname((b.authors || [])[0]);
-  const extra = [b.title];
-  if (b.series && b.series_position) extra.push(`${b.series} ${b.series_position}`);
-  return { query: `${author} ${b.title}`.trim(), extra };
+/** The shop title without the series remark it often carries – "Schneewittchen muss sterben (Ein Bodenstein-Kirchhoff-Krimi 4)"
+ *  is "Schneewittchen muss sterben" in release names (the server does the same, see releases.clean_title). */
+function cleanTitle(title: string): string {
+  let s = title.split(/\s+/).join(" ").trim();
+  for (;;) {
+    const shorter = s.replace(/\s*[([][^()[\]]*[)\]]\s*$/, "")
+      .replace(/\s*[,:\-–—]\s*(?:band|bd|teil|folge|buch|book|vol|volume|nr)\.?\s*\d{1,3}\s*$/i, "").trim();
+    if (shorter === s || !/\p{L}|\d/u.test(shorter)) return s;
+    s = shorter;
+  }
+}
+
+/** The first search term for a book; when it stays unchanged, the server searches round by round with variants. */
+function bookQueries(b: Book): { query: string } {
+  return { query: `${surname((b.authors || [])[0])} ${cleanTitle(b.title)}`.trim() };
 }
 
 async function lookupBooks(e?: Event): Promise<void> {
@@ -240,9 +248,9 @@ async function runSearch(e?: Event, free = false): Promise<void> {
   const lang = $<HTMLSelectElement>("#searchLang").value;
   store.set("searchLang", lang);
   try {
-    // the book's title (and series) as extra searches – only while the term is still the suggested one
-    const extra = search.book && q === bookQueries(search.book).query ? bookQueries(search.book).extra : [];
-    const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, extra });
+    // while the term is still the suggested one, the server tries more spellings and broader terms if nothing fits
+    const book = search.book && q === bookQueries(search.book).query ? search.book : null;
+    const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, book });
     search.results = res.results;
     renderResults();
     const queries = res.queries || [];
@@ -276,7 +284,7 @@ function renderResults(): void {
     body.append(el("tr", {}, el("td", { colspan: "5", class: "empty-row" }, t("Keine Treffer – anders formulieren (weniger Wörter, ohne Band-Nummer)."))));
     return;
   }
-  for (const r of search.results) {
+  for (const r of sortReleases(search.results, $<HTMLSelectElement>("#searchSort").value)) {
     const tags = [
       r.format, r.language === "de" ? t("Deutsch") : r.language === "en" ? t("Englisch") : null,
       r.bitrate ? r.bitrate + " kbps" : null, r.abridged ? t("gekürzt") : null, r.drama ? t("Hörspiel") : null,
@@ -293,8 +301,8 @@ function renderResults(): void {
           el("span", { class: "muted" }, [r.indexer, ...(r.also || [])].join(", ")),
           r.details ? el("a", { href: r.details, target: "_blank", rel: "noopener noreferrer" }, t("Details")) : null)),
       el("td", { class: "c-num" }, fmtSize(r.size)),
-      el("td", { class: "c-num", title: r.published ? new Date(r.published * 1000).toLocaleString(LOCALE) : "" }, fmtAge(r.published)),
-      el("td", { class: "c-num" }, r.grabs ?? "–"),
+      el("td", { class: "c-num", "data-label": t("Alter"), title: r.published ? new Date(r.published * 1000).toLocaleString(LOCALE) : "" }, fmtAge(r.published)),
+      el("td", { class: "c-num", "data-label": "Grabs" }, r.grabs ?? "–"),
       el("td", { class: "c-act" }, btn)));
   }
 }
@@ -359,37 +367,8 @@ async function sendResult(r: Release, btn: HTMLButtonElement): Promise<void> {
       ...(volumes ? { volumes } : {}),
     });
     btn.textContent = t("✓ gesendet");
-    toast(t("An SABnzbd geschickt: {title}", { title: r.title }));
-    pollDownloads(true);
+    toast(t("An SABnzbd geschickt: {title} – zu sehen unter Einstellungen › Downloads", { title: r.title }));
   } catch (e) { btn.disabled = false; toast(errMsg(e), true); }
-}
-
-async function pollDownloads(force = false): Promise<void> {
-  clearTimeout(search.dlTimer);
-  const visible = !$("#viewSearch").hidden;
-  if (!visible && !force) return;
-  let data: Downloads;
-  try { data = await api<Downloads>("GET", "/api/downloads"); } catch { data = { items: [], error: t("Server nicht erreichbar") }; }
-  const list = $("#dlList");
-  list.replaceChildren();
-  $("#dlSpeed").textContent = data.speed && data.speed !== "0 " ? `${data.speed}B/s${data.paused ? " · " + t("pausiert") : ""}` : data.paused ? t("pausiert") : "";
-  if (!data.configured) list.append(el("li", { class: "empty" }, t("SABnzbd ist nicht eingerichtet.")));
-  else if (data.error) list.append(el("li", { class: "empty err" }, data.error));
-  else if (!data.items.length) list.append(el("li", { class: "empty" }, t("Keine Downloads in dieser Kategorie.")));
-  for (const d of data.items || []) {
-    const pct = Math.round((d.progress || 0) * 100);
-    const failed = d.status === "Failed";
-    list.append(el("li", { class: "job " + (failed ? "error" : d.done ? "done" : "running") },
-      el("div", { class: "job-top" },
-        el("span", { class: "job-name", title: d.name }, d.name),
-        el("span", { class: "badge " + (failed ? "error" : d.done ? "done" : "running") },
-          d.done ? (failed ? t("fehlgeschlagen") : t("fertig → Eingang")) : `${d.status} ${pct}%`)),
-      d.error ? el("div", { class: "job-msg" }, d.error)
-        : el("div", { class: "job-msg" }, [d.size, d.left && !d.done ? t("noch {time}", { time: d.left }) : "", d.finished ? fmtAgo(d.finished) : ""].filter(Boolean).join(" · ")),
-      !d.done ? el("div", { class: "bar" }, el("i", { style: `width:${pct}%` })) : null));
-  }
-  const busy = (data.items || []).some((d) => !d.done);
-  if (visible) search.dlTimer = setTimeout(pollDownloads, busy ? 3000 : 15000);
 }
 
 function initSearch(): void {
@@ -402,13 +381,14 @@ function initSearch(): void {
   }
   $("#searchForm").addEventListener("submit", lookupBooks);
   $("#releaseForm").addEventListener("submit", (e) => runSearch(e));
+  initReleaseSort($<HTMLSelectElement>("#searchSort"), () => { if (search.results.length) renderResults(); });
   $("#freeSearchBtn").addEventListener("click", () => runSearch(undefined, true));
   $("#addIndexerBtn").addEventListener("click", () => $("#indexerRows").append(indexerRow()));
   $("#sourcesForm").addEventListener("submit", (e) => { e.preventDefault(); saveSources(); });
   document.addEventListener("viewchange", (e) => {
-    if ((e as CustomEvent<string>).detail === "search" && IS_ADMIN) { loadSources(); pollDownloads(true); }
+    if ((e as CustomEvent<string>).detail === "search" && IS_ADMIN) loadSources();
   });
-  if (!$("#viewSearch").hidden && IS_ADMIN) { loadSources(); pollDownloads(true); }
+  if (!$("#viewSearch").hidden && IS_ADMIN) loadSources();
 }
 
 initSearch();

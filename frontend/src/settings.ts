@@ -23,7 +23,9 @@ function sectionLinks(): HTMLAnchorElement[] {
 
 /** The overview: one tile per area (made from the side navigation, so both always match). */
 function renderSettingsHub(): void {
-  $("#settingsHub").replaceChildren(...sectionLinks().map((a) => {
+  // every link of the navigation – also those leading out of the settings (Statistik is its own page)
+  const links = [...document.querySelectorAll<HTMLAnchorElement>("#settingsNav a[href]")];
+  $("#settingsHub").replaceChildren(...links.map((a) => {
     const small = a.querySelector("small")?.textContent || "";
     const name = (a.firstChild?.textContent || "").trim();
     return el("a", { class: "hub-tile", href: a.getAttribute("href") || "", "data-section": a.dataset.section || "" },
@@ -70,7 +72,7 @@ function showSettingsPage(section: string, entering: boolean): void {
   if (section === "library") showLibrarySettings();
   if (section === "users") { loadUsers(); loadListenMap(); }
   if (section === "logs") showLogs();
-  if (section === "stats") loadStats();
+  if (section === "transfers") pollDownloads(true);
   if (section === "health") runHealth();
 }
 

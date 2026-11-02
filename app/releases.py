@@ -27,7 +27,78 @@ def surname(name: str) -> str:
 
 
 def title_words(title: str) -> List[str]:
-    return [w for w in match_words(title or "") if w not in STOP and len(w) > 1]
+    return [w for w in match_words(clean_title(title or "")) if w not in STOP and len(w) > 1]
+
+
+# "(Ein Bodenstein-Kirchhoff-Krimi 4)", "[Band 3]", ": Band 4", " - Teil 2" at the end of a shop title: the series, not the title
+_TAIL_BRACKET = re.compile(r"\s*[\(\[][^\(\)\[\]]*[\)\]]\s*$")
+_TAIL_VOLUME = re.compile(r"(?i)\s*[,:\-–—]\s*(?:band|bd|teil|folge|buch|book|vol|volume|nr)\.?\s*\d{1,3}\s*$")
+
+
+def clean_title(title: str) -> str:
+    """The title as release names carry it: without the series remark the shops append."""
+    s = " ".join((title or "").split())
+    while True:
+        shorter = _TAIL_VOLUME.sub("", _TAIL_BRACKET.sub("", s)).strip()
+        if shorter == s or not re.search(r"\w", shorter):
+            return s
+        s = shorter
+
+
+def name_surname(name: str) -> str:
+    """The surname as written ("Nesbø", not "nesbo") – for searching; the indexers get the other spellings too."""
+    words = re.findall(r"[^\W\d_][\w'’-]*", name or "")
+    return words[-1] if words else ""
+
+
+_SERIES_NOISE = re.compile(r"(?i)^(?:ein|eine|der|die|das|a|an|the)\s+|[\s-]+(?:krimi|thriller|roman|reihe|serie|saga|"
+                           r"series|fall|f(?:ä|ae)lle|mystery|novel)s?$")
+
+
+def series_core(series: str) -> str:
+    """ "Ein Bodenstein-Kirchhoff-Krimi" -> "Bodenstein Kirchhoff" – what release names call the series."""
+    s = clean_title(series)
+    for _ in range(3):
+        s = _SERIES_NOISE.sub("", s).strip()
+    return " ".join(re.sub(r"[-–&+/]", " ", s).split())
+
+
+SEARCH_BUDGET = 9           # indexer queries per search at most, all spellings and fallbacks together
+
+
+def search_stages(book: dict) -> List[List[str]]:
+    """What to ask the indexers for a book, in rounds – the next round only when the one before found nothing
+    that fits. Each round is broader; the last one is just the author: then every result is checked.
+      1. surname + title (the title without the series remark the shop appends)
+      2. the title alone, surname + the first words of a long title, surname + series
+      3. only the author
+    Every query is searched in all spellings (umlauts, ø, é …) – that is what the budget counts."""
+    authors = book.get("authors") or [""]
+    author = " ".join(str(authors[0] or "").split())
+    sur = name_surname(author)
+    title = clean_title(book.get("title") or "")
+    words = title.split()
+    short = " ".join(words[:3]) if len(words) > 4 else ""
+    series = series_core(book.get("series") or "")
+    stages: List[List[str]] = [[f"{sur} {title}".strip()]]
+    second = []
+    if len(words) >= 2 or len(title) >= 8:       # one short word alone finds everything
+        second.append(title)
+    if short and sur:
+        second.append(f"{sur} {short}")
+    if series and sur and len(series) >= 4 and match_words(series) != match_words(title):
+        second.append(f"{sur} {series}")
+    stages.append(second)
+    plain = match_words(sur)
+    stages.append([sur if plain and len(plain[-1]) >= 4 else author] if author else [])   # "Ng" alone: too much
+    seen: set = set()
+    out = []
+    for stage in stages:
+        stage = [q for q in stage if q and q.lower() not in seen]
+        seen.update(q.lower() for q in stage)
+        if stage:
+            out.append(stage)
+    return out
 
 
 LANG_CODES = {"german": "de", "deutsch": "de", "de": "de", "english": "en", "englisch": "en", "en": "en"}
@@ -79,7 +150,7 @@ def release_volumes(name: str, book: dict) -> Set[int]:
     text = re.sub(r"[-_.+]", " ", name or "")
     found = {int(m) for m in _VOL.findall(text)}
     # right after a word of the series or the title: "Twilight 4", "Twilight.1", "Harry Potter 3"
-    anchors = {w for w in match_words(book.get("series") or "") + title_words(book.get("title") or "")
+    anchors = {w for w in match_words(series_core(book.get("series") or "")) + title_words(book.get("title") or "")
                if len(w) >= 4 and not w.isdigit() and w not in STOP}
     plain = " ".join(match_words(text))
     for w in anchors:

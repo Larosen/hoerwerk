@@ -332,7 +332,11 @@ details.log pre { font: 11.5px/1.45 var(--mono); white-space: pre-wrap; margin: 
 
 /* Search */
 .search-panel { flex: 1 1 360px; min-height: 320px; }
-.dl-panel { flex: 0 1 auto; max-height: 34vh; }
+/* Einstellungen → Downloads */
+.dl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 10px; }
+.dl-tools #dlSpeed { margin-right: auto; }
+.dl-list { padding: 0; max-height: 70vh; }
+.dl-list .job-top .row { flex: none; }
 .pad { padding: 10px 12px; }
 .pad-x { padding: 0 12px 8px; }
 table.results { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
@@ -758,23 +762,45 @@ legend .help-q { margin-left: 6px; vertical-align: 1px; }
 .dup-version.best { border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
 .dup-version > b { font-size: 16px; font-variant-numeric: tabular-nums; }
 .dup-label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
-/* statistics: compact rows, details on tap */
-.stats-row { cursor: pointer; }
-.stats-row:hover td { background: var(--hover, var(--panel-2)); }
-.stats-row .chev .ico { transition: transform .15s; transform: rotate(90deg); }
-.stats-row.open .chev .ico { transform: rotate(-90deg); }
-.chev-col { width: 36px; text-align: right; }
-.stats-details td { background: var(--panel-2); white-space: normal; }
-.stats-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 16px; margin: 4px 0; font-size: 13px; }
-.stats-facts dt { color: var(--muted); }
-.stats-facts dd { margin: 0; overflow-wrap: anywhere; }
-@media (min-width: 900px) { .stats-facts { grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr); } }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.table-scroll { position: relative; }
-@media (max-width: 480px) { .stats-table .wide-only { display: none; } }
-@media (max-width: 480px) {
-  table.stats-table th, table.stats-table td { padding: 8px 6px; }
-  table.stats-table td.name { max-width: 34vw; }
+
+/* release lists: note on the left, sort order on the right */
+.result-tools { justify-content: space-between; flex-wrap: wrap; }
+.result-tools .grow { flex: 1 1 16rem; min-width: 0; margin: 0; }
+.sort-pick { width: auto; flex: 0 0 auto; }
+
+/* statistics: one account in detail, the own share in the month chart */
+.stats-panel { max-width: 1100px; }
+.month-chart .mbar.shared { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); display: flex; flex-direction: column; justify-content: flex-end; }
+.month-chart .mbar .own { display: block; width: 100%; background: var(--accent); border-radius: 0; }
+.stats-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 4px 24px; margin-bottom: 12px; }
+.stats-col { min-width: 0; }
+.stats-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; max-height: 480px; overflow-y: auto; }
+.stats-list > li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.stats-list > li:last-child { border-bottom: 0; }
+.stats-list > li.empty { color: var(--muted); }
+.stats-item-main { display: flex; flex-direction: column; min-width: 0; }
+.stats-item-main > b { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-item-side { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex: none; text-align: right; }
+.stats-item-side .tag { margin: 0; }
+.tag.ok { background: transparent; color: var(--ok); box-shadow: inset 0 0 0 1px currentColor; }
+.tag.no { background: var(--err-soft); color: var(--err); }
+.progress-mini { display: block; width: 64px; height: 6px; border-radius: 99px; background: var(--panel-2); overflow: hidden; box-shadow: inset 0 0 0 1px var(--border); margin-top: 4px; }
+.progress-mini > span { display: block; height: 100%; background: var(--accent); }
+table.stats-table td.name a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+table.stats-table td.name a:hover { text-decoration-color: currentColor; }
+
+/* release lists on a phone: one card per release – the full name across the width, the numbers below it */
+@media (max-width: 640px) {
+  table.results { table-layout: auto; }
+  table.results thead { display: none; }
+  table.results, table.results tbody { display: block; }
+  table.results tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+  table.results td { display: block; padding: 0; border: 0; width: auto; }
+  table.results td:first-child { flex: 1 0 100%; min-width: 0; }
+  table.results td.empty-row { flex: 1 0 100%; padding: 12px 0; }
+  table.results .c-num, table.results .c-num:nth-child(3), table.results .c-num:nth-child(4) { display: block; width: auto; font-size: 12.5px; }
+  table.results .c-num[data-label]::before { content: attr(data-label) " "; color: var(--muted); }
+  table.results td.c-verdict { flex: 1 1 0; min-width: 0; }
+  table.results .c-act { width: auto; margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .rel-title, #releasesDialog .c-title span:first-child { word-break: normal; overflow-wrap: anywhere; }
 }
-table.stats-table tr.stats-details td { white-space: normal; }
-.stats-row:hover td, .stats-row:hover td.name, .stats-row.open td, .stats-row.open td.name { background: var(--panel-2); }

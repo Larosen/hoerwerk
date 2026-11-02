@@ -43,9 +43,9 @@ LOGIN_PAGE = "/login"
 # Pages of the app – each address gets the same page shell, the browser shows the right part.
 # Who may open them (the API checks every right again): "user" = any account, "admin" = admins only.
 APP_PAGES = {"books": "admin", "search": "user", "discover": "user", "requests": "user",
-             "account": "user", "settings": "admin"}
+             "account": "user", "settings": "admin", "stats": "user"}
 SETTINGS_SECTIONS = frozenset({"health", "general", "library", "convert", "downloads", "services", "discover",
-                               "notify", "users", "stats", "logs"})
+                               "notify", "users", "stats", "logs", "transfers"})
 # Without login only what the login page itself needs – no app code, no page shell
 PUBLIC_STATIC = frozenset({"style.css", "icon.svg", "icon.png", "theme.js", "core.js", "login.js"})
 
@@ -58,6 +58,9 @@ def page_access(path: str) -> Optional[str]:
     if parts[0] == "settings":
         if len(parts) > 2 or (len(parts) == 2 and parts[1] not in SETTINGS_SECTIONS):
             return None
+    elif parts[0] == "stats" and len(parts) == 2:
+        # one account's statistics (/stats/7) – the API decides whose numbers someone may see
+        return "user" if parts[1].isdigit() and len(parts[1]) < 10 else None
     elif len(parts) > 1:
         return None
     return APP_PAGES[parts[0]]

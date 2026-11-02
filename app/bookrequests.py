@@ -15,6 +15,7 @@ A family member asks for a *book* (from Audible or BookBeat), never for a releas
 """
 from __future__ import annotations
 
+import secrets
 import threading
 import time
 from datetime import datetime
@@ -213,7 +214,8 @@ class Requests:
         cleaned = [self._clean(b) for b in books]
         title = title or cleaned[0].get("series") or cleaned[0]["title"]
         now = self.clock()
-        group = {"id": f"g{int(now * 1000)}-{user['id']}", "title": title,
+        # random part: two series asked for in the same millisecond must not become one group
+        group = {"id": f"g{int(now * 1000)}-{user['id']}-{secrets.token_hex(4)}", "title": title,
                  "asin": str(series.get("asin") or "")[:20] or None}
         skipped: List[str] = []
         todo = []
@@ -324,14 +326,16 @@ class Requests:
         return req
 
     # -- searching and grabbing --------------------------------------------
-    def _queries(self, book: dict, query: Optional[str] = None) -> tuple:
-        author = releases.surname((book.get("authors") or [""])[0])
+    def _find(self, req: dict, query: Optional[str] = None) -> tuple:
+        """(judged releases, queries asked, errors). A typed query is searched as it is (in all spellings);
+        otherwise round by round – broader only while nothing fits (``releases.search_stages``)."""
         if query:
-            return query, []
-        extra = [book["title"]]
-        if book.get("series") and book.get("series_position"):
-            extra.append(f"{book['series']} {book['series_position']}")
-        return f"{author} {book['title']}".strip(), extra
+            res = self.usenet.search(query, "")
+        else:
+            res = self.usenet.search_stages(releases.search_stages(req["book"]),
+                                            lambda found: any(r["verdict"]["ok"] for r in self._judge(req, found)),
+                                            budget=releases.SEARCH_BUDGET)
+        return self._judge(req, res["results"]), res.get("queries") or [], res.get("errors") or []
 
     def _judge(self, req: dict, results: List[dict]) -> List[dict]:
         s = self.settings()
@@ -345,14 +349,13 @@ class Requests:
         req = self._need(rid)
         if not self.usenet.configured()["indexers"]:
             raise RequestError(t("Noch kein Indexer eingerichtet"))
-        q, extra = self._queries(req["book"], (query or "").strip()[:200] or None)
+        typed = (query or "").strip()[:200] or None
         try:
-            res = self.usenet.search(q, "", extra)
+            ranked, queries, errors = self._find(req, typed)
         except UsenetError as e:
             raise RequestError(str(e), 502)
-        ranked = self._judge(req, res["results"])
-        return {"request": req, "query": q, "queries": res.get("queries") or [q], "errors": res.get("errors") or [],
-                "results": ranked}
+        q = typed or (releases.search_stages(req["book"]) or [[""]])[0][0]
+        return {"request": req, "query": q, "queries": queries or [q], "errors": errors, "results": ranked}
 
     def search_soon(self, rid: int) -> None:
         threading.Thread(target=self._search_safe, args=(rid,), daemon=True, name=f"request-{rid}").start()
@@ -400,19 +403,18 @@ class Requests:
                     t("Kommt mit dem Paket „{release}“", release=carrier["release"])
                 req.update(last_search=self.clock(), error=None, pack_noted=carrier["release"])
                 return self._save(req, note=note)
-            q, extra = self._queries(req["book"])
             try:
-                res = self.usenet.search(q, "", extra)
+                ranked, queries, errors = self._find(req)
             except UsenetError as e:
                 req.update(last_search=self.clock(), error=str(e))
                 return self._save(req)
-            ranked = self._judge(req, res["results"])
             good = [r for r in ranked if r["verdict"]["ok"]]
-            req.update(last_search=self.clock(), error="; ".join(res.get("errors") or []) or None,
-                       found=len(good), seen=len(ranked))
+            req.update(last_search=self.clock(), error="; ".join(errors) or None, found=len(good), seen=len(ranked),
+                       queries=queries)
             if not good:
-                return self._save(req, note=t("Nichts Passendes gefunden ({n} Releases geprüft) – neuer Versuch in {h} h",
-                                              n=len(ranked), h=self.interval_hours()))
+                note = t("Nichts Passendes gefunden ({n} Releases geprüft, {q} Suchbegriffe) – neuer Versuch in {h} h",
+                         n=len(ranked), q=len(queries), h=self.interval_hours())
+                return self._save(req, note=note)
             if not self.usenet.configured()["sab"]:
                 req["error"] = t("SABnzbd ist nicht eingerichtet")
                 return self._save(req, note=t("1 passendes Release gefunden") if len(good) == 1
@@ -522,6 +524,15 @@ class Requests:
                     self._follow_job(req)
             except Exception as e:  # noqa: BLE001 – one request must not stop the others
                 applog.warn(t("Anfrage {id}: {error}", id=rid, error=e), "Anfragen")
+
+    def waiting_downloads(self) -> set:
+        """SABnzbd ids that requests still follow – their history entry must stay until they saw it finish."""
+        out = set()
+        for row in self.db.all("SELECT data FROM requests WHERE status='downloading'"):
+            nzo = (dbm.loads(row["data"], {}) or {}).get("nzo_id")
+            if nzo:
+                out.add(str(nzo))
+        return out
 
     def _activity(self) -> List[dict]:
         try:

@@ -69,8 +69,21 @@ def search_indexers(req: Req):
     if len(query) < 2:
         raise HTTPException(400, t("Suchbegriff fehlt"))
     extra = [str(x) for x in (req.get("extra") or []) if isinstance(x, str)][:3]
+    language = req.get("language") or ""
     try:
-        res = req.app.usenet.search(query, req.get("language") or "", extra)
+        book = br.Requests._clean(req.get("book")) if isinstance(req.get("book"), dict) else None
+    except br.RequestError:
+        book = None                                    # no author: the plain search
+    try:
+        if book:
+            # a picked book: round by round, broader only while no release fits it (see releases.search_stages)
+            res = req.app.usenet.search_stages(
+                releases.search_stages(book),
+                lambda found: any(releases.evaluate(r, book, prefer_language=language)["ok"] for r in found),
+                language, budget=releases.SEARCH_BUDGET)
+            res["results"] = sorted(res["results"], key=lambda r: req.app.usenet._rank(r, query, language), reverse=True)
+        else:
+            res = req.app.usenet.search(query, language, extra)
     except UsenetError as e:
         raise HTTPException(400, str(e))
     index = req.app.library_index
@@ -185,6 +198,26 @@ def downloads(req: Req):
     if not usenet.configured()["sab"]:
         return {"configured": False, "items": []}
     try:
-        return {"configured": True, **usenet.activity()}
+        limit = min(max(int(req.query.get("limit") or 15), 1), 200)
+    except ValueError:
+        limit = 15
+    try:
+        return {"configured": True, **usenet.activity(limit)}
     except UsenetError as e:
         return {"configured": True, "error": str(e), "items": []}
+
+
+@route("POST", "/api/downloads/clear")
+def clear_downloads(req: Req):
+    """Tidy SABnzbd's history: all finished downloads of our category, or the given ids. Files stay; entries a
+    request still waits for stay too (it notices the end of its download there)."""
+    usenet = req.app.usenet
+    if not usenet.configured()["sab"]:
+        raise HTTPException(400, t("SABnzbd ist nicht eingerichtet"))
+    ids = [str(i)[:100] for i in (req.get("ids") or []) if isinstance(i, (str, int))][:200]
+    try:
+        out = usenet.clear_finished(ids or None, keep=req.app.requests.waiting_downloads())
+    except UsenetError as e:
+        raise HTTPException(502, str(e))
+    req.app.audit(req, "downloads_cleared", str(out["removed"]))
+    return out

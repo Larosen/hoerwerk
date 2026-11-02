@@ -114,8 +114,30 @@ interface Release {
   abridged: boolean; drama: boolean; owned: Owned | null;
   pack?: { volumes: number[]; series: string; author: string; owned: Record<string, string> };
 }
+/** The order of a release list: as Hörwerk ranks them, by size or by age (store key "releaseSort"). */
+function sortReleases<T extends { size: number; published: number | null }>(list: T[], order: string): T[] {
+  const out = list.slice();
+  const age = (r: T): number => r.published || 0;
+  if (order === "size-desc") out.sort((a, b) => b.size - a.size);
+  else if (order === "size-asc") out.sort((a, b) => a.size - b.size);
+  else if (order === "new") out.sort((a, b) => age(b) - age(a));
+  else if (order === "old") out.sort((a, b) => (age(a) || Infinity) - (age(b) || Infinity));
+  return out;
+}
+
+/** A sort selector for a release list – remembered across both lists. */
+function initReleaseSort(sel: HTMLSelectElement, render: () => void): void {
+  sel.value = store.get("releaseSort", "best");
+  if (!sel.value) sel.value = "best";
+  sel.addEventListener("change", () => {
+    store.set("releaseSort", sel.value);
+    for (const other of document.querySelectorAll<HTMLSelectElement>(".sort-pick")) other.value = sel.value;
+    render();
+  });
+}
+
 interface Download {
-  name: string; status: string; progress: number; done: boolean; size: string; left: string;
+  id?: string | null; name: string; status: string; progress: number; done: boolean; size: string; left: string;
   finished: number | null; error: string | null;
 }
 interface Downloads { configured?: boolean; items: Download[]; error?: string; speed?: string; paused?: boolean }

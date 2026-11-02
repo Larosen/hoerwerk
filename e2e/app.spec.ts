@@ -111,7 +111,7 @@ test("Einstellungen: Übersicht, Healthcheck mit ffmpeg und Proxy, Design bleibt
   const errors = await open(page);
   await page.locator("#settingsBtn").click();
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(11);
+  await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(12);
   await page.locator("#settingsHub").getByRole("link", { name: /Healthcheck/ }).click();
   await expect(page).toHaveURL(/\/settings\/health$/);
   await expect(page.locator("#healthList")).toContainText("ffmpeg");
@@ -336,10 +336,45 @@ test("Suchen: ganze Reihe anfragen – Bände wählen, eine Karte unter Anfragen
   expect(errors).toEqual([]);
 });
 
-test("Statistik: je Konto, Zeitraum wählbar, Monate als Balken und als Tabelle", async ({ page }) => {
+test("Downloads: eigene Seite in den Einstellungen, Fertige ausblenden und aufräumen", async ({ page }) => {
   const errors = await open(page);
-  await page.goto("/settings/stats");
-  await expect(page.locator("#settingsTitle")).toHaveText("Statistik");
+  let items = [
+    { id: "a", name: "Buch A", status: "Downloading", progress: 0.42, done: false, size: "400 MB", left: "0:01:10", finished: null, error: null },
+    { id: "c", name: "Buch C", status: "Completed", progress: 1, done: true, size: "300 MB", left: "", finished: 1761000000, error: null },
+    { id: "d", name: "Buch D", status: "Failed", progress: 0, done: true, size: "1 GB", left: "", finished: null, error: "Out of retention" },
+  ];
+  const cleared: string[][] = [];
+  await page.route("**/api/downloads?*", (r) => r.fulfill({ json: { configured: true, speed: "12.3 M", paused: false, items } }));
+  await page.route("**/api/downloads/clear", async (r) => {
+    const ids: string[] = r.request().postDataJSON().ids;
+    cleared.push(ids);
+    const gone = ids.length ? ids : items.filter((i) => i.done).map((i) => i.id);
+    items = items.filter((i) => !gone.includes(i.id));
+    await r.fulfill({ json: { removed: gone.length, kept: 0 } });
+  });
+  await page.goto("/search");
+  await expect(page.locator("#dlList")).toBeHidden();                              // no longer part of the search
+  await page.goto("/settings/transfers");
+  await expect(page.locator("#settingsTitle")).toHaveText("Downloads");
+  await expect(page.locator("#dlList .job")).toHaveCount(3);
+  await page.locator("#dlHideDone").check();
+  await expect(page.locator("#dlList .job")).toHaveCount(1);
+  await page.locator("#dlHideDone").uncheck();
+  await page.locator("#dlList .job", { hasText: "Buch D" }).locator(".icon-btn").click();   // one entry
+  await expect(page.locator("#dlList .job")).toHaveCount(2);
+  await page.locator("#dlClear").click();                                          // all finished – after asking
+  await page.locator("#confirmDialog button[value=ok]").click();
+  await expect(page.locator("#dlList .job")).toHaveCount(1);
+  expect(cleared).toEqual([["d"], []]);
+  await expect(page.locator("#dlClear")).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test("Statistik: je Konto, ein Konto im Detail, Zeitraum wählbar, Monate als Balken und als Tabelle", async ({ page }) => {
+  const errors = await open(page);
+  await page.goto("/settings/stats");                                               // the old address still leads there
+  await expect(page).toHaveURL(/\/stats$/);
+  await expect(page.locator("#statsTitle")).toHaveText("Statistik");
   await expect(page.locator("#statsTiles .stat-tile")).toHaveCount(5);
   await expect(page.locator("#statsRows tr").first()).toContainText("admin");
   await expect(page.locator("#statsChart .col")).toHaveCount(12);
@@ -349,6 +384,14 @@ test("Statistik: je Konto, Zeitraum wählbar, Monate als Balken und als Tabelle"
   await expect.poll(() => asked).toContain("all");
   await page.locator(".stats-months summary").click();
   await expect(page.locator("#statsMonthRows tr")).toHaveCount(12);
+  // a name opens that account: its requests and what it heard
+  await page.locator("#statsRows tr").first().locator("td.name a").click();
+  await expect(page).toHaveURL(/\/stats\/\d+$/);
+  await expect(page.locator("#statsTitle")).toHaveText(/Statistik: admin/);
+  await expect(page.locator("#statsAccounts")).toBeHidden();
+  await expect(page.locator("#statsDetail")).toBeVisible();
+  await page.locator("#statsBack").click();
+  await expect(page.locator("#statsAccounts")).toBeVisible();
   await page.locator("#statsPeriod").getByText("12 Monate").click();               // back for the next tests
   expect(errors).toEqual([]);
 });
@@ -494,6 +537,11 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   await expect(rows.first()).toContainText("Sprache passt");
   await expect(rows.nth(1)).toContainText("gekürzte Fassung");
   await expect(page.locator("#releasesNote")).toContainText("2 Releases, davon 1 passend");
+  // sorted by size: the small one first, then back to "best first"
+  await page.locator("#releasesSort").selectOption("size-asc");
+  await expect(rows.first()).toContainText("GEKUERZT");
+  await page.locator("#releasesSort").selectOption("best");
+  await expect(rows.first()).toContainText("Sprache passt");
   // the whole release name is readable (wrapped, not cut off)
   const name = rows.first().locator(".c-title span").first();
   expect(await name.evaluate((n) => n.scrollWidth <= n.clientWidth + 1)).toBe(true);
@@ -509,6 +557,14 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   // Mia sees the new state – and can't see other people's requests
   await mia.reload();
   await expect(mia.locator(".request")).toContainText("Wird gesucht");
+  // her statistics: herself, everyone together without names, her own requests – not the admin's page of accounts
+  await mia.locator("#statsBtn").click();
+  await expect(mia.locator("#statsTilesHead")).toHaveText("Du");
+  await expect(mia.locator("#statsTotalBox")).toBeVisible();
+  await expect(mia.locator("#statsAccounts")).toBeHidden();
+  await expect(mia.locator("#statsRequests")).toContainText("Die leise Stadt");
+  expect((await mia.request.get("/api/stats")).ok()).toBe(true);
+  expect(JSON.stringify(await (await mia.request.get("/api/stats")).json())).not.toContain("admin");
   expect((await mia.request.get("/api/requests?scope=all")).status()).toBe(200);
   expect(admin.concat(miaErrors).filter((e) => !/40[34]/.test(e))).toEqual([]);
   await mia.close();
