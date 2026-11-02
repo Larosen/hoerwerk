@@ -351,6 +351,20 @@ class MismatchTest(unittest.TestCase):
         self.assertEqual((after["status"], self.usenet.sent[-1][0]), ("downloading", "r2"))
         self.assertTrue(any("Falscher Inhalt" in h["text"] for h in after["history"]))
 
+    def test_old_wrong_download_does_not_stop_the_current_one(self):
+        """The old wrong folder turns up again while the request already loads another release: only block it."""
+        RequestsTest.setUp(self)
+        self.usenet.results = [GOOD]
+        req = self.r.create(self.tom, BOOK)
+        sent = len(self.usenet.sent)
+        self.r.wrong_download(req["id"], "Anna Autorin - Das stille Haus 5 - Altes Release", "anderer Band (5 statt 1)")
+        after = self.r.get(req["id"])
+        self.assertEqual((after["status"], after["release"], len(self.usenet.sent)), ("downloading", GOOD["title"], sent))
+        self.assertIn("Anna Autorin - Das stille Haus 5 - Altes Release", after["blocked"])
+        self.assertNotIn(GOOD["title"], after["blocked"])
+        self.r.wrong_download(req["id"], "Anna Autorin - Das stille Haus 5 - Altes Release", "anderer Band (5 statt 1)")
+        self.assertEqual(len(self.r.get(req["id"])["history"]), len(after["history"]))      # said once
+
 
 class SeriesRequestTest(unittest.TestCase):
     """A whole series at once: one request against the quota, approved together, fetched one after the other."""

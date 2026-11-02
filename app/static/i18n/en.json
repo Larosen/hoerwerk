@@ -1205,5 +1205,7 @@
  "verbinden.": ".",
  "{books} · {n} verknüpfte Konten": "{books} · {n} linked accounts",
  "Kein Treffer passt zu den Dateien – bitte selbst suchen oder eintragen": "No match fits the files – please search or enter it yourself",
- "Passende Treffer mit „{query}“": "Fitting matches with “{query}”"
+ "Passende Treffer mit „{query}“": "Fitting matches with “{query}”",
+ "{why} – Release gesperrt: {release}": "{why} – release blocked: {release}",
+ "„Jetzt suchen“ bei der Anfrage startet die Suche neu.": "“Search now” on the request starts the search again."
 }
