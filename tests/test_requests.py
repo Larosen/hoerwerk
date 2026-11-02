@@ -732,3 +732,22 @@ class WebRequestsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RadioPlayQualityTest(unittest.TestCase):
+    """A radio play keeps more: 320k, lossless and Dolby Atmos come first; a reading stays sensible."""
+    PLAY = {"title": "Der Super-Papagei", "authors": ["Robert Arthur"], "runtime_min": 60, "genres": ["Hörspiele"]}
+
+    def rel(self, extra, kbps, fmt):
+        return {"title": f"Robert Arthur - Der Super-Papagei {extra}", "size": int(3600 * kbps * 1000 / 8), "format": fmt}
+
+    def test_order_for_a_radio_play(self):
+        ranked = releases.rank([self.rel("MP3", 128, "MP3"), self.rel("MP3 320", 320, "MP3"),
+                                self.rel("FLAC", 900, "FLAC"), self.rel("Dolby Atmos M4B", 768, "M4B")], self.PLAY)
+        self.assertEqual([r["title"].split("Papagei ")[1] for r in ranked], ["Dolby Atmos M4B", "FLAC", "MP3 320", "MP3"])
+        self.assertIn("Dolby Atmos", ranked[0]["verdict"]["notes"])
+
+    def test_a_reading_does_not_chase_huge_files(self):
+        reading = {**self.PLAY, "genres": ["Krimis"]}
+        ranked = releases.rank([self.rel("MP3 160", 160, "MP3"), self.rel("MP3 320", 320, "MP3")], reading)
+        self.assertEqual(ranked[0]["verdict"]["score"], ranked[1]["verdict"]["score"])     # no difference above 160

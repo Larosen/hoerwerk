@@ -8,7 +8,7 @@ from typing import FrozenSet, Mapping, Tuple
 
 import library
 
-VERSION = "7.11.0"
+VERSION = "7.12.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
@@ -106,6 +106,7 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
         # M4B encoding
         "bitrate": env.get("AAC_BITRATE", "auto"),          # auto|64k|96k|…
         "force_mono": b("FORCE_MONO", False),
+        "audio_quality": env.get("AUDIO_QUALITY", "high"),   # standard|high|original (quality.py)
         "chapter_titles": env.get("CHAPTER_TITLES", "auto"),  # auto|filename|tag
         # Audiobook pipeline
         "ab_watch": b("AUDIOBOOK_WATCH", True),
@@ -148,6 +149,7 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
 
 # Allowed values of the settings that are a choice
 CHOICES = {
+    "audio_quality": ("standard", "high", "original"),
     "ab_match": ("auto", "review", "off"),
     "ab_duplicates": ("ask", "skip", "keep"), "ab_library_originals": ("archive", "delete"),
     "ab_chapters": ("auto", "audible", "files"), "ab_originals": ("archive", "delete"),

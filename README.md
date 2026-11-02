@@ -101,6 +101,10 @@ docker compose up -d
    (`Series/Volume 1`, `Series/Volume 2`) becomes several books.
 2. **Create the M4B.** Each file is encoded to AAC in parallel and then joined without re-encoding – one chapter per
    file (or the chapters a file already has). AAC sources are copied, a single M4B is taken over as is.
+   **Quality** (`AUDIO_QUALITY`): radio plays (detected from title, genre, release name or a cast of narrators) get
+   more bitrate than readings – `standard` 128k/192k, `high` 160k/256k (default), `original` up to 320k and keeps
+   lossless ALAC. Never more than the source has. Dolby Atmos / E-AC-3 is always packed as is, never mixed down
+   (the Audiobookshelf web player may not play it; most apps do). Chapters behind the end of the file are dropped.
    Own chapters: put a `chapters.txt` (`00:01:02.500 Title`) into the book folder.
 3. **Match on Audible.** Searched by folder name or album/artist tags in the chosen store (`AUDIBLE_REGION`);
    an ASIN in the name (`… [B0ABCDE123]`) is used directly. Only clear matches are filed automatically.
@@ -437,7 +441,8 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `NICE` | `10` | CPU priority of ffmpeg (0 = normal) |
 | `FFMPEG_SANDBOX` | `auto` | ffmpeg in a Landlock sandbox: `auto`, `require`, `off` |
 | `FFMPEG_MEMORY_MB` | `4096` | Memory limit per ffmpeg process |
-| `AAC_BITRATE` | `auto` | `auto` (like the source, max. 128k) or a fixed value |
+| `AUDIO_QUALITY` | `high` | `standard`, `high` or `original` – how much bitrate readings and radio plays keep |
+| `AAC_BITRATE` | `auto` | `auto` (like the source, capped by `AUDIO_QUALITY`) or a fixed value |
 | `FORCE_MONO` | `false` | Output mono |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` or `tag` |
 | `TRUSTED_PROXIES` | – | IPs/networks of the reverse proxy (Pangolin/Newt, Traefik), e.g. `172.18.0.0/16` – only from there `X-Forwarded-For` counts |

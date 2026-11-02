@@ -146,3 +146,65 @@ class MergeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class QualityTest(unittest.TestCase):
+    """Reading or radio play, and how much bitrate each may keep."""
+
+    def test_radio_play_or_reading(self):
+        import quality
+        self.assertTrue(quality.is_drama({"title": "Die drei ??? 1", "subtitle": "Hörspiel"}))
+        self.assertTrue(quality.is_drama({"title": "Sherlock"}, "Sherlock.Holmes.Full.Cast.Audio.Drama"))
+        self.assertTrue(quality.is_drama({"title": "X", "genres": ["Hörspiele"]}))
+        self.assertTrue(quality.is_drama({"title": "X", "narrators": ["A", "B", "C", "D"]}))       # a cast
+        self.assertFalse(quality.is_drama({"title": "Der Schimmelreiter", "narrators": ["Eine Stimme"]}))
+        self.assertFalse(quality.is_drama({"title": "Feature Engineering für Anfänger"}))
+
+    def test_caps(self):
+        import quality
+        self.assertEqual(quality.cap("standard", False, 2), 128)
+        self.assertEqual(quality.cap("high", True, 2), 256)
+        self.assertEqual(quality.cap("original", False, 2), 320)
+        self.assertEqual(quality.cap("high", False, 1), 80)
+        self.assertTrue(quality.keep_codec("eac3", "standard"))                 # Dolby: never mixed down
+        self.assertFalse(quality.keep_codec("alac", "high"))
+        self.assertTrue(quality.keep_codec("alac", "original"))
+
+    def test_bitrate_never_above_the_source(self):
+        mp3_64 = [{"bit_rate": 64000}]
+        mp3_320 = [{"bit_rate": 320000}]
+        self.assertEqual(encoder.pick_bitrate("auto", mp3_64, 2, 256), "64k")    # a 64k reading stays 64k
+        self.assertEqual(encoder.pick_bitrate("auto", mp3_320, 2, 128), "128k")
+        self.assertEqual(encoder.pick_bitrate("auto", mp3_320, 2, 256), "256k")  # a radio play keeps more
+        self.assertEqual(encoder.pick_bitrate("auto", mp3_320, 2, 320), "320k")
+        self.assertEqual(encoder.pick_bitrate("192k", mp3_64, 2, 128), "192k")   # a fixed choice wins
+
+
+@unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg fehlt")
+class PackAsIsTest(unittest.TestCase):
+    """Dolby (E-AC-3) is put into the M4B unchanged – several files in a row, no downmix."""
+
+    def test_eac3_files_are_packed_not_reencoded(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        try:
+            for n in (1, 2):
+                tone(os.path.join(d, f"{n:02d}.m4a"), 2.0, channels=6, codec_args=["-c:a", "eac3", "-b:a", "384k"])
+        except subprocess.CalledProcessError:
+            self.skipTest("ffmpeg ohne E-AC-3-Encoder")
+        out = os.path.join(d, "book.m4b")
+        info = encoder.merge_to_m4b(d, ["01.m4a", "02.m4a"], out, profile="standard")
+        self.assertTrue(info["copied"])
+        probe = encoder.meta_cache.probe(out)
+        self.assertEqual((probe["audio_codec"], probe["channels"]), ("eac3", 6))           # still 5.1, not stereo
+        self.assertAlmostEqual(probe["duration"], 4.0, delta=0.3)
+        self.assertEqual(len(encoder.file_chapters(out)), 2)
+
+    def test_chapters_behind_the_end_are_dropped(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, ignore_errors=True)
+        src = tone(os.path.join(d, "a.m4a"), 4.0)
+        out = os.path.join(d, "b.m4b")
+        encoder.remux(src, out, [{"start": 0, "title": "Eins"}, {"start": 2, "title": "Zwei"},
+                                 {"start": 600, "title": "Aus einer anderen Fassung"}])
+        self.assertEqual([c["title"] for c in encoder.file_chapters(out)], ["Eins", "Zwei"])

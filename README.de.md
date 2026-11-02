@@ -100,6 +100,11 @@ docker compose up -d
    Ein Ordner mit mehreren Buch-Ordnern (`Reihe/Band 1`, `Reihe/Band 2`) wird zu mehreren Büchern.
 2. **M4B erzeugen.** Jede Datei wird parallel zu AAC kodiert und dann ohne Neukodierung zusammengefügt – ein Kapitel
    pro Datei (oder die Kapitel, die eine Datei schon hat). AAC-Quellen werden kopiert, eine einzelne M4B wird übernommen.
+   **Qualität** (`AUDIO_QUALITY`): Hörspiele (erkannt an Titel, Genre, Release-Name oder vielen Sprechern) bekommen
+   mehr Bitrate als Lesungen – `standard` 128k/192k, `high` 160k/256k (Standard), `original` bis 320k und behält
+   verlustfreies ALAC. Nie mehr, als die Quelle hat. Dolby Atmos / E-AC-3 wird immer unverändert übernommen, nie
+   heruntergemischt (der Web-Player von Audiobookshelf spielt es evtl. nicht, die meisten Apps schon). Kapitel hinter
+   dem Dateiende werden verworfen.
    Eigene Kapitel: `chapters.txt` (`00:01:02.500 Titel`) in den Buchordner legen.
 3. **Bei Audible erkennen.** Gesucht wird nach Ordnername bzw. Album/Interpret-Tags im gewählten Shop
    (`AUDIBLE_REGION`); eine ASIN im Namen (`… [B0ABCDE123]`) wird direkt verwendet. Nur eindeutige Treffer werden
@@ -449,7 +454,8 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `NICE` | `10` | CPU-Priorität von ffmpeg (0 = normal) |
 | `FFMPEG_SANDBOX` | `auto` | ffmpeg im Landlock-Käfig: `auto`, `require`, `off` |
 | `FFMPEG_MEMORY_MB` | `4096` | Speichergrenze je ffmpeg-Prozess |
-| `AAC_BITRATE` | `auto` | `auto` (wie die Quelle, höchstens 128k) oder fester Wert |
+| `AUDIO_QUALITY` | `high` | `standard`, `high` oder `original` – wie viel Bitrate Lesungen und Hörspiele behalten |
+| `AAC_BITRATE` | `auto` | `auto` (wie die Quelle, begrenzt durch `AUDIO_QUALITY`) oder fester Wert |
 | `FORCE_MONO` | `false` | Mono ausgeben |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` oder `tag` |
 | `TRUSTED_PROXIES` | – | IPs/Netze des Reverse-Proxys (Pangolin/Newt, Traefik), z. B. `172.18.0.0/16` – nur von dort zählt `X-Forwarded-For` |

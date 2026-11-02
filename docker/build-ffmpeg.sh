@@ -14,7 +14,8 @@ JOBS=${JOBS:-$(nproc)}
 
 # Audio inputs (keep in sync with AUDIO_DEMUXERS in app/meta.py), plus the video containers the
 # renamer reads for {resolution}/{codec}/{fps} (VIDEO_DEMUXERS) – containers only, no video decoders.
-DEMUXERS="mp3,mov,aac,flac,ogg,wav,w64,aiff,asf,matroska,ape,wv,caf,mpc,mpc8,tta,au,amr,dsf,ffmetadata,\
+# concat: Dolby / ALAC books from several files are put together without re-encoding (only Hörwerk's own lists)
+DEMUXERS="mp3,mov,aac,flac,ogg,wav,w64,aiff,asf,matroska,ape,wv,caf,mpc,mpc8,tta,au,amr,dsf,ffmetadata,concat,\
 avi,mpegts,mpegps,flv"
 DECODERS="mp3float,mp3,mp2float,mp2,mp1float,mp1,aac,aac_fixed,aac_latm,alac,flac,vorbis,opus,\
 ac3,eac3,wmav1,wmav2,wmapro,wmalossless,ape,wavpack,mpc7,mpc8,tta,amrnb,amrwb,\

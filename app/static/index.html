@@ -254,10 +254,17 @@
     <fieldset data-section="convert">
       <legend>M4B-Konvertierung</legend>
       <div class="grid2">
-        <label>AAC-Bitrate
+        <label>Qualität <small>Hörwerk erkennt Hörspiele (Musik, Effekte, mehrere Sprecher) und gibt ihnen mehr Bitrate als Lesungen. Nie mehr als die Quelle hat – eine 64k-Lesung bleibt 64k. Dolby Atmos wird immer unverändert übernommen, nie zu Stereo heruntergerechnet.</small>
+          <select name="audio_quality">
+            <option value="standard">Standard – Lesung bis 128k, Hörspiel bis 192k</option>
+            <option value="high">Hoch – Lesung bis 160k, Hörspiel bis 256k</option>
+            <option value="original">Original – möglichst nichts umwandeln (auch verlustfrei), sonst bis 320k</option>
+          </select>
+        </label>
+        <label>AAC-Bitrate <small>beim Umwandeln</small>
           <select name="bitrate">
-            <option value="auto">automatisch (wie Quelle, max. 128k)</option>
-            <option>48k</option><option>64k</option><option>96k</option><option>128k</option><option>160k</option><option>192k</option>
+            <option value="auto">automatisch (nach Qualität)</option>
+            <option>48k</option><option>64k</option><option>96k</option><option>128k</option><option>160k</option><option>192k</option><option>256k</option><option>320k</option>
           </select>
         </label>
         <label>Kapitelnamen
