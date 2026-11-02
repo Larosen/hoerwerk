@@ -1261,5 +1261,12 @@
  "Alle Sachbücher in „Für dich“ (sonst nur von anerkannten Autoren)": "All non-fiction in “For you” (otherwise only from established authors)",
  "Ihre Sachbücher erscheinen in „Für dich“. Schon dabei: alle, deren Bücher im Feuilleton besprochen wurden (Perlentaucher – FAZ, SZ, Zeit, Deutschlandfunk …) oder in den Kritiken unter „Aus der Kritik“ vorkommen, dazu Yuval Noah Harari, Stefanie Stahl, Robert Habeck, Richard David Precht, Matthias Brandt, Constantin Schreiber und Rüdiger Maas. Ein Name pro Zeile oder mit Komma getrennt. Das ist eine Prüfung des Rufs, keine Prüfung der Inhalte.": "Their non-fiction appears in “For you”. Already included: everyone whose books were reviewed in the arts pages (Perlentaucher – FAZ, SZ, Zeit, Deutschlandfunk …) or who appears in the reviews under “From the critics”, plus Yuval Noah Harari, Stefanie Stahl, Robert Habeck, Richard David Precht, Matthias Brandt, Constantin Schreiber and Rüdiger Maas. One name per line or separated by commas. This checks reputation, not content.",
  "Weitere anerkannte Sachbuch-Autoren": "More established non-fiction authors",
- "z. B. Mai Thi Nguyen-Kim, Harald Lesch": "e.g. Mai Thi Nguyen-Kim, Harald Lesch"
+ "z. B. Mai Thi Nguyen-Kim, Harald Lesch": "e.g. Mai Thi Nguyen-Kim, Harald Lesch",
+ "Abgel./Fehl.": "Decl./Failed",
+ "Eine Reihe zählt als eine Anfrage": "A series counts as one request",
+ "Gehörte Bücher (davon fertig)": "Books heard (finished)",
+ "Median: von der Anfrage bis verfügbar": "Median: from request to available",
+ "Platz der verfügbaren Bücher in der Bibliothek": "Space the available books take in the library",
+ "Reihen": "series",
+ "Zuletzt": "Last"
 }
