@@ -12,7 +12,7 @@ from typing import Iterable, List, Optional, Set
 
 import packs
 from i18n import t
-from usenet import match_words
+from usenet import match_words, release_info
 
 STOP = {"der", "die", "das", "und", "ein", "eine", "the", "and", "von", "mit", "roman", "band", "teil", "folge"}
 FORMAT_SCORE = {"M4B": 30, "M4A": 20, "MP3": 15, "FLAC": 10}
@@ -156,6 +156,24 @@ def evaluate(release: dict, book: dict, prefer_language: str = "de", unabridged:
     if not pack and _volumes(book) is not None and _volumes(book) in release_volumes(name, book):
         score += 20                     # names the very volume – worth more than a format or language tag
     return {"ok": True, "score": round(score, 2), "reason": None, "notes": notes, "kbps": kbps}
+
+
+def mismatch(name: str, book: dict, duration: float = 0) -> Optional[str]:
+    """Why a downloaded folder can't be this book – another volume, another language, a far other runtime –
+    or None. Only clear evidence counts: a name without volume or language says nothing against it."""
+    if not packs.pack_info(name or ""):
+        vol = _volumes(book)
+        stated = release_volumes(name, book)
+        if vol is not None and stated and vol not in stated:
+            return t("anderer Band ({found} statt {vol})", found=", ".join(str(n) for n in sorted(stated)), vol=vol)
+    want = book_language(book)
+    got = release_info(name or "").get("language") or guess_language(name or "")
+    if want and got and got != want:
+        return t("andere Sprache ({lang})", lang=got)
+    runtime = int(book.get("runtime_min") or 0) * 60
+    if duration and runtime and not 0.6 <= duration / runtime <= 1.67:
+        return t("Laufzeit passt nicht ({have} statt {want} min)", have=round(duration / 60), want=runtime // 60)
+    return None
 
 
 def rank(results: List[dict], book: dict, **kw) -> List[dict]:

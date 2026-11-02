@@ -313,6 +313,45 @@ def volume(n, title=None, **kw):
             "language": "german", **kw}
 
 
+class MismatchTest(unittest.TestCase):
+    """What a downloaded folder clearly is not: another volume, another language, a far other runtime."""
+    TWILIGHT = {"title": "Twilight", "authors": ["Stephenie Meyer"], "series": "The Twilight Saga", "series_position": "1",
+                "runtime_min": 771, "language": "English"}
+    NAME = "Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl-4CD-mp3-DE-2010"
+
+    def test_reasons(self):
+        self.assertEqual(releases.mismatch(self.NAME, self.TWILIGHT, 276 * 60), "anderer Band (5 statt 1)")
+        no_volume = {k: v for k, v in self.TWILIGHT.items() if k != "series_position"}
+        self.assertEqual(releases.mismatch(self.NAME, no_volume, 276 * 60), "andere Sprache (de)")
+        plain = {k: v for k, v in no_volume.items() if k != "language"}
+        self.assertIn("Laufzeit", releases.mismatch(self.NAME, plain, 276 * 60))
+
+    def test_no_evidence_no_objection(self):
+        self.assertIsNone(releases.mismatch("Stephenie Meyer - Twilight", self.TWILIGHT, 770 * 60))
+        self.assertIsNone(releases.mismatch("Stephenie Meyer - Twilight 01 - 04", self.TWILIGHT, 0))   # a pack
+        self.assertIsNone(releases.mismatch("Twilight.1.Unabridged", self.TWILIGHT, 0))
+
+    def test_shop_search_falls_back(self):
+        import audible
+        qs = audible.fallback_queries("Twilight Saga 5 Biss zum ersten Sonnenstrahl HörbucHHamburg Meyer, Stephenie",
+                                      {"author": "Meyer, Stephenie"})
+        self.assertEqual(qs[:2], ["Twilight Saga 5 Biss zum ersten Sonnenstrahl Meyer, Stephenie",
+                                  "Biss zum ersten Sonnenstrahl Meyer"])
+        self.assertEqual(audible.fallback_queries("Anne McDonald Das Haus", {})[0], "McDonald Das Haus")  # kept
+
+    def test_request_blocks_the_wrong_download(self):
+        RequestsTest.setUp(self)
+        self.usenet.results = [GOOD]
+        req = self.r.create(self.tom, BOOK)
+        self.assertEqual(self.r.get(req["id"])["status"], "downloading")
+        self.usenet.results = [ALSO]
+        self.r.wrong_download(req["id"], GOOD["title"], "anderer Band (5 statt 1)")
+        after = self.r.get(req["id"])
+        self.assertIn(GOOD["title"], after["blocked"])
+        self.assertEqual((after["status"], self.usenet.sent[-1][0]), ("downloading", "r2"))
+        self.assertTrue(any("Falscher Inhalt" in h["text"] for h in after["history"]))
+
+
 class SeriesRequestTest(unittest.TestCase):
     """A whole series at once: one request against the quota, approved together, fetched one after the other."""
     setUp = RequestsTest.setUp

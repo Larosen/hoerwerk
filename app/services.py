@@ -77,6 +77,7 @@ class App:
         self.stats = Stats(self.db, self.accounts, self.library_index)
         self.pipeline.open_requests = self.requests.open_for_matching
         self.pipeline.on_request = self.requests.on_job
+        self.pipeline.on_wrong_download = self.requests.wrong_download
         self.uploads = Uploads(config.inbox, on_done=self.pipeline.arrived)
         self.events.provide("audiobooks", lambda: self.pipeline.status() | {"queues": self.engine.stats()})
         self.events.provide("library", self.library_index.stats)

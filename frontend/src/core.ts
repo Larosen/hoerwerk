@@ -68,7 +68,7 @@ interface Book {
   cover_url?: string | null; match?: { score: number }; region?: string | null; url?: string | null;
   format_type?: string | null; publisher?: string | null; language?: string | null; genres?: string[];
   description?: string; source?: string; isbn?: string | null; owned?: Owned | null;
-  request_id?: number; request_user?: string;
+  request_id?: number; request_user?: string; mismatch?: string;
 }
 interface Owned { path: string; title: string; authors: string[]; why: string; count: number }
 interface Hints { query?: string; title?: string; author?: string; narrator?: string; folder?: string }
