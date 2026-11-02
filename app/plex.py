@@ -12,7 +12,7 @@ import json
 import re
 import threading
 import time
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 from urllib import parse, request
 from urllib.error import HTTPError, URLError
 
@@ -171,6 +171,56 @@ class Plex:
                 return
             time.sleep(self.poll)
         self.last = t("Scan läuft noch – Papierkorb nicht geleert")
+
+    # -- listening (who heard what) ------------------------------------------
+    def _get(self, path: str) -> dict:
+        c = self._load()
+        if not c.get("url") or not c.get(self.SECRET):
+            raise PlexError(t("Plex ist noch nicht eingerichtet"))
+        return self._call("GET", f"{_base(c['url'])}{path}", c[self.SECRET])
+
+    def accounts(self) -> List[dict]:
+        """The server's accounts (owner, Plex Home profiles, friends): [{id, name}]."""
+        data = self._get("/accounts")
+        return [{"id": str(a["id"]), "name": str(a.get("name") or "")}
+                for a in (data.get("MediaContainer") or {}).get("Account") or []
+                if isinstance(a, dict) and a.get("id") not in (None, "", 0, "0") and a.get("name")]
+
+    def history(self, account_id: str, since: float = 0, limit: int = 2000) -> List[dict]:
+        """What this account played to the end in the audiobook library, newest first:
+        [{key, book_key, title, book, author, viewed}] – Plex keeps only finished plays."""
+        c = self._load()
+        params = {"accountID": account_id, "sort": "viewedAt:desc", "X-Plex-Container-Start": 0,
+                  "X-Plex-Container-Size": limit}
+        if c.get("section"):
+            params["librarySectionID"] = c["section"]
+        query = parse.urlencode(params) + (f"&viewedAt%3E={int(since)}" if since else "")
+        data = self._get(f"/status/sessions/history/all?{query}")
+        out = []
+        for m in (data.get("MediaContainer") or {}).get("Metadata") or []:
+            if not isinstance(m, dict) or (since and int(m.get("viewedAt") or 0) < since):
+                continue
+            out.append({"key": str(m.get("ratingKey") or ""), "book_key": str(m.get("parentRatingKey") or m.get("ratingKey") or ""),
+                        "title": m.get("title") or "", "book": m.get("parentTitle") or m.get("title") or "",
+                        "author": m.get("grandparentTitle") or "", "viewed": int(m.get("viewedAt") or 0)})
+        return out
+
+    def durations(self, keys: List[str], limit: int = 150) -> Dict[str, float]:
+        """Seconds per track (rating key); remembered, since a track's length does not change."""
+        known = self.db.get("plex_durations") or {}
+        missing = [k for k in dict.fromkeys(keys) if k and k not in known][:limit]
+        for k in missing:
+            try:
+                data = self._get(f"/library/metadata/{parse.quote(k)}")
+                meta = ((data.get("MediaContainer") or {}).get("Metadata") or [{}])[0]
+                known[k] = round(float(meta.get("duration") or 0) / 1000, 1)
+            except PlexError:
+                known[k] = 0.0
+        if missing:
+            if len(known) > 20000:
+                known = dict(list(known.items())[-20000:])
+            self.db.put("plex_durations", known)
+        return {k: known.get(k, 0.0) for k in keys}
 
     def request_scan(self) -> None:
         """A book was filed: refresh once things have calmed down."""

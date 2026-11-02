@@ -468,7 +468,8 @@ class Requests:
         if int(req.get("attempts") or 0) >= MAX_ATTEMPTS:
             req["error"] = why
             req = self._save(req, "failed", t("Aufgegeben nach {n} Versuchen: {why}", n=req["attempts"], why=why))
-            self.notifier.send("request_failed", t("Buchanfrage fehlgeschlagen"), f"{self._label(req)}\n{why}")
+            self.notifier.send("request_failed", t("Buchanfrage fehlgeschlagen"),
+                               f"{self._label(req)}\n{why}\n" + t("„Jetzt suchen“ bei der Anfrage startet die Suche neu."))
             self._tell(req, t("Anfrage fehlgeschlagen"), self._label(req))
             return req
         req = self._save(req, "searching", t("{why} – nächstes Release", why=why))
@@ -480,10 +481,17 @@ class Requests:
         req = self.get(rid)
         if not req or req["status"] not in OPEN:
             return
-        req["release"] = req.get("release") or release_name
-        if release_name and release_name != req["release"]:
-            req["blocked"] = ((req.get("blocked") or []) + [release_name[:300]])[-50:]
-        self._failed_release(req, t("Falscher Inhalt geladen: {why}", why=why))
+        why = t("Falscher Inhalt geladen: {why}", why=why)
+        current = req.get("release")
+        if current and release_name and release_name != current:
+            # an old download turned up again (e.g. still lying in the inbox): block it, but leave the current
+            # download alone – it is another release and may well be the right book
+            if release_name not in (req.get("blocked") or []):
+                req["blocked"] = ((req.get("blocked") or []) + [release_name[:300]])[-50:]
+                self._save(req, note=t("{why} – Release gesperrt: {release}", why=why, release=release_name))
+            return
+        req["release"] = current or release_name
+        self._failed_release(req, why)
 
     # -- following the download --------------------------------------------
     def interval_hours(self) -> int:

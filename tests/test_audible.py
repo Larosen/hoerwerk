@@ -72,6 +72,38 @@ class NormalizeTest(unittest.TestCase):
         self.assertIsNone(audible.series_position("Sonderband"))
 
 
+class ContentQueryTest(unittest.TestCase):
+    """Shorter searches from a folder's own words – for any name, not one case."""
+
+    def test_cases(self):
+        q = audible.content_queries
+        cases = {
+            ("Twilight Saga 5 Biss zum ersten Sonnenstrahl HörbucHHamburg Meyer, Stephenie", "Meyer, Stephenie"):
+                ["Biss zum ersten Sonnenstrahl Meyer", "zum ersten Sonnenstrahl Meyer", "Twilight Saga Meyer"],
+            ("J K Rowling Harry Potter 3 The Prisoner of Azkaban Unabridged EN", "J.K. Rowling"):
+                ["The Prisoner of Azkaban Rowling", "Harry Potter Rowling"],
+            ("Rowling Harry Potter 01 German", "Rowling"): ["Harry Potter Rowling"],
+            ("Anna Autorin Maerchen aus dem Wald Hoerbuch", "Anna Autorin"): ["Märchen aus dem Wald Autorin"],
+            ("Stephenie Meyer Twilight Saga 5 Biss zum ersten Sonnenstrahl 4CD DE 2010", "Stephenie Meyer"):
+                ["Biss zum ersten Sonnenstrahl Meyer"],
+        }
+        for (query, author), expected in cases.items():
+            got = q(query, author)
+            for want in expected:
+                self.assertIn(want, got, query)
+            self.assertLessEqual(len(got), 8)
+            for g in got:                        # never the label words, years or "4CD"
+                self.assertNotRegex(g, r"HörbucHHamburg|\b(DE|EN|German|Unabridged|Hoerbuch|4CD|2010)\b")
+
+    def test_no_volume_no_split_and_no_false_umlauts(self):
+        got = audible.content_queries("Michael Ende Die unendliche Geschichte", "Michael Ende")
+        self.assertEqual(got[0], "Die unendliche Geschichte Ende")
+        self.assertFalse(any("Gesch" in g and "ä" in g for g in got))
+        self.assertNotIn("Morgengraün", " ".join(audible.content_queries("Biss zum Morgengrauen 1 Kapitel eins", "")))
+        self.assertEqual(audible.surname_of("Meyer, Stephenie"), "Meyer")
+        self.assertEqual(audible.surname_of("J.K. Rowling"), "Rowling")
+
+
 class QueryTest(unittest.TestCase):
     def test_clean_query(self):
         self.assertEqual(

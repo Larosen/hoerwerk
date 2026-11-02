@@ -19,7 +19,9 @@ def suggestions(req: Req):
     genre = (req.query.get("genre") or "").strip()
     if section == "genre" and not (genre.isdigit() and req.app.discover.known_genre(genre)):
         return {"items": [], "updated": None, "error": None, "running": False}
-    res = req.app.discover.get(section, genre)
+    res = req.app.discover.get(section, genre, user_id=req.user["id"])
+    res["linked"] = bool(req.app.listening.links(req.user["id"]).get("abs") or
+                         req.app.listening.links(req.user["id"]).get("plex"))
     requested = req.app.requests.status_by_key()
     res["items"] = [{**i, "requested": requested.get(br.book_key(i))} for i in res["items"]]
     return res
@@ -36,5 +38,5 @@ def refresh(req: Req):
     genre = str(req.get("genre") or "").strip()
     if section == "genre" and not (genre.isdigit() and req.app.discover.known_genre(genre)):
         raise HTTPException(400, t("Ungültige Daten"))
-    req.app.discover.refresh(section, genre)
+    req.app.discover.refresh(section, genre, user_id=req.user["id"])
     return {"ok": True}

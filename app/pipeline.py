@@ -46,7 +46,8 @@ SUSPICIOUS_EXTS = (".exe", ".com", ".bat", ".cmd", ".scr", ".pif", ".msi", ".dll
                    ".app", ".dmg", ".iso", ".reg", ".docm", ".xlsm")
 CANDIDATE_KEYS = ("asin", "title", "subtitle", "authors", "narrators", "series", "series_position",
                   "runtime_min", "release_date", "cover_url", "match", "region", "url", "format_type",
-                  "publisher", "language", "genres", "description", "source", "isbn")
+                  "publisher", "language", "genres", "description", "source", "isbn", "mismatch",
+                  "request_id", "request_user")
 EDITABLE = ("title", "subtitle", "authors", "narrators", "series", "series_position", "release_date",
             "publisher", "genres", "description", "language")
 SIDECARS = ("desc.txt", "reader.txt", "cover.jpg", "cover.png", absm.METADATA_FILE)
@@ -152,7 +153,9 @@ class Job:
         self.id = kw.get("id") or uuid.uuid4().hex[:10]
         self.source: str = kw["source"]
         self.rel: str = kw.get("rel") or os.path.basename(self.source)
-        self.name: str = kw.get("name") or os.path.splitext(os.path.basename(self.source))[0]
+        base = os.path.basename(self.source)
+        # a folder keeps its dots ("J.K. Rowling - …"); only a file loses its extension
+        self.name: str = kw.get("name") or (base if os.path.isdir(self.source) else os.path.splitext(base)[0])
         self.origin: str = kw.get("origin", "inbox")        # inbox | manual
         self.status: str = kw.get("status", "queued")
         self.message: str = kw.get("message", t("Wartet …"))
@@ -355,7 +358,7 @@ class Pipeline:
         job = self.get(job_id)
         hints = {**job.hints, "query": audible.clean_query(query) or query, "title": "", "author": "",
                  "asin": audible.find_asin(query)}
-        job.candidates = self.providers.search(hints, region)[:12]
+        job.candidates = self._demote_mismatches(job, self.providers.search(hints, region))[:12]
         job.region = region
         job.say(t("{n} Treffer für „{query}“ ({region})", n=len(job.candidates), query=query, region=region))
         self.save()
@@ -719,7 +722,8 @@ class Pipeline:
             query = audible.clean_query(" ".join(re.sub(r"^\s*\d+(?:[.,]\d+)?\s*[-–.]\s*", "", p)
                                                  for p in job.rel.split(os.sep)))
         else:
-            query = audible.clean_query(name)
+            # scene-style names have dots instead of spaces: "Stephenie.Meyer.-.Twilight.1.-.Bis(s).zum.Morgengrauen"
+            query = audible.clean_query(re.sub(r"[._]+", " ", name) if " " not in name.strip() else name)
         job.hints = {
             "query": query,
             "title": audible.clean_query(album) if album else "",
@@ -780,6 +784,14 @@ class Pipeline:
         threshold = float(s.get("ab_threshold") or 0.8)
         ranked = self._with_requests(job, ranked, region)
         ranked = self._demote_mismatches(job, ranked)
+        if not ranked or all(c.get("mismatch") for c in ranked[:5]):
+            # the shop found books – but none of them is this one (other volume, language, runtime): search by content
+            better = self._search_by_content(job, region)
+            if better:
+                ids = {candidate_id(c) for c in better}
+                ranked = better + [c for c in ranked if candidate_id(c) not in ids]
+            elif ranked:
+                job.say(t("Kein Treffer passt zu den Dateien – bitte selbst suchen oder eintragen"))
         job.candidates = ranked[:12]
         job.region = region
         best = prov.auto_match(ranked, threshold) if mode == "auto" else None
@@ -810,8 +822,54 @@ class Pipeline:
         except Exception as e:  # noqa: BLE001
             applog.warn(t("Anfragen: {error}", error=e), "Anfragen")
 
+    @staticmethod
+    def _folder_author(job: Job) -> str:
+        """The author from the tags – or from a folder called "Stephenie Meyer-Twilight-Saga 5 - …"."""
+        if job.hints.get("author"):
+            return job.hints["author"]
+        first = re.split(r"\s+[-–]\s+|(?<=[a-zäöüß])-(?=[A-ZÄÖÜ])", job.name or "", maxsplit=1)[0].strip()
+        words = first.replace(".", ". ").split()
+        if 2 <= len(words) <= 4 and all(re.fullmatch(r"[A-ZÄÖÜ][\wäöüß'.]*", w) for w in words):
+            return first
+        return ""
+
+    @staticmethod
+    def _content_regions(job: Job, region: str) -> List[str]:
+        """Where to look: the usual store – and for an English folder also the US store, for a German one the German."""
+        lang = releases.release_info(job.name or "").get("language") or releases.guess_language(job.name or "")
+        out = [region]
+        if lang == "en" and region not in ("us", "uk", "au", "ca", "in"):
+            out.append("us")
+        if lang == "de" and region != "de":
+            out.append("de")
+        return out
+
+    def _search_by_content(self, job: Job, region: str) -> List[dict]:
+        """When the shop found only books the folder can't be: shorter searches from the folder's own words
+        (audible.content_queries), in the store that fits the folder's language. The first search with fitting
+        results wins; at most 10 searches."""
+        author = self._folder_author(job)
+        queries = audible.content_queries(job.hints.get("query") or audible.clean_query(job.name or ""), author)
+        tried = 0
+        for where in self._content_regions(job, region):
+            for q in queries:
+                if tried >= 10:
+                    return []
+                tried += 1
+                try:
+                    found, _ = self.providers.lookup({**job.hints, "query": q, "title": "", "author": author,
+                                                      "asin": None}, where)
+                except Exception:  # noqa: BLE001 – one search less
+                    continue
+                fitting = [c for c in self._demote_mismatches(job, found) if not c.get("mismatch")]
+                if fitting:
+                    job.say(t("Passende Treffer mit „{query}“", query=q) + (f" ({where})" if where != region else ""))
+                    return fitting
+        return []
+
     def _demote_mismatches(self, job: Job, ranked: List[dict]) -> List[dict]:
-        """Candidates the download clearly can't be (other volume, language, runtime) go down, never auto."""
+        """Candidates the download clearly can't be (other volume, language, runtime) go down, never auto;
+        a candidate with exactly the volume the folder names goes up."""
         out = []
         for c in ranked:
             why = releases.mismatch(job.name, c, job.duration)
@@ -819,7 +877,11 @@ class Pipeline:
                 match = c.get("match") or {}
                 c = {**c, "mismatch": why, "match": {**match, "score": round(float(match.get("score") or 0) * 0.5, 3)}}
             out.append(c)
-        out.sort(key=lambda b: bool(b.get("mismatch")))          # stable: the shop's order stays otherwise
+
+        def named_volume(c: dict) -> bool:
+            vol = releases._volumes(c)
+            return vol is not None and vol in releases.release_volumes(job.name or "", c)
+        out.sort(key=lambda b: (bool(b.get("mismatch")), not named_volume(b)))   # stable: the shop's order otherwise
         return out
 
     def _with_requests(self, job: Job, ranked: List[dict], region: str) -> List[dict]:

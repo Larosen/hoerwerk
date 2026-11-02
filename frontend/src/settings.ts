@@ -68,7 +68,7 @@ function showSettingsPage(section: string, entering: boolean): void {
     whileLoading($<HTMLFormElement>("#sourcesForm"), () => loadSources().then(fillSources));
   }
   if (section === "library") showLibrarySettings();
-  if (section === "users") loadUsers();
+  if (section === "users") { loadUsers(); loadListenMap(); }
   if (section === "logs") showLogs();
   if (section === "stats") loadStats();
   if (section === "health") runHealth();

@@ -8,7 +8,7 @@ interface Suggestion extends Book {
   rating?: number; ratings?: number; because?: string[]; loose?: boolean;
   review?: { source: string; link: string; date: string; notes?: number };
 }
-interface DiscoverAnswer { items: Suggestion[]; updated: number | null; error: string | null; running: boolean }
+interface DiscoverAnswer { items: Suggestion[]; updated: number | null; error: string | null; running: boolean; personal?: boolean; linked?: boolean }
 interface SubGenre { id: string; name: string }
 interface Genre extends SubGenre { nonfiction: boolean; children: SubGenre[] }
 const discover = {
@@ -75,6 +75,15 @@ function renderDiscover(res: DiscoverAnswer): void {
   state.textContent = res.running ? t("Wird zusammengestellt …") : res.error ? t("Fehler: {errors}", { errors: res.error })
     : when ? t("Stand: {time}", { time: when }) : "";
   $("#discoverNote").hidden = !(discover.section === "genre" && discover.nonfiction.has(discover.genre));
+  // "Für dich": personal when the account's listening is known – otherwise say how it gets personal
+  const personal = $("#discoverPersonal");
+  personal.hidden = discover.section !== "foryou";
+  if (discover.section === "foryou") {
+    personal.replaceChildren(res.personal ? t("Passend zu dem, was du zuletzt gehört hast.")
+      : res.linked ? t("Noch nichts gehört, das Hörwerk zuordnen kann – bis dahin Vorschläge zur ganzen Bibliothek.")
+        : el("span", {}, t("Vorschläge zur ganzen Bibliothek. Persönlich werden sie, wenn du unter "),
+          el("a", { href: "/account" }, t("Konto")), t(" dein Audiobookshelf verbindest.")));
+  }
   if (res.items.length) {
     list.replaceChildren(...res.items.map(suggestionCard));
     return;

@@ -23,6 +23,7 @@ from notify import DownloadWatcher, Notifier
 from plex import Plex
 from pipeline import Pipeline
 from providers import Providers
+from listening import Listening
 from stats import Stats
 from stores import Settings
 from uploads import Uploads
@@ -74,7 +75,9 @@ class App:
                                  pending=self._pending_asins)
         self.requests = Requests(self.db, self.accounts, self.usenet, self.library_index, self.notifier, self.settings,
                                  jobs=lambda: list(self.pipeline.jobs))
-        self.stats = Stats(self.db, self.accounts, self.library_index)
+        self.listening = Listening(self.accounts, self.abs, self.plex, self.library_index)
+        self.discover.seeds = self.listening.seeds
+        self.stats = Stats(self.db, self.accounts, self.library_index, listening=self.listening)
         self.pipeline.open_requests = self.requests.open_for_matching
         self.pipeline.on_request = self.requests.on_job
         self.pipeline.on_wrong_download = self.requests.wrong_download

@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -280,6 +281,98 @@ class PipelineTest(unittest.TestCase):
         self.assertNotEqual((j.match or {}).get("asin"), "B004V0T0VK")
         self.assertEqual(j.candidates[0]["asin"], "B0BISS0005", j.log)
         self.assertTrue(any("Passt nicht" in line for line in j.log))
+
+    def test_only_wrong_volumes_found_then_search_by_content(self):
+        """Real case (7.9.1, after "Entfernen"): the shop search found only other Twilight volumes and editions.
+        They are marked as not fitting (also in the browser), and the shorter search finds the right book."""
+        twilight = [product("B004V0T0VK", "Twilight", ["Stephenie Meyer"], 12.0, language="English",
+                            series="The Twilight Saga", series_position="1"),
+                    product("B0058HTSN0", "Bis(s) zum Morgengrauen", ["Stephenie Meyer"], 13.0,
+                            series="Twilight", series_position="1")]
+        right = product("B0BISS0005", "Bis(s) zum ersten Sonnenstrahl", ["Stephenie Meyer"], 4.0,
+                        series="Twilight", series_position="5")
+
+        class ShopSearch(FakeClient):
+            def search(self, region, keywords="", title="", author="", limit=10):
+                text = " ".join([keywords, title])
+                return [dict(b) for b in (twilight if "Twilight" in text or "Biss" in text else [right])]
+        self.client = ShopSearch(twilight + [right])
+        self.p = self.make()
+        name = "Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl-4CD-mp3-DE-2010"
+        tone(os.path.join(self.inbox, name, "a.mp3"), 4.0)
+        j = self.run_all()[0]
+        self.assertEqual(j.candidates[0]["asin"], "B0BISS0005", j.log)
+        self.assertTrue(any("zum ersten Sonnenstrahl" in line for line in j.log))
+        shown = j.to_dict(full=False)["candidates"]                     # what the browser gets
+        wrong = [c for c in shown if c["asin"] == "B004V0T0VK"][0]
+        self.assertIn("anderer Band", wrong["mismatch"])
+        self.assertIsNone(shown[0]["mismatch"])
+
+    def test_content_search_many_folders(self):
+        """The search by content, not just for one case: German and English, dotted and dashed names, a volume
+        without a title, written-out umlauts, label words. The shop here is strict (every word must be in title,
+        series or author; "Bis(s)" is not "Biss") – real stores are more forgiving."""
+        de, us = [], []
+
+        def p(asin, title, author, secs, store, lang="German", series=None, pos=None):
+            book = product(asin, title, [author], secs, language=lang, series=series, series_position=pos, region=store)
+            (de if store == "de" else us).append(book)
+        p("B0BIS00001", "Bis(s) zum Morgengrauen", "Stephenie Meyer", 13.0, "de", series="Twilight", pos="1")
+        p("B0BIS00002", "Bis(s) zur Mittagsstunde", "Stephenie Meyer", 14.0, "de", series="Twilight", pos="2")
+        p("B0BIS00005", "Bis(s) zum ersten Sonnenstrahl", "Stephenie Meyer", 4.0, "de", series="Twilight", pos="5")
+        p("B004V0T0VK", "Twilight", "Stephenie Meyer", 12.0, "de", lang="English", series="The Twilight Saga", pos="1")
+        p("B0HPDE0001", "Harry Potter und der Stein der Weisen", "J.K. Rowling", 10.0, "de", series="Harry Potter", pos="1")
+        p("B0HPDE0003", "Harry Potter und der Gefangene von Askaban", "J.K. Rowling", 12.0, "de", series="Harry Potter", pos="3")
+        p("B0MAERCHEN", "Märchen aus dem Wald", "Anna Autorin", 5.0, "de")
+        p("B0HPUS0003", "Harry Potter and the Prisoner of Azkaban", "J.K. Rowling", 12.0, "us", lang="English",
+          series="Harry Potter", pos="3")
+        p("B0TWUS0001", "Twilight", "Stephenie Meyer", 12.0, "us", lang="English", series="The Twilight Saga", pos="1")
+
+        def words(text):
+            return set(re.findall(r"[a-zäöüß0-9]+", text.lower()))
+
+        class StrictShop(FakeClient):
+            def search(self, region, keywords="", title="", author="", limit=10):
+                want = words(" ".join([keywords, title, author]))
+                store = de if region == "de" else us if region == "us" else []
+                return [dict(b) for b in store
+                        if want and want <= words(" ".join([b["title"], b.get("series") or "", *b["authors"]]))]
+
+            def product(self, asin, region):
+                for b in de + us:
+                    if b["asin"] == asin and b["region"] == region:
+                        return dict(b)
+                raise audible.AudibleError("unbekannt")
+
+        cases = [
+            ("Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl-4CD-mp3-DE-2010", 4.0, "B0BIS00005"),
+            ("Stephenie.Meyer.-.Twilight.1.-.Bis(s).zum.Morgengrauen.German.MP3", 13.0, "B0BIS00001"),
+            ("J.K. Rowling - Harry Potter 3 - The Prisoner of Azkaban (Unabridged) EN", 12.0, "B0HPUS0003"),
+            ("Rowling - Harry Potter 01 - German", 10.0, "B0HPDE0001"),
+            ("Anna Autorin - Maerchen aus dem Wald - Hoerbuch", 5.0, "B0MAERCHEN"),
+        ]
+        cases.append(("Unbekannte Autorin - Gibt es nirgends 2 - Kein Shop kennt mich", 6.0, None))
+        for name, secs, want in cases:
+            with self.subTest(name):
+                self.client = StrictShop(de + us)
+                self.p = self.make()
+                for leftover in os.listdir(self.inbox):
+                    shutil.rmtree(os.path.join(self.inbox, leftover), ignore_errors=True)
+                tone(os.path.join(self.inbox, name, "a.mp3"), secs)
+                j = self.run_all()[0]
+                got = (j.match or {}).get("asin") or (j.candidates[0]["asin"] if j.candidates else None)
+                if want is None:                                # in no store: nothing taken, the admin decides
+                    self.assertEqual(j.status, "review", "\n".join(j.log))
+                    self.assertFalse(j.match and j.match.get("asin"))
+                    continue
+                self.assertEqual(got, want, "\n".join(j.log))
+                first = next((c for c in j.candidates if c["asin"] == want), None)
+                if first:
+                    self.assertIsNone(first.get("mismatch"))
+                for c in j.candidates:                          # nothing that clearly isn't it comes before it
+                    if c["asin"] == want:
+                        break
+                    self.assertTrue(c.get("mismatch"), (name, c["title"]))
 
     def test_existing_author_folder_is_reused(self):
         os.makedirs(os.path.join(self.lib, "Storm, Theodor"))
