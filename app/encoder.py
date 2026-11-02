@@ -151,7 +151,7 @@ def format_chapters_txt(chapters: Sequence[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
-_GENERIC_RX = re.compile(r"(?i)^\s*(?:track|kapitel|chapter|teil|part|cd|disc|disk|titel)?[\s_.-]*\d+\s*$")
+_GENERIC_RX = re.compile(r"(?i)^\s*(?:track|kapitel|chapter|chapitre|cap[ií]tulo|capitolo|hoofdstuk|teil|part|cd|disc|disk|titel)?[\s_.-]*\d+\s*$")
 
 
 def chapter_title(rel_path: str, tags: dict, mode: str) -> str:
@@ -216,6 +216,23 @@ def chapter_titles(names: Sequence[str], book_title: str = "") -> List[str]:
     counted = None not in nums and all(b > a for a, b in zip(nums, nums[1:]))
     return [n if n and not _GENERIC_RX.match(n) else t("Kapitel {n}", n=nums[i] if counted else i + 1)
             for i, n in enumerate(out)]
+
+
+# the word for a chapter in the book's own language (not the language of the user interface)
+CHAPTER_WORDS = {"en": "Chapter", "de": "Kapitel", "fr": "Chapitre", "es": "Capítulo", "it": "Capitolo",
+                 "nl": "Hoofdstuk"}
+
+
+def chapter_name(n: int, lang: str = "") -> str:
+    """"Chapter 3" for an English book, "Kapitel 3" for a German one."""
+    word = CHAPTER_WORDS.get((lang or "").lower()[:2])
+    return f"{word} {n}" if word else t("Kapitel {n}", n=n)
+
+
+def numbered_chapters(chapters: Sequence[dict], lang: str = "") -> List[dict]:
+    """Chapters without real names, numbered 1, 2, 3 … in their order on the timeline, in the book's language."""
+    ordered = sorted(chapters, key=lambda c: c["start"])
+    return [{**c, "title": chapter_name(i + 1, lang)} for i, c in enumerate(ordered)]
 
 
 def looks_generic(chapters: Sequence[dict]) -> bool:

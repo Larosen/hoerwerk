@@ -407,6 +407,29 @@ class PipelineTest(unittest.TestCase):
             self.p.ignore(j.id)
         self.assertTrue(os.path.isdir(self.lib) and os.path.isdir(os.path.join(self.inbox, "Unbekannt - Kram")))
 
+    def test_numbered_chapters_follow_the_book_language_and_order(self):
+        """Chapters that are only numbers ("Kapitel 86", "Kapitel 2" …) are numbered 1, 2, 3 in their real order –
+        "Chapter" for an English book, "Kapitel" for a German one. Real chapter names stay."""
+        import encoder
+        src = os.path.join(self.root, "src")
+        for n in range(3):
+            tone(os.path.join(src, f"{n + 1:02d}.mp3"), 1.0)
+
+        def build(titles):
+            out = os.path.join(self.root, "book.m4b")
+            encoder.merge_to_m4b(src, ["01.mp3", "02.mp3", "03.mp3"], out, titles=titles)
+            return pipeline.Job(source=src, name="Stephenie Meyer - Twilight", m4b=out)
+        for lang, word in (("English", "Chapter"), ("German", "Kapitel")):
+            with self.subTest(lang):
+                job = build(["Kapitel 86", "Kapitel 2", "Kapitel 3"])
+                self.p._tidy_chapters(job, {"title": "Twilight", "language": lang})
+                self.assertEqual([c["title"] for c in encoder.file_chapters(job.m4b)], [f"{word} {n}" for n in (1, 2, 3)])
+        job = build(["Prolog", "Erster Blick", "Offenes Buch"])
+        self.p._tidy_chapters(job, {"title": "Biss", "language": "English"})
+        self.assertEqual([c["title"] for c in encoder.file_chapters(job.m4b)], ["Prolog", "Erster Blick", "Offenes Buch"])
+        self.assertEqual(encoder.chapter_name(4, "en"), "Chapter 4")
+        self.assertEqual(encoder.chapter_name(4, "de"), "Kapitel 4")
+
     def test_existing_author_folder_is_reused(self):
         os.makedirs(os.path.join(self.lib, "Storm, Theodor"))
         tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "a.mp3"), 4.0)

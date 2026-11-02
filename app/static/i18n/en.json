@@ -1222,5 +1222,6 @@
  "Wird beim nächsten Prüfen wieder aufgenommen": "Will be picked up again at the next check",
  "Wird im Eingang ignoriert": "Ignored in the inbox",
  "{n} Ordner": "{n} folders",
- "„{name}“ endgültig aus dem Eingang löschen? Die Dateien sind danach weg.": "Delete “{name}” from the inbox for good? The files will be gone."
+ "„{name}“ endgültig aus dem Eingang löschen? Die Dateien sind danach weg.": "Delete “{name}” from the inbox for good? The files will be gone.",
+ "Kapitel neu nummeriert: {first} … {last}": "Chapters renumbered: {first} … {last}"
 }

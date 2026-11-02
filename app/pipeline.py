@@ -1094,6 +1094,8 @@ class Pipeline:
         # Chapters from Audible when they fit the file
         if book.get("asin") and s.get("ab_chapters", "auto") != "files":
             self._audible_chapters(job, book, s.get("ab_chapters", "auto"))
+        if s.get("chapter_titles", "auto") == "auto":
+            self._tidy_chapters(job, book)
 
         tagger.write_tags(job.m4b, book, s, cover)
         root = self.library
@@ -1194,6 +1196,24 @@ class Pipeline:
         tagger.copy_tags(job.m4b, tmp)
         os.replace(tmp, job.m4b)
         job.say(t("{n} Kapitel von Audible übernommen", n=len(chapters)))
+
+    def _tidy_chapters(self, job: Job, book: dict) -> None:
+        """Chapters that are only numbers ("Track 7", "Kapitel 86", "3") – from the files, a chapters.txt or a
+        ready-made M4B – are numbered 1, 2, 3 … in their real order, in the book's language: "Chapter 1" for an
+        English book, "Kapitel 1" for a German one. Chapters with real names stay as they are."""
+        current = encoder.file_chapters(job.m4b)
+        if len(current) < 2 or not encoder.looks_generic(current):
+            return
+        lang = (releases.book_language(book) or releases.release_info(job.name or "").get("language")
+                or releases.guess_language(job.name or "") or "de")
+        wanted = encoder.numbered_chapters(current, lang)
+        if [c["title"] for c in current] == [c["title"] for c in wanted]:
+            return
+        tmp = job.m4b + ".chapters.m4b"
+        encoder.remux(job.m4b, tmp, wanted, nice=self.nice)
+        tagger.copy_tags(job.m4b, tmp)
+        os.replace(tmp, job.m4b)
+        job.say(t("Kapitel neu nummeriert: {first} … {last}", first=wanted[0]["title"], last=wanted[-1]["title"]))
 
     def _dispose_source(self, job: Job, s: dict) -> None:
         if job.origin == "inbox":
