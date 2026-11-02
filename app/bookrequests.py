@@ -15,6 +15,7 @@ A family member asks for a *book* (from Audible or BookBeat), never for a releas
 """
 from __future__ import annotations
 
+import secrets
 import threading
 import time
 from datetime import datetime
@@ -213,7 +214,8 @@ class Requests:
         cleaned = [self._clean(b) for b in books]
         title = title or cleaned[0].get("series") or cleaned[0]["title"]
         now = self.clock()
-        group = {"id": f"g{int(now * 1000)}-{user['id']}", "title": title,
+        # random part: two series asked for in the same millisecond must not become one group
+        group = {"id": f"g{int(now * 1000)}-{user['id']}-{secrets.token_hex(4)}", "title": title,
                  "asin": str(series.get("asin") or "")[:20] or None}
         skipped: List[str] = []
         todo = []
