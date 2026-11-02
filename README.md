@@ -259,8 +259,11 @@ German only, no erotica. **Always excluded** is what you already have: books in 
 (even spelled differently), downloads of the last 30 days and books being processed right now. Books from the critics skip the rating rule – they are often new.
 
 **To be honest:** no software can reliably check whether a non-fiction book is accurate – ratings only measure
-popularity. So *For you* leaves non-fiction out by default (switch in the settings); in *By genre* it only appears when
-you pick a non-fiction genre yourself, with a note that stars are no fact check. BookBeat is not connected – it
+popularity. So *For you* only shows non-fiction by established authors: on Hörwerk's fixed list (about 400 authors
+of fact-based non-fiction since 2010, `app/trusted_authors.py`), with a Perlentaucher author page (reviewed in the arts
+pages), named in the reviews, or on your own list in the settings. That checks reputation, not content. All non-fiction
+can be switched on in the settings. In *By genre* it appears when you pick a non-fiction genre yourself,
+with a note that stars are no fact check. BookBeat is not connected – it
 has no open API.
 
 Lists are put together in the background, refreshed at most once a day (or with **Refresh**) and cached in the database.
@@ -424,7 +427,8 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `WRITE_COVER` | `true` | Write `cover.jpg` (used by Audiobookshelf and Plex) |
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Discover: minimum rating and number of ratings |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Discover: unabridged only / German only |
-| `DISCOVER_NONFICTION_STORE` | `false` | Discover: non-fiction in "For you" too |
+| `DISCOVER_NONFICTION_STORE` | `false` | Discover: all non-fiction in "For you" (otherwise only by established authors) |
+| `DISCOVER_TRUSTED_AUTHORS` | – | Discover: more established non-fiction authors, comma-separated |
 | `WANTED_INTERVAL_HOURS` | `12` | Requests without a match: hours until the next search |
 | `ADMIN_TOTP_REQUIRED` | `false` | Admins need a second factor |
 | `CPU_CORES` | half the cores | Parallel ffmpeg processes per book |
