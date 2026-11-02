@@ -18,6 +18,7 @@ STOP = {"der", "die", "das", "und", "ein", "eine", "the", "and", "von", "mit", "
 FORMAT_SCORE = {"M4B": 30, "M4A": 20, "MP3": 15, "FLAC": 10}
 MIN_KBPS = 20          # below that a "full" audiobook is too small – usually abridged or broken
 MAX_KBPS = 1600        # above that it is not this book (or a video)
+LOW_KBPS = 48          # below that it sounds thin – taken only when nothing better is there
 
 
 def surname(name: str) -> str:
@@ -149,8 +150,15 @@ def evaluate(release: dict, book: dict, prefer_language: str = "de", unabridged:
     if lang and lang == prefer_language:
         score += 10
         notes.append(t("Sprache passt"))
-    if kbps is not None and 48 <= kbps <= 192:
-        score += 5
+    if kbps is not None and (release.get("format") or "").upper() not in ("FLAC", "LOSSLESS", "WAV"):
+        if kbps < LOW_KBPS:
+            score -= 40                 # far behind anything that sounds right
+            notes.append(t("geringe Qualität ({kbps} kbit/s)", kbps=kbps))
+        else:
+            score += min(kbps, 160) / 10     # more kbit/s sound better – up to 160, beyond that it makes no difference
+    year = max((int(y) for y in re.findall(r"(?<!\d)((?:19|20)\d\d)(?!\d)", name)), default=0)
+    if year:
+        score += max(0, min((year - 2005) / 2, 8))   # newer releases come from better sources
     score += min(int(release.get("grabs") or 0), 200) / 20
     score += share * 5 - (8 if pack else 0)
     if not pack and _volumes(book) is not None and _volumes(book) in release_volumes(name, book):

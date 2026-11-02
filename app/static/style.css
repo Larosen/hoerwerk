@@ -736,3 +736,25 @@ table.listen-map td:first-child { overflow-wrap: anywhere; }
 #statsListenNote a { color: var(--accent); }
 .discover-note.personal { color: var(--muted); }
 .discover-note.personal a { color: var(--accent); }
+
+/* -- help behind "?" and label lines (same height for every field) -- */
+.label-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 6px; min-height: 1.5em; }
+.label-line > small.hint { font-size: 12px; color: var(--faint, var(--muted)); font-weight: 400; }
+.help-q { display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border-radius: 50%; flex: none;
+  border: 1px solid var(--border); background: var(--panel-2); color: var(--muted); font: 600 11px/1 inherit; cursor: pointer;
+  align-self: center; }
+.help-q:hover, .help-q[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
+legend .help-q { margin-left: 6px; vertical-align: 1px; }
+.help-tip { display: block; font-size: 12.5px; line-height: 1.45; color: var(--muted); background: var(--panel-2);
+  border-left: 3px solid var(--accent); border-radius: 6px; padding: 6px 10px; margin: 2px 0 4px; }
+.help-tip[hidden] { display: none; }
+.help-tip.help-block { margin: 0 0 10px; }
+.grid2 { align-items: end; }
+.grid2 label > input[type=number] { width: 100%; }
+.btn.danger { color: var(--err); }
+.btn.danger:hover { border-color: var(--err); }
+.dup-compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+.dup-version { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.dup-version.best { border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+.dup-version > b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.dup-label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }

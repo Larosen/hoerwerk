@@ -309,6 +309,7 @@ class Pipeline:
                         for p, v in list(self.seen.items()) if not self._known(p)],
             "jobs": jobs,
             "review": sum(1 for j in jobs if j["status"] == "review"),
+            "ignored": sorted(self.ignored()),
         }
 
     def get(self, job_id: str) -> Job:
@@ -445,6 +446,26 @@ class Pipeline:
         self.save()
         return job
 
+    @staticmethod
+    def _quality(path: Optional[str]) -> Optional[dict]:
+        """{kbps, duration, size, files} of a book file or folder – what one hears, averaged over all its audio."""
+        if not path or not os.path.exists(path):
+            return None
+        if os.path.isdir(path):
+            files = [os.path.join(path, f) for f in encoder.collect_audio(path)]
+        else:
+            files = [path]
+        size = duration = 0.0
+        for f in files[:500]:
+            try:
+                size += os.path.getsize(f)
+            except OSError:
+                continue
+            duration += meta_cache.probe(f).get("duration") or 0
+        if not files or not duration:
+            return None
+        return {"kbps": round(size * 8 / 1000 / duration), "duration": round(duration), "size": int(size), "files": len(files)}
+
     def resolve_duplicate(self, job_id: str, action: str) -> Job:
         """The book is already in the library: keep both, replace the old one, or drop the new one."""
         job = self.get(job_id)
@@ -516,6 +537,66 @@ class Pipeline:
             self.engine.discard(job.id)
         self.save()
 
+    def _inbox_entry(self, job: Job) -> str:
+        """The top-level inbox entry this job came from – only that may be deleted or ignored, nothing else."""
+        if job.origin != "inbox" or not self.inbox:
+            raise ValueError(t("Nur für Einträge aus dem Eingang"))
+        real = os.path.realpath(job.source)
+        if os.path.dirname(real) != self.inbox or os.path.islink(job.source):
+            raise ValueError(t("Teil eines größeren Downloads – bitte den ganzen Ordner im Eingang löschen"))
+        return real
+
+    def delete_from_inbox(self, job_id: str) -> str:
+        """Delete the download itself (folder or file) from the inbox – and its entry. Returns the name."""
+        with self.lock:
+            job = self.get(job_id)
+            if job.status in ACTIVE:
+                raise ValueError(t("Läuft noch – erst abbrechen"))
+            path = self._inbox_entry(job)
+            gone = [j for j in self.jobs if j.origin == "inbox" and os.path.realpath(j.source) == path]
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        elif os.path.exists(path):
+            os.remove(path)
+        with self.lock:
+            for j in gone:
+                self._cleanup_work(j)
+                if j in self.jobs:
+                    self.jobs.remove(j)
+            self.seen.pop(path, None)
+        if self.engine:
+            for j in gone:
+                self.engine.discard(j.id)
+        self.save()
+        applog.info(t("Aus dem Eingang gelöscht"), os.path.basename(path))
+        return os.path.basename(path)
+
+    def ignored(self) -> Dict[str, float]:
+        data = self.db.get("inbox_ignored") or {}
+        return data if isinstance(data, dict) else {}
+
+    def ignore(self, job_id: str) -> str:
+        """Leave the download where it is, but never pick it up again (until un-ignored)."""
+        with self.lock:
+            job = self.get(job_id)
+            if job.status in ACTIVE:
+                raise ValueError(t("Läuft noch – erst abbrechen"))
+            name = os.path.basename(self._inbox_entry(job))
+        self.db.put("inbox_ignored", {**self.ignored(), name: _now()})
+        self.remove(job_id)
+        applog.info(t("Wird im Eingang ignoriert"), name)
+        return name
+
+    def unignore(self, name: str = "") -> int:
+        """Pick an ignored download up again (or all of them)."""
+        ignored = self.ignored()
+        keep = {} if not name else {k: v for k, v in ignored.items() if k != name}
+        self.db.put("inbox_ignored", keep)
+        with self.lock:
+            self._force_scan = True
+            self.wake.notify_all()
+        return len(ignored) - len(keep)
+
     def clear_finished(self) -> None:
         with self.lock:
             self.jobs = [j for j in self.jobs if j.status != "done"]
@@ -523,7 +604,9 @@ class Pipeline:
 
     # -- internals ---------------------------------------------------------
     def _known(self, path: str) -> bool:
-        """Inbox entries that already have a job (cancelled ones stay known until removed)."""
+        """Inbox entries that already have a job (cancelled ones stay known until removed) – or are ignored."""
+        if os.path.dirname(path) == self.inbox and os.path.basename(path) in self.ignored():
+            return True
         with self.lock:
             return any(j.source == path or j.source.startswith(path + os.sep) for j in self.jobs
                        if j.status != "done" and j.origin == "inbox")
@@ -625,6 +708,10 @@ class Pipeline:
             if p not in present:
                 self.seen.pop(p, None)
                 self.ready_at.pop(p, None)
+        ignored = self.ignored()
+        if ignored and any(os.path.join(self.inbox, n) not in present for n in ignored):
+            # deleted by hand meanwhile: no need to remember it
+            self.db.put("inbox_ignored", {n: v for n, v in ignored.items() if os.path.join(self.inbox, n) in present})
         self.scan_note = (t("1 neues Hörbuch") if len(added) == 1 else t("{n} neue Hörbücher", n=len(added))) if added else t("Nichts Neues")
         self.notify()
         return added
@@ -991,6 +1078,9 @@ class Pipeline:
             if found:
                 d = found[0]
                 job.duplicate = {k: d.get(k) for k in ("path", "title", "authors", "asin", "format", "why")}
+                # which one sounds better: the version in the library or the new one?
+                job.duplicate["quality"] = {"old": self._quality(os.path.join(self.library, d["path"])),
+                                            "new": self._quality(job.m4b)}
                 why = {"asin": t("gleiche ASIN"), "title": t("gleicher Autor und Titel")}.get(d["why"], t("gleiche Serie und Folge"))
                 where = f"{d['path']} ({why})"
                 if dup_mode == "skip":
@@ -1027,6 +1117,8 @@ class Pipeline:
         # Chapters from Audible when they fit the file
         if book.get("asin") and s.get("ab_chapters", "auto") != "files":
             self._audible_chapters(job, book, s.get("ab_chapters", "auto"))
+        if s.get("chapter_titles", "auto") == "auto":
+            self._tidy_chapters(job, book)
 
         tagger.write_tags(job.m4b, book, s, cover)
         root = self.library
@@ -1127,6 +1219,24 @@ class Pipeline:
         tagger.copy_tags(job.m4b, tmp)
         os.replace(tmp, job.m4b)
         job.say(t("{n} Kapitel von Audible übernommen", n=len(chapters)))
+
+    def _tidy_chapters(self, job: Job, book: dict) -> None:
+        """Chapters that are only numbers ("Track 7", "Kapitel 86", "3") – from the files, a chapters.txt or a
+        ready-made M4B – are numbered 1, 2, 3 … in their real order, in the book's language: "Chapter 1" for an
+        English book, "Kapitel 1" for a German one. Chapters with real names stay as they are."""
+        current = encoder.file_chapters(job.m4b)
+        if len(current) < 2 or not encoder.looks_generic(current):
+            return
+        lang = (releases.book_language(book) or releases.release_info(job.name or "").get("language")
+                or releases.guess_language(job.name or "") or "de")
+        wanted = encoder.numbered_chapters(current, lang)
+        if [c["title"] for c in current] == [c["title"] for c in wanted]:
+            return
+        tmp = job.m4b + ".chapters.m4b"
+        encoder.remux(job.m4b, tmp, wanted, nice=self.nice)
+        tagger.copy_tags(job.m4b, tmp)
+        os.replace(tmp, job.m4b)
+        job.say(t("Kapitel neu nummeriert: {first} … {last}", first=wanted[0]["title"], last=wanted[-1]["title"]))
 
     def _dispose_source(self, job: Job, s: dict) -> None:
         if job.origin == "inbox":

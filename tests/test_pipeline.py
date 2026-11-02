@@ -374,6 +374,75 @@ class PipelineTest(unittest.TestCase):
                         break
                     self.assertTrue(c.get("mismatch"), (name, c["title"]))
 
+    def test_delete_from_inbox_and_ignore(self):
+        """"Entfernen" only took the entry away – the folder came back at the next check. Now: delete it for real,
+        or ignore it (stays on disk, never picked up again, until un-ignored)."""
+        for name in ("Unbekannt - Erstes Rätsel", "Unbekannt - Zweites Rätsel"):
+            tone(os.path.join(self.inbox, name, "a.mp3"), 2.0)
+        first, second = sorted(self.run_all(), key=lambda j: j.name)
+        self.assertEqual((first.status, second.status), ("review", "review"))
+        self.assertEqual(self.p.delete_from_inbox(first.id), "Unbekannt - Erstes Rätsel")
+        self.assertFalse(os.path.exists(os.path.join(self.inbox, "Unbekannt - Erstes Rätsel")))
+        self.assertEqual(self.p.ignore(second.id), "Unbekannt - Zweites Rätsel")
+        self.assertTrue(os.path.isdir(os.path.join(self.inbox, "Unbekannt - Zweites Rätsel")))     # still there
+        self.assertEqual(self.p.jobs, [])
+        self.assertEqual(self.p.scan_once(settle=0), [])                                            # neither comes back
+        self.assertEqual(self.p.status()["ignored"], ["Unbekannt - Zweites Rätsel"])
+        self.assertEqual(self.p.unignore(), 1)
+        again = self.p.scan_once(settle=0)
+        self.assertEqual([j.name for j in again], ["Unbekannt - Zweites Rätsel"])
+
+    def test_delete_only_top_level_inbox_entries(self):
+        """Nothing outside the inbox, nothing inside a bigger download, nothing from the library."""
+        tone(os.path.join(self.inbox, "Unbekannt - Kram", "a.mp3"), 2.0)
+        j = self.run_all()[0]
+        j.source = os.path.join(self.inbox, "Unbekannt - Kram", "a.mp3")          # e.g. one volume of a pack
+        with self.assertRaises(ValueError):
+            self.p.delete_from_inbox(j.id)
+        j.source = self.lib
+        with self.assertRaises(ValueError):
+            self.p.delete_from_inbox(j.id)
+        j.source, j.origin = os.path.join(self.inbox, "Unbekannt - Kram"), "library"
+        with self.assertRaises(ValueError):
+            self.p.ignore(j.id)
+        self.assertTrue(os.path.isdir(self.lib) and os.path.isdir(os.path.join(self.inbox, "Unbekannt - Kram")))
+
+    def test_numbered_chapters_follow_the_book_language_and_order(self):
+        """Chapters that are only numbers ("Kapitel 86", "Kapitel 2" …) are numbered 1, 2, 3 in their real order –
+        "Chapter" for an English book, "Kapitel" for a German one. Real chapter names stay."""
+        import encoder
+        src = os.path.join(self.root, "src")
+        for n in range(3):
+            tone(os.path.join(src, f"{n + 1:02d}.mp3"), 1.0)
+
+        def build(titles):
+            out = os.path.join(self.root, "book.m4b")
+            encoder.merge_to_m4b(src, ["01.mp3", "02.mp3", "03.mp3"], out, titles=titles)
+            return pipeline.Job(source=src, name="Stephenie Meyer - Twilight", m4b=out)
+        for lang, word in (("English", "Chapter"), ("German", "Kapitel")):
+            with self.subTest(lang):
+                job = build(["Kapitel 86", "Kapitel 2", "Kapitel 3"])
+                self.p._tidy_chapters(job, {"title": "Twilight", "language": lang})
+                self.assertEqual([c["title"] for c in encoder.file_chapters(job.m4b)], [f"{word} {n}" for n in (1, 2, 3)])
+        job = build(["Prolog", "Erster Blick", "Offenes Buch"])
+        self.p._tidy_chapters(job, {"title": "Biss", "language": "English"})
+        self.assertEqual([c["title"] for c in encoder.file_chapters(job.m4b)], ["Prolog", "Erster Blick", "Offenes Buch"])
+        self.assertEqual(encoder.chapter_name(4, "en"), "Chapter 4")
+        self.assertEqual(encoder.chapter_name(4, "de"), "Kapitel 4")
+
+    def test_quality_of_two_versions(self):
+        """The duplicate question compares what one hears: kbit/s averaged over all files of a version."""
+        old = os.path.join(self.root, "alt")
+        for n in (1, 2):
+            tone(os.path.join(old, f"{n:02d}.mp3"), 4.0, codec_args=["-b:a", "32k"])
+        new = tone(os.path.join(self.root, "neu.mp3"), 8.0, codec_args=["-b:a", "128k"])
+        q_old, q_new = pipeline.Pipeline._quality(old), pipeline.Pipeline._quality(new)
+        self.assertEqual((q_old["files"], q_new["files"]), (2, 1))
+        self.assertLess(q_old["kbps"], 45)
+        self.assertGreater(q_new["kbps"], 100)
+        self.assertAlmostEqual(q_old["duration"], 8, delta=1)
+        self.assertIsNone(pipeline.Pipeline._quality(os.path.join(self.root, "gibt-es-nicht")))
+
     def test_existing_author_folder_is_reused(self):
         os.makedirs(os.path.join(self.lib, "Storm, Theodor"))
         tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "a.mp3"), 4.0)

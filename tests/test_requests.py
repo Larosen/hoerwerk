@@ -352,6 +352,35 @@ class RequestLanguageVolumeTableTest(unittest.TestCase):
                 self.assertEqual(v["ok"], ok, (name, v["reason"]))
 
 
+class ReleaseQualityTest(unittest.TestCase):
+    """Real case: an old 32k MP3 release was taken although a 128k one was there."""
+    BOOK = {"title": "Twilight", "authors": ["Stephenie Meyer"], "runtime_min": 788, "language": "English"}
+
+    def size(self, kbps):
+        return int(788 * 60 * kbps * 1000 / 8)
+
+    def test_better_sound_wins(self):
+        ranked = releases.rank([
+            {"title": "Stephanie Meyer - Twilight MP3", "size": self.size(32), "format": "MP3"},
+            {"title": "Stephenie Meyer - Twilight - Unabridged MP3", "size": self.size(128), "format": "MP3"},
+            {"title": "Stephenie Meyer - Twilight - Unabridged MP3 64k", "size": self.size(64), "format": "MP3"},
+        ], self.BOOK, prefer_language="en")
+        self.assertEqual([r["verdict"]["kbps"] for r in ranked], [128, 64, 32])
+        self.assertIn("geringe Qualität (32 kbit/s)", ranked[-1]["verdict"]["notes"])
+
+    def test_thin_one_only_when_there_is_nothing_else(self):
+        only = releases.rank([{"title": "Stephanie Meyer - Twilight MP3", "size": self.size(32), "format": "MP3"}],
+                             self.BOOK, prefer_language="en")
+        self.assertTrue(only[0]["verdict"]["ok"])                     # better than no book at all
+
+    def test_newer_release_is_preferred_at_equal_sound(self):
+        ranked = releases.rank([
+            {"title": "Stephenie Meyer - Twilight - Unabridged 2009 MP3", "size": self.size(96), "format": "MP3"},
+            {"title": "Stephenie Meyer - Twilight - Unabridged 2021 MP3", "size": self.size(96), "format": "MP3"},
+        ], self.BOOK, prefer_language="en")
+        self.assertIn("2021", ranked[0]["title"])
+
+
 class MismatchTest(unittest.TestCase):
     """What a downloaded folder clearly is not: another volume, another language, a far other runtime."""
     TWILIGHT = {"title": "Twilight", "authors": ["Stephenie Meyer"], "series": "The Twilight Saga", "series_position": "1",

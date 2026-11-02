@@ -322,6 +322,15 @@ function renderInbox(d: AudiobooksStatus): void {
       el("div", { class: "kv" }, el("span", {}, t("Ablegen")), el("span", {}, q(d.queues.io))));
   }
   if (d.scan_note) box.append(el("div", { class: "muted small" }, d.scan_note));
+  if (d.ignored?.length) {
+    const back = el("button", { type: "button", class: "btn small ghost" }, t("Wieder aufnehmen"));
+    back.addEventListener("click", async () => {
+      try { await api("POST", "/api/inbox/unignore", {}); toast(t("Wird beim nächsten Prüfen wieder aufgenommen")); pollBooks(true); }
+      catch (e) { toast(errMsg(e), true); }
+    });
+    box.append(el("div", { class: "kv" }, el("span", {}, t("Ignoriert")),
+      el("span", { title: d.ignored.join("\n") }, plural(d.ignored.length, t("1 Ordner"), t("{n} Ordner", { n: d.ignored.length }))), back));
+  }
   if (d.waiting.length) {
     box.append(el("div", { class: "small" }, t("Wird noch kopiert / wartet auf Ruhe:")),
       el("ul", { class: "waiting" }, d.waiting.map((w) => el("li", {}, w.name))));
@@ -389,10 +398,13 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
     }, t("Korrigieren")));
   }
   if (!isActive(j.status)) {
-    tools.append(el("button", {
-      class: "btn small ghost", title: t("Aus der Liste entfernen (Dateien bleiben, wie sie sind)"),
-      onclick: () => removeBook(j),
-    }, t("Entfernen")));
+    if (j.origin === "inbox" && j.status !== "done") {
+      // still in the inbox: really delete it – or leave it there and never pick it up again
+      tools.append(el("button", { class: "btn small ghost danger", onclick: () => deleteFromInbox(j) }, t("Aus Eingang löschen")),
+        el("button", { class: "btn small ghost", onclick: () => ignoreInInbox(j) }, t("Ignorieren")));
+    } else {
+      tools.append(el("button", { class: "btn small ghost", onclick: () => removeBook(j) }, t("Aus Liste entfernen")));
+    }
   }
   if (j.status !== "review") {
     tools.append(el("button", {
@@ -442,18 +454,46 @@ function bookDetails(j: AudiobookJob): HTMLDivElement {
 
 const DUP_WHY: Record<string, string> = { asin: t("gleiche ASIN"), title: t("gleicher Autor und Titel"), series: t("gleiche Serie und Folge") };
 
+/** Which version sounds better? Clearly more kbit/s (by a quarter or more) – otherwise they count as equal. */
+function betterVersion(q: Duplicate["quality"]): "old" | "new" | null {
+  if (!q?.old || !q?.new) return null;
+  if (q.new.kbps >= q.old.kbps * 1.25) return "new";
+  if (q.old.kbps >= q.new.kbps * 1.25) return "old";
+  return null;
+}
+
+function qualityCard(label: string, q: Quality | null, best: boolean): HTMLElement {
+  return el("div", { class: "dup-version" + (best ? " best" : "") },
+    el("span", { class: "dup-label" }, label, best ? el("span", { class: "rtag ok" }, icon("check"), t("besser")) : null),
+    q ? el("b", {}, `${q.kbps} kbit/s`) : el("b", { class: "muted" }, "–"),
+    q ? el("span", { class: "muted small" }, [fmtDuration(q.duration), fmtSize(q.size),
+      plural(q.files, t("1 Datei"), t("{n} Dateien", { n: q.files }))].join(" · ")) : null);
+}
+
 function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
+  const better = betterVersion(d.quality);
   const act = async (action: string, label: string): Promise<void> => {
-    if (action === "replace" && !(await confirmBox(t("Die vorhandene Fassung „{path}“ aus der Bibliothek nehmen (sie wird nach _ersetzt im Eingang verschoben, nicht gelöscht) und durch die neue ersetzen?", { path: d.path }), t("Ersetzen")))) return;
+    if (action === "replace") {
+      const worse = better === "old" ? " " + t("Achtung: Die neue Fassung klingt deutlich schlechter ({new} statt {old} kbit/s).",
+        { new: d.quality?.new?.kbps ?? "?", old: d.quality?.old?.kbps ?? "?" }) : "";
+      if (!(await confirmBox(t("Die vorhandene Fassung „{path}“ aus der Bibliothek nehmen (sie wird nach _ersetzt im Eingang verschoben, nicht gelöscht) und durch die neue ersetzen?", { path: d.path }) + worse,
+        t("Ersetzen")))) return;
+    }
     try { await api("POST", `/api/audiobooks/${j.id}/duplicate`, { action }); toast(label); pollBooks(true); }
     catch (e) { toast(errMsg(e), true); }
   };
+  // the better version is the suggestion: keep the old one (discard the new) – or replace it
+  const discard = el("button", { class: "btn small" + (better !== "new" ? " primary" : ""), onclick: () => act("discard", t("Verworfen")) },
+    better === "old" ? t("Vorhandene behalten") : t("Verwerfen"));
+  const replace = el("button", { class: "btn small" + (better === "new" ? " primary" : ""), onclick: () => act("replace", t("Wird ersetzt")) },
+    better === "new" ? t("Durch die bessere ersetzen") : t("Altes ersetzen"));
   return el("div", { class: "dup-box" },
     el("div", {}, el("b", {}, t("Schon in der Bibliothek:"), " "), el("code", {}, d.path),
       el("span", { class: "muted" }, ` – ${DUP_WHY[d.why] || t("ähnlich")}${d.format && d.format !== "m4b" ? ", " + t("dort als {format}", { format: d.format.toUpperCase() }) : ""}`)),
-    el("div", { class: "row gap wrap" },
-      el("button", { class: "btn small", onclick: () => act("discard", t("Verworfen")) }, t("Verwerfen")),
-      el("button", { class: "btn small", onclick: () => act("replace", t("Wird ersetzt")) }, t("Altes ersetzen")),
+    d.quality ? el("div", { class: "dup-compare" },
+      qualityCard(t("In der Bibliothek"), d.quality.old, better === "old"),
+      qualityCard(t("Neu"), d.quality.new, better === "new")) : null,
+    el("div", { class: "row gap wrap" }, ...(better === "new" ? [replace, discard] : [discard, replace]),
       el("button", { class: "btn small ghost", onclick: () => act("keep", t("Wird zusätzlich abgelegt")) }, t("Trotzdem zusätzlich ablegen"))),
     el("div", { class: "muted small" }, t("Falscher Treffer? Unten einen anderen wählen – dann wird erneut geprüft.")));
 }
@@ -600,9 +640,28 @@ async function bookAction(j: AudiobookJob, action: "cancel" | "retry"): Promise<
 }
 
 async function removeBook(j: AudiobookJob): Promise<void> {
-  const inInbox = j.origin === "inbox" && ["review", "cancelled"].includes(j.status);
-  if (inInbox && !(await confirmBox(t("Aus der Liste entfernen? Liegt der Ordner noch im Eingang, wird er beim nächsten Prüfen erneut aufgenommen."), t("Entfernen")))) return;
   try { await api("DELETE", `/api/audiobooks/${j.id}`); books.open.delete(j.id); pollBooks(true); } catch (e) { toast(errMsg(e), true); }
+}
+
+/** Delete the download itself (folder and files) from the inbox – it can't come back. */
+async function deleteFromInbox(j: AudiobookJob): Promise<void> {
+  if (!(await confirmBox(t("„{name}“ endgültig aus dem Eingang löschen? Die Dateien sind danach weg.", { name: j.name }), t("Löschen")))) return;
+  try {
+    await api("POST", `/api/audiobooks/${j.id}/delete-source`);
+    books.open.delete(j.id);
+    toast(t("Gelöscht: {name}", { name: j.name }));
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+/** Leave the download in the inbox, but Hörwerk won't pick it up again. */
+async function ignoreInInbox(j: AudiobookJob): Promise<void> {
+  try {
+    await api("POST", `/api/audiobooks/${j.id}/ignore`);
+    books.open.delete(j.id);
+    toast(t("Wird ab jetzt ignoriert: {name}", { name: j.name }));
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
 }
 
 let pathTimer: number | undefined;

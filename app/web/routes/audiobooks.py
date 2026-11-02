@@ -150,6 +150,38 @@ def remove(req: Req, job_id: str):
     return {"ok": True}
 
 
+@route("POST", "/api/audiobooks/{job_id}/delete-source")
+def delete_source(req: Req, job_id: str):
+    """Delete the download itself from the inbox (not only the entry in the list)."""
+    _job(req, job_id)
+    try:
+        name = req.app.pipeline.delete_from_inbox(job_id)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    except OSError as e:
+        raise HTTPException(500, t("Löschen fehlgeschlagen: {error}", error=e))
+    req.app.audit(req, "inbox_deleted", name)
+    return {"ok": True, "name": name}
+
+
+@route("POST", "/api/audiobooks/{job_id}/ignore")
+def ignore(req: Req, job_id: str):
+    """Leave the download in the inbox but never pick it up again."""
+    _job(req, job_id)
+    try:
+        name = req.app.pipeline.ignore(job_id)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    req.app.audit(req, "inbox_ignored", name)
+    return {"ok": True, "name": name}
+
+
+@route("POST", "/api/inbox/unignore")
+def unignore(req: Req):
+    name = str(req.get("name") or "")
+    return {"ok": True, "count": req.app.pipeline.unignore(name)}
+
+
 @route("DELETE", "/api/audiobooks")
 def clear(req: Req):
     req.app.pipeline.clear_finished()
