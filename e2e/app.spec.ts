@@ -375,8 +375,8 @@ test("Statistik: je Konto, ein Konto im Detail, Zeitraum wählbar, Monate als Ba
   await page.goto("/settings/stats");                                               // the old address still leads there
   await expect(page).toHaveURL(/\/stats$/);
   await expect(page.locator("#statsTitle")).toHaveText("Statistik");
-  await expect(page.locator("#statsTiles .stat-tile")).toHaveCount(5);
-  await expect(page.locator("#statsRows tr").first()).toContainText("admin");
+  await expect(page.locator("#statsTiles .stat-tile")).toHaveCount(4);
+  await expect(page.locator("#statsPeople .person").first()).toContainText("admin");
   await expect(page.locator("#statsChart .col")).toHaveCount(12);
   const asked: string[] = [];
   page.on("request", (r) => { if (r.url().includes("/api/stats")) asked.push(new URL(r.url()).searchParams.get("period") || ""); });
@@ -385,7 +385,7 @@ test("Statistik: je Konto, ein Konto im Detail, Zeitraum wählbar, Monate als Ba
   await page.locator(".stats-months summary").click();
   await expect(page.locator("#statsMonthRows tr")).toHaveCount(12);
   // a name opens that account: its requests and what it heard
-  await page.locator("#statsRows tr").first().locator("td.name a").click();
+  await page.locator("#statsPeople .person-link", { hasText: "admin" }).click();
   await expect(page).toHaveURL(/\/stats\/\d+$/);
   await expect(page.locator("#statsTitle")).toHaveText(/Statistik: admin/);
   await expect(page.locator("#statsAccounts")).toBeHidden();
