@@ -256,12 +256,16 @@ Der Reiter **Entdecken** schlägt neue Hörbücher vor:
   (z. B. *Cricket*) werden ausgeblendet. Alle Listen werden einmal am Tag im Hintergrund vorbereitet. Das gewählte
   Genre merkt sich der Browser.
 * **Aus der Kritik** – besprochene Bücher, die es bei Audible als Hörbuch gibt (gleicher Titel, gleicher Autor), mit Link
-  zur Besprechung. Quellen: die RSS-Feeds „Buchkritik“ und „Lesart“ (Deutschlandfunk Kultur) und „Büchermarkt“
+  zur Besprechung. Quellen: die RSS-Feeds „Buchkritik“ und „Lesart“ (Deutschlandfunk Kultur), die Seite
+  [Die Bücher des Monats](https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html), „Büchermarkt“
   (Deutschlandfunk), die Perlentaucher-Listen
   [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) und
   [Sachbuch aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-sachbuch-aktuell.html) (mit Anzahl der
   Pressekritiken) und die Bücherschau/Bücherbriefe aus dem Perlentaucher-Feed. Übernommen werden nur Autor und Titel;
-  gesehene Besprechungen merkt sich Hörwerk 180 Tage, gezeigt werden die neuesten rund 40 Hörbücher.
+  gesehene Besprechungen merkt sich Hörwerk 180 Tage, gezeigt werden die neuesten rund 40 Hörbücher. Gibt es zu einem
+  besprochenen Buch noch kein Hörbuch, kommt es auf eine Warteliste: zwei Jahre lang schaut Hörwerk einmal im Monat
+  nach. Ist das Hörbuch erschienen (oder bei Audible angekündigt), steht es oben – markiert mit „jetzt als Hörbuch“
+  bzw. „erscheint <Datum>“. Das läuft täglich im Hintergrund, auch wenn niemand die Seite öffnet.
 
 **Suchen** auf einer Karte springt in den Reiter *Suchen*, mit dem Buch schon ausgewählt (Titel, Autor und ASIN helfen
 später beim Taggen).

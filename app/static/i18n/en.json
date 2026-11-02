@@ -831,7 +831,6 @@
  "Gehört zur Anfrage von {name}": "Belongs to the request by {name}",
  "Im Eingang gefunden: {name}": "Found in the inbox: {name}",
  "{title} · Hörbuch-Kategorien: {cats}": "{title} · audiobook categories: {cats}",
- ": Bücher, die Deutschlandfunk, Deutschlandfunk Kultur oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt – die neuesten rund 40.": ": books reviewed by Deutschlandfunk, Deutschlandfunk Kultur or the press (according to Perlentaucher) that exist as an audiobook – the newest 40 or so.",
  ": alle Genres und Unterkategorien wie bei Audible – Bestseller, Bestbewertete und Neuheiten. Kleine Bereiche werden mit Titeln aufgefüllt, die genauso gut, aber von weniger Hörern bewertet sind.": ": all genres and subcategories as on Audible – best sellers, best rated and new releases. Small areas are filled up with titles rated just as well, but by fewer listeners.",
  "In diesem Bereich gibt es bei Audible gerade keine gut bewerteten deutschen Hörbücher, die du noch nicht hast.": "Audible currently has no well-rated German audiobooks in this area that you don't have yet.",
  "Sachbuch: Sterne sagen, wie gut ein Buch ankommt – nicht, ob es inhaltlich stimmt. Im Zweifel lieber „Aus der Kritik“.": "Non-fiction: stars tell how well a book is liked – not whether it is accurate. When in doubt, prefer “From the critics”.",
@@ -1270,5 +1269,16 @@
  "automatisch (nach Qualität)": "automatic (by quality)",
  "beim Umwandeln": "when converting",
  "verlustfrei": "lossless",
- "{n} Dateien, {codec} unverändert übernommen": "{n} files, {codec} kept unchanged"
+ "{n} Dateien, {codec} unverändert übernommen": "{n} files, {codec} kept unchanged",
+ "1 besprochenes Buch wartet noch auf sein Hörbuch": "1 reviewed book is still waiting for its audiobook",
+ ": Bücher, die Deutschlandfunk, Deutschlandfunk Kultur (auch „Die Bücher des Monats“) oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt – die neuesten rund 40. Gibt es noch kein Hörbuch, merkt sich Hörwerk das Buch zwei Jahre lang und schaut einmal im Monat nach; erscheint es oder ist es angekündigt, taucht es hier wieder oben auf.": ": books reviewed by Deutschlandfunk, Deutschlandfunk Kultur (including “Die Bücher des Monats”) or the press (according to Perlentaucher) that exist as audiobooks – the newest 40 or so. If there is no audiobook yet, Hörwerk remembers the book for two years and checks once a month; once it is out or announced, it shows up here at the top again.",
+ "Buch des Monats bei {source}": "Book of the month at {source}",
+ "Das Buch wurde früher besprochen – das Hörbuch ist erst jetzt erschienen": "The book was reviewed earlier – the audiobook has only come out now",
+ "Das Hörbuch ist angekündigt, aber noch nicht erschienen": "The audiobook is announced but not out yet",
+ "Entdecken: 1 besprochenes Buch gibt es jetzt als Hörbuch": "Discover: 1 reviewed book is now available as an audiobook",
+ "Entdecken: {error}": "Discover: {error}",
+ "Entdecken: {n} besprochene Bücher gibt es jetzt als Hörbuch": "Discover: {n} reviewed books are now available as audiobooks",
+ "erscheint {date}": "out {date}",
+ "jetzt als Hörbuch": "now as audiobook",
+ "{n} besprochene Bücher warten noch auf ihr Hörbuch": "{n} reviewed books are still waiting for their audiobook"
 }

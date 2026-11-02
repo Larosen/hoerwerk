@@ -6,9 +6,10 @@
 interface Suggestion extends Book {
   requested?: string | null;
   rating?: number; ratings?: number; because?: string[]; loose?: boolean;
-  review?: { source: string; link: string; date: string; notes?: number };
+  review?: { source: string; link: string; date: string; notes?: number; month?: boolean };
+  later?: boolean; announced?: string | null;
 }
-interface DiscoverAnswer { items: Suggestion[]; updated: number | null; error: string | null; running: boolean; personal?: boolean; linked?: boolean }
+interface DiscoverAnswer { items: Suggestion[]; updated: number | null; error: string | null; running: boolean; personal?: boolean; linked?: boolean; waiting?: number }
 interface SubGenre { id: string; name: string }
 interface Genre extends SubGenre { nonfiction: boolean; children: SubGenre[] }
 const discover = {
@@ -40,7 +41,8 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
   if (b.because?.length) {
     reason = el("p", { class: "reason" }, t("Passt zu: {titles}", { titles: b.because.map((x) => `„${x}“`).join(", ") }));
   } else if (b.review) {
-    reason = el("p", { class: "reason" }, t("Besprochen bei {source}", { source: b.review.source }),
+    reason = el("p", { class: "reason" },
+      b.review.month ? t("Buch des Monats bei {source}", { source: b.review.source }) : t("Besprochen bei {source}", { source: b.review.source }),
       b.review.notes ? " · " + plural(b.review.notes, t("1 Kritik in der Presse"), t("{n} Kritiken in der Presse", { n: b.review.notes })) : null,
       b.review.link ? el("span", {}, " · ", el("a", { href: b.review.link, target: "_blank", rel: "noopener noreferrer" }, t("Kritik lesen"))) : null);
   }
@@ -49,7 +51,10 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
       el("span", { class: "s-author" }, (b.authors || []).join(", ")),
-      el("span", { class: "tag-row" }, genreTag(b), langTag(b)),
+      el("span", { class: "tag-row" }, genreTag(b), langTag(b),
+        b.announced ? el("span", { class: "tag ok", title: t("Das Hörbuch ist angekündigt, aber noch nicht erschienen") },
+          t("erscheint {date}", { date: new Date(b.announced + "T12:00:00").toLocaleDateString(LANG, { dateStyle: "medium" }) }))
+        : b.later ? el("span", { class: "tag ok", title: t("Das Buch wurde früher besprochen – das Hörbuch ist erst jetzt erschienen") }, t("jetzt als Hörbuch")) : null),
       b.narrators?.length ? el("span", { class: "muted small" }, t("gelesen von {names}", { names: b.narrators.slice(0, 2).join(", ") })) : null,
       b.rating ? el("span", { class: "rating", title: plural(b.ratings || 0, t("1 Bewertung bei Audible"), t("{n} Bewertungen bei Audible", { n: fmtCount(b.ratings || 0) })) },
         `★ ${b.rating.toFixed(1)}`, el("span", { class: "muted" }, ` (${fmtCount(b.ratings || 0)})`)) : null,
@@ -74,6 +79,10 @@ function renderDiscover(res: DiscoverAnswer): void {
   const when = res.updated ? new Date(res.updated * 1000).toLocaleString(LANG, { dateStyle: "short", timeStyle: "short" }) : "";
   state.textContent = res.running ? t("Wird zusammengestellt …") : res.error ? t("Fehler: {errors}", { errors: res.error })
     : when ? t("Stand: {time}", { time: when }) : "";
+  if (res.waiting && !res.running && !res.error) {
+    state.textContent += " · " + plural(res.waiting, t("1 besprochenes Buch wartet noch auf sein Hörbuch"),
+      t("{n} besprochene Bücher warten noch auf ihr Hörbuch", { n: res.waiting }));
+  }
   $("#discoverNote").hidden = !(discover.section === "genre" && discover.nonfiction.has(discover.genre));
   // "Für dich": personal when the account's listening is known – otherwise say how it gets personal
   const personal = $("#discoverPersonal");

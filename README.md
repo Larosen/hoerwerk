@@ -249,12 +249,15 @@ The **Discover** tab suggests new audiobooks:
   listeners, so every genre shows suggestions; subcategories without a single German audiobook (e.g. *Cricket*) are left
   out. All lists are prepared in the background once a day. The chosen genre is remembered per browser.
 * **From the critics** – reviewed books that exist as an audiobook on Audible (same title, same author), with a link to
-  the review. Sources: the RSS feeds "Buchkritik" and "Lesart" (Deutschlandfunk Kultur) and "Büchermarkt"
+  the review. Sources: the RSS feeds "Buchkritik" and "Lesart" (Deutschlandfunk Kultur), the page
+  [Die Bücher des Monats](https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html), "Büchermarkt"
   (Deutschlandfunk), Perlentaucher's lists
   [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) and
   [Sachbuch aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-sachbuch-aktuell.html) (with the number of press
   reviews) and the book round-ups from Perlentaucher's feed. Only author and title are taken; reviews are remembered for
-  180 days, the newest ~40 audiobooks are shown.
+  180 days, the newest ~40 audiobooks are shown. A reviewed book without an audiobook yet stays on a waiting list for
+  two years and is looked up again once a month; once the audiobook is out (or announced on Audible) it shows up at
+  the top, marked "now as audiobook" or "out <date>". This runs daily in the background, even if nobody opens the page.
 
 **Search** on a card jumps to the *Search* tab with the book already picked (title, author and ASIN help with tagging later).
 

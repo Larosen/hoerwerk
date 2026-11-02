@@ -193,6 +193,10 @@ class App:
                 self.requests.tick()
             except Exception as e:  # noqa: BLE001 – keep the thread alive
                 applog.error(t("Anfragen: {error}", error=e), "Anfragen")
+            try:
+                self.discover.tick()            # review list daily, late audiobooks monthly – also unseen
+            except Exception as e:  # noqa: BLE001
+                applog.warn(t("Entdecken: {error}", error=e), "Entdecken")
             time.sleep(120)
 
 
