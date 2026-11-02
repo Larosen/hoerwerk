@@ -7,19 +7,19 @@
 // ------------------------------------------------------------------------- //
 interface Route { view: string; section: string }
 
-const VIEWS = ["books", "search", "discover", "requests", "settings", "account"];
+const VIEWS = ["books", "search", "discover", "requests", "settings", "account", "stats"];
 const VIEW_ELEMENTS: Record<string, string> = {
   books: "#viewBooks", search: "#viewSearch", discover: "#viewDiscover", requests: "#viewRequests",
-  settings: "#viewSettings", account: "#viewAccount",
+  settings: "#viewSettings", account: "#viewAccount", stats: "#viewStats",
 };
 /** The main tabs – the last one used is where "/" leads. */
 const MAIN_VIEWS = ["books", "search", "discover", "requests"];
 const VIEW_TITLES: Record<string, () => string> = {
   books: () => t("Hörbücher"), search: () => t("Suchen"), discover: () => t("Entdecken"), requests: () => t("Anfragen"),
-  settings: () => t("Einstellungen"), account: () => t("Konto"),
+  settings: () => t("Einstellungen"), account: () => t("Konto"), stats: () => t("Statistik"),
 };
 
-const router = { current: null as Route | null };
+const router = { current: null as Route | null, ready: false };
 
 function settingsSections(): string[] {
   return [...document.querySelectorAll<HTMLElement>("#settingsNav [data-section]")].map((a) => a.dataset.section || "");
@@ -35,7 +35,10 @@ function parseRoute(path: string): Route {
   const [view = "", section = ""] = path.split("/").filter(Boolean);
   if (!VIEWS.includes(view)) return { view: defaultView(), section: "" };
   if (!IS_ADMIN && (view === "books" || view === "settings")) return { view: defaultView(), section: "" };
+  if (view === "settings" && section === "stats") return { view: "stats", section: "" };    // where it used to be
   if (view === "settings") return { view, section: settingsSections().includes(section) ? section : "" };
+  // /stats/7: one account in detail – admins only (everyone else has their own on /stats)
+  if (view === "stats") return { view, section: IS_ADMIN && /^\d{1,9}$/.test(section) ? section : "" };
   return { view, section: "" };
 }
 
@@ -81,6 +84,9 @@ function isAppPath(path: string): boolean {
 function initRouter(): void {
   // own links open as a page change; new tab, middle click & co. stay with the browser
   document.addEventListener("click", (e) => {
+    // until every script has registered its listeners, a click is a normal page load – otherwise the page
+    // would change before e.g. the settings listen, and their form would stay empty
+    if (!router.ready) return;
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
     if (!a || a.target || a.hasAttribute("download")) return;
@@ -89,9 +95,10 @@ function initRouter(): void {
     e.preventDefault();
     navigate(url.pathname);
   });
-  window.addEventListener("popstate", () => navigate(location.pathname, false));
+  window.addEventListener("popstate", () => { if (router.ready) navigate(location.pathname, false); });
   // after every script registered its listeners
   document.addEventListener("DOMContentLoaded", () => {
+    router.ready = true;
     navigate(location.pathname === "/" ? "/" + defaultView() : location.pathname, false);
   });
 }

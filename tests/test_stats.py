@@ -82,6 +82,36 @@ class StatsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.stats.summary("1000")
 
+    def test_member_sees_self_and_totals_only(self):
+        self.r.create(self.eva, {**volume(1, "Eins"), "runtime_min": 600})
+        self.r.create(self.admin, {**volume(2, "Zwei"), "runtime_min": 60})
+        own = self.stats.personal(self.eva["id"], "365")
+        self.assertEqual(own["scope"], "own")
+        self.assertNotIn("users", own)
+        self.assertEqual((own["me"]["name"], own["me"]["books"], own["total"]["books"]), ("Eva", 1, 2))
+        self.assertEqual(own["accounts"], 3)
+        self.assertNotIn("Admin", repr(own))                              # nobody else by name
+        this_month = own["months"][-1]
+        self.assertEqual((this_month["books"], this_month["mine"]), (2, 1))
+
+    def test_one_account_in_detail(self):
+        a = self.r.create(self.eva, {**volume(1, "Eins"), "runtime_min": 600})
+        self.r.create_series(self.eva, {"title": "Haus-Reihe"}, [volume(3), volume(4)])
+        self.r.create(self.admin, volume(2, "Zwei"))
+        item = self.r.get(a["id"])
+        item["path"] = self.book_folder("Eins", 7000)
+        self.r._save(item, "available")
+        d = self.stats.account(self.eva["id"], "all")
+        self.assertEqual(d["user"]["name"], "Eva")
+        self.assertEqual(len(d["requests"]), 3)
+        self.assertNotIn("Zwei", [x["title"] for x in d["requests"]])     # only hers
+        eins = next(x for x in d["requests"] if x["title"] == "Eins")
+        self.assertEqual((eins["status"], eins["bytes"]), ("available", 7000))
+        self.assertEqual({x["group"] for x in d["requests"]} - {None}, {"Haus-Reihe"})
+        self.assertEqual(d["months"][-1]["books"], 3)
+        self.assertEqual(d["heard"], [])                                  # no listening service in this test
+        self.assertIsNone(self.stats.account(9999, "all"))
+
     def test_deleted_account(self):
         self.r.create(self.eva, volume(1))
         self.accounts.delete(self.eva["id"])

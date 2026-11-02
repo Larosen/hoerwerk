@@ -131,10 +131,31 @@ def request_block(req: Req, rid: str):
     return _out(req, _call(req.app.requests.block, item["id"], str(req.get("title") or "")[:300]))
 
 
-# -- statistics per account (admins) ----------------------------------------------
-@route("GET", "/api/stats")
+# -- statistics: admins see every account, everyone else their own and the totals ---------------------------
+def _period(req: Req) -> str:
+    period = str(req.query.get("period") or "365")
+    if period not in ("30", "90", "365", "all"):
+        raise HTTPException(400, t("Ungültige Daten"))
+    return period
+
+
+@route("GET", "/api/stats", access="user")
 def stats(req: Req):
+    if req.user["role"] == "admin":
+        return req.app.stats.overview(_period(req))
+    return req.app.stats.personal(req.user["id"], _period(req))
+
+
+@route("GET", "/api/stats/accounts/{uid}", access="user")
+def stats_account(req: Req, uid: str):
+    """One account in detail – admins any, everyone else only their own (others look like they don't exist)."""
     try:
-        return req.app.stats.summary(str(req.query.get("period") or "365"))
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+        wanted = int(uid)
+    except ValueError:
+        raise HTTPException(404, t("Nicht gefunden"))
+    if req.user["role"] != "admin" and wanted != req.user["id"]:
+        raise HTTPException(404, t("Nicht gefunden"))
+    out = req.app.stats.account(wanted, _period(req))
+    if out is None:
+        raise HTTPException(404, t("Nicht gefunden"))
+    return out

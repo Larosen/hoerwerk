@@ -280,6 +280,17 @@ class ListeningWebTest(unittest.TestCase):
         eva = next(u for u in stats["users"] if u["name"] == "Eva")
         self.assertGreater(eva["listen"]["seconds"], 0)
         self.assertEqual(stats["listen"]["linked"], 1)
+        status, detail = self.req("Admin", "GET", f"/api/stats/accounts/{self.eva['id']}?period=30")
+        self.assertEqual((status, detail["user"]["name"]), (200, "Eva"))
+        self.assertTrue(detail["heard"])                                                       # what she heard, by book
+        # a family member: own numbers and the totals – no list of the others, no other account's details
+        status, own = self.req("Eva", "GET", "/api/stats?period=30")
+        self.assertEqual((status, own["scope"], own["me"]["name"]), (200, "own", "Eva"))
+        self.assertNotIn("users", own)
+        self.assertGreater(own["me"]["listen"]["seconds"], 0)
+        self.assertEqual(self.req("Eva", "GET", f"/api/stats/accounts/{self.eva['id']}")[0], 200)
+        self.assertEqual(self.req("Eva", "GET", f"/api/stats/accounts/{self.admin['id']}")[0], 404)
+        self.assertEqual(self.req("Eva", "GET", "/api/stats?period=7")[0], 400)
         status, me = self.req("Eva", "GET", "/api/me/listening")
         self.assertGreater(me["recent"]["seconds"], 0)
         self.assertEqual(self.req("Eva", "DELETE", "/api/me/listening/plex")[0], 200)

@@ -69,8 +69,21 @@ def search_indexers(req: Req):
     if len(query) < 2:
         raise HTTPException(400, t("Suchbegriff fehlt"))
     extra = [str(x) for x in (req.get("extra") or []) if isinstance(x, str)][:3]
+    language = req.get("language") or ""
     try:
-        res = req.app.usenet.search(query, req.get("language") or "", extra)
+        book = br.Requests._clean(req.get("book")) if isinstance(req.get("book"), dict) else None
+    except br.RequestError:
+        book = None                                    # no author: the plain search
+    try:
+        if book:
+            # a picked book: round by round, broader only while no release fits it (see releases.search_stages)
+            res = req.app.usenet.search_stages(
+                releases.search_stages(book),
+                lambda found: any(releases.evaluate(r, book, prefer_language=language)["ok"] for r in found),
+                language, budget=releases.SEARCH_BUDGET)
+            res["results"] = sorted(res["results"], key=lambda r: req.app.usenet._rank(r, query, language), reverse=True)
+        else:
+            res = req.app.usenet.search(query, language, extra)
     except UsenetError as e:
         raise HTTPException(400, str(e))
     index = req.app.library_index

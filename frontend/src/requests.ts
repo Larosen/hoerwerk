@@ -38,6 +38,7 @@ const requests = {
   data: null as RequestList | null,
   keys: {} as Record<string, string>,
   current: null as BookRequest | null,
+  releases: [] as JudgedRelease[],          // the open release window's list (re-sorted without searching again)
   timer: undefined as number | undefined,
   openGroups: new Set<string>(),            // series cards whose volume list is unfolded (survives the refresh)
 };
@@ -320,19 +321,29 @@ async function openReleases(r: BookRequest, query = ""): Promise<void> {
   const d = $<HTMLDialogElement>("#releasesDialog");
   if (!d.open) d.showModal();
   const rows = $("#releasesRows");
-  rows.replaceChildren(el("tr", {}, el("td", { colspan: "5", class: "empty-row" }, t("Suche …"))));
+  requests.releases = [];
+  rows.replaceChildren(el("tr", {}, el("td", { colspan: "6", class: "empty-row" }, t("Suche …"))));
   try {
     const res = await api<{ query: string; queries: string[]; errors: string[]; results: JudgedRelease[] }>(
       "POST", `/api/requests/${r.id}/releases`, { query });
     $<HTMLInputElement>("#releasesQuery").value = res.query;
     const ok = res.results.filter((x) => x.verdict.ok).length;
     $("#releasesNote").textContent = t("{n} Releases, davon {ok} passend", { n: res.results.length, ok }) +
+      (res.queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: res.queries.map((x) => `„${x}“`).join(", ") }) : "") +
       (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "");
-    rows.replaceChildren(...(res.results.length ? res.results.map((x) => releaseRow(r, x))
-      : [el("tr", {}, el("td", { colspan: "5", class: "empty-row" }, t("Keine Releases – anderen Suchbegriff versuchen (z. B. nur Titel).")))]));
+    requests.releases = res.results;
+    renderReleases();
   } catch (e) {
-    rows.replaceChildren(el("tr", {}, el("td", { colspan: "5", class: "empty-row" }, errMsg(e))));
+    rows.replaceChildren(el("tr", {}, el("td", { colspan: "6", class: "empty-row" }, errMsg(e))));
   }
+}
+
+function renderReleases(): void {
+  const r = requests.current;
+  if (!r) return;
+  const list = sortReleases(requests.releases, $<HTMLSelectElement>("#releasesSort").value);
+  $("#releasesRows").replaceChildren(...(list.length ? list.map((x) => releaseRow(r, x))
+    : [el("tr", {}, el("td", { colspan: "6", class: "empty-row" }, t("Keine Releases – anderen Suchbegriff versuchen (z. B. nur Titel).")))]));
 }
 
 function releaseRow(r: BookRequest, x: JudgedRelease): HTMLTableRowElement {
@@ -357,8 +368,9 @@ function releaseRow(r: BookRequest, x: JudgedRelease): HTMLTableRowElement {
     el("td", { class: "c-title" }, el("span", { title: x.title }, x.title),
       el("span", { class: "muted small" }, [x.indexer, x.format, x.language].filter(Boolean).join(" · "))),
     el("td", { class: "c-num" }, fmtSize(x.size)),
-    el("td", { class: "c-num" }, v.kbps === null ? "–" : String(v.kbps)),
-    el("td", {}, v.ok ? el("span", { class: "verdict ok" }, icon("check"), v.notes.join(" · ") || t("passt"))
+    el("td", { class: "c-num", "data-label": t("Alter"), title: x.published ? new Date(x.published * 1000).toLocaleString(LOCALE) : "" }, fmtAge(x.published)),
+    el("td", { class: "c-num", "data-label": "kbit/s" }, v.kbps === null ? "–" : String(v.kbps)),
+    el("td", { class: "c-verdict" }, v.ok ? el("span", { class: "verdict ok" }, icon("check"), v.notes.join(" · ") || t("passt"))
       : el("span", { class: "verdict no" }, v.reason || "")),
     el("td", { class: "c-act" }, grab, block));
 }
@@ -366,6 +378,7 @@ function releaseRow(r: BookRequest, x: JudgedRelease): HTMLTableRowElement {
 function initRequests(): void {
   requests.filter = store.get("requestFilter", "open");
   if (!(requests.filter in REQ_FILTERS)) requests.filter = "open";
+  initReleaseSort($<HTMLSelectElement>("#releasesSort"), renderReleases);
   $("#releasesGo").addEventListener("click", () => { if (requests.current) openReleases(requests.current, $<HTMLInputElement>("#releasesQuery").value); });
   // Enter in the search field searches again – it must not submit (and so close) the window
   $("#releasesQuery").addEventListener("keydown", (e) => {

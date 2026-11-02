@@ -758,3 +758,45 @@ legend .help-q { margin-left: 6px; vertical-align: 1px; }
 .dup-version.best { border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
 .dup-version > b { font-size: 16px; font-variant-numeric: tabular-nums; }
 .dup-label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+
+/* release lists: note on the left, sort order on the right */
+.result-tools { justify-content: space-between; flex-wrap: wrap; }
+.result-tools .grow { flex: 1 1 16rem; min-width: 0; margin: 0; }
+.sort-pick { width: auto; flex: 0 0 auto; }
+
+/* statistics: one account in detail, the own share in the month chart */
+.stats-panel { max-width: 1100px; }
+.month-chart .mbar.shared { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); display: flex; flex-direction: column; justify-content: flex-end; }
+.month-chart .mbar .own { display: block; width: 100%; background: var(--accent); border-radius: 0; }
+.stats-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 4px 24px; margin-bottom: 12px; }
+.stats-col { min-width: 0; }
+.stats-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; max-height: 480px; overflow-y: auto; }
+.stats-list > li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.stats-list > li:last-child { border-bottom: 0; }
+.stats-list > li.empty { color: var(--muted); }
+.stats-item-main { display: flex; flex-direction: column; min-width: 0; }
+.stats-item-main > b { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-item-side { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex: none; text-align: right; }
+.stats-item-side .tag { margin: 0; }
+.tag.ok { background: transparent; color: var(--ok); box-shadow: inset 0 0 0 1px currentColor; }
+.tag.no { background: var(--err-soft); color: var(--err); }
+.progress-mini { display: block; width: 64px; height: 6px; border-radius: 99px; background: var(--panel-2); overflow: hidden; box-shadow: inset 0 0 0 1px var(--border); margin-top: 4px; }
+.progress-mini > span { display: block; height: 100%; background: var(--accent); }
+table.stats-table td.name a { color: inherit; text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+table.stats-table td.name a:hover { text-decoration-color: currentColor; }
+
+/* release lists on a phone: one card per release – the full name across the width, the numbers below it */
+@media (max-width: 640px) {
+  table.results { table-layout: auto; }
+  table.results thead { display: none; }
+  table.results, table.results tbody { display: block; }
+  table.results tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+  table.results td { display: block; padding: 0; border: 0; width: auto; }
+  table.results td:first-child { flex: 1 0 100%; min-width: 0; }
+  table.results td.empty-row { flex: 1 0 100%; padding: 12px 0; }
+  table.results .c-num, table.results .c-num:nth-child(3), table.results .c-num:nth-child(4) { display: block; width: auto; font-size: 12.5px; }
+  table.results .c-num[data-label]::before { content: attr(data-label) " "; color: var(--muted); }
+  table.results td.c-verdict { flex: 1 1 0; min-width: 0; }
+  table.results .c-act { width: auto; margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .rel-title, #releasesDialog .c-title span:first-child { word-break: normal; overflow-wrap: anywhere; }
+}
