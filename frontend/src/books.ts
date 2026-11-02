@@ -454,18 +454,46 @@ function bookDetails(j: AudiobookJob): HTMLDivElement {
 
 const DUP_WHY: Record<string, string> = { asin: t("gleiche ASIN"), title: t("gleicher Autor und Titel"), series: t("gleiche Serie und Folge") };
 
+/** Which version sounds better? Clearly more kbit/s (by a quarter or more) – otherwise they count as equal. */
+function betterVersion(q: Duplicate["quality"]): "old" | "new" | null {
+  if (!q?.old || !q?.new) return null;
+  if (q.new.kbps >= q.old.kbps * 1.25) return "new";
+  if (q.old.kbps >= q.new.kbps * 1.25) return "old";
+  return null;
+}
+
+function qualityCard(label: string, q: Quality | null, best: boolean): HTMLElement {
+  return el("div", { class: "dup-version" + (best ? " best" : "") },
+    el("span", { class: "dup-label" }, label, best ? el("span", { class: "rtag ok" }, icon("check"), t("besser")) : null),
+    q ? el("b", {}, `${q.kbps} kbit/s`) : el("b", { class: "muted" }, "–"),
+    q ? el("span", { class: "muted small" }, [fmtDuration(q.duration), fmtSize(q.size),
+      plural(q.files, t("1 Datei"), t("{n} Dateien", { n: q.files }))].join(" · ")) : null);
+}
+
 function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
+  const better = betterVersion(d.quality);
   const act = async (action: string, label: string): Promise<void> => {
-    if (action === "replace" && !(await confirmBox(t("Die vorhandene Fassung „{path}“ aus der Bibliothek nehmen (sie wird nach _ersetzt im Eingang verschoben, nicht gelöscht) und durch die neue ersetzen?", { path: d.path }), t("Ersetzen")))) return;
+    if (action === "replace") {
+      const worse = better === "old" ? " " + t("Achtung: Die neue Fassung klingt deutlich schlechter ({new} statt {old} kbit/s).",
+        { new: d.quality?.new?.kbps ?? "?", old: d.quality?.old?.kbps ?? "?" }) : "";
+      if (!(await confirmBox(t("Die vorhandene Fassung „{path}“ aus der Bibliothek nehmen (sie wird nach _ersetzt im Eingang verschoben, nicht gelöscht) und durch die neue ersetzen?", { path: d.path }) + worse,
+        t("Ersetzen")))) return;
+    }
     try { await api("POST", `/api/audiobooks/${j.id}/duplicate`, { action }); toast(label); pollBooks(true); }
     catch (e) { toast(errMsg(e), true); }
   };
+  // the better version is the suggestion: keep the old one (discard the new) – or replace it
+  const discard = el("button", { class: "btn small" + (better !== "new" ? " primary" : ""), onclick: () => act("discard", t("Verworfen")) },
+    better === "old" ? t("Vorhandene behalten") : t("Verwerfen"));
+  const replace = el("button", { class: "btn small" + (better === "new" ? " primary" : ""), onclick: () => act("replace", t("Wird ersetzt")) },
+    better === "new" ? t("Durch die bessere ersetzen") : t("Altes ersetzen"));
   return el("div", { class: "dup-box" },
     el("div", {}, el("b", {}, t("Schon in der Bibliothek:"), " "), el("code", {}, d.path),
       el("span", { class: "muted" }, ` – ${DUP_WHY[d.why] || t("ähnlich")}${d.format && d.format !== "m4b" ? ", " + t("dort als {format}", { format: d.format.toUpperCase() }) : ""}`)),
-    el("div", { class: "row gap wrap" },
-      el("button", { class: "btn small", onclick: () => act("discard", t("Verworfen")) }, t("Verwerfen")),
-      el("button", { class: "btn small", onclick: () => act("replace", t("Wird ersetzt")) }, t("Altes ersetzen")),
+    d.quality ? el("div", { class: "dup-compare" },
+      qualityCard(t("In der Bibliothek"), d.quality.old, better === "old"),
+      qualityCard(t("Neu"), d.quality.new, better === "new")) : null,
+    el("div", { class: "row gap wrap" }, ...(better === "new" ? [replace, discard] : [discard, replace]),
       el("button", { class: "btn small ghost", onclick: () => act("keep", t("Wird zusätzlich abgelegt")) }, t("Trotzdem zusätzlich ablegen"))),
     el("div", { class: "muted small" }, t("Falscher Treffer? Unten einen anderen wählen – dann wird erneut geprüft.")));
 }

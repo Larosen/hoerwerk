@@ -446,6 +446,26 @@ class Pipeline:
         self.save()
         return job
 
+    @staticmethod
+    def _quality(path: Optional[str]) -> Optional[dict]:
+        """{kbps, duration, size, files} of a book file or folder – what one hears, averaged over all its audio."""
+        if not path or not os.path.exists(path):
+            return None
+        if os.path.isdir(path):
+            files = [os.path.join(path, f) for f in encoder.collect_audio(path)]
+        else:
+            files = [path]
+        size = duration = 0.0
+        for f in files[:500]:
+            try:
+                size += os.path.getsize(f)
+            except OSError:
+                continue
+            duration += meta_cache.probe(f).get("duration") or 0
+        if not files or not duration:
+            return None
+        return {"kbps": round(size * 8 / 1000 / duration), "duration": round(duration), "size": int(size), "files": len(files)}
+
     def resolve_duplicate(self, job_id: str, action: str) -> Job:
         """The book is already in the library: keep both, replace the old one, or drop the new one."""
         job = self.get(job_id)
@@ -1058,6 +1078,9 @@ class Pipeline:
             if found:
                 d = found[0]
                 job.duplicate = {k: d.get(k) for k in ("path", "title", "authors", "asin", "format", "why")}
+                # which one sounds better: the version in the library or the new one?
+                job.duplicate["quality"] = {"old": self._quality(os.path.join(self.library, d["path"])),
+                                            "new": self._quality(job.m4b)}
                 why = {"asin": t("gleiche ASIN"), "title": t("gleicher Autor und Titel")}.get(d["why"], t("gleiche Serie und Folge"))
                 where = f"{d['path']} ({why})"
                 if dup_mode == "skip":

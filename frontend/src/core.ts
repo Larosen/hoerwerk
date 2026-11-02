@@ -72,7 +72,11 @@ interface Book {
 }
 interface Owned { path: string; title: string; authors: string[]; why: string; count: number }
 interface Hints { query?: string; title?: string; author?: string; narrator?: string; folder?: string }
-interface Duplicate { path: string; title: string; authors: string[]; asin: string | null; format: string; why: string }
+interface Quality { kbps: number; duration: number; size: number; files: number }
+interface Duplicate {
+  path: string; title: string; authors: string[]; asin: string | null; format: string; why: string;
+  quality?: { old: Quality | null; new: Quality | null };
+}
 type BookStatus = "queued" | "matching" | "converting" | "review" | "tagging" | "done" | "failed" | "cancelled";
 interface AudiobookJob {
   id: string; source: string; rel: string; name: string; origin: string; status: BookStatus; stage: string;

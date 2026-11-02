@@ -430,6 +430,19 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(encoder.chapter_name(4, "en"), "Chapter 4")
         self.assertEqual(encoder.chapter_name(4, "de"), "Kapitel 4")
 
+    def test_quality_of_two_versions(self):
+        """The duplicate question compares what one hears: kbit/s averaged over all files of a version."""
+        old = os.path.join(self.root, "alt")
+        for n in (1, 2):
+            tone(os.path.join(old, f"{n:02d}.mp3"), 4.0, codec_args=["-b:a", "32k"])
+        new = tone(os.path.join(self.root, "neu.mp3"), 8.0, codec_args=["-b:a", "128k"])
+        q_old, q_new = pipeline.Pipeline._quality(old), pipeline.Pipeline._quality(new)
+        self.assertEqual((q_old["files"], q_new["files"]), (2, 1))
+        self.assertLess(q_old["kbps"], 45)
+        self.assertGreater(q_new["kbps"], 100)
+        self.assertAlmostEqual(q_old["duration"], 8, delta=1)
+        self.assertIsNone(pipeline.Pipeline._quality(os.path.join(self.root, "gibt-es-nicht")))
+
     def test_existing_author_folder_is_reused(self):
         os.makedirs(os.path.join(self.lib, "Storm, Theodor"))
         tone(os.path.join(self.inbox, "Theodor Storm - Der Schimmelreiter", "a.mp3"), 4.0)

@@ -1223,5 +1223,11 @@
  "Wird im Eingang ignoriert": "Ignored in the inbox",
  "{n} Ordner": "{n} folders",
  "„{name}“ endgültig aus dem Eingang löschen? Die Dateien sind danach weg.": "Delete “{name}” from the inbox for good? The files will be gone.",
- "Kapitel neu nummeriert: {first} … {last}": "Chapters renumbered: {first} … {last}"
+ "Kapitel neu nummeriert: {first} … {last}": "Chapters renumbered: {first} … {last}",
+ "Achtung: Die neue Fassung klingt deutlich schlechter ({new} statt {old} kbit/s).": "Careful: the new version sounds clearly worse ({new} instead of {old} kbit/s).",
+ "Durch die bessere ersetzen": "Replace with the better one",
+ "Neu": "New",
+ "Vorhandene behalten": "Keep the existing one",
+ "besser": "better",
+ "geringe Qualität ({kbps} kbit/s)": "low quality ({kbps} kbit/s)"
 }
