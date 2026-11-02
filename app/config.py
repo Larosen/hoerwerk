@@ -8,7 +8,7 @@ from typing import FrozenSet, Mapping, Tuple
 
 import library
 
-VERSION = "7.10.2"
+VERSION = "7.11.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
@@ -136,6 +136,7 @@ def default_settings(env: Mapping[str, str] = os.environ) -> dict:
         "discover_unabridged": b("DISCOVER_UNABRIDGED", True),
         "discover_german": b("DISCOVER_GERMAN", True),
         "discover_nonfiction_store": b("DISCOVER_NONFICTION_STORE", False),
+        "discover_trusted_authors": env.get("DISCOVER_TRUSTED_AUTHORS", ""),
         "discover_genre": env.get("DISCOVER_GENRE", ""),
         # Accounts: book requests per user and calendar month (users can have their own number)
         "request_quota": int(env.get("REQUEST_QUOTA", "5")),

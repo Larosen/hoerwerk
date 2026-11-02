@@ -220,8 +220,6 @@ class PersonalForYouTest(unittest.TestCase):
 class ListeningWebTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        import http.client  # noqa: F401
-        import shutil  # noqa: F401
         import config
         import services
         from web import server

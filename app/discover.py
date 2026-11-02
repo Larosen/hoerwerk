@@ -13,7 +13,8 @@ Sources
 Quality: minimum rating and number of ratings, unabridged, German, no adult titles, nothing
 already in the library (or being downloaded / processed right now). Whether a non-fiction book is *true* cannot be checked automatically –
 so non-fiction from Audible lists is only shown when the user picks a non-fiction genre (and marked there),
-never mixed into "Für dich" unless allowed in the settings.
+mixed into "Für dich" only from established authors (TRUSTED_AUTHORS, the admin's list, a Perlentaucher author
+page with reviewed books, or named in the review feeds) – or all of it when allowed in the settings.
 
 Lists are cached in the database and refreshed in the background (at most once a day unless asked).
 """
@@ -33,6 +34,7 @@ import applog
 import audible
 import db as dbm
 from i18n import t
+from trusted_authors import TRUSTED_AUTHORS
 
 MAX_AGE = 24 * 3600
 SECTIONS = ("foryou", "genre", "critics")
@@ -65,6 +67,13 @@ NONFICTION = {
     "Business & Careers", "Science & Engineering",
 }
 HIDDEN_GENRES = {"Erotik", "Erotica"}
+# Non-fiction may appear outside a chosen non-fiction genre ("Für dich") when its author is an established one:
+# on the list in trusted_authors.py (or the admin's own in the settings), with a Perlentaucher author page with
+# books reviewed in the Feuilleton (FAZ, SZ, Zeit, DLF …), or named in the review feeds.
+# That is a reputation test, not a fact check – but it keeps out what no serious paper ever reviewed.
+PT_AUTHOR_URL = "https://www.perlentaucher.de/autor/{slug}.html"
+PT_AUTHOR_DAYS = 60       # how long a Perlentaucher answer is remembered
+PT_LOOKUPS = 25           # new author lookups per list (gently – the rest follow next time)
 GENRE_MIN = 30            # a genre list is filled up to this many (with fewer-rated titles if needed)
 GENRE_MAX = 48
 # fill-up rule for small genres: still well rated, but by fewer listeners
@@ -162,6 +171,20 @@ def _surnames(author: str) -> List[str]:
     return [last, last[:-1]] if len(last) > 3 and last.endswith("s") else [last]
 
 
+def pt_slug(name: str) -> str:
+    """"Rüdiger Maas" -> "ruediger-maas" (Perlentaucher's author addresses)."""
+    s = (name or "").lower()
+    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+        s = s.replace(a, b)
+    s = re.sub(r"['’`]", "", _fold(s))
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+
+
+def pt_has_books(page: str) -> bool:
+    """An author page lists "3 Bücher" / "1 Buch"; an unknown author gets the general index instead."""
+    return "Buchautor-Übersicht" not in page and bool(re.search(r"\b\d+\s+B(?:ü|ue)ch(?:er)?\b", page))
+
+
 def is_nonfiction(book: dict) -> bool:
     return any(g in NONFICTION for g in book.get("genres") or [])
 
@@ -177,6 +200,7 @@ class Discover:
         self.fetch = fetch or self._fetch_feed
         self.pending = pending or set     # ASINs being downloaded or processed right now
         self.seeds: Callable[[int], List[dict]] = lambda user_id: []   # what an account heard (listening.py)
+        self._pt_budget = PT_LOOKUPS
         self.lock = threading.Lock()
         self.running: set = set()
         self._known: set = set()          # genre ids of the store
@@ -233,6 +257,8 @@ class Discover:
             self.running.add(key)
 
         def run() -> None:
+            with self.lock:
+                self._pt_budget = PT_LOOKUPS
             try:
                 items = {"foryou": lambda: self._for_you(seeds), "critics": self._critics}.get(section, lambda: self._genre(genre))()
                 entry = {"time": time.time(), "items": items, "error": None}
@@ -282,7 +308,8 @@ class Discover:
         if s.get("discover_german", True) and (book.get("language") or "").lower() not in ("german", "deutsch"):
             return False
         if from_store:
-            if is_nonfiction(book) and not chosen_genre and not s.get("discover_nonfiction_store", False):
+            if (is_nonfiction(book) and not chosen_genre and not s.get("discover_nonfiction_store", False)
+                    and not self.trusted_author(book)):
                 return False
             min_rating, min_count = float(s.get("discover_min_rating") or 0), int(s.get("discover_min_count") or 0)
             if loose:
@@ -292,6 +319,47 @@ class Discover:
             if book.get("ratings", 0) < min_count:
                 return False
         return (book.get("asin") or "").upper() not in self._busy() and not self._owned(book)
+
+    # -- established non-fiction authors ---------------------------------------
+    def _named_trusted(self) -> set:
+        own = re.split(r"[,;\n]+", str(self.settings().get("discover_trusted_authors") or ""))
+        reviewed = [v.get("author") or "" for v in (self.db.get("discover_reviews") or {}).values() if isinstance(v, dict)]
+        return {_fold(n).strip() for n in list(TRUSTED_AUTHORS) + own + reviewed if n and n.strip()}
+
+    def trusted_author(self, book: dict) -> Optional[str]:
+        """Why this book's author is an established one ("list" or "perlentaucher") – or None."""
+        authors = [a for a in book.get("authors") or [] if a]
+        named = self._named_trusted()
+        for a in authors:
+            if _fold(a).strip() in named:
+                return "list"
+        for a in authors[:2]:
+            if self._perlentaucher_author(a):
+                return "perlentaucher"
+        return None
+
+    def _perlentaucher_author(self, name: str) -> bool:
+        """Has Perlentaucher an author page with reviewed books? Remembered for 60 days; few new lookups per run."""
+        slug = pt_slug(name)
+        if not slug:
+            return False
+        known = self.db.get("pt_authors") or {}
+        hit = known.get(slug)
+        if hit and time.time() - hit[1] < PT_AUTHOR_DAYS * 86400:
+            return bool(hit[0])
+        with self.lock:
+            if self._pt_budget <= 0:
+                return False
+            self._pt_budget -= 1
+        try:
+            ok = pt_has_books(self.fetch(PT_AUTHOR_URL.format(slug=slug)).decode("utf-8", "replace"))
+        except Exception:  # noqa: BLE001 – not reachable: ask again next time
+            return False
+        known[slug] = [ok, time.time()]
+        if len(known) > 5000:
+            known = dict(sorted(known.items(), key=lambda kv: -kv[1][1])[:4000])
+        self.db.put("pt_authors", known)
+        return ok
 
     @staticmethod
     def _item(book: dict, **extra) -> dict:

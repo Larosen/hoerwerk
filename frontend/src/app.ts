@@ -10,11 +10,13 @@ async function loadSettings(): Promise<void> {
   state.settings = await api<Settings>("GET", "/api/settings");
 }
 
-function settingsInputs(): [string, HTMLInputElement | HTMLSelectElement][] {
+type SettingsInput = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+function settingsInputs(): [string, SettingsInput][] {
   const form = $<HTMLFormElement>("#settingsForm");
   return Object.keys(state.settings).flatMap((k) => {
     const input = form.elements.namedItem(k);
-    return input instanceof HTMLInputElement || input instanceof HTMLSelectElement ? [[k, input] as [string, HTMLInputElement | HTMLSelectElement]] : [];
+    return input instanceof HTMLInputElement || input instanceof HTMLSelectElement || input instanceof HTMLTextAreaElement
+      ? [[k, input] as [string, SettingsInput]] : [];
   });
 }
 

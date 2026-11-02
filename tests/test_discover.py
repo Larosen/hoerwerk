@@ -87,10 +87,14 @@ class DiscoverTest(unittest.TestCase):
         self.pt = PT.encode()
         self.pt_list = b"<html></html>"
         self.busy = set()
+        self.pt_authors, self.pt_asked = {}, []
         self.d = discover.Discover(self.db, self.client, self.index, lambda: self.settings, fetch=self.fetch,
                                    pending=lambda: self.busy, prepare=False)
 
     def fetch(self, url):
+        if "/autor/" in url:                       # Perlentaucher author pages
+            self.pt_asked.append(url)
+            return self.pt_authors.get(url, "<h1>Buchautor-Übersicht</h1>".encode())
         if "buchKSL" in url:
             if self.pt_list is None:
                 raise OSError("down")
@@ -104,6 +108,37 @@ class DiscoverTest(unittest.TestCase):
     def items(self, section, genre=""):
         self.d.refresh(section, genre, wait=True)
         return self.d.get(section, genre)["items"]
+
+    def test_established_nonfiction_authors_in_for_you(self):
+        """Non-fiction in "Für dich" only from established authors: the list, the admin's own names,
+        a Perlentaucher author page with reviewed books – not from anyone else."""
+        self.index.entries = {"a": {"asin": "S1", "title": "Seed", "mtime": 1}}
+        nf = ["Politik & Sozialwissenschaften"]
+        self.client.sims = {"S1": [
+            book("N1", "Sapiens", "Yuval Noah Harari", genres=nf),                       # on the list
+            book("N2", "Die Kunst, Spuren zu lesen", "Rüdiger Maas", genres=nf),           # on the list (umlaut)
+            book("N3", "Klima verstehen", "Mai Thi Nguyen-Kim", genres=nf),                # Perlentaucher page
+            book("N4", "Die geheime Wahrheit", "Unbekannter Schwurbler", genres=nf),       # nowhere
+            book("N5", "Gute Nachrichten", "Eva Eigene", genres=nf),                       # the admin's own list
+        ]}
+        self.pt_authors = {"https://www.perlentaucher.de/autor/mai-thi-nguyen-kim.html":
+                           "<h1>Mai Thi Nguyen-Kim</h1><p>4 Bücher</p>".encode()}
+        self.settings["discover_trusted_authors"] = "Eva Eigene\nNoch Jemand"
+        titles = {i["title"] for i in self.items("foryou")}
+        self.assertEqual(titles, {"Sapiens", "Die Kunst, Spuren zu lesen", "Klima verstehen", "Gute Nachrichten"})
+        self.assertIn("https://www.perlentaucher.de/autor/unbekannter-schwurbler.html", self.pt_asked)
+        asked = len(self.pt_asked)
+        self.items("foryou")
+        self.assertEqual(len(self.pt_asked), asked)                    # remembered, not asked again
+        self.assertEqual(discover.pt_slug("Rüdiger Maas"), "ruediger-maas")
+        # the fixed list: the owner's names and many more – nobody twice, no empty entries
+        from trusted_authors import TRUSTED_AUTHORS
+        for name in ("Stefanie Stahl", "Mai Thi Nguyen-Kim", "Christopher Clark", "Giulia Enders", "Hans Rosling"):
+            self.assertIn(name, TRUSTED_AUTHORS)
+        self.assertGreater(len(TRUSTED_AUTHORS), 150)
+        self.assertEqual(len(TRUSTED_AUTHORS), len(set(TRUSTED_AUTHORS)))
+        self.assertTrue(all(a.strip() == a and a for a in TRUSTED_AUTHORS))
+        self.assertFalse(discover.pt_has_books("<h1>Buchautor-Übersicht</h1> 12 Bücher"))
 
     def test_review_titles(self):
         p = discover.parse_review_title

@@ -67,19 +67,34 @@ function periodLabel(): string {
   return document.querySelector<HTMLInputElement>("#statsPeriod input:checked")?.parentElement?.textContent?.trim() || "";
 }
 
-/** The tiles of one person or of everyone: requests, hours, space, waiting – and listening when linked. */
-function userTiles(u: UserStats, libraryBooks: number | null, listen: ListenTotal | ListenSummary | null | undefined,
-  listenNote: string): HTMLElement[] {
+/** Four tiles in plain words: asked for, became available, heard, waiting time. */
+function userTiles(u: UserStats, listen: ListenTotal | ListenSummary | null | undefined, listenNote: string): HTMLElement[] {
   return [
-    statTile(String(u.books), t("Bücher angefragt"), plural(u.requests, t("in 1 Anfrage"), t("in {n} Anfragen", { n: u.requests }))),
-    statTile(String(u.available), t("davon verfügbar"), u.open ? t("{n} noch offen", { n: u.open }) : ""),
-    statTile(fmtHours(u.minutes), t("Spielzeit angefragt"), u.minutes_available ? t("{h} schon da", { h: fmtHours(u.minutes_available) }) : ""),
-    statTile(u.bytes ? fmtSize(u.bytes) : "–", t("Speicher der Anfragen"), libraryBooks !== null ? t("Bibliothek: {n} Bücher", { n: libraryBooks }) : ""),
-    statTile(fmtWait(u.wait_median), t("typische Wartezeit"), t("von der Anfrage bis verfügbar")),
-    ...(listen ? [statTile(fmtListen(listen.seconds), t("gehört"),
-      [plural(listen.books, t("1 Buch"), t("{n} Bücher", { n: listen.books })),
-        listen.finished ? t("{n} fertig", { n: listen.finished }) : "", listenNote].filter(Boolean).join(" · "))] : []),
+    statTile(String(u.books || 0), plural(u.books, t("Buch angefragt"), t("Bücher angefragt")),
+      u.minutes ? t("{h} Spielzeit", { h: fmtHours(u.minutes) }) : ""),
+    statTile(String(u.available || 0), t("davon schon da"), u.open ? t("{n} noch offen", { n: u.open }) : ""),
+    listen ? statTile(fmtListen(listen.seconds), t("gehört"), [plural(listen.books, t("1 Buch"), t("{n} Bücher", { n: listen.books })),
+      listenNote].filter(Boolean).join(" · "))
+      : statTile("–", t("gehört"), t("nicht verknüpft")),
+    statTile(fmtWait(u.wait_median), t("Wartezeit"), t("bis ein Buch da ist")),
   ];
+}
+
+/** The smaller numbers – there when wanted, out of the way otherwise. */
+function moreFacts(u: UserStats, libraryBooks: number | null): void {
+  const facts: [string, string][] = [
+    [t("Anfragen"), u.requests ? String(u.requests) + (u.series ? ` (${t("davon Reihen")}: ${u.series})` : "") : "–"],
+    [t("Abgelehnt"), String(u.declined || 0)],
+    [t("Fehlgeschlagen"), String(u.failed || 0)],
+    [t("Speicher der angefragten Bücher"), u.bytes ? fmtSize(u.bytes) : "–"],
+    [t("Englisch"), u.books ? `${Math.round((u.english / u.books) * 100)} %` : "–"],
+    [t("Häufigste Genres"), u.top_genres.join(", ") || "–"],
+    [t("Zuletzt angefragt"), fmtDay(u.last)],
+    ...(u.listen ? [[t("Zuletzt gehört"), fmtDay(u.listen.last)] as [string, string]] : []),
+    ...(libraryBooks !== null ? [[t("Bücher in der Bibliothek"), String(libraryBooks)] as [string, string]] : []),
+  ];
+  $("#statsFacts").replaceChildren(...facts.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v)]));
+  $("#statsMore").hidden = false;
 }
 
 function setStatsHead(title: string, back: boolean): void {
@@ -90,43 +105,46 @@ function setStatsHead(title: string, back: boolean): void {
 
 /** What is shown in which mode – every part starts hidden and the mode turns its parts on. */
 function resetStatsParts(): void {
-  for (const id of ["#statsTilesHead", "#statsTotalBox", "#statsAccounts", "#statsDetail"]) $(id).hidden = true;
+  for (const id of ["#statsTilesHead", "#statsTotalBox", "#statsAccounts", "#statsDetail", "#statsMore"]) $(id).hidden = true;
 }
 
 // -- admins: every account -------------------------------------------------------
+/** One card per person: asked-for hours against heard hours, both on the same scale – who asks, who listens. */
+function personCard(u: UserStats, scale: number): HTMLElement {
+  const reqH = u.minutes / 60, heardH = (u.listen?.seconds || 0) / 3600;
+  const bar = (cls: string, hours: number): HTMLElement =>
+    el("span", { class: "pbar" }, el("span", { class: `pfill ${cls}`, style: `width:${scale ? Math.max(hours ? 2 : 0, (hours / scale) * 100) : 0}%` }));
+  const active = Math.max(u.last || 0, u.listen?.last || 0) || null;
+  const body = [
+    el("div", { class: "person-head" },
+      el("b", {}, u.name), u.role === "admin" ? el("span", { class: "muted small" }, "Admin") : null,
+      el("span", { class: "muted small person-when" }, active ? t("aktiv {when}", { when: fmtDay(active) }) : t("noch nicht aktiv")),
+      u.id !== null ? icon("chevron") : null),
+    el("div", { class: "person-row" }, el("span", { class: "plabel" }, t("angefragt")), bar("req", reqH),
+      el("span", { class: "pval" }, u.books ? `${plural(u.books, t("1 Buch"), t("{n} Bücher", { n: u.books }))} · ${fmtHours(u.minutes)}` : "–")),
+    el("div", { class: "person-row" }, el("span", { class: "plabel" }, t("gehört")), bar("heard", heardH),
+      el("span", { class: "pval" + (u.listen ? "" : " muted") }, u.listen
+        ? (u.listen.seconds ? `${fmtListen(u.listen.seconds)} · ${plural(u.listen.books, t("1 Buch"), t("{n} Bücher", { n: u.listen.books }))}` : "–")
+        : t("nicht verknüpft"))),
+  ];
+  return el("li", { class: "person" + (u.books || u.listen?.seconds ? "" : " quiet") },
+    u.id !== null ? el("a", { href: `/stats/${u.id}`, class: "person-link", title: t("Anfragen und Gehörtes von {name}", { name: u.name }) }, ...body)
+      : el("div", { class: "person-link" }, ...body));
+}
+
 function renderAll(s: StatsAll): void {
   resetStatsParts();
   setStatsHead(t("Statistik"), false);
-  const tot = s.total;
-  const listening = !!s.listen?.linked;
-  $("#statsTiles").replaceChildren(...userTiles(tot, s.library_books, listening ? s.listen : null,
-    s.listen ? t("{n} verknüpfte Konten", { n: s.listen.linked }) : ""));
+  const linked = s.listen?.linked || 0;
+  $("#statsTiles").replaceChildren(...userTiles(s.total, linked ? s.listen : null,
+    linked ? plural(linked, t("1 Konto verknüpft"), t("{n} Konten verknüpft", { n: linked })) : ""));
   $("#statsAccounts").hidden = false;
-  // the listening columns only when someone is linked to Audiobookshelf or Plex
-  for (const th of document.querySelectorAll<HTMLElement>(".stats-table th.listen-col")) th.hidden = !listening;
-  $("#statsListenNote").hidden = !listening;
-  const listenCells = (u: UserStats): HTMLElement[] => !listening ? [] : u.listen ? [
-    el("td", { class: "num", title: u.listen.errors.join(" · ") }, fmtListen(u.listen.seconds)),
-    el("td", { class: "num" }, u.listen.books ? `${u.listen.books}${u.listen.finished ? ` (${u.listen.finished})` : ""}` : "–"),
-    el("td", { class: "when" }, fmtDay(u.listen.last)),
-  ] : [el("td", { class: "num muted", title: t("nicht verknüpft") }, "·"), el("td", { class: "num muted" }, "·"), el("td", { class: "muted" }, "·")];
-  const rows = s.users.map((u) => el("tr", { class: u.books || u.listen?.seconds ? "" : "quiet" },
-    el("td", { class: "name" }, u.id !== null
-      ? el("a", { href: `/stats/${u.id}`, title: t("Anfragen und Gehörtes von {name}", { name: u.name }) }, el("b", {}, u.name))
-      : el("b", {}, u.name), u.role === "admin" ? el("span", { class: "muted small" }, " · Admin") : null),
-    el("td", { class: "num" }, u.requests ? String(u.requests) : "–", u.series ? el("small", { class: "muted", title: t("davon Reihen") }, ` (${u.series} ${t("Reihen")})`) : null),
-    el("td", { class: "num" }, String(u.books || "–")),
-    el("td", { class: "num" }, String(u.available || "–")),
-    el("td", { class: "num" }, String(u.open || "–")),
-    el("td", { class: "num" }, u.declined + u.failed ? `${u.declined} / ${u.failed}` : "–"),
-    el("td", { class: "num" }, fmtHours(u.minutes)),
-    el("td", { class: "num" }, u.bytes ? fmtSize(u.bytes) : "–"),
-    el("td", { class: "num" }, fmtWait(u.wait_median)),
-    ...listenCells(u),
-    el("td", { class: "num" }, u.books ? `${Math.round((u.english / u.books) * 100)} %` : "–"),
-    el("td", { class: "genre", title: u.top_genres.join(", ") }, u.top_genres[0] || "–"),
-    el("td", { class: "when" }, fmtDay(u.last))));
-  $("#statsRows").replaceChildren(...(rows.length ? rows : [el("tr", {}, el("td", { colspan: "15", class: "empty-row" }, t("Noch keine Konten.")))]));
+  const scale = Math.max(1, ...s.users.map((u) => Math.max(u.minutes / 60, (u.listen?.seconds || 0) / 3600)));
+  const people = [...s.users].sort((a, b) =>
+    (b.minutes / 60 + (b.listen?.seconds || 0) / 3600) - (a.minutes / 60 + (a.listen?.seconds || 0) / 3600));
+  $("#statsPeople").replaceChildren(...(people.length ? people.map((u) => personCard(u, scale))
+    : [el("li", { class: "empty" }, t("Noch keine Konten."))]));
+  moreFacts(s.total, s.library_books);
   renderMonthChart(s.months, t("Angefragte Bücher je Monat"), t("letzte 12 Monate, alle Konten"));
 }
 
@@ -136,11 +154,10 @@ function renderOwn(s: StatsOwn): void {
   setStatsHead(t("Statistik"), false);
   $("#statsTilesHead").hidden = false;
   $("#statsTilesHead").textContent = t("Du");
-  $("#statsTiles").replaceChildren(...userTiles(s.me, null, s.me.listen, ""));
+  $("#statsTiles").replaceChildren(...userTiles(s.me, s.me.listen, ""));
   $("#statsTotalBox").hidden = false;
   $("#statsTotalNote").textContent = plural(s.accounts, t("1 Konto"), t("{n} Konten", { n: s.accounts }));
-  $("#statsTotalTiles").replaceChildren(...userTiles(s.total, s.library_books, s.listen?.linked ? s.listen : null, ""));
-  $("#statsListenNote").hidden = !s.me.listen;
+  $("#statsTotalTiles").replaceChildren(...userTiles(s.total, s.listen?.linked ? s.listen : null, ""));
   renderMonthChart(s.months, t("Angefragte Bücher je Monat"), t("letzte 12 Monate – dunkel: deine"), true);
 }
 
@@ -177,8 +194,8 @@ function renderAccount(d: StatsAccount, own: boolean): void {
   if (!own) {
     resetStatsParts();
     setStatsHead(t("Statistik: {name}", { name: u.name }), true);
-    $("#statsTiles").replaceChildren(...userTiles(u, null, u.listen, ""));
-    $("#statsListenNote").hidden = !u.listen;
+    $("#statsTiles").replaceChildren(...userTiles(u, u.listen, ""));
+    moreFacts(u, null);
     renderMonthChart(d.months, t("Angefragte Bücher je Monat"), t("letzte 12 Monate, nur {name}", { name: u.name }));
   }
   $("#statsDetail").hidden = false;
