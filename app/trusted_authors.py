@@ -1,6 +1,6 @@
 """Established non-fiction authors: their books may appear in "Für dich" (see discover.py).
 
-Who is on it: authors who published widely noticed non-fiction in the last ten years that reflects the current
+Who is on it: authors who published fact-based non-fiction since 2010 (also out as audiobooks) that reflects the current
 state of research or knowledge – scientists and physicians writing for the public, historians, economists,
 science journalists, and public figures with serious books on politics and society. Kept off on purpose:
 authors whose work the field regards as pseudo-science or who were caught out by plagiarism or fabrication.
@@ -75,4 +75,69 @@ TRUSTED_AUTHORS = (
     "Gregor Gysi", "Hape Kerkeling", "Navid Kermani", "Daniel Schreiber", "Alexander Osang",
 )
 
-TRUSTED_AUTHORS = tuple(dict.fromkeys(TRUSTED_AUTHORS))      # a name listed twice counts once
+# Further authors of fact-based non-fiction since 2010 that came out as audiobooks (German and international).
+MORE_AUTHORS = (
+    # -- science for everyone ----------------------------------------------------------------------------
+    "Bill Bryson", "Mary Roach", "Randall Munroe", "Hannah Fry", "Adam Rutherford", "Richard Dawkins",
+    "Walter Isaacson", "Michio Kaku", "Stephen Hawking", "Jim Al-Khalili", "Marcus du Sautoy",
+    "Steven Strogatz", "Daniel Lieberman", "Robert Plomin", "David Eagleman", "Anil Seth", "Antonio Damasio",
+    "Oliver Sacks", "Frans de Waal", "Jane Goodall", "Richard Wrangham", "Martin Puntigam", "Werner Gruber",
+    "Heinz Oberhummer", "Florian Aigner", "Martin Moder", "Alexander Gerst", "Suzanna Randall", "Gerhard Roth",
+    "Christina Berndt", "Werner Bartens", "Gert Scobel", "Jürgen Kaube", "Svante Pääbo", "David Reich",
+    "Rebecca Wragg Sykes", "Brian Cox", "Katie Mack", "Janna Levin", "Paul Davies", "Anton Zeilinger",
+    "Gerd Gigerenzer", "Nessa Carey", "Matt Parker", "Adam Kucharski", "Ben Goldacre", "Alok Jha",
+
+    # -- medicine and health ------------------------------------------------------------------------------
+    "Johannes Wimmer", "Karl Lauterbach", "Michael Mosley", "Henry Marsh", "Adam Kay", "Gavin Francis",
+    "Daniel M. Davis", "Dean Burnett", "Suzanne O'Sullivan", "Lisa Mosconi", "Jen Gunter",
+
+    # -- psychology, mind and families --------------------------------------------------------------------
+    "Wolfgang Schmidbauer", "Arno Gruen", "Verena Kast", "Reinhard Haller", "Borwin Bandelow", "Jan Kalbitzer",
+    "Nicole Strüber", "Manfred Lütz", "Martin Seligman", "Walter Mischel", "Carol Dweck", "Daniel Goleman",
+    "Kelly McGonigal", "Malcolm Gladwell", "Paul Bloom", "Michael Tomasello", "Robert Waldinger",
+    "Nora Imlau", "Danielle Graf", "Katja Seide", "Susanne Mierau", "Margrit Stamm", "Emily Oster",
+
+    # -- history ------------------------------------------------------------------------------------------
+    "Volker Reinhardt", "Bernd Roeck", "Hedwig Richter", "Jörn Leonhard", "Andreas Rödder", "Ewald Frie",
+    "Richard J. Evans", "Christopher Browning", "Yuri Slezkine", "Neil MacGregor", "Nicholas Stargardt",
+    "Frank Trentmann", "Heinz Schilling", "Thomas Kaufmann", "Lyndal Roper", "Eckart Conze", "Florian Huber",
+    "Max Hastings", "Kyle Harper", "Peter Heather", "Jan Assmann", "Aleida Assmann", "Saul Friedländer",
+    "Ulrich Raulff", "Andrea Wulf", "Volker Weiß", "Martin Sabrow", "Tim Weiner", "Robert K. Massie",
+    "Ian Morris", "Simon Schama", "Dan Jones", "Bettany Hughes", "Peter Englund",
+
+    # -- politics, society and journalism -----------------------------------------------------------------
+    "Joachim Gauck", "Ahmad Mansour", "Bernd Ulrich", "Teresa Bücker", "Margarete Stokowski",
+    "Hadija Haruna-Oelker", "Emilia Roig", "Tupoka Ogette", "Reni Eddo-Lodge", "Ibram X. Kendi",
+    "Ta-Nehisi Coates", "Rebecca Solnit", "Caroline Criado-Perez", "Chimamanda Ngozi Adichie",
+    "Michelle Alexander", "Isabel Wilkerson", "Bob Woodward", "Rachel Maddow", "Timothy Garton Ash",
+    "Jan-Werner Müller", "Yascha Mounk", "Anne Case", "Angus Deaton", "Michael Lewis", "Naomi Klein",
+    "George Monbiot", "Hans Leyendecker", "Bastian Obermayer", "Frederik Obermaier", "Wolfgang Bauer",
+    "Deniz Yücel", "Can Dündar", "Golineh Atai", "Katrin Eigendorf", "Ulrich Tilgner", "Patrick Radden Keefe",
+    "Jon Krakauer", "John Carreyrou", "Erik Larson", "David Grann", "Rebecca Skloot", "Mark Galeotti",
+    "Catherine Belton", "Fiona Hill", "Christo Grozev", "Bill Browder", "Jürgen Wiebicke", "Ulrich Wickert",
+    "Anatol Stefanowitsch", "Bastian Sick", "Guy Deutscher", "Gaston Dorren", "Karen Armstrong",
+
+    # -- philosophy ------------------------------------------------------------------------------------------
+    "Rebekka Reinhard", "Byung-Chul Han", "Peter Sloterdijk", "Julian Nida-Rümelin", "Michael Hampe",
+    "Barbara Bleisch", "Philipp Hübl", "Thea Dorn", "Alain de Botton", "Kurt Bayertz", "Susan Neiman",
+
+    # -- economy -------------------------------------------------------------------------------------------
+    "Hans-Werner Sinn", "Gabriel Felbermayr", "Moritz Schularick", "Branko Milanovic", "Paul Krugman",
+    "Robert J. Shiller", "Nouriel Roubini", "Thomas Straubhaar", "Michael Hüther", "Adam Tooze",
+    "Mark Blyth", "Raghuram Rajan", "Dani Rodrik", "Kate Raworth", "Gillian Tett",
+
+    # -- technology ------------------------------------------------------------------------------------------
+    "Jaron Lanier", "Tim Wu", "Cathy O'Neil", "Kai-Fu Lee", "Ashlee Vance", "Brad Stone",
+    "Carl Benedikt Frey", "Meredith Broussard", "Nicholas Carr", "Kevin Kelly", "Ronja von Wurmb-Seibel",
+
+    # -- climate, nature and food ----------------------------------------------------------------------------
+    "Hartmut Graßl", "Ottmar Edenhofer", "Volker Quaschning", "Sven Plöger", "Özden Terli",
+    "Jonathan Safran Foer", "Michael Pollan", "Robin Wall Kimmerer", "Dave Goulson", "Matthias Glaubrecht",
+    "Josef H. Reichholf", "Greta Thunberg", "Luisa Neubauer", "Al Gore", "Paul Hawken", "Vaclav Smil",
+
+    # -- lives and memoirs ----------------------------------------------------------------------------------
+    "Malala Yousafzai", "Tara Westover", "Trevor Noah", "Bruce Springsteen", "Nelson Mandela",
+    "Ruth Bader Ginsburg", "Jacinda Ardern", "Helmut Schmidt", "Richard von Weizsäcker",
+)
+
+TRUSTED_AUTHORS = tuple(dict.fromkeys(TRUSTED_AUTHORS + MORE_AUTHORS))     # a name listed twice counts once
