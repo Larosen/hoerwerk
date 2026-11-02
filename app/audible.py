@@ -15,7 +15,7 @@ import unicodedata
 from datetime import date
 from difflib import SequenceMatcher
 from html.parser import HTMLParser
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from urllib import parse, request
 from urllib.error import HTTPError, URLError
 from i18n import t
@@ -548,37 +548,80 @@ def best_match(ranked: Sequence[dict], threshold: float) -> Optional[dict]:
 
 
 # a word glued from two ("HörbucHHamburg", "AudioBookLabel"): a label or tag in the files, not part of the title
+# a word glued from two ("HörbucHHamburg"): a label or tag in the files, not part of the title
 _GLUED = re.compile(r"^\w*[a-zäöüß][A-ZÄÖÜ]{2,}[a-zäöüß]\w*$")
+# leftovers of release names that no shop title contains
+_TAG_WORDS = {"de", "en", "ger", "eng", "dl", "mp3", "m4b", "flac", "hoerbuch", "hörbuch", "audiobook", "ungekuerzt",
+              "ungekürzt", "unabridged", "gekuerzt", "gekürzt", "abridged", "retail", "repack", "proper", "cd", "cds",
+              "german", "deutsch", "english", "englisch"}
+_DIGRAPH_BACK = (("ae", "ä"), ("oe", "ö"), ("ue", "ü"), ("Ae", "Ä"), ("Oe", "Ö"), ("Ue", "Ü"))
+
+
+def author_words(author: str) -> List[str]:
+    """"Meyer, Stephenie" / "Stephenie Meyer" -> ["stephenie", "meyer"]; the surname is the last one."""
+    if "," in author:
+        last, first = author.split(",", 1)
+        author = f"{first} {last}"
+    return re.findall(r"[\wäöüß]+", author.lower())
+
+
+def surname_of(author: str) -> str:
+    words = [w for w in author_words(author) if len(w) > 1]
+    return words[-1].capitalize() if words else ""
+
+
+def split_volume(words: List[str]) -> Tuple[List[str], Optional[int], List[str]]:
+    """["Twilight", "Saga", "5", "Biss", "zum", …] -> (series words, 5, title words). Without a volume: (words, None, [])."""
+    for i, w in enumerate(words):
+        m = re.fullmatch(r"(?:#)?0*(\d{1,3})", w.strip(".,:;-"))
+        if m and 0 < i and 0 < int(m.group(1)) < 500:
+            return words[:i], int(m.group(1)), words[i + 1:]
+    return words, None, []
+
+
+def content_queries(query: str, author: str = "", limit: int = 8) -> List[str]:
+    """Searches built from what a folder is called – for when the full search finds nothing or only other books.
+
+    The shop's search wants every word to match, so the words that are never in a title go first (labels like
+    "HörbucHHamburg", "DE", "MP3"); then the parts on their own:
+    * the title after a volume number with the author's surname ("Biss zum ersten Sonnenstrahl Meyer"),
+      also without its first word ("Biss" in the files, "Bis(s)" in the shop)
+    * the series before the number ("Twilight Saga Meyer" – the volume is checked on the results)
+    * umlauts written out ("Maerchen" -> "Märchen")
+    * the first and the last words"""
+    names = set(author_words(author))
+    surname = surname_of(author)
+    words = [w for w in re.split(r"[\s._]+", query or "")
+             if w and not _GLUED.match(w.strip(",;:")) and w.lower().strip(",;:") not in _TAG_WORDS
+             and not re.fullmatch(r"(?i)\d+\s*cds?|\d{4}", w)]
+    core = [w for w in words if w.lower().strip(",.;:") not in names]
+    with_name = (lambda ws: " ".join(ws + [surname]) if surname else " ".join(ws))
+    out: List[str] = [with_name(core)]
+    series, volume, title = split_volume(core)
+    if volume is not None:
+        if len(title) >= 2:
+            out.append(with_name(title[:6]))
+        if len(title) >= 3:
+            out.append(with_name(title[1:6]))
+        if series:
+            out.append(with_name(series[:4]))
+    for q in list(out):
+        # "Maerchen" -> "Märchen" (not after a vowel: "grauen", "Feuer", "neue" stay)
+        back = q
+        for a, b in _DIGRAPH_BACK:
+            back = re.sub(rf"(?<![aeiouäöüAEIOU]){a}", b, back)
+        if back != q:
+            out.append(back)
+    if len(core) > 4:
+        out.append(with_name(core[:4]))
+    if len(words) > 3:
+        out.append(" ".join(words[-3:]))
+    return [q for q in dict.fromkeys(q.strip() for q in out) if q and q != (query or "").strip()][:limit]
 
 
 def fallback_queries(query: str, hints: dict) -> List[str]:
-    """Shorter searches when the full one finds nothing – the shop's search wants every word to match.
-
-    1. without glued label words ("HörbucHHamburg")
-    2. the title after a volume number ("Twilight Saga 5 Biss zum ersten Sonnenstrahl" -> "Biss zum ersten
-       Sonnenstrahl") with the author's surname
-    3. the last three words (the old last resort)"""
-    out: List[str] = []
-    words = (query or "").split()
-    clean = [w for w in words if not _GLUED.match(w.strip(",.;:"))]
-    if clean != words:
-        out.append(" ".join(clean))
-    surname = ""
-    author = hints.get("author") or ""
-    if author:
-        parts = author.split(",")[0].split() if "," in author else author.split()
-        surname = parts[-1] if parts else ""
-    m = re.search(r"(?:^|\s)\d{1,3}\s*[-:.]?\s+(.+)$", " ".join(clean))
-    if m:
-        rest = [w for w in m.group(1).split() if w.strip(",") not in author.replace(",", " ").split()]
-        if len(rest) >= 2:
-            out.append(" ".join(rest[:6] + ([surname] if surname else [])))
-        if len(rest) >= 3:
-            # without its first word: "Biss" in the files, "Bis(s)" in the shop
-            out.append(" ".join(rest[1:6] + ([surname] if surname else [])))
-    if len(words) > 3:
-        out.append(" ".join(words[-3:]))
-    return list(dict.fromkeys(q for q in out if q and q != query))
+    """Shorter searches when the full one finds nothing (see content_queries)."""
+    return content_queries(query, hints.get("author") or "")
 
 
 def lookup(client: AudibleClient, hints: dict, region: str, limit: int = 10) -> List[dict]:

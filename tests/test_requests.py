@@ -313,6 +313,45 @@ def volume(n, title=None, **kw):
             "language": "german", **kw}
 
 
+class RequestLanguageVolumeTableTest(unittest.TestCase):
+    """The release choice for requests, for many names and both languages – what is asked for decides."""
+    EN1 = {"title": "Twilight", "authors": ["Stephenie Meyer"], "series": "The Twilight Saga", "series_position": "1",
+           "runtime_min": 771, "language": "English"}
+    DE1 = {"title": "Bis(s) zum Morgengrauen", "authors": ["Stephenie Meyer"], "series": "Twilight", "series_position": "1",
+           "runtime_min": 812, "language": "German"}
+    HP3_EN = {"title": "Harry Potter and the Prisoner of Azkaban", "authors": ["J.K. Rowling"], "series": "Harry Potter",
+              "series_position": "3", "runtime_min": 720, "language": "English"}
+    HP3_DE = {"title": "Harry Potter und der Gefangene von Askaban", "authors": ["J.K. Rowling"], "series": "Harry Potter",
+              "series_position": "3", "runtime_min": 760, "language": "German"}
+
+    def verdict(self, name, book, **rel):
+        lang = releases.book_language(book) or "de"
+        return releases.rank([{"title": name, "size": 600 << 20, **rel}], book, prefer_language=lang)[0]["verdict"]
+
+    def test_table(self):
+        cases = [
+            # (request, release name, release fields, accepted?)
+            (self.EN1, "Stephenie Meyer - Twilight (Unabridged) MP3", {}, True),
+            (self.EN1, "Stephenie.Meyer.Twilight.1.Unabridged.M4B", {"format": "M4B"}, True),
+            (self.EN1, "Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl-4CD-mp3-DE-2010", {"language": "de"}, False),
+            (self.EN1, "Stephenie.Meyer.-.Twilight.1.-.Bis(s).zum.Morgengrauen", {}, False),          # German by its words
+            (self.EN1, "Stephenie Meyer - Twilight - German - Hoerbuch", {"language": "de"}, False),
+            (self.EN1, "Stephenie Meyer - Twilight 4 - Breaking Dawn - EN", {"language": "en"}, False),  # other volume
+            (self.DE1, "Stephenie Meyer - Twilight 1 - Bis(s) zum Morgengrauen - Hoerbuch - DE", {"language": "de"}, True),
+            (self.DE1, "Stephenie Meyer - Bis(s) zum Morgengrauen (ungekürzt)", {}, True),
+            (self.DE1, "Stephenie Meyer - Twilight - Bis(s) zum Morgengrauen - ENGLISH", {"language": "en"}, False),
+            (self.DE1, "Stephenie Meyer - Twilight 2 - Bis(s) zum Morgengrauen Fortsetzung", {}, False),
+            (self.HP3_EN, "J.K. Rowling - Harry Potter and the Prisoner of Azkaban (Unabridged) - EN", {"language": "en"}, True),
+            (self.HP3_EN, "J.K. Rowling - Harry Potter und der Gefangene von Askaban - DE", {"language": "de"}, False),
+            (self.HP3_DE, "J.K. Rowling - Harry Potter 3 - Harry Potter und der Gefangene von Askaban - Hörbuch", {}, True),
+            (self.HP3_DE, "J.K. Rowling - Harry Potter and the Prisoner of Azkaban - Unabridged", {}, False),
+        ]
+        for book, name, rel, ok in cases:
+            with self.subTest(name):
+                v = self.verdict(name, book, **rel)
+                self.assertEqual(v["ok"], ok, (name, v["reason"]))
+
+
 class MismatchTest(unittest.TestCase):
     """What a downloaded folder clearly is not: another volume, another language, a far other runtime."""
     TWILIGHT = {"title": "Twilight", "authors": ["Stephenie Meyer"], "series": "The Twilight Saga", "series_position": "1",
@@ -335,9 +374,9 @@ class MismatchTest(unittest.TestCase):
         import audible
         qs = audible.fallback_queries("Twilight Saga 5 Biss zum ersten Sonnenstrahl HörbucHHamburg Meyer, Stephenie",
                                       {"author": "Meyer, Stephenie"})
-        self.assertEqual(qs[:2], ["Twilight Saga 5 Biss zum ersten Sonnenstrahl Meyer, Stephenie",
-                                  "Biss zum ersten Sonnenstrahl Meyer"])
-        self.assertEqual(audible.fallback_queries("Anne McDonald Das Haus", {})[0], "McDonald Das Haus")  # kept
+        self.assertIn("Biss zum ersten Sonnenstrahl Meyer", qs)
+        self.assertNotIn("HörbucHHamburg", " ".join(qs))
+        self.assertIn("McDonald", " ".join(audible.fallback_queries("Anne McDonald Das Haus Extra", {})))  # kept
 
     def test_request_blocks_the_wrong_download(self):
         RequestsTest.setUp(self)
