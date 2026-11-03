@@ -22,6 +22,7 @@ import library
 import links
 import packs
 import providers as prov
+import quality
 import releases
 import tagger
 from meta import cache as meta_cache
@@ -1028,8 +1029,13 @@ class Pipeline:
                 break
         single = len(job.files) == 1 and job.files[0].lower().endswith((".m4b", ".m4a", ".mp4"))
         src_first = os.path.join(folder, job.files[0])
-        if single and meta_cache.probe(src_first).get("audio_codec") == "aac":
-            job.say(t("M4B übernehmen (ohne Neukodierung) …"), 0.2)
+        profile = s.get("audio_quality", "high")
+        drama = quality.is_drama(job.match or {}, job.name)
+        if drama:
+            job.say(t("Hörspiel erkannt – höhere Qualität beim Umwandeln"))
+        first_codec = meta_cache.probe(src_first).get("audio_codec")
+        if single and (first_codec == "aac" or quality.keep_codec(first_codec, profile)):
+            job.say(t("M4B übernehmen (ohne Neukodierung, {codec}) …", codec=(first_codec or "").upper()), 0.2)
             encoder.remux(src_first, out, chapters_txt or None, runner=job.runner, nice=self.nice)
             tagger.copy_tags(src_first, out)
             job.converted_info = {"copied": True}
@@ -1045,7 +1051,7 @@ class Pipeline:
                 folder, job.files, out, bitrate=s.get("bitrate", "auto"),
                 mono=bool(s.get("force_mono")), jobs=self.cpu_jobs,
                 chapter_mode=s.get("chapter_titles", "auto"), titles=job.chapter_names, progress=progress,
-                cancelled=lambda: job.cancel, runner=job.runner, nice=self.nice)
+                cancelled=lambda: job.cancel, runner=job.runner, nice=self.nice, profile=profile, drama=drama)
             if chapters_txt:
                 encoder.remux(out, out + ".tmp.m4b", chapters_txt, runner=job.runner, nice=self.nice)
                 os.replace(out + ".tmp.m4b", out)

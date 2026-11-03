@@ -24,6 +24,8 @@ def suggestions(req: Req):
                          req.app.listening.links(req.user["id"]).get("plex"))
     requested = req.app.requests.status_by_key()
     res["items"] = [{**i, "requested": requested.get(br.book_key(i))} for i in res["items"]]
+    if section == "critics":
+        res["waiting"] = req.app.discover.waiting()
     return res
 
 

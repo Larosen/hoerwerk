@@ -6,6 +6,7 @@ import threading
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
+sys.path.insert(0, os.path.dirname(__file__))
 
 import db as dbm  # noqa: E402
 import discover  # noqa: E402
@@ -86,6 +87,8 @@ class DiscoverTest(unittest.TestCase):
         self.feed = RSS.encode()
         self.pt = PT.encode()
         self.pt_list = b"<html></html>"
+        self.month = b"<html></html>"
+        self.pdfs, self.pdf_asked = {}, []
         self.busy = set()
         self.pt_authors, self.pt_asked = {}, []
         self.d = discover.Discover(self.db, self.client, self.index, lambda: self.settings, fetch=self.fetch,
@@ -103,6 +106,13 @@ class DiscoverTest(unittest.TestCase):
             if self.pt is None:
                 raise OSError("down")
             return self.pt
+        if url.endswith(".pdf"):
+            self.pdf_asked.append(url)
+            return self.pdfs[url]
+        if "rezensionen-des-monats" in url:
+            if self.month is None:
+                raise OSError("down")
+            return self.month
         return self.feed
 
     def items(self, section, genre=""):
@@ -239,6 +249,7 @@ class DiscoverTest(unittest.TestCase):
         self.feed = b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "b">]><rss/>'
         self.pt = self.feed
         self.pt_list = None
+        self.month = None
         self.d.refresh("critics", wait=True)
         res = self.d.get("critics")
         self.assertEqual(res["items"], [])
@@ -270,6 +281,85 @@ class DiscoverTest(unittest.TestCase):
                          {"title": "Goldener Retriever", "author": "Manuel Bittorf"})
         self.assertEqual(p('Pernille Radeid, Jannicke Hansen (Ill.): "Wenn der Nebel flüstert"')["author"], "Pernille Radeid")
         self.assertIsNone(p("„Das glückliche Schicksal“: Ach, diese wunderbaren Lücken!"))
+
+
+    def test_books_of_the_month(self):
+        got = discover.parse_dlf_month(MONTH)
+        self.assertEqual([(r["author"], r["title"], r["date"]) for r in got], [
+            ("Kerstin Preiwuß", "Wir alle", "Mon, 02 Nov 2026"),
+            ("Carlos Barragán", "Hi Honey", "Sat, 31 Oct 2026"),          # subtitle cut off
+            ("Daron Acemoglu", "Das liberale Versprechen", "")])          # teaser only
+        self.feed = self.pt = b"<rss><channel></channel></rss>"
+        self.month = MONTH.encode()
+        self.client.hits = [book("M1", "Wir alle", author="Kerstin Preiwuß", rating=0, ratings=0)]
+        got = self.items("critics")
+        self.assertEqual([i["asin"] for i in got], ["M1"])
+        self.assertTrue(got[0]["review"]["month"])
+        self.assertEqual(self.d.waiting(), 2)                             # the other two: no audiobook yet
+        self.assertEqual(discover._main_title("Endzeitfaschismus - Und der Kampf um unsere Welt"), "Endzeitfaschismus")
+
+    def test_late_audiobook_is_found_a_month_later(self):
+        self.feed = self.pt = b"<rss><channel></channel></rss>"
+        self.month = MONTH.encode()
+        self.assertEqual(self.items("critics"), [])
+        self.assertEqual(self.d.waiting(), 3)
+        future = (discover.time.strftime("%Y") and str(int(discover.time.strftime("%Y")) + 1)) + "-03-01"
+        self.client.hits = [book("L1", "Hi Honey", author="Carlos Barragán", rating=0, ratings=0),
+                            book("L2", "Das liberale Versprechen", author="Daron Acemoglu", rating=0, ratings=0,
+                                 release_date=future)]
+        self.assertEqual(self.items("critics"), [])                       # looked again only after a month
+        memory = self.db.get("discover_reviews")
+        for v in memory.values():
+            v["checked"] -= 31 * 86400
+        self.db.put("discover_reviews", memory)
+        got = {i["asin"]: i for i in self.items("critics")}
+        self.assertEqual(set(got), {"L1", "L2"})
+        self.assertTrue(got["L1"]["later"])
+        self.assertIsNone(got["L1"]["announced"])
+        self.assertEqual(got["L2"]["announced"], future)                  # announced: suggested with its date
+        self.assertEqual(self.d.waiting(), 1)
+
+    def test_waiting_books_are_kept_longer(self):
+        old = discover.time.time() - 400 * 86400
+        self.db.put("discover_reviews", {
+            "de|a|waiting": {"author": "A", "title": "Waiting", "seen": old, "checked": discover.time.time(), "book": None},
+            "de|b|had": {"author": "B", "title": "Had", "seen": old, "book": book("H1", "Had")}})
+        self.feed = self.pt = b"<rss><channel></channel></rss>"
+        self.items("critics")
+        self.assertEqual(list(self.db.get("discover_reviews")), ["de|a|waiting"])
+
+
+    def test_best_lists_read_once(self):
+        import test_pdftext  # noqa: E402 – the synthetic list PDF
+        self.feed = self.pt = b"<rss><channel></channel></rss>"
+        url = "https://bilder.deutschlandfunk.de/87/07/krimibestenliste-oktober2026-100.pdf"
+        self.month = (MONTH + '<p><a title="Datei herunterladen" class="download-url-tracking" href="' + url
+                      + '" data-tracking="{}">Krimibestenliste - Die besten Krimis im Oktober 2026 (PDF)</a>'
+                      ' (Lesart, 02.10.2026)</p>').encode()
+        self.pdfs[url] = test_pdftext.make_pdf(test_pdftext.LIST)
+        self.client.hits = [book("K1", "Die Schakalin", author="Mike Nicol", rating=0, ratings=0)]
+        got = self.items("critics")
+        self.assertEqual([i["asin"] for i in got], ["K1"])
+        self.assertEqual({k: got[0]["review"][k] for k in ("list", "rank", "link", "date")},
+                         {"list": "Die besten Krimis im Oktober 2026", "rank": 5, "link": url, "date": "Fri, 02 Oct 2026"})
+        keys = self.db.get("discover_reviews")
+        self.assertIn("de|naomi klein|endzeitfaschismus", keys)           # first author, title without subtitle
+        self.items("critics")
+        self.assertEqual(self.pdf_asked, [url])                           # each list PDF only once
+
+    def test_only_fixed_hosts(self):
+        self.assertIn("bilder.deutschlandfunk.de", discover.FEED_HOSTS)
+        self.assertEqual(discover.dlf_best_lists('<a href="https://evil.example/x-bestenliste.pdf">Krimibestenliste (PDF)</a> (L, 02.10.2026)'), [])
+
+
+MONTH = (
+    '<script>{&quot;content&quot;:&quot;&lt;a class=\\&quot;download-url-tracking\\&quot; href=\\&quot;x.pdf\\&quot;&gt;'
+    'Kerstin Preiwu&szlig;: \\&quot;Wir alle\\&quot; (PDF)&lt;/a&gt; (B&uuml;chermarkt, 02.11.2026)&quot;},'
+    '{&quot;content&quot;:&quot;&lt;a href=\\&quot;y.pdf\\&quot;&gt;Sachbuchbestenliste - Die besten Sachb&uuml;cher (PDF)&lt;/a&gt; (Studio 9, 29.10.2026)&quot;},'
+    '{&quot;content&quot;:&quot;&lt;a href=\\&quot;z.pdf\\&quot;&gt;Carlos Barrag&aacute;n: &bdquo;Hi Honey. Nigerias Romance-Scam-Industrie&ldquo; (PDF)&lt;/a&gt; (Andruck, 31.10.2026)&quot;},'
+    '{&quot;teaserHeadline&quot;:&quot;Kerstin Preiwu&szlig;: \\&quot;Wir alle\\&quot;&quot;},'
+    '{&quot;teaserHeadline&quot;:&quot;Daron Acemoglu: \\&quot;Das liberale Versprechen\\&quot;&quot;},'
+    '{&quot;teaserHeadline&quot;:&quot;Rezensionen&quot;}</script>')
 
 
 if __name__ == "__main__":

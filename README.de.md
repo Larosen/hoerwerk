@@ -100,6 +100,11 @@ docker compose up -d
    Ein Ordner mit mehreren Buch-Ordnern (`Reihe/Band 1`, `Reihe/Band 2`) wird zu mehreren Büchern.
 2. **M4B erzeugen.** Jede Datei wird parallel zu AAC kodiert und dann ohne Neukodierung zusammengefügt – ein Kapitel
    pro Datei (oder die Kapitel, die eine Datei schon hat). AAC-Quellen werden kopiert, eine einzelne M4B wird übernommen.
+   **Qualität** (`AUDIO_QUALITY`): Hörspiele (erkannt an Titel, Genre, Release-Name oder vielen Sprechern) bekommen
+   mehr Bitrate als Lesungen – `standard` 128k/192k, `high` 160k/256k (Standard), `original` bis 320k und behält
+   verlustfreies ALAC. Nie mehr, als die Quelle hat. Dolby Atmos / E-AC-3 wird immer unverändert übernommen, nie
+   heruntergemischt (der Web-Player von Audiobookshelf spielt es evtl. nicht, die meisten Apps schon). Kapitel hinter
+   dem Dateiende werden verworfen.
    Eigene Kapitel: `chapters.txt` (`00:01:02.500 Titel`) in den Buchordner legen.
 3. **Bei Audible erkennen.** Gesucht wird nach Ordnername bzw. Album/Interpret-Tags im gewählten Shop
    (`AUDIBLE_REGION`); eine ASIN im Namen (`… [B0ABCDE123]`) wird direkt verwendet. Nur eindeutige Treffer werden
@@ -251,12 +256,17 @@ Der Reiter **Entdecken** schlägt neue Hörbücher vor:
   (z. B. *Cricket*) werden ausgeblendet. Alle Listen werden einmal am Tag im Hintergrund vorbereitet. Das gewählte
   Genre merkt sich der Browser.
 * **Aus der Kritik** – besprochene Bücher, die es bei Audible als Hörbuch gibt (gleicher Titel, gleicher Autor), mit Link
-  zur Besprechung. Quellen: die RSS-Feeds „Buchkritik“ und „Lesart“ (Deutschlandfunk Kultur) und „Büchermarkt“
+  zur Besprechung. Quellen: die RSS-Feeds „Buchkritik“ und „Lesart“ (Deutschlandfunk Kultur), die Seite
+  [Die Bücher des Monats](https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html) mit den monatlichen
+  Bestenlisten für Sachbuch und Krimi (PDFs, jede wird einmal gelesen; angezeigt mit Platz), „Büchermarkt“
   (Deutschlandfunk), die Perlentaucher-Listen
   [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) und
   [Sachbuch aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-sachbuch-aktuell.html) (mit Anzahl der
   Pressekritiken) und die Bücherschau/Bücherbriefe aus dem Perlentaucher-Feed. Übernommen werden nur Autor und Titel;
-  gesehene Besprechungen merkt sich Hörwerk 180 Tage, gezeigt werden die neuesten rund 40 Hörbücher.
+  gesehene Besprechungen merkt sich Hörwerk 180 Tage, gezeigt werden die neuesten rund 40 Hörbücher. Gibt es zu einem
+  besprochenen Buch noch kein Hörbuch, kommt es auf eine Warteliste: zwei Jahre lang schaut Hörwerk einmal im Monat
+  nach. Ist das Hörbuch erschienen (oder bei Audible angekündigt), steht es oben – markiert mit „jetzt als Hörbuch“
+  bzw. „erscheint <Datum>“. Das läuft täglich im Hintergrund, auch wenn niemand die Seite öffnet.
 
 **Suchen** auf einer Karte springt in den Reiter *Suchen*, mit dem Buch schon ausgewählt (Titel, Autor und ASIN helfen
 später beim Taggen).
@@ -267,13 +277,17 @@ Bücher in der Bibliothek (auch in anderer Schreibweise), Downloads der letzten 
 Büchern aus der Kritik entfällt die Bewertungsregel – sie sind oft neu und noch kaum bewertet.
 
 **Ehrlich gesagt:** Ob ein Sachbuch inhaltlich stimmt, kann keine Software zuverlässig prüfen – auch Bewertungen
-messen nur Beliebtheit. Deshalb lässt *Für dich* Sachbücher standardmäßig weg (umschaltbar in den Einstellungen); in *Nach Genre*
-erscheinen sie nur, wenn du selbst ein Sachbuch-Genre wählst – mit dem Hinweis, dass Sterne kein Faktencheck sind.
+messen nur Beliebtheit. Deshalb zeigt *Für dich* nur Sachbücher von anerkannten Autoren: auf Hörwerks fester Liste (rund 400 Autoren
+faktenbasierter Sachbücher seit 2010, `app/trusted_authors.py`), mit einer Perlentaucher-Autorenseite (im Feuilleton
+besprochen), in den Kritiken genannt oder auf der eigenen Liste in den Einstellungen. Das prüft den Ruf, nicht den Inhalt.
+Alle Sachbücher lassen sich in den Einstellungen zuschalten. In *Nach Genre* erscheinen sie, wenn du selbst ein
+Sachbuch-Genre wählst – mit dem Hinweis, dass Sterne kein Faktencheck sind.
 BookBeat ist nicht angebunden, weil es keine offene Schnittstelle hat.
 
 Die Listen werden im Hintergrund zusammengestellt, höchstens einmal am Tag erneuert (oder mit **Aktualisieren**) und
 in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-API des gewählten Shops,
-`www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de` und `www.perlentaucher.de` (HTTPS).
+`www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de`, `bilder.deutschlandfunk.de` (PDFs der Bestenlisten)
+und `www.perlentaucher.de` (HTTPS).
 
 ### Anfragen (wie bei Overseerr/Jellyseerr)
 
@@ -436,7 +450,8 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `WRITE_COVER` | `true` | `cover.jpg` schreiben (Audiobookshelf und Plex nutzen es) |
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Entdecken: Mindestbewertung und -anzahl Bewertungen |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Entdecken: nur ungekürzt / nur deutschsprachig |
-| `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: Sachbücher auch in „Für dich“ |
+| `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: alle Sachbücher in „Für dich“ (sonst nur von anerkannten Autoren) |
+| `DISCOVER_TRUSTED_AUTHORS` | – | Entdecken: weitere anerkannte Sachbuch-Autoren, mit Komma getrennt |
 | `WANTED_INTERVAL_HOURS` | `12` | Anfragen ohne Treffer: Abstand der erneuten Suche |
 | `ADMIN_TOTP_REQUIRED` | `false` | Admins brauchen einen Zweitfaktor |
 | `CPU_CORES` | halbe Kernzahl | Parallele ffmpeg-Prozesse pro Buch |
@@ -445,7 +460,8 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `NICE` | `10` | CPU-Priorität von ffmpeg (0 = normal) |
 | `FFMPEG_SANDBOX` | `auto` | ffmpeg im Landlock-Käfig: `auto`, `require`, `off` |
 | `FFMPEG_MEMORY_MB` | `4096` | Speichergrenze je ffmpeg-Prozess |
-| `AAC_BITRATE` | `auto` | `auto` (wie die Quelle, höchstens 128k) oder fester Wert |
+| `AUDIO_QUALITY` | `high` | `standard`, `high` oder `original` – wie viel Bitrate Lesungen und Hörspiele behalten |
+| `AAC_BITRATE` | `auto` | `auto` (wie die Quelle, begrenzt durch `AUDIO_QUALITY`) oder fester Wert |
 | `FORCE_MONO` | `false` | Mono ausgeben |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` oder `tag` |
 | `TRUSTED_PROXIES` | – | IPs/Netze des Reverse-Proxys (Pangolin/Newt, Traefik), z. B. `172.18.0.0/16` – nur von dort zählt `X-Forwarded-For` |

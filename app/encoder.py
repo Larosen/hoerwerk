@@ -23,6 +23,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional, Sequence
 
+import quality
 import sandbox
 from meta import AUDIO_DEMUXERS, cache as meta_cache
 from natsort import natural_key
@@ -31,7 +32,7 @@ from i18n import t
 AUDIO_EXTS = {"mp3", "m4a", "m4b", "mp4", "aac", "flac", "ogg", "oga", "opus", "wav", "wma",
               "aif", "aiff", "mka", "ape", "alac"}
 AAC_RATES = (8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000)
-STD_BITRATES = (32, 48, 64, 80, 96, 128, 160, 192, 256)
+STD_BITRATES = (32, 48, 64, 80, 96, 128, 160, 192, 224, 256, 320)
 COVER_NAMES = ("cover", "folder", "front", "albumart", "poster")
 
 # Files from downloads are untrusted. ffmpeg may only read local files, and only with real
@@ -262,14 +263,15 @@ def ffmetadata(chapters: Sequence[dict], total: float, tags: Optional[dict] = No
 # Encoding
 # --------------------------------------------------------------------------- #
 
-def pick_bitrate(setting: str, infos: List[dict], channels: int) -> str:
-    """``auto`` follows the source (never above ``max``), otherwise the fixed value."""
+def pick_bitrate(setting: str, infos: List[dict], channels: int, cap: Optional[int] = None) -> str:
+    """``auto`` follows the source, never above ``cap`` (quality.cap: reading or radio play, the profile),
+    otherwise the fixed value."""
     setting = (setting or "auto").strip().lower()
     if setting != "auto":
         return setting
     rates = [i.get("bit_rate") or 0 for i in infos if i.get("bit_rate")]
     src = sorted(rates)[len(rates) // 2] // 1000 if rates else 128
-    cap = 128 if channels > 1 else 64
+    cap = cap or (128 if channels > 1 else 64)
     target = min(src, cap)
     best = min(STD_BITRATES, key=lambda b: (abs(b - target), b))
     return f"{max(best, 32)}k"
@@ -344,8 +346,12 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
                  titles: Optional[List[str]] = None,
                  progress: Callable[[float, str], None] = lambda p, m: None,
                  cancelled: Callable[[], bool] = lambda: False,
-                 runner: Optional[Runner] = None, nice: str = "") -> dict:
+                 runner: Optional[Runner] = None, nice: str = "",
+                 profile: str = "high", drama: bool = False) -> dict:
     """Encode ``files`` (relative to ``folder``) into one chapterised M4B.
+
+    ``profile`` (quality.PROFILES) and ``drama`` (radio play rather than a reading) set how much bitrate a
+    re-encode may keep; Dolby (and lossless ALAC on "original") is packed as it is, never mixed down.
 
     Returns ``{"duration", "chapters", "bitrate", "copied"}``.  ``out_path``
     only appears once everything succeeded.
@@ -359,9 +365,14 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
     if bad:
         raise EncodeError(t("Keine Tonspur in: {files}", files=", ".join(bad[:3])))
 
+    codecs = {i.get("audio_codec") for i in infos}
+    if (len(codecs) == 1 and quality.keep_codec(next(iter(codecs)), profile) and not mono
+            and len({(i.get("sample_rate"), i.get("channels")) for i in infos}) == 1):
+        return _pack_as_is(folder, files, paths, infos, out_path, chapter_mode=chapter_mode, tags=tags,
+                           titles=titles, progress=progress, runner=runner, nice=nice)
     channels = 1 if mono else min(max((i.get("channels") or 2) for i in infos), 2)
     rate = pick_rate(infos)
-    br = pick_bitrate(bitrate, infos, channels)
+    br = pick_bitrate(bitrate, infos, channels, quality.cap(profile, drama, channels))
     # AAC sources that already match: copy instead of transcoding (no quality loss)
     copy = all(i.get("audio_codec") == "aac" and i.get("sample_rate") == rate
                and (i.get("channels") or 2) == channels for i in infos)
@@ -407,23 +418,9 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
                     f.cancel()
                 raise
 
-        # Chapters: one per file – or the file's own chapters if it has several
-        chapters: List[dict] = []
-        pos = 0.0
-        names = [chapter_title(rel, infos[n]["tags"], chapter_mode) for n, rel in enumerate(files)]
-        if chapter_mode == "auto":
-            names = chapter_titles(names, (tags or {}).get("album") or (tags or {}).get("title") or "")
-        for n, rel in enumerate(files):
-            length = _adts_seconds(segs[n], rate)
-            own = titles[n].strip() if titles and len(titles) == len(files) and titles[n] else ""
-            inner = [] if own else file_chapters(paths[n])
-            if len(inner) > 1:
-                scale = length / (infos[n].get("duration") or length)
-                chapters += [{"start": pos + c["start"] * scale, "title": c["title"]} for c in inner]
-            else:
-                chapters.append({"start": pos, "title": own or names[n]})
-            pos += length
-        total = pos
+        lengths = [_adts_seconds(seg, rate) for seg in segs]
+        chapters = _chapter_list(files, paths, infos, lengths, chapter_mode, tags, titles)
+        total = sum(lengths)
 
         meta_path = os.path.join(work, "meta.txt")
         with open(meta_path, "w", encoding="utf-8") as fh:
@@ -443,6 +440,66 @@ def merge_to_m4b(folder: str, files: List[str], out_path: str, *,
         progress(1.0, t("Fertig"))
         return {"duration": total, "chapters": chapters, "bitrate": "copy" if copy else br,
                 "copied": copy}
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def _chapter_list(files: List[str], paths: List[str], infos: List[dict], lengths: List[float],
+                  chapter_mode: str, tags: Optional[dict], titles: Optional[List[str]]) -> List[dict]:
+    """One chapter per file – or the file's own chapters if it has several."""
+    chapters: List[dict] = []
+    pos = 0.0
+    names = [chapter_title(rel, infos[n]["tags"], chapter_mode) for n, rel in enumerate(files)]
+    if chapter_mode == "auto":
+        names = chapter_titles(names, (tags or {}).get("album") or (tags or {}).get("title") or "")
+    for n in range(len(files)):
+        length = lengths[n]
+        own = titles[n].strip() if titles and len(titles) == len(files) and titles[n] else ""
+        inner = [] if own else file_chapters(paths[n])
+        if len(inner) > 1:
+            scale = length / (infos[n].get("duration") or length)
+            chapters += [{"start": pos + c["start"] * scale, "title": c["title"]} for c in inner]
+        else:
+            chapters.append({"start": pos, "title": own or names[n]})
+        pos += length
+    return chapters
+
+
+def _pack_as_is(folder: str, files: List[str], paths: List[str], infos: List[dict], out_path: str, *,
+                chapter_mode: str, tags: Optional[dict], titles: Optional[List[str]],
+                progress: Callable[[float, str], None], runner: Optional[Runner], nice: str) -> dict:
+    """Dolby (E-AC-3 / AC-3, Atmos included) or lossless ALAC: put the audio into the M4B unchanged –
+    one file or several in a row, no re-encode, no downmix."""
+    runner = runner or Runner(lambda: False)
+    codec = (infos[0].get("audio_codec") or "").upper()
+    progress(0.0, t("{n} Dateien, {codec} unverändert übernommen", n=len(paths), codec=codec) if len(paths) > 1
+             else t("1 Datei, {codec} unverändert übernommen", codec=codec))
+    work = tempfile.mkdtemp(prefix=".m4b-", dir=os.path.dirname(out_path) or None)
+    try:
+        lengths = [float(i.get("duration") or 0) for i in infos]
+        chapters = _chapter_list(files, paths, infos, lengths, chapter_mode, tags, titles)
+        total = sum(lengths)
+        meta_path = os.path.join(work, "meta.txt")
+        with open(meta_path, "w", encoding="utf-8") as fh:
+            fh.write(ffmetadata(chapters, total, {"genre": "Audiobook", **(tags or {})}))
+        listing = os.path.join(work, "files.txt")
+        with open(listing, "w", encoding="utf-8") as fh:
+            for p in paths:
+                fh.write("file '" + os.path.abspath(p).replace("'", "'\\''") + "'\n")
+        part = os.path.join(work, "out.m4b")
+        res = runner.run(sandbox.ffmpeg(["-nostdin", "-hide_banner", "-v", "error", "-y",
+                                         "-protocol_whitelist", "file", "-format_whitelist", "concat,mov",
+                                         "-f", "concat", "-safe", "0", "-i", listing,
+                                         *OWN_METADATA, "-i", meta_path,
+                                         "-map", "0:a", "-map_metadata", "1", "-map_chapters", "1",
+                                         "-c", "copy", "-movflags", "+faststart", "-f", "mp4", part],
+                                        read=[work, *sorted({os.path.dirname(p) for p in paths})], write=[work],
+                                        nice=nice))
+        if res.returncode != 0 or not os.path.exists(part):
+            raise EncodeError(t("Zusammenfügen fehlgeschlagen: {error}", error=_err_tail(res.stderr)))
+        shutil.move(part, out_path)
+        progress(1.0, t("Fertig"))
+        return {"duration": total, "chapters": chapters, "bitrate": "copy", "copied": True}
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -476,6 +533,8 @@ def remux(src: str, dst: str, chapters: Optional[Sequence[dict]] = None,
         cmd = ["-nostdin", "-hide_banner", "-v", "error", "-y", *SAFE_INPUT, "-i", src]
         if chapters is not None:
             total = meta_cache.probe(src).get("duration") or (chapters[-1]["start"] + 1 if chapters else 0)
+            # a chapters.txt for another edition can name chapters behind the end of this file: drop those
+            chapters = [c for c in chapters if c["start"] < total - 0.5] or list(chapters[:1])
             meta = os.path.join(work, "meta.txt")
             with open(meta, "w", encoding="utf-8") as fh:
                 fh.write(ffmetadata(chapters, total))

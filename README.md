@@ -101,6 +101,10 @@ docker compose up -d
    (`Series/Volume 1`, `Series/Volume 2`) becomes several books.
 2. **Create the M4B.** Each file is encoded to AAC in parallel and then joined without re-encoding – one chapter per
    file (or the chapters a file already has). AAC sources are copied, a single M4B is taken over as is.
+   **Quality** (`AUDIO_QUALITY`): radio plays (detected from title, genre, release name or a cast of narrators) get
+   more bitrate than readings – `standard` 128k/192k, `high` 160k/256k (default), `original` up to 320k and keeps
+   lossless ALAC. Never more than the source has. Dolby Atmos / E-AC-3 is always packed as is, never mixed down
+   (the Audiobookshelf web player may not play it; most apps do). Chapters behind the end of the file are dropped.
    Own chapters: put a `chapters.txt` (`00:01:02.500 Title`) into the book folder.
 3. **Match on Audible.** Searched by folder name or album/artist tags in the chosen store (`AUDIBLE_REGION`);
    an ASIN in the name (`… [B0ABCDE123]`) is used directly. Only clear matches are filed automatically.
@@ -245,12 +249,16 @@ The **Discover** tab suggests new audiobooks:
   listeners, so every genre shows suggestions; subcategories without a single German audiobook (e.g. *Cricket*) are left
   out. All lists are prepared in the background once a day. The chosen genre is remembered per browser.
 * **From the critics** – reviewed books that exist as an audiobook on Audible (same title, same author), with a link to
-  the review. Sources: the RSS feeds "Buchkritik" and "Lesart" (Deutschlandfunk Kultur) and "Büchermarkt"
+  the review. Sources: the RSS feeds "Buchkritik" and "Lesart" (Deutschlandfunk Kultur), the page
+  [Die Bücher des Monats](https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html) with its monthly
+  best-of lists for non-fiction and crime (PDFs, each read once; shown with their place), "Büchermarkt"
   (Deutschlandfunk), Perlentaucher's lists
   [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) and
   [Sachbuch aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-sachbuch-aktuell.html) (with the number of press
   reviews) and the book round-ups from Perlentaucher's feed. Only author and title are taken; reviews are remembered for
-  180 days, the newest ~40 audiobooks are shown.
+  180 days, the newest ~40 audiobooks are shown. A reviewed book without an audiobook yet stays on a waiting list for
+  two years and is looked up again once a month; once the audiobook is out (or announced on Audible) it shows up at
+  the top, marked "now as audiobook" or "out <date>". This runs daily in the background, even if nobody opens the page.
 
 **Search** on a card jumps to the *Search* tab with the book already picked (title, author and ASIN help with tagging later).
 
@@ -259,13 +267,16 @@ German only, no erotica. **Always excluded** is what you already have: books in 
 (even spelled differently), downloads of the last 30 days and books being processed right now. Books from the critics skip the rating rule – they are often new.
 
 **To be honest:** no software can reliably check whether a non-fiction book is accurate – ratings only measure
-popularity. So *For you* leaves non-fiction out by default (switch in the settings); in *By genre* it only appears when
-you pick a non-fiction genre yourself, with a note that stars are no fact check. BookBeat is not connected – it
+popularity. So *For you* only shows non-fiction by established authors: on Hörwerk's fixed list (about 400 authors
+of fact-based non-fiction since 2010, `app/trusted_authors.py`), with a Perlentaucher author page (reviewed in the arts
+pages), named in the reviews, or on your own list in the settings. That checks reputation, not content. All non-fiction
+can be switched on in the settings. In *By genre* it appears when you pick a non-fiction genre yourself,
+with a note that stars are no fact check. BookBeat is not connected – it
 has no open API.
 
 Lists are put together in the background, refreshed at most once a day (or with **Refresh**) and cached in the database.
-Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de` and
-`www.perlentaucher.de` (HTTPS).
+Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de`,
+`bilder.deutschlandfunk.de` (the best-of list PDFs) and `www.perlentaucher.de` (HTTPS).
 
 ### Requests (like Overseerr/Jellyseerr)
 
@@ -424,7 +435,8 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `WRITE_COVER` | `true` | Write `cover.jpg` (used by Audiobookshelf and Plex) |
 | `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Discover: minimum rating and number of ratings |
 | `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Discover: unabridged only / German only |
-| `DISCOVER_NONFICTION_STORE` | `false` | Discover: non-fiction in "For you" too |
+| `DISCOVER_NONFICTION_STORE` | `false` | Discover: all non-fiction in "For you" (otherwise only by established authors) |
+| `DISCOVER_TRUSTED_AUTHORS` | – | Discover: more established non-fiction authors, comma-separated |
 | `WANTED_INTERVAL_HOURS` | `12` | Requests without a match: hours until the next search |
 | `ADMIN_TOTP_REQUIRED` | `false` | Admins need a second factor |
 | `CPU_CORES` | half the cores | Parallel ffmpeg processes per book |
@@ -433,7 +445,8 @@ Settings, presets, history, the audiobook list, the library index and all creden
 | `NICE` | `10` | CPU priority of ffmpeg (0 = normal) |
 | `FFMPEG_SANDBOX` | `auto` | ffmpeg in a Landlock sandbox: `auto`, `require`, `off` |
 | `FFMPEG_MEMORY_MB` | `4096` | Memory limit per ffmpeg process |
-| `AAC_BITRATE` | `auto` | `auto` (like the source, max. 128k) or a fixed value |
+| `AUDIO_QUALITY` | `high` | `standard`, `high` or `original` – how much bitrate readings and radio plays keep |
+| `AAC_BITRATE` | `auto` | `auto` (like the source, capped by `AUDIO_QUALITY`) or a fixed value |
 | `FORCE_MONO` | `false` | Output mono |
 | `CHAPTER_TITLES` | `auto` | `auto`, `filename` or `tag` |
 | `TRUSTED_PROXIES` | – | IPs/networks of the reverse proxy (Pangolin/Newt, Traefik), e.g. `172.18.0.0/16` – only from there `X-Forwarded-For` counts |

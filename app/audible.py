@@ -278,7 +278,8 @@ class AudibleClient:
         return data
 
     def search(self, region: str, keywords: str = "", title: str = "", author: str = "",
-               limit: int = 10) -> List[dict]:
+               limit: int = 10, upcoming: bool = False) -> List[dict]:
+        """upcoming: also announced audiobooks (pre-orders) – for suggestions, not for tagging."""
         params = {"response_groups": RESPONSE_GROUPS, "image_sizes": "500,1024",
                   "num_results": limit, "products_sort_by": "Relevance"}
         if keywords:
@@ -288,17 +289,17 @@ class AudibleClient:
         if author:
             params["author"] = author
         data = self._cached(f"{api_host(region)}/1.0/catalog/products?{parse.urlencode(params)}")
-        return self._products(data.get("products"), region)
+        return self._products(data.get("products"), region, upcoming)
 
     @staticmethod
-    def _products(products, region: str) -> List[dict]:
-        """Released audiobooks only – no pre-orders, podcasts or magazines."""
+    def _products(products, region: str, upcoming: bool = False) -> List[dict]:
+        """Released audiobooks only (pre-orders too with upcoming) – no podcasts or magazines."""
         today = date.today().isoformat()
         out = []
         for p in products or []:
             if not p.get("asin") or not p.get("title"):
                 continue
-            if (p.get("release_date") or "0") > today:
+            if (p.get("release_date") or "0") > today and not upcoming:
                 continue  # not released yet – Audnexus/Audible data is incomplete
             if p.get("content_delivery_type") in ("PodcastParent", "Periodical"):
                 continue

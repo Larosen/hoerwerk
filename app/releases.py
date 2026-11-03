@@ -11,6 +11,7 @@ import re
 from typing import Iterable, List, Optional, Set
 
 import packs
+import quality
 from i18n import t
 from usenet import match_words, release_info
 
@@ -19,6 +20,7 @@ FORMAT_SCORE = {"M4B": 30, "M4A": 20, "MP3": 15, "FLAC": 10}
 MIN_KBPS = 20          # below that a "full" audiobook is too small – usually abridged or broken
 MAX_KBPS = 1600        # above that it is not this book (or a video)
 LOW_KBPS = 48          # below that it sounds thin – taken only when nothing better is there
+_DOLBY = re.compile(r"(?i)\batmos\b|\be-?ac-?3\b|\bddp\b|\bdd\+|\bdolby\b")
 
 
 def surname(name: str) -> str:
@@ -221,12 +223,21 @@ def evaluate(release: dict, book: dict, prefer_language: str = "de", unabridged:
     if lang and lang == prefer_language:
         score += 10
         notes.append(t("Sprache passt"))
-    if kbps is not None and (release.get("format") or "").upper() not in ("FLAC", "LOSSLESS", "WAV"):
+    drama = quality.is_drama(book)
+    lossless = (release.get("format") or "").upper() in ("FLAC", "LOSSLESS", "WAV")
+    if kbps is not None and not lossless:
         if kbps < LOW_KBPS:
             score -= 40                 # far behind anything that sounds right
             notes.append(t("geringe Qualität ({kbps} kbit/s)", kbps=kbps))
         else:
-            score += min(kbps, 160) / 10     # more kbit/s sound better – up to 160, beyond that it makes no difference
+            # more kbit/s sound better – for a reading up to 160, a radio play (music, effects) up to 320
+            score += min(kbps, 320 if drama else 160) / 10
+    elif kbps is not None and lossless and drama:
+        score += 40                     # a radio play: lossless is the best there is
+        notes.append(t("verlustfrei"))
+    if _DOLBY.search(name):
+        score += 12                     # Dolby Atmos / Dolby Digital Plus: kept as it is, never mixed down
+        notes.append(t("Dolby Atmos"))
     year = max((int(y) for y in re.findall(r"(?<!\d)((?:19|20)\d\d)(?!\d)", name)), default=0)
     if year:
         score += max(0, min((year - 2005) / 2, 8))   # newer releases come from better sources
