@@ -148,7 +148,7 @@ class Job:
     KEYS = ("id", "source", "rel", "name", "origin", "status", "message", "progress", "files",
             "duration", "hints", "candidates", "match", "region", "m4b", "cover", "dest",
             "error", "log", "created", "updated", "converted_info", "duplicate", "dup_decision",
-            "chapter_names", "rename_files", "stage", "pack")
+            "chapter_names", "rename_files", "stage", "pack", "filing")
 
     def __init__(self, **kw) -> None:
         self.id = kw.get("id") or uuid.uuid4().hex[:10]
@@ -181,6 +181,9 @@ class Job:
         self.rename_files: bool = bool(kw.get("rename_files"))       # rename the tracks to them first
         self.stage: str = kw.get("stage") if kw.get("stage") in STAGES else "prepare"
         self.pack: Optional[dict] = kw.get("pack")      # one volume of a multi-volume download
+        # filing journal: old copies put aside and where the M4B is about to go – a restart in the middle of
+        # filing finishes or undoes it from here (see _recover_filing)
+        self.filing: Optional[dict] = kw.get("filing")
         self.cancel = False
         self.runner: Optional[encoder.Runner] = None
 
@@ -270,6 +273,8 @@ class Pipeline:
             job = Job(**{k: d[k] for k in Job.KEYS if k in d})
             if "stage" not in d:               # written by version 3: derive the stage
                 job.stage = "finish" if job.m4b and os.path.exists(job.m4b) else "prepare"
+            if job.filing:                     # the restart hit the filing itself
+                self._recover_filing(job)
             if job.status in ACTIVE:           # interrupted by a restart: start that step again
                 job.status = "queued"
                 job.say(t("Nach Neustart erneut eingereiht"))
@@ -1102,6 +1107,7 @@ class Pipeline:
         parked: List[Optional[Tuple[str, str, str]]] = []     # old library copies, put aside until the new one is in place
         if job.dup_decision == "replace" and job.duplicate:
             parked.append(self._park(job, job.duplicate["path"], "archive"))
+            self._journal(job, parked)
         job.status = "tagging"
         job.say(t("Schreibe Tags …"), 1.0)
 
@@ -1133,9 +1139,16 @@ class Pipeline:
         folder, filename = library.destination(root, book, s.get("ab_folder_template"),
                                                s.get("ab_file_template"),
                                                title=tagger.clean_title(book, s))
-        if job.origin == "library":
-            # The new M4B replaces the old files of this very book: they step aside first ...
-            parked.append(self._park(job, os.path.relpath(job.source, root), s.get("ab_library_originals", "archive")))
+        try:
+            if job.origin == "library":
+                # The new M4B replaces the old files of this very book: they step aside first ...
+                parked.append(self._park(job, os.path.relpath(job.source, root), s.get("ab_library_originals", "archive")))
+                self._journal(job, parked)
+        except Exception:
+            for p in reversed(parked):
+                self._unpark(p)
+            job.filing = None
+            raise
         created = None
         try:
             # Existing author/series folders win, even when spelled a little differently
@@ -1144,12 +1157,14 @@ class Pipeline:
                 created = folder
             os.makedirs(folder, exist_ok=True)
             tagger.write_sidecars(folder, book, s, cover)
+            self._journal(job, parked, folder, filename)
             dest = library.place(job.m4b, folder, filename)
         except Exception:
             if created and os.path.isdir(created):   # half-made new folder (cover, desc.txt) goes again ...
                 shutil.rmtree(created, ignore_errors=True)
             for p in reversed(parked):          # ... and the old copy comes back
                 self._unpark(p)
+            job.filing = None
             raise
         job.dest = dest
         for p in parked:                        # only now: delete or archive the old copy
@@ -1160,12 +1175,51 @@ class Pipeline:
         if self.index:
             self.index.add(dest, book)
         job.m4b = None
+        job.filing = None
         self._dispose_source(job, s)
         self._cleanup_work(job)
         job.status = "done"
         job.say(t("Abgelegt: {path}", path=os.path.relpath(dest, root)), 1.0)
         if self.on_filed:
             self.on_filed(dest)
+
+    def _journal(self, job: Job, parked: list, folder: str = "", filename: str = "") -> None:
+        """Write down what filing is about to change – saved before it happens."""
+        job.filing = {"parked": [list(p) for p in parked if p]}
+        if folder and job.m4b and os.path.exists(job.m4b):
+            job.filing.update(folder=folder, file=filename, size=os.path.getsize(job.m4b))
+        self.save()
+
+    def _recover_filing(self, job: Job) -> None:
+        """After a restart during filing: the M4B made it into the library -> finish (old copy archived or
+        deleted as chosen); it did not -> put the old copies back. Nothing is lost or filed twice."""
+        f = job.filing or {}
+        parked = [tuple(p) for p in f.get("parked") or [] if isinstance(p, list) and len(p) == 3]
+        placed = None
+        if f.get("folder"):
+            library.remove_partials(f["folder"])
+            cand = os.path.join(f["folder"], f.get("file") or "")
+            if not (job.m4b and os.path.exists(job.m4b)) and os.path.isfile(cand) and os.path.getsize(cand) == f.get("size"):
+                placed = cand
+        try:
+            if placed:
+                for p in parked:
+                    self._settle(job, p)
+                job.dest, job.m4b, job.status = placed, None, "done"
+                self._dispose_source(job, self.get_settings())
+                self._cleanup_work(job)
+                if self.get_settings().get("write_abs", True):
+                    absm.write_metadata(os.path.dirname(placed), job.match or {}, encoder.file_chapters(placed),
+                                        meta_cache.probe(placed).get("duration") or job.duration)
+                job.say(t("Nach Neustart: war schon abgelegt – {path}", path=os.path.relpath(placed, self.library)), 1.0)
+            else:
+                for p in reversed(parked):
+                    self._unpark(p)
+                if parked:
+                    job.say(t("Nach Neustart: alte Fassung wieder an ihren Platz gestellt"))
+        except Exception as e:  # noqa: BLE001 – a restart must never stop at one book
+            applog.error(t("Nach Neustart nicht aufgeräumt ({name}): {error}", name=job.name, error=e), "Pipeline")
+        job.filing = None
 
     def _park(self, job: Job, rel: str, mode: str) -> Optional[Tuple[str, str, str]]:
         """Put an old book folder aside (hidden, same parent folder – a rename, no copy).

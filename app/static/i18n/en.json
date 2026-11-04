@@ -1298,5 +1298,9 @@
  "Unterbrochenen Upload abgeschlossen: {names}": "Interrupted upload completed: {names}",
  "Upload-Reste nicht aufgeräumt: {error}": "Upload leftovers not cleaned up: {error}",
  "Zu viele Dateien in einem Upload (höchstens {n})": "Too many files in one upload (at most {n})",
- "Zu viele Daten in deinen offenen Uploads – erst diese abschließen": "Too much data in your open uploads – finish those first"
+ "Zu viele Daten in deinen offenen Uploads – erst diese abschließen": "Too much data in your open uploads – finish those first",
+ "Datenbank-Sicherung fehlgeschlagen: {error}": "Database snapshot failed: {error}",
+ "Nach Neustart nicht aufgeräumt ({name}): {error}": "Not tidied up after restart ({name}): {error}",
+ "Nach Neustart: alte Fassung wieder an ihren Platz gestellt": "After restart: old version put back in its place",
+ "Nach Neustart: war schon abgelegt – {path}": "After restart: was already filed – {path}"
 }

@@ -9,6 +9,7 @@ gives ``Hoffmann/Serapionsbrüder/01 - Das Fräulein`` or ``Storm/Der Schimmelre
 """
 from __future__ import annotations
 
+import errno
 import os
 import re
 import shutil
@@ -153,11 +154,58 @@ def unique_folder(path: str) -> str:
     return f"{path} ({n})"
 
 
+PARTIAL = ".hw-part-"          # hidden name of a file still being copied into the library
+
+
+def move_atomic(src: str, dest: str) -> None:
+    """Move a file so that ``dest`` only ever appears complete.
+
+    Same disk: one rename. Another disk (inbox and library on different shares): copy to a hidden name next
+    to ``dest`` first, then rename – a crash leaves at most a hidden ``.hw-part-*`` file (removed by
+    ``remove_partials``), never a half-copied book that Audiobookshelf or Plex would pick up."""
+    try:
+        os.rename(src, dest)
+        return
+    except OSError as e:
+        if e.errno != errno.EXDEV:
+            raise
+    tmp = os.path.join(os.path.dirname(dest), PARTIAL + os.path.basename(dest))
+    try:
+        shutil.copy2(src, tmp)
+        with open(tmp, "rb") as fh:
+            os.fsync(fh.fileno())
+        os.replace(tmp, dest)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    os.unlink(src)
+
+
+def remove_partials(folder: str) -> int:
+    """Hidden half-copies left by a crash in ``move_atomic`` – in this folder only."""
+    n = 0
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return 0
+    for name in names:
+        if name.startswith(PARTIAL):
+            try:
+                os.unlink(os.path.join(folder, name))
+                n += 1
+            except OSError:
+                pass
+    return n
+
+
 def place(src_m4b: str, folder: str, filename: str, extras: Optional[Dict[str, str]] = None) -> str:
     """Move the book (and extra files) into the library; returns the final m4b path."""
     os.makedirs(folder, exist_ok=True)
     dest = os.path.join(folder, filename)
-    shutil.move(src_m4b, dest)
+    move_atomic(src_m4b, dest)
     for name, src in (extras or {}).items():
         if src and os.path.exists(src):
             shutil.move(src, os.path.join(folder, name))

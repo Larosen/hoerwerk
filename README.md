@@ -407,7 +407,9 @@ SABnzbd, Audiobookshelf & Plex, discover & requests, notifications, accounts and
 in and `/api/health`, which without login only says `{"ok": true}` – no version). A bookmark to a sub-page leads to the
 login first and then exactly there. Settings and inbox are for admins only.
 Settings, presets, history, the audiobook list, the library index and all credentials live in the SQLite database
-`/config/hoerwerk.db` (permissions 600).
+`/config/hoerwerk.db` (permissions 600). Once a day Hörwerk writes a consistent copy to
+`/config/backups/hoerwerk-<weekday>.db` (the last seven days) – to restore, stop Hörwerk and put the copy in place as
+`hoerwerk.db`.
 
 | Variable | Default | Meaning |
 |---|---|---|

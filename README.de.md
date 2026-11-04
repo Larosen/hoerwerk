@@ -422,7 +422,9 @@ funktionieren. Das gilt auch für die Reiter: `/books`, `/search`, `/discover`, 
 API (bis auf Anmeldung und `/api/health`, das ohne Anmeldung nur `{"ok": true}` sagt – ohne Version). Ein Lesezeichen
 auf eine Unterseite führt erst zur Anmeldung und danach genau dorthin. Einstellungen und Eingang sind nur für Admins.
 Einstellungen, Voreinstellungen, Verlauf, Hörbuch-Liste, Bibliotheks-Index und alle Zugangsdaten liegen in der
-SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
+SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600). Einmal am Tag legt Hörwerk eine in sich stimmige Kopie in
+`/config/backups/hoerwerk-<Wochentag>.db` ab (die letzten sieben Tage) – zum Zurückspielen Hörwerk stoppen und die
+Kopie als `hoerwerk.db` einsetzen.
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
