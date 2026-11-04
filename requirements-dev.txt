@@ -1,4 +1,4 @@
 # Checks in CI (not part of the image)
 ruff==0.17.3        # lint: errors, likely bugs, security rules (ruff.toml)
-coverage==7.17.1    # test coverage (.coveragerc)
+coverage==7.17.2    # test coverage (.coveragerc)
 pip-audit==2.10.1   # known vulnerabilities in requirements.txt
