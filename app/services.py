@@ -40,6 +40,7 @@ class App:
         self.start_workers = start_workers
         os.makedirs(config.config_dir, exist_ok=True)
         self.db = dbm.Database(dbm.db_path(config.config_dir))
+        self._db_maintained = 0.0
         imported = dbm.import_legacy(self.db, config.config_dir)
         if imported:
             applog.info(f"Übernommen in die Datenbank: {', '.join(imported)}")
@@ -197,7 +198,26 @@ class App:
                 self.discover.tick()            # review list daily, late audiobooks monthly – also unseen
             except Exception as e:  # noqa: BLE001
                 applog.warn(t("Entdecken: {error}", error=e), "Entdecken")
+            self.maintain_db()
             time.sleep(120)
+
+    def maintain_db(self, now: Optional[float] = None) -> Optional[str]:
+        """Once a day: a consistent snapshot of the database (backups/hoerwerk-<weekday>.db, the last seven days)
+        and the WAL moved into the main file. A copy of /config taken while Hörwerk runs (Unraid appdata
+        backup) may catch the database between two writes – the snapshot never does."""
+        now = time.time() if now is None else now
+        if now - self._db_maintained < 23 * 3600:
+            return None
+        self._db_maintained = now
+        target = os.path.join(self.config.config_dir, "backups", time.strftime("hoerwerk-%a.db", time.localtime(now)))
+        try:
+            os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
+            self.db.backup(target)
+            self.db.checkpoint()
+            return target
+        except Exception as e:  # noqa: BLE001 – a failed snapshot must not stop the worker
+            applog.warn(t("Datenbank-Sicherung fehlgeschlagen: {error}", error=e), "Datenbank")
+            return None
 
 
 def create_app(config: Optional[Config] = None, start: bool = True) -> App:

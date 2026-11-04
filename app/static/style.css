@@ -29,6 +29,17 @@
   --shadow-pop: 0 18px 50px -12px rgba(31, 30, 27, .28), 0 2px 6px rgba(31, 30, 27, .06);
   --sans: "Inter var", Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* design tokens: one meaning per colour on every page – ok = done, warn = needs attention, err = failed,
+     info = running / waiting; spacing, radii, control sizes and motion in one place */
+  --info: var(--accent);
+  --info-soft: var(--accent-soft);
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px;
+  --radius-sm: 7px; --radius-lg: 14px;
+  --btn-h: 32px; --btn-h-sm: 28px;
+  --fs-sm: 13px; --fs: 14px;
+  --dur-fast: .15s; --dur: .25s;
+  --skeleton: color-mix(in srgb, var(--border) 70%, transparent);
+  --skeleton-hi: color-mix(in srgb, var(--panel-2) 60%, transparent);
   color-scheme: light;
 }
 /* Dark: follows the system unless the user picked a fixed design (theme.js sets data-theme) */
@@ -186,15 +197,69 @@ legend { font-weight: 620; font-size: 14px; padding: 0 10px 0 0; color: var(--te
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin: 6px -24px -22px; padding: 14px 24px; border-top: 1px solid var(--border); background: var(--panel-2); position: sticky; bottom: 0; border-radius: 0 0 14px 14px; }
 
-.toast {
-  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px);
-  background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 9px; opacity: 0; box-shadow: var(--shadow-pop); font-size: 13.5px;
-  transition: .25s; pointer-events: none; max-width: calc(100vw - 32px); z-index: 10;
+/* messages: a stack at the bottom, newest last; errors stay longer and can be closed */
+.toasts {
+  position: fixed; left: 50%; bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-2); z-index: 30;
+  width: max-content; max-width: calc(100vw - 2 * var(--space-4)); pointer-events: none;
 }
-.toast.show { opacity: 1; transform: translateX(-50%); }
-.toast.error { background: var(--err); color: var(--on-err); }
+.toast-item {
+  display: flex; align-items: flex-start; gap: var(--space-2); pointer-events: auto; max-width: 560px;
+  background: var(--text); color: var(--bg); padding: 9px 8px 9px 14px; border-radius: 9px; box-shadow: var(--shadow-pop);
+  font-size: 13.5px; line-height: 1.45; animation: toast-in var(--dur) ease-out;
+}
+.toast-item > .ico { margin-top: 2px; }
+.toast-item.success > .ico { color: color-mix(in srgb, var(--ok) 60%, var(--bg)); }
+.toast-item.warning { background: var(--warn-soft); color: var(--text); box-shadow: var(--shadow-pop), inset 0 0 0 1px var(--warn-border); }
+.toast-item.warning > .ico { color: var(--warn); }
+.toast-item.error { background: var(--err); color: var(--on-err); }
+.toast-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.toast-x {
+  border: 0; background: transparent; color: inherit; opacity: .7; cursor: pointer; border-radius: 6px;
+  width: 24px; height: 24px; display: inline-grid; place-items: center; flex: none; margin-top: -2px;
+}
+.toast-x:hover, .toast-x:focus-visible { opacity: 1; background: color-mix(in srgb, currentColor 14%, transparent); }
+.toast-item.leaving { opacity: 0; transform: translateY(6px); transition: opacity var(--dur-fast), transform var(--dur-fast); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* a button whose action runs: spinner + what it does, same size, no second click */
+.btn.is-busy, .icon-btn.is-busy, button.is-busy { cursor: progress; position: relative; }
+.btn.is-busy:active { transform: none; }
+.is-busy .busy-text { overflow: hidden; text-overflow: ellipsis; }
+.spinner {
+  width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent;
+  animation: spin .7s linear infinite; opacity: .85;
+}
+.is-busy > .ico + .spinner, .is-busy > .ico ~ .spinner { position: absolute; inset: 0; margin: auto; }
+.is-busy:has(> .ico ~ .spinner) > .ico { visibility: hidden; }
+.did-work { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 55%, transparent); transition: box-shadow var(--dur); }
+.did-fail { box-shadow: 0 0 0 2px color-mix(in srgb, var(--err) 60%, transparent); animation: nudge .3s; }
+@keyframes nudge { 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+
+/* lists that load: placeholders in the shape of what comes, a clear message with "Erneut versuchen" */
+.skeleton { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; list-style: none; }
+.skeleton-card { flex-direction: column; align-items: stretch; }
+.sk-thumb { width: 44px; height: 44px; border-radius: 6px; background: var(--skeleton); flex: none; }
+.skeleton-card .sk-thumb { width: 100%; height: auto; aspect-ratio: 1; }
+.sk-lines { flex: 1; display: flex; flex-direction: column; gap: var(--space-2); }
+.sk-line { height: 10px; border-radius: 5px; background: var(--skeleton); }
+.sk-line.short { width: 55%; }
+.skeleton .sk-thumb, .skeleton .sk-line {
+  background-image: linear-gradient(90deg, transparent, var(--skeleton-hi), transparent);
+  background-size: 200% 100%; background-repeat: no-repeat; animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+.load-error {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-3); border-radius: var(--radius-sm); background: var(--err-soft); color: var(--err); list-style: none;
+}
+[aria-busy="true"]:not(button):not(.btn) { cursor: progress; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+  .toast-item, .did-fail, .skeleton .sk-thumb, .skeleton .sk-line { animation: none !important; }
+  .spinner { animation-duration: 2s; }     /* still turns – it is the only sign that something runs */
+}
 
 @media (max-width: 900px) {
   body { height: auto; }

@@ -33,7 +33,16 @@ COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin
 
 WORKDIR /app
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+# pip is only needed for this one install: afterwards it goes, with the wheels Python brings along
+# (ensurepip, setuptools). Their bundled libraries (urllib3, msgpack …) are never used by Hörwerk, but would
+# carry their vulnerabilities into the image. The import check makes sure nothing the app needs went with them.
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt \
+ && pip uninstall -y pip setuptools wheel 2>/dev/null; \
+    STDLIB="$(python -c 'import sysconfig; print(sysconfig.get_paths()["stdlib"])')" \
+ && rm -rf "$STDLIB/ensurepip" /usr/local/bin/pip /usr/local/bin/pip3* \
+ && find / -xdev \( -name '*.whl' -o -name 'setuptools*' -o -name 'pip-*.dist-info' \) -path '*python3*' \
+      -exec rm -rf {} + 2>/dev/null; \
+    python -c "import mutagen, yaml, sqlite3, ssl; print('python deps ok')"
 COPY docker/entrypoint.sh /entrypoint.sh
 COPY app/ /app/
 COPY --from=web /src/app/static/*.js /app/static/

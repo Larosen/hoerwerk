@@ -33,7 +33,32 @@ function isActive(status: BookStatus): boolean {
   return ACTIVE_STATES.includes(status);
 }
 
+// Jobs started from this page: a click only means "accepted" – when the work itself ends (filed, needs a
+// decision, failed), a message says so, also when the list is not on screen.
+const followed = new Map<string, { name: string; ran: boolean }>();      // job id -> name, seen running
+
+function follow(id: string | undefined, name: string): void {
+  if (id) followed.set(id, { name, ran: false });
+}
+
+function reportFollowed(data: AudiobooksStatus): void {
+  for (const j of data.jobs) {
+    const f = followed.get(j.id);
+    if (!f) continue;
+    if (isActive(j.status)) { f.ran = true; continue; }
+    // "review"/"failed" right after the click is still the old state – only what comes after running counts
+    if (!f.ran && j.status !== "done") continue;
+    const name = f.name;
+    if (j.status === "done") toast(t("Fertig abgelegt: {name}", { name }));
+    else if (j.status === "failed") toast(t("Fehlgeschlagen: {name} – {error}", { name, error: j.error || j.message }), "error");
+    else if (j.status === "review") toast(t("Braucht deine Entscheidung: {name}", { name }), "warning");
+    else if (j.status === "cancelled") toast(t("Abgebrochen: {name}", { name }), "info");
+    followed.delete(j.id);
+  }
+}
+
 function applyBooks(data: AudiobooksStatus, force = false): void {
+  reportFollowed(data);
   const json = JSON.stringify(data);
   if (force || json !== books.lastJson) {
     books.lastJson = json;
@@ -44,7 +69,11 @@ function applyBooks(data: AudiobooksStatus, force = false): void {
 
 async function pollBooks(force = false): Promise<void> {
   clearTimeout(books.timer);
-  try { applyBooks(await api<AudiobooksStatus>("GET", "/api/audiobooks"), force); } catch { /* keep the last state, try again */ }
+  if (!books.data) {                         // the first load: placeholders, and "Erneut versuchen" if it fails
+    await loadList($("#bookList"), async () => applyBooks(await api<AudiobooksStatus>("GET", "/api/audiobooks"), force), { count: 5 });
+  } else {
+    try { applyBooks(await api<AudiobooksStatus>("GET", "/api/audiobooks"), force); } catch { /* keep the last state, try again */ }
+  }
   if (live.ok) return;                       // live updates bring every change
   const busy = books.data?.jobs.some((j) => isActive(j.status)) || !!books.data?.waiting.length;
   const visible = !$("#viewBooks").hidden;
@@ -125,9 +154,11 @@ function renderLibrary(list: HTMLElement): void {
 }
 
 async function loadLibraryBooks(): Promise<void> {
+  const target = document.getElementById("libRows");
+  if (target && !target.children.length) skeleton(target, 6);
   try {
     const res = await api<{ total: number; books: LibraryBook[] }>("GET",
-      `/api/library/books?q=${encodeURIComponent(books.libQuery)}&limit=${books.libShown}`);
+      `/api/library/books?q=${encodeURIComponent(books.libQuery)}&limit=${books.libShown}`, undefined, { key: "library" });
     if (!books.libQuery) books.libTotal = res.total;
     const rows = document.getElementById("libRows");
     if (!rows) return;
@@ -222,8 +253,9 @@ interface ConvertItem { path: string; chapter_names?: string[]; rename_files?: b
 async function convertLibrary(items: ConvertItem[]): Promise<void> {
   try {
     const res = await api<{ jobs: AudiobookJob[] }>("POST", "/api/library/convert", { items });
+    for (const job of res.jobs) follow(job.id, job.name);
     toast(plural(res.jobs.length, t("1 Buch in Arbeit – Fortschritt unter „Laufend“"),
-      t("{n} Bücher in Arbeit – Fortschritt unter „Laufend“", { n: res.jobs.length })));
+      t("{n} Bücher in Arbeit – Fortschritt unter „Laufend“", { n: res.jobs.length })), "info");
     for (const it of items) books.picked.delete(it.path);
     await loadUnconverted();
     pollBooks(true);
@@ -558,7 +590,8 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
 async function chooseBook(j: AudiobookJob, c: Book): Promise<void> {
   try {
     await api("POST", `/api/audiobooks/${j.id}/choose`, { id: c.id || c.asin, asin: c.asin, region: c.region });
-    toast(t("„{title}“ wird getaggt und abgelegt", { title: c.title }));
+    follow(j.id, c.title);
+    toast(t("„{title}“ wird getaggt und abgelegt", { title: c.title }), "info");
     pollBooks(true);
   } catch (e) { toast(errMsg(e), true); }
 }
@@ -621,7 +654,8 @@ async function saveManual(): Promise<void> {
   data.base_id = d.dataset.baseId || "";
   try {
     await api("POST", `/api/audiobooks/${d.dataset.jobId}/manual`, data);
-    toast(t("Wird mit deinen Angaben getaggt und abgelegt"));
+    follow(d.dataset.jobId, String(data.title || ""));
+    toast(t("Wird mit deinen Angaben getaggt und abgelegt"), "info");
     pollBooks(true);
   } catch (e) { toast(errMsg(e), true); }
 }
@@ -636,11 +670,23 @@ async function reopenBook(j: AudiobookJob): Promise<void> {
 }
 
 async function bookAction(j: AudiobookJob, action: "cancel" | "retry"): Promise<void> {
-  try { await api("POST", `/api/audiobooks/${j.id}/${action}`); pollBooks(true); } catch (e) { toast(errMsg(e), true); }
+  try {
+    await api("POST", `/api/audiobooks/${j.id}/${action}`);
+    if (action === "retry") {
+      follow(j.id, j.name);
+      toast(t("Wieder eingereiht: {name} – startet, sobald ein Platz frei ist", { name: j.name }), "info");
+    } else toast(t("Wird abgebrochen: {name}", { name: j.name }), "info");
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
 }
 
 async function removeBook(j: AudiobookJob): Promise<void> {
-  try { await api("DELETE", `/api/audiobooks/${j.id}`); books.open.delete(j.id); pollBooks(true); } catch (e) { toast(errMsg(e), true); }
+  try {
+    await api("DELETE", `/api/audiobooks/${j.id}`);
+    books.open.delete(j.id);
+    toast(t("Aus der Liste entfernt: {name}", { name: j.name }));
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
 }
 
 /** Delete the download itself (folder and files) from the inbox – it can't come back. */

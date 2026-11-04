@@ -11,6 +11,7 @@ import audible
 import i18n
 import sandbox
 from config import CHOICES, VERSION, public_url
+from web import hosts
 from i18n import t
 from web.router import HTTPException, Req, route
 
@@ -165,13 +166,21 @@ def diagnostics(req: Req):
         add("connection", "warn", t("Keine öffentliche Adresse eingetragen – Einladungslinks gehen erst danach"), id="public_url",
             detail=t("Einstellungen → Allgemein, oder Hörwerk einmal über den Reverse-Proxy öffnen."),
             hint="https://hoerwerk.example.de")
-    host = conn.get("host", "").rsplit(":", 1)[0].strip("[]").lower()
-    if cfg.allowed_hosts:
+    host = hosts.host_name(conn.get("host", ""))
+    if "*" in cfg.allowed_hosts:
+        add("connection", "warn", t("ALLOWED_HOSTS=* – Hörwerk antwortet unter jedem Namen"), id="hosts",
+            detail=t("Kein Schutz gegen DNS-Rebinding. Besser die eigenen Namen eintragen."), hint=f"ALLOWED_HOSTS={host}")
+    elif cfg.allowed_hosts:
         add("connection", "ok", t("Erlaubte Namen: {hosts}", hosts=", ".join(sorted(cfg.allowed_hosts))), id="hosts",
             detail=t("Aufgerufen als {host}", host=host))
     else:
-        add("connection", "warn" if conn.get("proxied") else "info", t("ALLOWED_HOSTS ist leer – Hörwerk antwortet unter jedem Namen"),
-            id="hosts", detail=t("Optional, schützt gegen DNS-Rebinding."), hint=f"ALLOWED_HOSTS={host},localhost")
+        add("connection", "ok", t("Hörwerk antwortet unter IP-Adressen, Namen aus dem Heimnetz und der öffentlichen Adresse"),
+            id="hosts", detail=t("Schutz gegen DNS-Rebinding. Weitere Namen: ALLOWED_HOSTS."))
+    for name, info in sorted((getattr(app, "refused_hosts", None) or {}).items(), key=lambda kv: -kv[1]["time"])[:5]:
+        add("connection", "warn", t("Aufruf als „{host}“ abgelehnt", host=name), id="refused-" + name,
+            detail=t("Zuletzt {ago}. Wenn das deine Adresse ist: als öffentliche Adresse eintragen oder ALLOWED_HOSTS setzen.",
+                     ago=time.strftime("%d.%m. %H:%M", time.localtime(info["time"]))),
+            hint=f"ALLOWED_HOSTS={name}")
 
     # -- security --
     users = app.accounts.list()

@@ -115,11 +115,14 @@ async function loadDiscover(): Promise<void> {
     b.setAttribute("aria-current", String(b.dataset.section === discover.section));
   }
   const params = new URLSearchParams({ section: discover.section, genre: discover.genre });
-  try {
-    const res = await api<DiscoverAnswer>("GET", `/api/discover?${params}`);
+  const list = $("#discoverList");
+  const fresh = list.dataset.shows !== params.toString();     // another section or genre: no stale cards meanwhile
+  await loadList(list, async () => {
+    const res = await api<DiscoverAnswer>("GET", `/api/discover?${params}`, undefined, { key: "discover" });
     renderDiscover(res);
+    list.dataset.shows = params.toString();
     if (res.running && !$("#viewDiscover").hidden) discover.timer = setTimeout(loadDiscover, 3000);
-  } catch (err) { toast(errMsg(err), true); }
+  }, { count: 8, kind: "card", fresh, quiet: !fresh });
 }
 
 async function loadGenres(): Promise<void> {

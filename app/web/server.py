@@ -6,6 +6,9 @@ import ipaddress
 import json
 import mimetypes
 import os
+import secrets
+import select
+import socket
 import sys
 import threading
 import time
@@ -16,7 +19,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import i18n
 from events import Stream
-from web import router
+from web import hosts, router
 from web.router import File, HTTPException, Reply, Req
 import applog
 from invites import valid_token_format
@@ -66,19 +69,32 @@ def page_access(path: str) -> Optional[str]:
     return APP_PAGES[parts[0]]
 
 
-# always allowed as Host: a DNS-rebinding page arrives under its own name, never as these
-LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
+# Connections served at the same time (one thread each). Beyond that a short 503 – the server stays responsive.
+# Live updates (SSE) are capped separately in events.py (32), so they never take all of these.
+MAX_CONNECTIONS = 96
+# per client address – one visitor (or a script) cannot take every slot; a trusted proxy carries everyone
+MAX_PER_PEER = 32
+IDLE_TIMEOUT = 30          # seconds a connection may sit without sending/receiving (also between keep-alive requests)
+_BUSY_TEXT = "Zu viele Verbindungen – gleich nochmal".encode()
+_BUSY = (b"HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain; charset=utf-8\r\nRetry-After: 2\r\n"
+         b"Content-Length: %d\r\nConnection: close\r\n\r\n%s" % (len(_BUSY_TEXT), _BUSY_TEXT))
 
 
 class Server(ThreadingHTTPServer):
     daemon_threads = True
+    request_queue_size = 64
 
     def __init__(self, address, app) -> None:
         self.app = app
+        self._slots = threading.Lock()
+        self.active = 0                          # connections being served now
+        self.peak = 0
+        self.per_peer: dict = {}
         # proxies in the LAN/Docker network that send X-Forwarded-For but are not in TRUSTED_PROXIES
         # (shown in the health check, logged once an hour each) – e.g. Newt after it got a new IP
         if app is not None:
             app.untrusted_proxies = {}
+            app.refused_hosts = {}                   # Host names refused (health check, logged once an hour)
         self._untrusted_lock = threading.Lock()
         super().__init__(address, Handler)
 
@@ -95,6 +111,73 @@ class Server(ThreadingHTTPServer):
             seen[peer]["logged"] = now
         applog.warn(t("{peer} schickt X-Forwarded-For, steht aber nicht in TRUSTED_PROXIES – alle Besucher über diesen Proxy erscheinen mit seiner Adresse (Anmelde-Sperre, CrowdSec). TRUSTED_PROXIES={peer} setzen.", peer=peer), "Anmeldung")  # noqa: E501
 
+    def note_refused_host(self, name: str) -> None:
+        now = time.time()
+        with self._untrusted_lock:
+            seen = self.app.refused_hosts
+            if len(seen) > 50 and name not in seen:
+                return
+            last = seen.get(name, {}).get("logged", 0)
+            seen[name] = {"time": now, "logged": last}
+            if now - last < 3600:
+                return
+            seen[name]["logged"] = now
+        applog.warn(t("Aufruf unter dem Namen „{host}“ abgelehnt (Schutz gegen DNS-Rebinding). Wenn das deine Adresse ist: unter Einstellungen → Allgemein als öffentliche Adresse eintragen oder ALLOWED_HOSTS={host} setzen.", host=name), "Anmeldung")  # noqa: E501
+
+    # -- connection limits -------------------------------------------------------
+    def process_request(self, request, client_address) -> None:
+        peer = client_address[0]
+        trusted = self.app is not None and self._is_trusted(peer)
+        with self._slots:
+            mine = self.per_peer.get(peer, 0)
+            full = self.active >= MAX_CONNECTIONS or (not trusted and mine >= MAX_PER_PEER)
+            if not full:
+                self.active += 1
+                self.peak = max(self.peak, self.active)
+                self.per_peer[peer] = mine + 1
+        if full:
+            self._refuse(request)
+            return
+        try:
+            super().process_request(request, client_address)       # starts the thread
+        except BaseException:
+            self._release(peer)
+            self.shutdown_request(request)
+            raise
+
+    def process_request_thread(self, request, client_address) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._release(client_address[0])
+
+    def _release(self, peer: str) -> None:
+        with self._slots:
+            self.active -= 1
+            left = self.per_peer.get(peer, 1) - 1
+            if left > 0:
+                self.per_peer[peer] = left
+            else:
+                self.per_peer.pop(peer, None)
+
+    def _is_trusted(self, peer: str) -> bool:
+        try:
+            ip = ipaddress.ip_address(peer.split("%")[0])
+        except ValueError:
+            return False
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        return any(ip in net for net in self.app.config.trusted_proxies)
+
+    def _refuse(self, request) -> None:
+        """Too busy: a short answer in the accepting thread (never blocks it), then close."""
+        try:
+            request.settimeout(1)
+            request.sendall(_BUSY)
+        except OSError:
+            pass
+        self.shutdown_request(request)
+
     def handle_error(self, request, client_address) -> None:
         """A client that hangs up (browser tab closed, health check done) is no error worth a traceback."""
         err = sys.exc_info()[1]
@@ -106,6 +189,7 @@ class Server(ThreadingHTTPServer):
 class Handler(BaseHTTPRequestHandler):
     server_version = "Hoerwerk"
     protocol_version = "HTTP/1.1"
+    timeout = IDLE_TIMEOUT          # socket timeout: idle keep-alive, slow headers and stalled uploads end here
     server: Server
 
     @property
@@ -200,12 +284,9 @@ class Handler(BaseHTTPRequestHandler):
         return self.server.app.accounts.session_user(token, self.client_ip()) if token else None
 
     def _host_ok(self) -> bool:
-        allowed = self.config.allowed_hosts
-        if not allowed:
-            return True
-        host = (self.headers.get("Host") or "").lower()
-        host = host.rsplit(":", 1)[0] if not host.endswith("]") else host
-        return host.strip("[]") in allowed | LOOPBACK_NAMES
+        public = urlparse(self.server.app.settings().get("public_url") or "").hostname or ""
+        return hosts.allowed(self.headers.get("Host") or "", self.config.allowed_hosts, public,
+                             via_proxy=self._trusted(self._addr(self.client_address[0])))
 
     def _same_origin(self) -> bool:
         """Changing requests must come from our own page (CSRF protection).
@@ -248,12 +329,23 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self._headers(200, "text/event-stream; charset=utf-8", {"X-Accel-Buffering": "no"})
             for chunk in stream:
+                if self._client_gone():          # tab closed: free the slot now, not after two failed writes
+                    break
                 self.wfile.write(chunk)
                 self.wfile.flush()
         except OSError:          # browser tab closed
             pass
         finally:
             stream.close()
+
+    def _client_gone(self) -> bool:
+        """An SSE client never sends anything – readable means it hung up."""
+        try:
+            if not select.select([self.connection], [], [], 0)[0]:
+                return False
+            return self.connection.recv(1, socket.MSG_PEEK) == b""
+        except (OSError, ValueError):
+            return True
 
     def _redirect(self, where: str) -> None:
         self._send(303, b"", "text/plain", {"Location": where})
@@ -266,7 +358,11 @@ class Handler(BaseHTTPRequestHandler):
             or bool(self.headers.get("Transfer-Encoding"))
         # the health check answers under any name: Docker asks as 127.0.0.1, Pangolin/Newt under the target name
         if not self._host_ok() and not (url.path == "/api/health" and self.command in ("GET", "HEAD")):
-            return self._send(421, b"Unbekannter Host", "text/plain")
+            name = hosts.host_name(self.headers.get("Host") or "")[:100]
+            self.server.note_refused_host(name)
+            self.close_connection = True
+            refused = t("Hörwerk antwortet nicht unter dem Namen „{host}“ (Schutz gegen DNS-Rebinding). Ist das deine Adresse, trage sie unter Einstellungen → Allgemein als öffentliche Adresse ein (dafür Hörwerk einmal über die IP-Adresse öffnen) oder setze ALLOWED_HOSTS={host}.", host=name)  # noqa: E501
+            return self._send(421, refused.encode(), "text/plain; charset=utf-8")
         token = self._token()
         reading = self.command in ("GET", "HEAD")
         if reading and url.path == "/favicon.ico":         # Safari & co. ask for it on their own – the logo, no 404
@@ -345,6 +441,11 @@ class Handler(BaseHTTPRequestHandler):
             result = fn(req, **params)
             if access == "admin" and self.command not in ("GET", "HEAD"):
                 self.server.app.audit(req, f"{self.command} {url.path}")
+        except HTTPException as e:
+            return self._json(e.status_code, {"error": e.detail})
+        except Exception as e:  # noqa: BLE001
+            return self._internal_error(url.path, e)
+        try:
             if isinstance(result, Reply):
                 return self._send(200, json.dumps(result.data, ensure_ascii=False).encode(),
                                   "application/json; charset=utf-8", result.headers)
@@ -354,11 +455,22 @@ class Handler(BaseHTTPRequestHandler):
                 cache = f"private, max-age={result.max_age}" if result.max_age else "no-store"
                 return self._send(200, result.body, result.ctype, {"Cache-Control": cache})
             return self._json(200, result)
-        except HTTPException as e:
-            return self._json(e.status_code, {"error": e.detail})
-        except Exception as e:  # noqa: BLE001
-            self.log_error("Fehler in %s: %r", url.path, e)
-            return self._json(500, {"error": t("Interner Fehler: {error}", error=e)})
+        except (ConnectionError, TimeoutError):
+            self.close_connection = True                 # the browser went away while the answer was sent
+        except Exception as e:  # noqa: BLE001 – e.g. an answer that cannot be turned into JSON
+            return self._internal_error(url.path, e)
+
+    def _internal_error(self, path: str, err: BaseException) -> None:
+        """Unexpected errors: everything into the log, only a number to the browser – no exception text,
+        paths, SQL or keys leave the server. The number finds the entry in the log."""
+        rid = secrets.token_hex(4)
+        applog.error(f"Fehler {rid} in {self.command} {path}: {err!r}\n{traceback.format_exc().rstrip()}", "web")
+        self.close_connection = True
+        try:
+            self._json(500, {"error": t("Interner Fehler (Nr. {id}) – Einzelheiten stehen im Protokoll", id=rid),
+                             "request_id": rid})
+        except OSError:
+            pass                                         # nobody listening any more – the log has it
 
     do_GET = do_POST = do_PUT = do_DELETE = do_HEAD = _dispatch
 

@@ -596,7 +596,8 @@ def content_queries(query: str, author: str = "", limit: int = 8) -> List[str]:
              if w and not _GLUED.match(w.strip(",;:")) and w.lower().strip(",;:") not in _TAG_WORDS
              and not re.fullmatch(r"(?i)\d+\s*cds?|\d{4}", w)]
     core = [w for w in words if w.lower().strip(",.;:") not in names]
-    with_name = (lambda ws: " ".join(ws + [surname]) if surname else " ".join(ws))
+    def with_name(ws: List[str]) -> str:
+        return " ".join(ws + [surname]) if surname else " ".join(ws)
     out: List[str] = [with_name(core)]
     series, volume, title = split_volume(core)
     if volume is not None:

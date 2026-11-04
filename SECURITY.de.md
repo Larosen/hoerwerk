@@ -19,8 +19,9 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 4. **In SABnzbd** unter *Config → Switches* „Unerwünschte Endungen“ (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
    auf **Abbrechen** stellen. Gefälschte Releases fliegen dann schon vor dem Eingang raus.
 5. Originale im Eingang auf **löschen** (`INBOX_ORIGINALS=delete`) oder `_fertig` regelmäßig leeren.
-6. `ALLOWED_HOSTS` auf die Adressen setzen, unter denen du Hörwerk aufrufst, z. B.
-   `ALLOWED_HOSTS=tower,192.168.1.10,hoerbuecher.example.de` (Schutz gegen DNS-Rebinding und fremde Host-Namen).
+6. Die öffentliche Adresse unter *Einstellungen → Allgemein* eintragen. Hörwerk antwortet ab 7.13 von sich aus nur
+   unter IP-Adressen, Namen aus dem Heimnetz und dieser Adresse (Schutz gegen DNS-Rebinding); weitere Namen über
+   `ALLOWED_HOSTS`, z. B. `ALLOWED_HOSTS=hoerbuecher.example.de`.
 7. Image aktuell halten: GitHub Actions baut es jede Woche neu (Debian-Sicherheitsupdates); neue ffmpeg-Versionen
    kommen über ein Update von `FFMPEG_VERSION` im Dockerfile;
    auf Unraid gelegentlich „Check for Updates“.
@@ -74,10 +75,10 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 | Familienkonto lädt Beliebiges | Nutzer fragen nur Bücher an; Releases wählt Hörwerk nach festen Regeln. Die interaktive Suche (Releases von Hand) gibt es nur mit eigenem Recht, Indexer-Links (mit API-Key) erreichen nie den Browser. |
 | Passwort gestohlen | Optionaler Zweitfaktor (TOTP nach RFC 6238, Standardbibliothek): Code gilt einmal (keine Wiederverwendung), ±30 s Uhrabweichung, Anmelde-Ticket 5 Minuten / 5 Versuche, Fehlversuche zählen für die IP-Bremse und landen in `auth.log`. Für Admins als Pflicht einstellbar. |
 | Unbemerkte Änderungen durch einen Admin-Zugang | Admin-Protokoll in der Datenbank: jede ändernde Admin-Aktion mit Zeit, Konto und IP (Freigaben, Konten, Einstellungen, Quellen …), einsehbar unter *Konten*. |
-| DNS-Rebinding / fremde Host-Namen | `ALLOWED_HOSTS`; zusätzlich braucht jede Datenanfrage eine Anmeldung. |
+| DNS-Rebinding / fremde Host-Namen | Standardmäßig nur IPs, Heimnetz-Namen, die öffentliche Adresse und was ein Proxy aus `TRUSTED_PROXIES` weiterleitet (nie aus Host/X-Forwarded-Host gelernt), sonst 421; `ALLOWED_HOSTS` für weitere Namen; zusätzlich braucht jede Datenanfrage eine Anmeldung. |
 | Pfade außerhalb der Bibliothek | Buch-Pfade aus dem Browser werden aufgelöst (inkl. Symlinks) und müssen in der Bibliothek liegen; statische Dateien nur aus `app/static`. |
 | Riesige Anfragen | max. 4 MB pro Anfrage; Ausnahme nur der Upload (bis 4 GB je Datei, direkt auf die Platte gestreamt). |
-| Upload | Nur Admins; Anmeldung und Rechte werden geprüft, bevor ein Byte gelesen wird. Nur relative Pfade ohne `..` und ohne versteckte Namen, nur Audio, Cover, Cue-Sheets und Hörwerks Textdateien – und zwar nach dem **Inhalt**: Die ersten Bytes müssen zur Endung passen (Audio-Kennung wie ID3/MPEG/FLAC/Ogg/MP4, Bild-Kennung, Text ohne Binärdaten). Programme (`.exe`, ELF, macOS), PDFs, Office-Dokumente, Archive (ZIP/RAR/7z …) und Skripte werden auch umbenannt erkannt und abgelehnt, bevor etwas auf der Platte landet; freier Platz wird vor jeder Datei geprüft; erst ein versteckter Zwischenordner, dann ein Schritt in den Eingang (nichts wird überschrieben). |
+| Upload | Nur Admins; Anmeldung und Rechte werden geprüft, bevor ein Byte gelesen wird. Nur relative Pfade ohne `..` und ohne versteckte Namen, nur Audio, Cover, Cue-Sheets und Hörwerks Textdateien – und zwar nach dem **Inhalt**: Die ersten Bytes müssen zur Endung passen (Audio-Kennung wie ID3/MPEG/FLAC/Ogg/MP4, Bild-Kennung, Text ohne Binärdaten). Programme (`.exe`, ELF, macOS), PDFs, Office-Dokumente, Archive (ZIP/RAR/7z …) und Skripte werden auch umbenannt erkannt und abgelehnt, bevor etwas auf der Platte landet; freier Platz wird vor jeder Datei geprüft; erst ein versteckter Zwischenordner, dann ein Schritt in den Eingang (nichts wird überschrieben).. Grenzen: 8 Uploads gleichzeitig (3 je Konto), 64 GB und 3000 Dateien je Upload, 128 GB je Konto in offenen Uploads – jede Datei bucht ihre Größe vor dem Schreiben, parallele Uploads kommen also nicht vorbei. Ein Upload gehört dem Konto, das ihn begonnen hat; abgeschlossen wird er genau einmal, nie während noch Dateien ankommen, und nach einem Absturz zu Ende geführt (Markierungsdatei) – unfertige Zwischenordner werden beim nächsten Start entfernt. |
 | Viele offene Live-Verbindungen (`/api/events`) | Höchstens 32 gleichzeitig; sie liefern nur, was die Oberfläche ohnehin abruft, und brauchen dieselbe Anmeldung. |
 | Spracheinstellung / Übersetzungen | Nur `de` oder `en` werden angenommen; `/i18n.js` liefert eine feste Datei aus dem Image (auch für die Login-Seite). |
 | Sonstige Header | `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy`/`-Resource-Policy: same-origin`, `Cache-Control: no-store`. |
@@ -117,6 +118,22 @@ Resampling, Streaming-Protokolle (HLS, DASH, RTSP …), Geräte und Fremdbibliot
 Programm – die meisten ffmpeg-CVEs betreffen genau diese Teile. Weil das Paket nicht mehr aus der
 Debian-Sicherheitspflege kommt, muss die Version im Dockerfile bei ffmpeg-Sicherheitsupdates angehoben werden
 (Tag und Commit, die CI prüft beides).
+
+## Bauen und Lieferkette
+
+Jeder Push und Pull Request durchläuft: ruff (Fehler, wahrscheinliche Bugs, Sicherheitsregeln), pip-audit
+(Python-Abhängigkeiten), npm audit (Bauwerkzeuge), die Unit-Tests mit Mindest-Abdeckung (80 %), die Durchklick-Tests
+gegen den Server und gegen das fertige Image sowie Trivy auf dem Image – eine kritische oder hohe Schwachstelle, für
+die es eine Korrektur gibt, stoppt die Veröffentlichung (Ausnahmen nur in `.trivyignore`, jede mit Begründung). Erst
+danach wird das Image veröffentlicht: mit cosign signiert (schlüssellos) und mit SBOM und Build-Provenance am Digest.
+Alle GitHub Actions sind auf Commit-SHAs festgelegt; Dependabot schlägt wöchentlich Updates vor. Ein Image prüfen:
+
+```sh
+cosign verify ghcr.io/larosen/hoerwerk@sha256:<digest> \
+  --certificate-identity-regexp 'https://github.com/Larosen/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify oci://ghcr.io/larosen/hoerwerk@sha256:<digest> --owner Larosen
+```
 
 ## Bekannte Restrisiken
 

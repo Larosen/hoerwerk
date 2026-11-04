@@ -50,6 +50,99 @@ class UploadsTest(unittest.TestCase):
         with self.assertRaises(uploads.UploadError):
             self.u.finish(uid)                                                           # gone
 
+    def test_limits_hold_for_parallel_uploads_of_one_account(self):
+        saved = (uploads.MAX_SESSIONS_PER_USER, uploads.MAX_USER_BYTES, uploads.MAX_SESSION_BYTES, uploads.MAX_FILES)
+        uploads.MAX_SESSIONS_PER_USER, uploads.MAX_USER_BYTES, uploads.MAX_SESSION_BYTES, uploads.MAX_FILES = 2, 100, 80, 50
+        try:
+            a, b = self.u.start("u1"), self.u.start("u1")
+            with self.assertRaises(uploads.UploadError):
+                self.u.start("u1")                                                   # a third one
+            self.u.start("u2")                                                       # someone else may
+
+            class Slow(io.BytesIO):                                                  # a file still arriving
+                def __init__(s, data, gate):
+                    super().__init__(data)
+                    s.gate = gate
+
+                def read(s, n=-1):
+                    s.gate.wait(5)
+                    return super().read(n)
+            gate = threading.Event()
+            results = []
+
+            def send(uid, path):
+                try:
+                    data = b"ID3" + b"x" * 57                                        # 60 bytes each
+                    self.u.put(uid, path, Slow(data, gate), len(data))
+                    results.append("ok")
+                except uploads.UploadError:
+                    results.append("refused")
+            import time
+            first = threading.Thread(target=send, args=(a, "B/0.mp3"))
+            first.start()                                                            # one file of upload a on its way …
+            for _ in range(200):
+                if self.u.sessions[a]["active"]:
+                    break
+                time.sleep(0.01)
+            threads = [first] + [threading.Thread(target=send, args=(uid, f"B/{i}.mp3"))
+                                 for i, uid in enumerate((b, a, b), 1)]
+            for th in threads[1:]:
+                th.start()                                                           # … the others: over the account limit
+            with self.assertRaises(uploads.UploadError):                             # finishing while files arrive
+                self.u.finish(a)
+            gate.set()
+            for th in threads:
+                th.join()
+            self.assertEqual(sorted(results), ["ok", "refused", "refused", "refused"])   # 100 bytes per account
+            with self.assertRaises(uploads.UploadError):
+                self.put(b, "B/same.mp3", b"ID3" + b"x" * 90)                         # one upload: 80 bytes
+        finally:
+            uploads.MAX_SESSIONS_PER_USER, uploads.MAX_USER_BYTES, uploads.MAX_SESSION_BYTES, uploads.MAX_FILES = saved
+
+    def test_finish_only_once_and_only_by_the_owner(self):
+        uid = self.u.start("u1")
+        self.put(uid, "A/01.mp3")
+        with self.assertRaises(uploads.UploadError):
+            self.u.put(uid, "A/01.mp3", io.BytesIO(b"ID3audio"), 8)                  # same file twice
+        for fn in (lambda: self.u.finish(uid, owner="u2"), lambda: self.u.cancel(uid, owner="u2"),
+                   lambda: self.u.put(uid, "A/02.mp3", io.BytesIO(b"ID3x"), 4, owner="u2")):
+            with self.assertRaises(uploads.UploadError):
+                fn()                                                                  # a foreign upload: "not found"
+        for bad in ("../../etc", "0123456789abcdeg", uid.upper(), uid + "0", ""):
+            with self.assertRaises(uploads.UploadError):
+                self.u.finish(bad)
+        results = []
+        barrier = threading.Barrier(5)
+
+        def finish():
+            barrier.wait()
+            try:
+                results.append(self.u.finish(uid, owner="u1"))
+            except uploads.UploadError:
+                results.append(None)
+        threads = [threading.Thread(target=finish) for _ in range(5)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+        self.assertEqual([r for r in results if r], [["A"]])                        # exactly one finish
+        self.assertEqual(self.arrived, ["A"])
+        self.assertEqual(sorted(os.listdir(self.inbox)), ["A"])
+
+    def test_restart_completes_or_removes_staging(self):
+        done = self.u.start("u1")
+        self.put(done, "Fertig/01.mp3")
+        self.put(done, "Zweites/01.mp3")
+        half = self.u.start("u1")
+        self.put(half, "Halb/01.mp3")
+        staging = os.path.join(self.inbox, f".upload-{done}")
+        open(os.path.join(staging, uploads.FINISHING), "w").close()                  # crash while moving …
+        os.replace(os.path.join(staging, "Fertig"), os.path.join(self.inbox, "Fertig"))   # … after the first entry
+        arrived = []
+        uploads.Uploads(self.inbox, on_done=arrived.extend)                          # the next start
+        self.assertEqual(sorted(os.listdir(self.inbox)), ["Fertig", "Zweites"])     # completed, unfinished removed
+        self.assertEqual(arrived, ["Zweites"])
+
     def test_broken_upload_leaves_nothing(self):
         uid = self.u.start("admin")
         with self.assertRaises(uploads.UploadError):

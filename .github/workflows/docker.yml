@@ -9,22 +9,39 @@ on:
   schedule:
     - cron: "17 4 * * 1"   # weekly rebuild: fresh Debian/ffmpeg security updates
 
+# least privilege: only the release job may push, sign and attest
 permissions:
   contents: read
-  packages: write
+
+env:
+  # pinned by digest – the scanner itself is part of the supply chain
+  TRIVY: ghcr.io/aquasecurity/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
         with:
           python-version: "3.15"
       # system ffmpeg: creates the test audio files (our build has no MP3 encoder); nasm: for our build
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg nasm
-      - run: pip install -r requirements.txt
-      - run: python -m unittest discover -s tests -v
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Lint (ruff – errors, likely bugs, security rules)
+        run: ruff check app tests
+      - name: Known vulnerabilities in the Python dependencies
+        run: pip-audit --strict -r requirements.txt
+      - name: Tests with coverage (fails below the limit in .coveragerc)
+        run: |
+          coverage run -m unittest discover -s tests -v
+          coverage report
+          coverage xml
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
+        with:
+          name: coverage
+          path: coverage.xml
+          retention-days: 14
       - name: Build our minimal FFmpeg (same version, commit and script as the image)
         run: |
           V=$(sed -n 's/^ARG FFMPEG_VERSION=//p' Dockerfile)
@@ -41,17 +58,19 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
         with:
           python-version: "3.15"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
         with:
           node-version: "26"
           cache: npm
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: pip install -r requirements.txt
       - run: npm ci
+      - name: Known vulnerabilities in the npm packages (build and test tools – nothing of it ships)
+        run: npm audit --audit-level=high
       - name: TypeScript (strict, no implicit any)
         run: npm run check
       - run: npm run build
@@ -59,7 +78,7 @@ jobs:
       - name: Click-through tests (real server, real ffmpeg)
         run: npx playwright test
       - if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
         with:
           name: playwright-report
           path: |
@@ -72,13 +91,13 @@ jobs:
   image-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
         with:
           node-version: "26"
           cache: npm
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
           context: .
           load: true
@@ -87,6 +106,11 @@ jobs:
           # otherwise every release compiles FFmpeg for arm64 under QEMU again (≈ 50 min instead of a few)
           cache-from: type=gha,scope=ci
           cache-to: type=gha,mode=max,scope=ci
+      - name: Vulnerabilities in the image (critical/high with a fix available block the release)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/.trivyignore:/.trivyignore:ro" \
+            "$TRIVY" image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --ignorefile /.trivyignore \
+            --exit-code 1 --no-progress hoerwerk:ci
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: npm ci
       - run: npx playwright install --with-deps chromium
@@ -107,23 +131,33 @@ jobs:
         env:
           E2E_URL: http://127.0.0.1:8095
       - if: failure()
-        run: docker logs br
+        run: docker logs br || echo "(der Container wurde nicht gestartet)"
 
+  # Only after every check above passed. The published image is signed (cosign, keyless) and carries its
+  # SBOM and build provenance – all bound to its digest:
+  #   cosign verify ghcr.io/<owner>/hoerwerk@sha256:… --certificate-identity-regexp 'github.com/<owner>/.*' \
+  #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  #   gh attestation verify oci://ghcr.io/<owner>/hoerwerk@sha256:… --owner <owner>
   image:
     needs: [test, frontend, image-test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write        # keyless signing and attestations (OIDC)
+      attestations: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1  # v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6  # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
         with:
           # the image is called "hoerwerk"; the old name (repository name) keeps getting updates for a while
           images: |
@@ -133,10 +167,13 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
             type=sha,format=short
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
+        id: build
         with:
           context: .
           platforms: linux/amd64,linux/arm64
+          sbom: true
+          provenance: mode=max
           push: true
           pull: true
           no-cache: ${{ github.event_name == 'schedule' }}
@@ -144,3 +181,44 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=release
           cache-to: type=gha,mode=max,scope=release
+      - name: Image names (lower case, as the registry stores them)
+        id: names
+        run: |
+          echo "main=ghcr.io/${OWNER,,}/hoerwerk" >> "$GITHUB_OUTPUT"
+          echo "old=ghcr.io/${REPO,,}" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532  # v4.1.3
+        with:
+          cosign-release: v3.1.4
+      - name: Sign the image (keyless, by digest)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          MAIN: ${{ steps.names.outputs.main }}
+          OLD: ${{ steps.names.outputs.old }}
+        run: |
+          cosign sign --yes "$MAIN@$DIGEST"
+          cosign sign --yes "$OLD@$DIGEST"
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
+        with:
+          subject-name: ${{ steps.names.outputs.main }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+      - name: SBOM of the published image (SPDX)
+        env:
+          IMAGE: ${{ steps.names.outputs.main }}@${{ steps.build.outputs.digest }}
+        run: |
+          docker run --rm -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" -v "$PWD:/out" \
+            "$TRIVY" image --format spdx-json --output /out/sbom.spdx.json --no-progress "$IMAGE"
+      - uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e  # v4.1.0
+        with:
+          subject-name: ${{ steps.names.outputs.main }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom.spdx.json
+          push-to-registry: true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
+        with:
+          name: sbom-${{ steps.build.outputs.digest }}
+          path: sbom.spdx.json
+          retention-days: 90

@@ -19,8 +19,9 @@ This page explains what the program protects against, what was tested and what y
 4. **In SABnzbd** set *Config → Switches → Unwanted extensions* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
    to **Abort**. Fake releases are then dropped before they reach the inbox.
 5. Set inbox originals to **delete** (`INBOX_ORIGINALS=delete`) or empty `_fertig` regularly.
-6. Set `ALLOWED_HOSTS` to the names you open Hörwerk with, e.g.
-   `ALLOWED_HOSTS=tower,192.168.1.10,audiobooks.example.com` (protection against DNS rebinding and foreign host names).
+6. Enter the public address under *Settings → General*. From 7.13 on Hörwerk only answers under IP addresses,
+   home-network names and this address by itself (protection against DNS rebinding); more names via `ALLOWED_HOSTS`,
+   e.g. `ALLOWED_HOSTS=audiobooks.example.com`.
 7. Keep the image up to date: GitHub Actions rebuilds it every week (Debian security updates); new ffmpeg versions
    arrive by updating `FFMPEG_VERSION` in the Dockerfile; on Unraid use “Check for Updates” now and then.
 
@@ -73,10 +74,10 @@ This page explains what the program protects against, what was tested and what y
 | Family account downloads anything | Users only request books; Hörwerk picks releases by fixed rules. The interactive search (releases by hand) needs its own right, indexer links (containing the API key) never reach the browser. |
 | Stolen password | Optional second factor (TOTP per RFC 6238, standard library): each code works once (no replay), ±30 s clock drift, sign-in ticket 5 minutes / 5 tries, failures count for the IP brake and go to `auth.log`. Can be required for admins. |
 | Unnoticed changes through an admin login | Admin log in the database: every changing admin action with time, account and IP (approvals, accounts, settings, sources …), visible under *Accounts*. |
-| DNS rebinding / foreign host names | `ALLOWED_HOSTS`; besides, every data request needs a login. |
+| DNS rebinding / foreign host names | By default only IPs, home-network names, the public address and what a proxy in `TRUSTED_PROXIES` forwards (never learned from Host/X-Forwarded-Host), otherwise 421; `ALLOWED_HOSTS` for more names; besides, every data request needs a login. |
 | Paths outside the library | Book paths from the browser are resolved (incl. symlinks) and must lie inside the library; static files only from `app/static`. |
 | Huge requests | max. 4 MB per request; the only exception is the upload (up to 4 GB per file, streamed straight to disk). |
-| Upload | Admins only; login and rights are checked before a single byte is read. Only relative paths without `..` and without hidden names, only audio, covers, cue sheets and Hörwerk's text files – judged by **content**: the first bytes must match the extension (audio signatures such as ID3/MPEG/FLAC/Ogg/MP4, image signatures, text without binary data). Programs (`.exe`, ELF, macOS), PDFs, Office documents, archives (ZIP/RAR/7z …) and scripts are recognised even when renamed and refused before anything lands on disk; free space checked before each file; first a hidden staging folder, then one step into the inbox (nothing is overwritten). |
+| Upload | Admins only; login and rights are checked before a single byte is read. Only relative paths without `..` and without hidden names, only audio, covers, cue sheets and Hörwerk's text files – judged by **content**: the first bytes must match the extension (audio signatures such as ID3/MPEG/FLAC/Ogg/MP4, image signatures, text without binary data). Programs (`.exe`, ELF, macOS), PDFs, Office documents, archives (ZIP/RAR/7z …) and scripts are recognised even when renamed and refused before anything lands on disk; free space checked before each file; first a hidden staging folder, then one step into the inbox (nothing is overwritten). Limits: 8 uploads at once (3 per account), 64 GB and 3000 files per upload, 128 GB per account in open uploads – each file books its size before writing, so parallel uploads cannot slip past. An upload belongs to the account that started it; finishing happens once, never while files are still arriving, and is completed after a crash (marker file) – unfinished staging folders are removed at the next start. |
 | Many open live connections (`/api/events`) | At most 32 at the same time; they deliver only what the interface fetches anyway and need the same login. |
 | Language setting / translation catalog | Only `de` or `en` are accepted; `/i18n.js` serves a fixed file from the image (also for the login page). |
 | Other headers | `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy`/`-Resource-Policy: same-origin`, `Cache-Control: no-store`. |
@@ -116,6 +117,22 @@ audio containers and decoders that occur, AAC as the only encoder; ffprobe/ffmpe
 and third-party libraries are not in the program at all – most ffmpeg CVEs affect exactly these parts. Because the
 package no longer comes from Debian's security maintenance, the version in the Dockerfile must be raised for ffmpeg
 security updates (tag and commit, CI checks both).
+
+## Build and supply chain
+
+Every push and pull request runs: ruff (errors, likely bugs, security rules), pip-audit (Python dependencies),
+npm audit (build tools), the unit tests with a coverage limit (80 %), the click-through tests against the server
+and against the finished image, and Trivy on the image – a critical or high vulnerability with an available fix
+stops the release (exceptions only in `.trivyignore`, each with its reason). Only then the image is published:
+signed with cosign (keyless) and with SBOM and build provenance attached to its digest. All GitHub Actions are
+pinned to commit SHAs; Dependabot proposes updates weekly. Checking an image:
+
+```sh
+cosign verify ghcr.io/larosen/hoerwerk@sha256:<digest> \
+  --certificate-identity-regexp 'https://github.com/Larosen/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify oci://ghcr.io/larosen/hoerwerk@sha256:<digest> --owner Larosen
+```
 
 ## Known residual risks
 

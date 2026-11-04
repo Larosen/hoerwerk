@@ -391,8 +391,9 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
    Pangolins eigene Anmeldung kann zusätzlich davor bleiben – sicherer, aber zweimal anmelden.
 2. `TRUSTED_PROXIES` auf die Adresse setzen, von der Newt/Pangolin bei Hörwerk ankommt (z. B. `172.18.0.0/16`
    für das Docker-Netz oder die IP des Newt-Containers). Nur dann steht im Protokoll die echte IP der Besucher.
-3. Falls du `ALLOWED_HOSTS` nutzt: den öffentlichen Namen ergänzen, z. B. `tower,192.168.1.10,hoerbuecher.example.de`.
-   In Pangolin als Pfad des Health Checks `/api/health` eintragen.
+3. Die öffentliche Adresse unter *Einstellungen → Allgemein* eintragen (z. B. `https://hoerbuecher.example.de`) –
+   Hörwerk antwortet nur unter IP-Adressen, Namen aus dem Heimnetz und dieser Adresse (Schutz gegen DNS-Rebinding).
+   Weitere Namen gehen über `ALLOWED_HOSTS`. In Pangolin als Pfad des Health Checks `/api/health` eintragen.
 4. **CrowdSec:** Jeder Fehlversuch steht mit IP in `/config/logs/auth.log`. Parser, Szenarien und Beispiele für
    Vector bzw. den CrowdSec-Agenten liegen in [contrib/crowdsec](contrib/crowdsec/README.md). Hörwerk selbst sperrt
    eine IP nach 5 Fehlversuchen für 15 Minuten; CrowdSec sperrt sie dann schon am VPS.
@@ -421,7 +422,9 @@ funktionieren. Das gilt auch für die Reiter: `/books`, `/search`, `/discover`, 
 API (bis auf Anmeldung und `/api/health`, das ohne Anmeldung nur `{"ok": true}` sagt – ohne Version). Ein Lesezeichen
 auf eine Unterseite führt erst zur Anmeldung und danach genau dorthin. Einstellungen und Eingang sind nur für Admins.
 Einstellungen, Voreinstellungen, Verlauf, Hörbuch-Liste, Bibliotheks-Index und alle Zugangsdaten liegen in der
-SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
+SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600). Einmal am Tag legt Hörwerk eine in sich stimmige Kopie in
+`/config/backups/hoerwerk-<Wochentag>.db` ab (die letzten sieben Tage) – zum Zurückspielen Hörwerk stoppen und die
+Kopie als `hoerwerk.db` einsetzen.
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
@@ -468,7 +471,7 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600).
 | `COOKIE_SECURE` | `auto` | Anmelde-Cookie nur über HTTPS: `auto` (wenn der Proxy HTTPS meldet), `true`, `false` |
 | `REQUEST_QUOTA` | `5` | Buchanfragen pro Nutzer und Monat (je Konto änderbar) |
 | `AUTH_USER` / `AUTH_PASS` | – | Nur noch für den Umstieg: wird beim ersten Start zum Admin-Konto |
-| `ALLOWED_HOSTS` | – | Nur unter diesen Hostnamen/IPs antworten, z. B. `tower,192.168.1.10` (`localhost` geht immer, und `/api/health` antwortet unter jedem Namen – für die Health Checks von Docker und Pangolin) |
+| `ALLOWED_HOSTS` | – | Namen, unter denen Hörwerk antwortet (Schutz gegen DNS-Rebinding). Leer: IP-Adressen, `localhost`, Namen aus dem Heimnetz (`tower`, `*.local`, `*.lan`, `*.fritz.box` …) und die öffentliche Adresse aus den Einstellungen; über einen Proxy aus `TRUSTED_PROXIES` jeder Name, den der Proxy weiterleitet. Gesetzt: genau diese Namen, z. B. `hoerbuecher.example.de,*.example.de` (IPs und `localhost` gehen immer). `*` = jeder Name wie vor 7.13 (nicht empfohlen). Ungültige Werte (mit `https://` oder Pfad) stoppen den Start mit einer Meldung. `/api/health` antwortet unter jedem Namen – für die Health Checks von Docker und Pangolin |
 
 SABnzbd, der optionale Indexer, Audiobookshelf, Plex und ntfy werden in der Oberfläche eingerichtet, nicht über Variablen.
 

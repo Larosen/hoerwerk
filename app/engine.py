@@ -91,12 +91,24 @@ class Engine:
             except Exception:  # noqa: BLE001 – a listener must never stop the engine
                 pass
 
+    def _next(self, queue: str) -> Optional[Tuple[str, Callable[[], None]]]:
+        """The first waiting step whose job is not being worked on right now (in any queue) – two steps of one
+        job never run at the same time, even when it was queued again while running."""
+        busy = {k for keys in self.running.values() for k in keys}
+        for item in self.queues[queue]:
+            if item[0] not in busy:
+                self.queues[queue].remove(item)
+                return item
+        return None
+
     def _worker(self, queue: str) -> None:
         while True:
             with self.lock:
-                while not self.queues[queue]:
+                item = self._next(queue)
+                while item is None:
                     self.wake.wait()
-                key, step = self.queues[queue].popleft()
+                    item = self._next(queue)
+                key, step = item
                 self.running[queue].append(key)
             try:
                 step()
@@ -106,4 +118,5 @@ class Engine:
                 with self.lock:
                     self.running[queue].remove(key)
                     self.done += 1
+                    self.wake.notify_all()           # a step held back for this job may start now
                 self._changed()

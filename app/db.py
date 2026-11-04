@@ -221,10 +221,19 @@ class Database:
             self.conn.execute("BEGIN IMMEDIATE")
             try:
                 yield self.conn
+                self.conn.execute("COMMIT")
             except BaseException:
-                self.conn.execute("ROLLBACK")
+                # also when COMMIT itself fails (disk full, I/O error): otherwise the transaction would stay
+                # open and every later write would silently join it and never be saved
+                self._rollback()
                 raise
-            self.conn.execute("COMMIT")
+
+    def _rollback(self) -> None:
+        if self.conn.in_transaction:
+            try:
+                self.conn.execute("ROLLBACK")
+            except sqlite3.Error:
+                pass                                   # SQLite already rolled back by itself
 
     def all(self, sql: str, args: tuple = ()) -> List[sqlite3.Row]:
         with self.lock:
@@ -240,7 +249,36 @@ class Database:
 
     def close(self) -> None:
         with self.lock:
+            try:
+                self._rollback()
+                self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")   # everything into the main file
+            except sqlite3.Error:
+                pass
             self.conn.close()
+
+    def checkpoint(self) -> None:
+        """Move the WAL into the main file (SQLite does it every ~4 MB by itself; this keeps it short)."""
+        with self.lock:
+            if not self.conn.in_transaction:
+                self.conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+
+    def backup(self, target: str) -> None:
+        """A consistent copy of the whole database (also while it is in use) – for the daily snapshot."""
+        tmp = target + ".tmp"
+        dest = sqlite3.connect(tmp)
+        try:
+            with self.lock:
+                self.conn.backup(dest)
+            dest.close()
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, target)
+        except BaseException:
+            dest.close()
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
 
     # -- key/value documents (settings, sources …) --------------------------
     def get(self, key: str, default=None):

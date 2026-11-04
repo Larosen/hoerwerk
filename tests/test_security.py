@@ -136,6 +136,31 @@ class WebTest(unittest.TestCase):
         finally:
             c.close()
 
+    def test_internal_error_tells_nothing_but_a_number(self):
+        import applog
+        from web import router
+
+        @router.route("GET", "/api/test-boom", access="user")
+        def boom(req):
+            raise RuntimeError("geheim /config/hoerwerk.db SELECT * FROM accounts apikey=abc123")
+        try:
+            status, _, body = self.req("GET", "/api/test-boom")
+        finally:
+            router.ROUTES[:] = [r for r in router.ROUTES if r[2] is not boom]
+        self.assertEqual(status, 500)
+        answer = json.loads(body)
+        for secret in ("geheim", "/config", "SELECT", "abc123", "RuntimeError", "Traceback"):
+            self.assertNotIn(secret, body.decode())
+        rid = answer["request_id"]
+        self.assertRegex(rid, r"^[0-9a-f]{8}$")
+        self.assertIn(rid, answer["error"])
+        logged = [e["text"] for e in applog.log.since(0, "error") if rid in e["text"]]
+        self.assertEqual(len(logged), 1)
+        self.assertIn("apikey=abc123", logged[0])                         # the full error stays in the log
+        self.assertIn("Traceback", logged[0])
+        status, _, body = self.req("GET", "/api/nothing-here")            # regular HTTP errors unchanged
+        self.assertEqual((status, json.loads(body)["error"]), (404, "Nicht gefunden"))
+
     def test_allowed_hosts(self):
         old = self.app.config
         self.app.config = dataclasses.replace(old, allowed_hosts=frozenset({"tower"}))
@@ -148,6 +173,50 @@ class WebTest(unittest.TestCase):
             self.assertEqual(self.req("GET", "/api/health", headers={"Host": "hoerwerk:8080"})[0], 200)
         finally:
             self.app.config = old
+
+    def test_hosts_by_default(self):
+        """Without ALLOWED_HOSTS: IPs, home-network names and the public address – no foreign names."""
+        get = lambda host: self.req("GET", "/api/settings", headers={"Host": host})[0]   # noqa: E731
+        for ok in ("127.0.0.1:8080", "localhost:8080", "[::1]:8080", "192.168.1.10:8080", "tower:8080", "TOWER",
+                   "nas.local", "unraid.lan", "nas.fritz.box", "hoerwerk.home.arpa"):
+            self.assertEqual(get(ok), 200, ok)
+        for bad in ("evil.example", "192.168.1.10.nip.io", "hoerbuecher.example.de", "localhost.evil.example", ""):
+            self.assertEqual(get(bad), 421, bad)                               # DNS-rebinding names
+        status, _, body = self.req("GET", "/", headers={"Host": "evil.example"})
+        self.assertEqual(status, 421)
+        self.assertIn("ALLOWED_HOSTS=evil.example", body.decode())
+        self.assertIn("evil.example", self.app.refused_hosts)
+        # the public address the admin entered counts – a forwarded host header never does
+        self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "evil.example", "X-Forwarded-Host": "tower"})[0], 421)
+        self.app.update_settings({"public_url": "https://hoerbuecher.example.de"})
+        try:
+            self.assertEqual(get("hoerbuecher.example.de"), 200)
+            self.assertEqual(get("evil.example"), 421)
+        finally:
+            self.app.update_settings({"public_url": ""})
+        self.assertEqual(self.req("GET", "/api/health", headers={"Host": "evil.example"})[0], 200)   # health checks
+        # through the reverse proxy in TRUSTED_PROXIES: the proxy decides which names it serves
+        old = self.app.config
+        self.app.config = dataclasses.replace(old, trusted_proxies=config.parse_networks("127.0.0.1"))
+        try:
+            self.assertEqual(get("hoerbuecher.example.de"), 200)
+            self.app.config = dataclasses.replace(self.app.config, allowed_hosts=config.parse_hosts("tower"))
+            self.assertEqual(get("hoerbuecher.example.de"), 421)                  # an explicit list is exact
+        finally:
+            self.app.config = old
+
+    def test_hosts_star_and_wildcards(self):
+        old = self.app.config
+        try:
+            self.app.config = dataclasses.replace(old, allowed_hosts=config.parse_hosts("*.example.de"))
+            self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "hb.example.de"})[0], 200)
+            self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "example.de.evil.example"})[0], 421)
+            self.app.config = dataclasses.replace(old, allowed_hosts=config.parse_hosts("*"))
+            self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "anything.example"})[0], 200)
+        finally:
+            self.app.config = old
+        with self.assertRaises(ValueError):
+            config.Config.from_env({"ALLOWED_HOSTS": "https://hoerbuecher.example.de/"})
 
     def test_without_login_only_the_login_page(self):
         """Without a session: logo, UI code and login page – no data, no app page."""
@@ -165,6 +234,106 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.req("PUT", "/api/settings", {"language": "en"}, self.OWN, cookie=False)[0], 401)
 
 
+class LoadTest(unittest.TestCase):
+    """Many connections at once: a fixed upper limit, quick 503 beyond it, the server stays responsive."""
+    setUpClass = classmethod(WebTest.setUpClass.__func__)
+    tearDownClass = classmethod(WebTest.tearDownClass.__func__)
+    req = WebTest.req
+
+    def setUp(self):
+        self.saved = (server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout)
+        server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout = 20, 15, 2
+
+    def tearDown(self):
+        server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout = self.saved
+        self.wait_idle()
+
+    def wait_idle(self):
+        import time
+        for _ in range(400):                       # a closed live stream ends at its next heartbeat (15 s)
+            if self.server.active == 0:
+                return
+            time.sleep(0.05)
+        self.fail(f"{self.server.active} connections still open")
+
+    def idle(self, n, source):
+        import socket
+        out = []
+        for i in range(n):
+            sock = socket.socket()
+            sock.bind((source(i), 0))
+            sock.connect(("127.0.0.1", self.port))
+            out.append(sock)
+        return out
+
+    def until(self, check, seconds=10):
+        import time
+        end = time.monotonic() + seconds
+        while time.monotonic() < end:
+            if check():
+                return True
+            time.sleep(0.05)
+        return check()
+
+    @staticmethod
+    def refused(socks, expected, seconds=10):
+        """How many got the quick 503 – waiting until ``expected`` answered (a slow machine accepts slowly)."""
+        import select
+        import time
+        answers, pending = {}, list(socks)
+        end = time.monotonic() + seconds
+        while pending and sum(answers.values()) < expected and time.monotonic() < end:
+            ready = select.select(pending, [], [], 0.2)[0]
+            for sock in ready:
+                try:
+                    answers[sock] = sock.recv(64).startswith(b"HTTP/1.1 503")
+                except OSError:
+                    answers[sock] = False
+                pending.remove(sock)
+        return sum(answers.values())
+
+    def test_hundred_idle_connections(self):
+        import time
+        self.server.peak = 0
+        socks = self.idle(100, lambda i: f"127.0.0.{2 + i % 10}")         # ten clients, ten connections each
+        self.assertEqual(self.refused(socks, 80), 80)                       # everyone beyond the limit: 503 …
+        self.assertEqual(self.server.active, 20)                            # … the first 20 are served
+        self.assertLessEqual(self.server.peak, 20)                          # the limit holds
+        t0 = time.monotonic()
+        status, _, _ = self.req("GET", "/api/health")
+        self.assertEqual(status, 503)                                       # answered at once, not hanging
+        self.assertLess(time.monotonic() - t0, 1)
+        self.assertTrue(self.until(lambda: self.server.active == 0))        # idle connections time out …
+        self.assertEqual(self.req("GET", "/api/settings")[0], 200)          # … and free their slots
+        for sock in socks:
+            sock.close()
+
+    def test_one_client_cannot_take_every_slot(self):
+        socks = self.idle(20, lambda i: "127.0.0.50")
+        self.assertEqual(self.refused(socks, 5), 5)                         # 15 per address
+        self.assertEqual(self.req("GET", "/api/settings")[0], 200)          # everyone else still gets in
+        for sock in socks:
+            sock.close()
+
+    def test_parallel_requests_and_live_updates(self):
+        from concurrent.futures import ThreadPoolExecutor
+        server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout = 96, 200, 5
+        self.server.peak = 0
+        import http.client
+        sse = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        sse.request("GET", "/api/events?topics=library", headers={"Host": f"127.0.0.1:{self.port}", "Cookie": self.cookie})
+        live = sse.getresponse()
+        self.assertEqual(live.status, 200)
+        with ThreadPoolExecutor(120) as pool:
+            statuses = list(pool.map(lambda _: self.req("GET", "/api/settings")[0], range(240)))
+        self.assertTrue(set(statuses) <= {200, 503}, set(statuses))
+        self.assertGreater(statuses.count(200), 100)
+        self.assertLessEqual(self.server.peak, 96)
+        self.assertEqual(self.req("GET", "/api/settings")[0], 200)          # SSE open, API still answers
+        self.assertTrue(live.fp.readline())                                 # and the stream is alive
+        sse.close()
+
+
 class AccessTest(WebTest):
     """Nothing without login: every API route, every app page, the UI code."""
     PUBLIC_API = {("GET", "/api/health"), ("GET", "/api/auth/status"), ("POST", "/api/auth/setup"),
@@ -180,7 +349,7 @@ class AccessTest(WebTest):
     def _routes(self):
         import re
         from web import router
-        for method, rx, fn, access in router.ROUTES:
+        for method, rx, _fn, access in router.ROUTES:
             path = re.sub(r"\(\?P<\w+>[^)]*\)", "1", rx.pattern).lstrip("^").rstrip("$").replace("\\", "")
             yield method, path, access
 
@@ -376,6 +545,9 @@ class NetworkTest(unittest.TestCase):
                 b"<rss><channel><item><title>&lol2;</title></item></channel></rss>")
         with self.assertRaises(usenet.UsenetError):
             usenet.parse_results(bomb, "x")
+        padded = b'<?xml version="1.0"?>' + b"<!-- " + b"x" * 8000 + b" -->" + bomb[len(b'<?xml version="1.0"?>'):]
+        with self.assertRaises(usenet.UsenetError):                       # pushed past any prefix check
+            usenet.parse_results(padded, "x")
 
     def test_indexer_links_must_be_http(self):
         xml = (b'<rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/"><channel>'

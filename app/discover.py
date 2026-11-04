@@ -514,10 +514,10 @@ class Discover:
             text = raw.decode("utf-8", "replace")
             return ([{**r, "source": source, "link": MONTH_LINK, "month": True} for r in parse_dlf_month(text)]
                     + [{**r, "source": source} for r in self._best_lists(text)])
-        if re.search(rb"<!DOCTYPE|<!ENTITY", raw[:4096], re.I):
+        if re.search(rb"<!DOCTYPE|<!ENTITY", raw, re.I):          # anywhere: comments can push it past any prefix
             raise ValueError(t("Antwort enthält eine DTD – abgelehnt"))
         out: List[dict] = []
-        for item in ET.fromstring(raw).iter("item"):
+        for item in ET.fromstring(raw).iter("item"):  # noqa: S314 – DTDs refused above; expat resolves no external entities
             link = (item.findtext("link") or "").strip()
             meta = {"source": source, "link": link if link.startswith("https://") else "",
                     "date": (item.findtext("pubDate") or "")[:16]}

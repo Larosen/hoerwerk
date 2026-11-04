@@ -249,7 +249,7 @@ class Accounts:
             sets.append("disabled=?"); args.append(int(off))  # noqa: E702
         if sets:
             with self.db.tx() as c:
-                c.execute(f"UPDATE users SET {', '.join(sets)} WHERE id=?", (*args, uid))
+                c.execute(f"UPDATE users SET {', '.join(sets)} WHERE id=?", (*args, uid))  # noqa: S608 – fixed column names, values bound
                 if changes.get("disabled"):
                     c.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
         return self.get(uid)

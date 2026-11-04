@@ -259,22 +259,259 @@ function libraryCover(path: string, title: string, author = "", tag = "", versio
 
 const collator = new Intl.Collator(LANG, { numeric: true, sensitivity: "base" });
 
-async function api<T = unknown>(method: string, url: string, body?: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method,
-    // custom header = proof for the server that the request comes from this page (CSRF protection)
-    headers: { "X-Requested-With": "Hoerwerk", ...(body ? { "Content-Type": "application/json" } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({})) as T & { error?: string; login?: boolean };
+// ------------------------------------------------------------------------- //
+// Requests and feedback – every action shows that it was registered, that it runs, and whether it worked.
+//
+// * ``api()`` is the one way to the server: timeouts, readable network errors, no double requests.
+// * A button that starts a changing request (POST/PUT/DELETE) shows a spinner and the running action
+//   ("Speichert …") until the answer is there, cannot be pressed again meanwhile, then briefly shows
+//   success or failure. This is automatic: the click is remembered and the request is tied to its button.
+// * ``toast()`` messages stack, errors stay longer and can be closed.
+// * ``loadList()``: a skeleton while a list loads the first time, "Erneut versuchen" when it failed.
+// A server answer of 200 only means the server took the job – what happens to a book afterwards is shown by
+// its status in the lists (live updates), never by the button.
+// ------------------------------------------------------------------------- //
+interface ApiOptions {
+  /** ms until the request counts as failed (reading 30 s, changing 90 s) */
+  timeout?: number;
+  /** a newer request with the same key replaces this one (searches while typing): its answer is dropped */
+  key?: string;
+  /** the button that shows the progress; false: none (default: the button just clicked) */
+  button?: HTMLElement | false | null;
+  /** text while running, e.g. t("Speichert …") – otherwise derived from the button's label */
+  busy?: string;
+}
+
+const inflight = new Map<string, Promise<unknown>>();
+const latest = new Map<string, AbortController>();
+let trigger: { el: HTMLElement; at: number } | null = null;
+const TRIGGER_MS = 3000;          // a request started this soon after a click belongs to that click
+
+/** The control that was pressed last (if just now) – its request shows its progress there. */
+function currentTrigger(): HTMLElement | null {
+  if (!trigger || performance.now() - trigger.at > TRIGGER_MS || !trigger.el.isConnected) return null;
+  return trigger.el;
+}
+
+function isBusy(node: Element | null): boolean {
+  return !!node && node.getAttribute("aria-busy") === "true";
+}
+
+// capture phase: before any page handler – a busy button swallows further clicks (no double requests)
+document.addEventListener("click", (e) => {
+  const target = e.target instanceof Element ? e.target.closest<HTMLElement>("button, a.btn, [role=button], input[type=submit]") : null;
+  if (!target) return;
+  if (isBusy(target)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+  trigger = { el: target, at: performance.now() };
+}, true);
+// a setting that saves itself on change (a select, a checkbox) is no button: its request shows no spinner
+for (const type of ["change", "input"]) {
+  document.addEventListener(type, (e) => {
+    if (!(e.target instanceof HTMLButtonElement)) trigger = null;
+  }, true);
+}
+document.addEventListener("submit", (e) => {
+  const form = e.target as HTMLFormElement;
+  const sub = (e as SubmitEvent).submitter as HTMLElement | null || form.querySelector<HTMLElement>("[type=submit], button:not([type])");
+  if (sub && isBusy(sub)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+  if (sub) trigger = { el: sub, at: performance.now() };
+}, true);
+
+class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) { super(message); this.status = status; }
+}
+
+/** What the server said, readable and short – never a stack trace or a page of HTML. */
+function cleanMessage(text: string): string {
+  const first = text.split(/\n\s*(?:Traceback|File ")/)[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return first.length > 300 ? first.slice(0, 297) + " …" : first;
+}
+
+async function request<T>(method: string, url: string, body: unknown, opts: ApiOptions): Promise<T> {
+  const ctrl = new AbortController();
+  const write = method !== "GET" && method !== "HEAD";
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, opts.timeout ?? (write ? 90_000 : 30_000));
+  if (opts.key) {
+    latest.get(opts.key)?.abort();
+    latest.set(opts.key, ctrl);
+  }
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method, signal: ctrl.signal,
+      // custom header = proof for the server that the request comes from this page (CSRF protection)
+      headers: { "X-Requested-With": "Hoerwerk", ...(body ? { "Content-Type": "application/json" } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    clearTimeout(timer);
+    if (opts.key && latest.get(opts.key) !== ctrl) return new Promise<T>(() => { /* replaced by a newer one */ });
+    throw new ApiError(timedOut ? t("Der Server antwortet nicht – bitte noch einmal versuchen")
+      : t("Keine Verbindung zu Hörwerk – Netzwerk prüfen und noch einmal versuchen"), 0);
+  }
+  clearTimeout(timer);
+  if (opts.key && latest.get(opts.key) !== ctrl) return new Promise<T>(() => { /* a newer answer counts */ });
+  if (opts.key) latest.delete(opts.key);
+  const text = await res.text().catch(() => "");
+  let data = {} as T & { error?: string; login?: boolean };
+  try { data = (text ? JSON.parse(text) : {}) as typeof data; } catch { /* not JSON: a proxy or the limit page */ }
   if (res.status === 401 && data.login && location.pathname !== "/login") location.replace("/login");
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    const fallback = res.status === 503 ? t("Hörwerk ist gerade ausgelastet – gleich noch einmal versuchen")
+      : res.status === 502 || res.status === 504 ? t("Hörwerk ist gerade nicht erreichbar")
+      : res.status === 421 ? cleanMessage(text) : `HTTP ${res.status}`;
+    throw new ApiError(cleanMessage(data.error || "") || fallback, res.status);
+  }
   return data;
+}
+
+async function api<T = unknown>(method: string, url: string, body?: unknown, opts: ApiOptions = {}): Promise<T> {
+  const write = method !== "GET" && method !== "HEAD";
+  // the same change twice at once (double click, Enter held down): one request, both get its answer.
+  // Writes are never repeated automatically – whether to try again is the user's decision.
+  const sig = write ? `${method} ${url} ${body === undefined ? "" : JSON.stringify(body)}` : "";
+  const running = sig ? inflight.get(sig) : undefined;
+  if (running) return running as Promise<T>;
+  const p = request<T>(method, url, body, opts);
+  if (sig) {
+    inflight.set(sig, p);
+    const done = (): void => { inflight.delete(sig); };
+    p.then(done, done);
+  }
+  const btn = opts.button === false ? null : opts.button || (write ? currentTrigger() : null);
+  if (btn) trackButton(btn, p, opts.busy);
+  return p;
 }
 
 /** Text of a caught error (anything can be thrown in JavaScript). */
 function errMsg(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+  return cleanMessage(e instanceof Error ? e.message : String(e));
+}
+
+// -- buttons -------------------------------------------------------------------
+// "Speichern" -> "Speichert …": the running action in the button's own words
+const BUSY_WORDS: [string, string][] = [
+  [t("Speichern"), t("Speichert …")], [t("Löschen"), t("Löscht …")], [t("Entfernen"), t("Entfernt …")],
+  [t("Suchen"), t("Sucht …")], [t("Anfragen"), t("Fragt an …")], [t("Hinzufügen"), t("Fügt hinzu …")],
+  [t("Erstellen"), t("Erstellt …")], [t("Übernehmen"), t("Übernimmt …")], [t("Testen"), t("Testet …")],
+  [t("Senden"), t("Sendet …")], [t("Hochladen"), t("Lädt hoch …")], [t("Anmelden"), t("Meldet an …")],
+  [t("Verbinden"), t("Verbindet …")], [t("Umwandeln"), t("Wandelt um …")], [t("Laden"), t("Lädt …")],
+  [t("Erneut"), t("Startet neu …")], [t("Abbrechen"), t("Bricht ab …")], [t("Aktualisieren"), t("Aktualisiert …")],
+  [t("Ablehnen"), t("Lehnt ab …")], [t("Genehmigen"), t("Genehmigt …")], [t("Einlesen"), t("Liest ein …")],
+];
+
+function busyText(btn: HTMLElement): string {
+  const label = (btn.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (!label) return "";
+  const hit = BUSY_WORDS.find(([word]) => label.startsWith(word.toLowerCase()));
+  return hit ? hit[1] : t("Bitte warten …");
+}
+
+const busyCount = new WeakMap<HTMLElement, number>();
+
+/** Show a request's progress on its button (also usable for work that is no ``api()`` call). */
+function trackButton(btn: HTMLElement, work: Promise<unknown>, label?: string): void {
+  const n = (busyCount.get(btn) || 0) + 1;
+  busyCount.set(btn, n);
+  if (n === 1) setBusy(btn, true, label);
+  const end = (ok: boolean): void => {
+    const left = (busyCount.get(btn) || 1) - 1;
+    busyCount.set(btn, left);
+    if (left) return;
+    setBusy(btn, false);
+    flash(btn, ok);
+  };
+  work.then(() => end(true), () => end(false));
+}
+
+function setBusy(btn: HTMLElement, on: boolean, label?: string): void {
+  if (on) {
+    const width = btn.getBoundingClientRect().width;
+    if (width) btn.style.minWidth = `${width}px`;               // the button keeps its size
+    btn.setAttribute("aria-busy", "true");
+    btn.setAttribute("aria-disabled", "true");
+    btn.classList.add("is-busy");
+    const text = label || (btn.querySelector(".ico") && !(btn.textContent || "").trim() ? "" : busyText(btn));
+    const spin = el("span", { class: "spinner", "aria-hidden": "true" });
+    if (text) {
+      btn.dataset.label = btn.innerHTML;                         // our own markup, restored as it was
+      btn.replaceChildren(spin, el("span", { class: "busy-text" }, text));
+    } else {
+      btn.append(spin);                                          // icon buttons: the spinner covers the icon
+    }
+    btn.dataset.wasTitle = btn.getAttribute("aria-label") || "";
+    if (text) btn.setAttribute("aria-label", text);
+  } else {
+    if (btn.dataset.label !== undefined) { btn.innerHTML = btn.dataset.label; delete btn.dataset.label; }
+    btn.querySelector(":scope > .spinner")?.remove();
+    btn.classList.remove("is-busy");
+    btn.removeAttribute("aria-busy");
+    btn.removeAttribute("aria-disabled");
+    if (btn.dataset.wasTitle) btn.setAttribute("aria-label", btn.dataset.wasTitle); else btn.removeAttribute("aria-label");
+    delete btn.dataset.wasTitle;
+    btn.style.minWidth = "";
+  }
+}
+
+function flash(btn: HTMLElement, ok: boolean): void {
+  if (!btn.isConnected) return;
+  const cls = ok ? "did-work" : "did-fail";
+  btn.classList.remove("did-work", "did-fail");
+  void btn.offsetWidth;                                          // restart the short animation
+  btn.classList.add(cls);
+  setTimeout(() => btn.classList.remove(cls), ok ? 1200 : 1600);
+}
+
+// -- lists ---------------------------------------------------------------------
+/** Grey placeholders in the shape of what is coming (rows or cards) – only while nothing is there yet. */
+/** An element that may sit in this container (li in lists, a full-width cell in tables, else a div). */
+function slot(container: HTMLElement, attrs: Attrs, ...children: Child[]): HTMLElement {
+  const tag = container.tagName;
+  if (tag === "TBODY" || tag === "TABLE") return el("tr", attrs, el("td", { colspan: "99" }, ...children));
+  return el(tag === "UL" || tag === "OL" ? "li" : "div", attrs, ...children);
+}
+
+function skeleton(container: HTMLElement, count = 4, kind: "row" | "card" | "line" = "row"): void {
+  const item = (): HTMLElement => slot(container, { class: `skeleton skeleton-${kind}`, "aria-hidden": "true" },
+    kind === "line" ? null : el("span", { class: "sk-thumb" }),
+    el("span", { class: "sk-lines" }, el("span", { class: "sk-line" }), el("span", { class: "sk-line short" })));
+  container.replaceChildren(...Array.from({ length: count }, item));
+}
+
+/** Load a list: skeleton the first time, the current content stays visible while it refreshes,
+ *  a failure shows "Erneut versuchen" where the list would be (or a message when something is shown). */
+async function loadList(container: HTMLElement, load: () => Promise<void>, opts: {
+  count?: number; kind?: "row" | "card" | "line";
+  /** something else is shown now (another section): placeholders instead of the old content */
+  fresh?: boolean;
+  /** a background refresh: a failure keeps the old content without a message (the next round tries again) */
+  quiet?: boolean;
+} = {}): Promise<boolean> {
+  const empty = opts.fresh || !container.children.length || container.dataset.state === "error"
+    || !!container.querySelector(":scope > .skeleton");
+  if (empty) skeleton(container, opts.count, opts.kind);
+  container.setAttribute("aria-busy", "true");
+  try {
+    await load();
+    container.dataset.state = "ok";
+    container.querySelectorAll(":scope > .skeleton").forEach((n) => n.remove());
+    return true;
+  } catch (e) {
+    if (empty || container.querySelector(":scope > .skeleton")) {
+      container.dataset.state = "error";
+      const retry = el("button", { type: "button", class: "btn small" }, icon("refresh"), t("Erneut versuchen"));
+      retry.addEventListener("click", () => { void loadList(container, load, opts); });
+      container.replaceChildren(slot(container, { class: "load-error", role: "alert" },
+        el("span", {}, t("Konnte nicht geladen werden: {error}", { error: errMsg(e) })), retry));
+    } else if (!opts.quiet) {
+      toast(t("Aktualisieren fehlgeschlagen: {error}", { error: errMsg(e) }), "warning");
+    }
+    return false;
+  } finally {
+    container.removeAttribute("aria-busy");
+  }
 }
 
 /** A setting changed right where it matters (saved at once, the settings dialog shows the same value). */
@@ -293,22 +530,61 @@ function settingSelect(key: string, label: string, options: [string, string][]):
   return el("label", { class: "inline-setting" }, label, sel);
 }
 
-let toastTimer: number | undefined;
-function toast(msg: string, isError = false): void {
-  const t = $("#toast");
-  t.textContent = msg;
-  t.className = "toast show" + (isError ? " error" : "");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.className = "toast"), isError ? 6000 : 3000);
+// -- messages ------------------------------------------------------------------
+type ToastKind = "success" | "error" | "warning" | "info";
+const TOAST_MS: Record<ToastKind, number> = { success: 3500, info: 5000, warning: 8000, error: 12000 };
+const TOAST_MAX = 4;
+const TOAST_ICON: Record<ToastKind, string> = { success: "check", info: "info", warning: "alert", error: "alert" };
+
+function toastBox(): HTMLElement {
+  let box = document.getElementById("toast");
+  if (!box) {
+    box = el("div", { id: "toast", class: "toasts", "aria-live": "polite" });
+    document.body.append(box);
+  }
+  return box;
+}
+
+/** A message at the bottom; several stack in order. ``true`` = error (as before). */
+function toast(msg: string, kind: boolean | ToastKind = "success"): void {
+  const type: ToastKind = kind === true ? "error" : kind === false ? "success" : kind;
+  const text = cleanMessage(msg);
+  if (!text) return;
+  const box = toastBox();
+  for (const old of Array.from(box.children)) if ((old as HTMLElement).dataset.text === text) old.remove();   // no twins
+  const item = el("div", { class: `toast-item ${type}`, role: type === "error" ? "alert" : "status", "data-text": text },
+    icon(TOAST_ICON[type]), el("span", { class: "toast-text" }, text));
+  let timer = 0;
+  const close = (): void => {
+    clearTimeout(timer);
+    item.classList.add("leaving");
+    setTimeout(() => item.remove(), 180);
+  };
+  const x = el("button", { type: "button", class: "toast-x", title: t("Schließen"), "aria-label": t("Meldung schließen") }, icon("x"));
+  x.addEventListener("click", close);
+  item.append(x);
+  const start = (): void => { clearTimeout(timer); timer = setTimeout(close, TOAST_MS[type]); };
+  item.addEventListener("mouseenter", () => clearTimeout(timer));     // reading: stays
+  item.addEventListener("mouseleave", start);
+  item.addEventListener("focusin", () => clearTimeout(timer));
+  item.addEventListener("focusout", start);
+  box.append(item);
+  const items = Array.from(box.children) as HTMLElement[];
+  for (const extra of items.slice(0, Math.max(0, items.length - TOAST_MAX))) extra.remove();   // the oldest go first
+  start();
 }
 
 function confirmBox(text: string, okLabel = "OK"): Promise<boolean> {
+  const before = trigger;                     // the button that asked – it shows the progress afterwards
   return new Promise((resolve) => {
     const d = $<HTMLDialogElement>("#confirmDialog");
     $("#confirmText").textContent = text;
     $("#confirmOk").textContent = okLabel;
     d.returnValue = "";
-    d.addEventListener("close", () => resolve(d.returnValue === "ok"), { once: true });
+    d.addEventListener("close", () => {
+      trigger = before && before.el.isConnected ? { el: before.el, at: performance.now() } : null;
+      resolve(d.returnValue === "ok");
+    }, { once: true });
     d.showModal();
   });
 }
