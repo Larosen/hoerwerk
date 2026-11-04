@@ -7,6 +7,8 @@ import json
 import mimetypes
 import os
 import secrets
+import select
+import socket
 import sys
 import threading
 import time
@@ -67,11 +69,27 @@ def page_access(path: str) -> Optional[str]:
     return APP_PAGES[parts[0]]
 
 
+# Connections served at the same time (one thread each). Beyond that a short 503 – the server stays responsive.
+# Live updates (SSE) are capped separately in events.py (32), so they never take all of these.
+MAX_CONNECTIONS = 96
+# per client address – one visitor (or a script) cannot take every slot; a trusted proxy carries everyone
+MAX_PER_PEER = 32
+IDLE_TIMEOUT = 30          # seconds a connection may sit without sending/receiving (also between keep-alive requests)
+_BUSY_TEXT = "Zu viele Verbindungen – gleich nochmal".encode()
+_BUSY = (b"HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain; charset=utf-8\r\nRetry-After: 2\r\n"
+         b"Content-Length: %d\r\nConnection: close\r\n\r\n%s" % (len(_BUSY_TEXT), _BUSY_TEXT))
+
+
 class Server(ThreadingHTTPServer):
     daemon_threads = True
+    request_queue_size = 64
 
     def __init__(self, address, app) -> None:
         self.app = app
+        self._slots = threading.Lock()
+        self.active = 0                          # connections being served now
+        self.peak = 0
+        self.per_peer: dict = {}
         # proxies in the LAN/Docker network that send X-Forwarded-For but are not in TRUSTED_PROXIES
         # (shown in the health check, logged once an hour each) – e.g. Newt after it got a new IP
         if app is not None:
@@ -106,6 +124,60 @@ class Server(ThreadingHTTPServer):
             seen[name]["logged"] = now
         applog.warn(t("Aufruf unter dem Namen „{host}“ abgelehnt (Schutz gegen DNS-Rebinding). Wenn das deine Adresse ist: unter Einstellungen → Allgemein als öffentliche Adresse eintragen oder ALLOWED_HOSTS={host} setzen.", host=name), "Anmeldung")  # noqa: E501
 
+    # -- connection limits -------------------------------------------------------
+    def process_request(self, request, client_address) -> None:
+        peer = client_address[0]
+        trusted = self.app is not None and self._is_trusted(peer)
+        with self._slots:
+            mine = self.per_peer.get(peer, 0)
+            full = self.active >= MAX_CONNECTIONS or (not trusted and mine >= MAX_PER_PEER)
+            if not full:
+                self.active += 1
+                self.peak = max(self.peak, self.active)
+                self.per_peer[peer] = mine + 1
+        if full:
+            self._refuse(request)
+            return
+        try:
+            super().process_request(request, client_address)       # starts the thread
+        except BaseException:
+            self._release(peer)
+            self.shutdown_request(request)
+            raise
+
+    def process_request_thread(self, request, client_address) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._release(client_address[0])
+
+    def _release(self, peer: str) -> None:
+        with self._slots:
+            self.active -= 1
+            left = self.per_peer.get(peer, 1) - 1
+            if left > 0:
+                self.per_peer[peer] = left
+            else:
+                self.per_peer.pop(peer, None)
+
+    def _is_trusted(self, peer: str) -> bool:
+        try:
+            ip = ipaddress.ip_address(peer.split("%")[0])
+        except ValueError:
+            return False
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        return any(ip in net for net in self.app.config.trusted_proxies)
+
+    def _refuse(self, request) -> None:
+        """Too busy: a short answer in the accepting thread (never blocks it), then close."""
+        try:
+            request.settimeout(1)
+            request.sendall(_BUSY)
+        except OSError:
+            pass
+        self.shutdown_request(request)
+
     def handle_error(self, request, client_address) -> None:
         """A client that hangs up (browser tab closed, health check done) is no error worth a traceback."""
         err = sys.exc_info()[1]
@@ -117,6 +189,7 @@ class Server(ThreadingHTTPServer):
 class Handler(BaseHTTPRequestHandler):
     server_version = "Hoerwerk"
     protocol_version = "HTTP/1.1"
+    timeout = IDLE_TIMEOUT          # socket timeout: idle keep-alive, slow headers and stalled uploads end here
     server: Server
 
     @property
@@ -256,12 +329,23 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self._headers(200, "text/event-stream; charset=utf-8", {"X-Accel-Buffering": "no"})
             for chunk in stream:
+                if self._client_gone():          # tab closed: free the slot now, not after two failed writes
+                    break
                 self.wfile.write(chunk)
                 self.wfile.flush()
         except OSError:          # browser tab closed
             pass
         finally:
             stream.close()
+
+    def _client_gone(self) -> bool:
+        """An SSE client never sends anything – readable means it hung up."""
+        try:
+            if not select.select([self.connection], [], [], 0)[0]:
+                return False
+            return self.connection.recv(1, socket.MSG_PEEK) == b""
+        except (OSError, ValueError):
+            return True
 
     def _redirect(self, where: str) -> None:
         self._send(303, b"", "text/plain", {"Location": where})

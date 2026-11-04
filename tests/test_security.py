@@ -234,6 +234,94 @@ class WebTest(unittest.TestCase):
         self.assertEqual(self.req("PUT", "/api/settings", {"language": "en"}, self.OWN, cookie=False)[0], 401)
 
 
+class LoadTest(unittest.TestCase):
+    """Many connections at once: a fixed upper limit, quick 503 beyond it, the server stays responsive."""
+    setUpClass = classmethod(WebTest.setUpClass.__func__)
+    tearDownClass = classmethod(WebTest.tearDownClass.__func__)
+    req = WebTest.req
+
+    def setUp(self):
+        self.saved = (server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout)
+        server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout = 20, 15, 1
+
+    def tearDown(self):
+        server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout = self.saved
+        self.wait_idle()
+
+    def wait_idle(self):
+        import time
+        for _ in range(400):                       # a closed live stream ends at its next heartbeat (15 s)
+            if self.server.active == 0:
+                return
+            time.sleep(0.05)
+        self.fail(f"{self.server.active} connections still open")
+
+    def idle(self, n, source):
+        import socket
+        out = []
+        for i in range(n):
+            sock = socket.socket()
+            sock.bind((source(i), 0))
+            sock.connect(("127.0.0.1", self.port))
+            out.append(sock)
+        return out
+
+    @staticmethod
+    def refused(socks):
+        n = 0
+        for sock in socks:
+            sock.settimeout(0.5)
+            try:
+                n += sock.recv(64).startswith(b"HTTP/1.1 503")
+            except OSError:
+                pass
+        return n
+
+    def test_hundred_idle_connections(self):
+        import time
+        self.server.peak = 0
+        socks = self.idle(100, lambda i: f"127.0.0.{2 + i % 10}")         # ten clients, ten connections each
+        time.sleep(0.3)
+        self.assertLessEqual(self.server.peak, 20)                         # the limit holds
+        self.assertEqual(self.server.active, 20)
+        t0 = time.monotonic()
+        status, _, _ = self.req("GET", "/api/health")
+        self.assertEqual(status, 503)                                       # answered at once, not hanging
+        self.assertLess(time.monotonic() - t0, 1)
+        self.assertEqual(self.refused(socks), 80)
+        time.sleep(1.5)                                                     # idle connections time out …
+        self.assertEqual(self.req("GET", "/api/settings")[0], 200)          # … and free their slots
+        for sock in socks:
+            sock.close()
+
+    def test_one_client_cannot_take_every_slot(self):
+        socks = self.idle(20, lambda i: "127.0.0.50")
+        import time
+        time.sleep(0.3)
+        self.assertEqual(self.refused(socks), 5)                            # 15 per address
+        self.assertEqual(self.req("GET", "/api/settings")[0], 200)          # everyone else still gets in
+        for sock in socks:
+            sock.close()
+
+    def test_parallel_requests_and_live_updates(self):
+        from concurrent.futures import ThreadPoolExecutor
+        server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout = 96, 200, 5
+        self.server.peak = 0
+        import http.client
+        sse = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        sse.request("GET", "/api/events?topics=library", headers={"Host": f"127.0.0.1:{self.port}", "Cookie": self.cookie})
+        live = sse.getresponse()
+        self.assertEqual(live.status, 200)
+        with ThreadPoolExecutor(120) as pool:
+            statuses = list(pool.map(lambda _: self.req("GET", "/api/settings")[0], range(240)))
+        self.assertTrue(set(statuses) <= {200, 503}, set(statuses))
+        self.assertGreater(statuses.count(200), 100)
+        self.assertLessEqual(self.server.peak, 96)
+        self.assertEqual(self.req("GET", "/api/settings")[0], 200)          # SSE open, API still answers
+        self.assertTrue(live.fp.readline())                                 # and the stream is alive
+        sse.close()
+
+
 class AccessTest(WebTest):
     """Nothing without login: every API route, every app page, the UI code."""
     PUBLIC_API = {("GET", "/api/health"), ("GET", "/api/auth/status"), ("POST", "/api/auth/setup"),
