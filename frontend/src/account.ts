@@ -93,13 +93,13 @@ function renderTotp(active: boolean): void {
 }
 
 async function loadAudit(): Promise<void> {
-  try {
+  await loadList($("#auditList"), async () => {
     const res = await api<{ entries: { time: number; user: string; ip: string; action: string; detail: string }[] }>("GET", "/api/audit");
     $("#auditList").replaceChildren(...(res.entries.length ? res.entries.map((e) => el("li", {},
       el("span", { class: "muted small" }, new Date(e.time * 1000).toLocaleString(LANG, { dateStyle: "short", timeStyle: "short" })),
       el("b", {}, e.user), el("code", {}, e.action), e.detail ? el("span", { class: "muted small" }, e.detail) : null,
       el("span", { class: "muted small" }, e.ip))) : [el("li", { class: "muted" }, t("Noch nichts."))]));
-  } catch (e) { toast(errMsg(e), true); }
+  }, { count: 3, kind: "line" });
 }
 
 // -- users (admin) ------------------------------------------------------------
@@ -237,13 +237,13 @@ function inviteRights(inv: Invite): string {
 }
 
 async function loadInvites(): Promise<void> {
-  try {
+  await loadList($("#inviteList"), async () => {
     const res = await api<{ invites: Invite[]; public_url: string }>("GET", "/api/invites");
     // links always point to the address from the internet – without it there are no links
     $("#invitePublic").hidden = !!res.public_url;
     $<HTMLButtonElement>("#inviteCreate").disabled = !res.public_url;
     $("#inviteList").replaceChildren(...res.invites.map(inviteRow));
-  } catch (e) { toast(errMsg(e), true); }
+  }, { count: 2, kind: "line" });
 }
 
 async function createInvite(): Promise<void> {
@@ -263,12 +263,12 @@ async function createInvite(): Promise<void> {
 }
 
 async function loadUsers(): Promise<void> {
-  loadInvites();
-  try {
+  void loadInvites();
+  await loadList($("#userRows"), async () => {
     const res = await api<{ users: UserInfo[]; default_quota: number }>("GET", "/api/users");
     $("#defaultQuota").textContent = String(res.default_quota);
     $("#userRows").replaceChildren(...res.users.map(userRow));
-  } catch (e) { toast(errMsg(e), true); }
+  }, { count: 3, kind: "line" });
 }
 
 async function createUser(): Promise<void> {

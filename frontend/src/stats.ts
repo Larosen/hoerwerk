@@ -253,6 +253,8 @@ async function loadStats(): Promise<void> {
   const section = router.current?.view === "stats" ? router.current.section : "";
   const seq = ++stats.seq;                      // a slow answer for the last page must not overwrite this one
   const q = `period=${encodeURIComponent(period)}`;
+  const tiles = $("#statsTiles");
+  if (!tiles.children.length) skeleton(tiles, 4, "line");
   try {
     if (section) {
       const d = await api<StatsAccount>("GET", `/api/stats/accounts/${encodeURIComponent(section)}?${q}`);
@@ -267,7 +269,14 @@ async function loadStats(): Promise<void> {
       const d = await api<StatsAccount>("GET", `/api/stats/accounts/${ME.id}?${q}`);
       if (seq === stats.seq) renderAccount(d, true);
     }
-  } catch (e) { toast(errMsg(e), true); }
+  } catch (e) {
+    if (tiles.querySelector(":scope > .skeleton")) {
+      const retry = el("button", { type: "button", class: "btn small" }, icon("refresh"), t("Erneut versuchen"));
+      retry.addEventListener("click", () => { tiles.replaceChildren(); void loadStats(); });
+      tiles.replaceChildren(el("div", { class: "load-error", role: "alert" },
+        el("span", {}, t("Konnte nicht geladen werden: {error}", { error: errMsg(e) })), retry));
+    } else toast(errMsg(e), true);
+  }
 }
 
 function initStats(): void {

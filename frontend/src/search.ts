@@ -172,7 +172,8 @@ async function lookupBooks(e?: Event): Promise<void> {
   try {
     const language = document.querySelector<HTMLInputElement>("#bookLang input:checked")?.value || "de";
     store.set("bookLang", language);
-    const res = await api<{ books: Book[]; region: string }>("POST", "/api/search/books", { query: q, language });
+    const res = await api<{ books: Book[]; region: string }>("POST", "/api/search/books", { query: q, language },
+      { key: "booksearch", busy: t("Sucht …") });
     const box = $("#bookPick");
     box.hidden = false;
     box.replaceChildren(
@@ -250,7 +251,8 @@ async function runSearch(e?: Event, free = false): Promise<void> {
   try {
     // while the term is still the suggested one, the server tries more spellings and broader terms if nothing fits
     const book = search.book && q === bookQueries(search.book).query ? search.book : null;
-    const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, book });
+    const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, book },
+      { key: "releasesearch", busy: t("Sucht …"), timeout: 120_000 });
     search.results = res.results;
     renderResults();
     const queries = res.queries || [];

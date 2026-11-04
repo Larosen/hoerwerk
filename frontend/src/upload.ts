@@ -83,12 +83,12 @@ function setUploadProgress(share: number): void {
   (bar.firstElementChild as HTMLElement).style.width = `${Math.min(100, Math.round(share * 100))}%`;
 }
 
-async function startUpload(): Promise<void> {
+async function startUpload(): Promise<boolean> {
   const name = $<HTMLInputElement>("#uploadName").value.trim().replace(/[\\/:*?"<>|]/g, " ");
   if (upload.items.some((i) => !i.path.includes("/")) && !name) {
     toast(t("Bitte einen Namen für das Hörbuch eintragen"), true);
     $<HTMLInputElement>("#uploadName").focus();
-    return;
+    return false;
   }
   upload.busy = true;
   renderUploadList();
@@ -106,11 +106,13 @@ async function startUpload(): Promise<void> {
     upload.id = "";
     $<HTMLDialogElement>("#uploadDialog").close();
     setTimeout(() => pollBooks(true), 800);
+    return true;
   } catch (e) {
     toast(errMsg(e), true);
     $("#uploadNote").textContent = errMsg(e);
     if (upload.id) api("DELETE", `/api/upload/${upload.id}`).catch(() => { /* gone anyway */ });
     upload.id = "";
+    return false;
   } finally {
     upload.busy = false;
     upload.xhr = null;
@@ -150,7 +152,11 @@ function initUpload(): void {
     try { for (const entry of entries) await walkEntry(entry, "", out); } catch (err) { toast(errMsg(err), true); }
     setUploadItems(out);
   });
-  $("#uploadGo").addEventListener("click", startUpload);
+  // the whole upload is one action of this button: spinner and "Lädt hoch …" until the last file is in
+  $("#uploadGo").addEventListener("click", () => {
+    const go = $("#uploadGo");
+    trackButton(go, startUpload().then((ok) => (ok ? undefined : Promise.reject(new Error("upload")))), t("Lädt hoch …"));
+  });
   $("#uploadCancel").addEventListener("click", () => {
     if (upload.busy && upload.xhr) upload.xhr.abort();
     else $<HTMLDialogElement>("#uploadDialog").close();

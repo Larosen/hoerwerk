@@ -305,11 +305,11 @@ function renderRequests(): void {
 
 async function loadRequests(): Promise<void> {
   clearTimeout(requests.timer);
-  try {
+  await loadList($("#requestList"), async () => {
     requests.data = await api<RequestList>("GET", "/api/requests");
     for (const r of requests.data.items) requests.keys[requestKey(r.book)] = r.status;
     renderRequests();
-  } catch { /* keep the last state */ }
+  }, { count: 4, quiet: true });                    // polled: a failed round keeps the last state
   const busy = requests.data?.items.some((r) => ["searching", "downloading", "processing"].includes(r.status));
   if (!$("#viewRequests").hidden) requests.timer = setTimeout(loadRequests, busy ? 8000 : 30000);
 }

@@ -11,6 +11,10 @@ function onLive<K extends keyof LiveTopics>(topic: K, fn: (data: LiveTopics[K]) 
   (live.handlers[topic] ||= []).push(fn as LiveHandler);
 }
 
+let liveRetry = 0;
+let liveLostTimer: number | undefined;
+let liveWarned = false;
+
 function startLive(): void {
   const topics = Object.keys(live.handlers);
   if (!window.EventSource || !topics.length) return;
@@ -28,9 +32,30 @@ function startLive(): void {
     live.ok = ok;
     document.dispatchEvent(new CustomEvent<boolean>("livechange", { detail: ok }));
   };
-  es.addEventListener("open", () => changed(true));
-  // the browser reconnects by itself (retry: 3000); until then the pages poll
-  es.addEventListener("error", () => changed(false));
+  es.addEventListener("open", () => {
+    liveRetry = 0;
+    clearTimeout(liveLostTimer);
+    if (liveWarned) toast(t("Live-Verbindung wieder da"), "info");
+    liveWarned = false;
+    changed(true);
+  });
+  es.addEventListener("error", () => {
+    changed(false);                       // until it is back the pages poll
+    clearTimeout(liveLostTimer);
+    // only a longer gap is worth a word (a restart of Hörwerk takes a few seconds)
+    liveLostTimer = setTimeout(() => {
+      if (!live.ok && !liveWarned) {
+        liveWarned = true;
+        toast(t("Live-Verbindung unterbrochen – die Seite aktualisiert sich langsamer, Hörwerk verbindet sich neu"), "warning");
+      }
+    }, 10_000);
+    // the browser retries by itself – except after an error answer (e.g. 503 when busy): then we do, slower each time
+    if (es.readyState === EventSource.CLOSED) {
+      es.close();
+      liveRetry = Math.min(liveRetry + 1, 6);
+      setTimeout(startLive, Math.min(30_000, 1000 * 2 ** liveRetry));
+    }
+  });
 }
 
 // after all scripts registered their topics (a timer could fire between two scripts)
