@@ -174,6 +174,50 @@ class WebTest(unittest.TestCase):
         finally:
             self.app.config = old
 
+    def test_hosts_by_default(self):
+        """Without ALLOWED_HOSTS: IPs, home-network names and the public address – no foreign names."""
+        get = lambda host: self.req("GET", "/api/settings", headers={"Host": host})[0]   # noqa: E731
+        for ok in ("127.0.0.1:8080", "localhost:8080", "[::1]:8080", "192.168.1.10:8080", "tower:8080", "TOWER",
+                   "nas.local", "unraid.lan", "nas.fritz.box", "hoerwerk.home.arpa"):
+            self.assertEqual(get(ok), 200, ok)
+        for bad in ("evil.example", "192.168.1.10.nip.io", "hoerbuecher.example.de", "localhost.evil.example", ""):
+            self.assertEqual(get(bad), 421, bad)                               # DNS-rebinding names
+        status, _, body = self.req("GET", "/", headers={"Host": "evil.example"})
+        self.assertEqual(status, 421)
+        self.assertIn("ALLOWED_HOSTS=evil.example", body.decode())
+        self.assertIn("evil.example", self.app.refused_hosts)
+        # the public address the admin entered counts – a forwarded host header never does
+        self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "evil.example", "X-Forwarded-Host": "tower"})[0], 421)
+        self.app.update_settings({"public_url": "https://hoerbuecher.example.de"})
+        try:
+            self.assertEqual(get("hoerbuecher.example.de"), 200)
+            self.assertEqual(get("evil.example"), 421)
+        finally:
+            self.app.update_settings({"public_url": ""})
+        self.assertEqual(self.req("GET", "/api/health", headers={"Host": "evil.example"})[0], 200)   # health checks
+        # through the reverse proxy in TRUSTED_PROXIES: the proxy decides which names it serves
+        old = self.app.config
+        self.app.config = dataclasses.replace(old, trusted_proxies=config.parse_networks("127.0.0.1"))
+        try:
+            self.assertEqual(get("hoerbuecher.example.de"), 200)
+            self.app.config = dataclasses.replace(self.app.config, allowed_hosts=config.parse_hosts("tower"))
+            self.assertEqual(get("hoerbuecher.example.de"), 421)                  # an explicit list is exact
+        finally:
+            self.app.config = old
+
+    def test_hosts_star_and_wildcards(self):
+        old = self.app.config
+        try:
+            self.app.config = dataclasses.replace(old, allowed_hosts=config.parse_hosts("*.example.de"))
+            self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "hb.example.de"})[0], 200)
+            self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "example.de.evil.example"})[0], 421)
+            self.app.config = dataclasses.replace(old, allowed_hosts=config.parse_hosts("*"))
+            self.assertEqual(self.req("GET", "/api/settings", headers={"Host": "anything.example"})[0], 200)
+        finally:
+            self.app.config = old
+        with self.assertRaises(ValueError):
+            config.Config.from_env({"ALLOWED_HOSTS": "https://hoerbuecher.example.de/"})
+
     def test_without_login_only_the_login_page(self):
         """Without a session: logo, UI code and login page – no data, no app page."""
         self.assertEqual(self.req("GET", "/static/icon.png", cookie=False)[0], 200)

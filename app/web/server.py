@@ -17,7 +17,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import i18n
 from events import Stream
-from web import router
+from web import hosts, router
 from web.router import File, HTTPException, Reply, Req
 import applog
 from invites import valid_token_format
@@ -67,10 +67,6 @@ def page_access(path: str) -> Optional[str]:
     return APP_PAGES[parts[0]]
 
 
-# always allowed as Host: a DNS-rebinding page arrives under its own name, never as these
-LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1"})
-
-
 class Server(ThreadingHTTPServer):
     daemon_threads = True
 
@@ -80,6 +76,7 @@ class Server(ThreadingHTTPServer):
         # (shown in the health check, logged once an hour each) – e.g. Newt after it got a new IP
         if app is not None:
             app.untrusted_proxies = {}
+            app.refused_hosts = {}                   # Host names refused (health check, logged once an hour)
         self._untrusted_lock = threading.Lock()
         super().__init__(address, Handler)
 
@@ -95,6 +92,19 @@ class Server(ThreadingHTTPServer):
                 return
             seen[peer]["logged"] = now
         applog.warn(t("{peer} schickt X-Forwarded-For, steht aber nicht in TRUSTED_PROXIES – alle Besucher über diesen Proxy erscheinen mit seiner Adresse (Anmelde-Sperre, CrowdSec). TRUSTED_PROXIES={peer} setzen.", peer=peer), "Anmeldung")  # noqa: E501
+
+    def note_refused_host(self, name: str) -> None:
+        now = time.time()
+        with self._untrusted_lock:
+            seen = self.app.refused_hosts
+            if len(seen) > 50 and name not in seen:
+                return
+            last = seen.get(name, {}).get("logged", 0)
+            seen[name] = {"time": now, "logged": last}
+            if now - last < 3600:
+                return
+            seen[name]["logged"] = now
+        applog.warn(t("Aufruf unter dem Namen „{host}“ abgelehnt (Schutz gegen DNS-Rebinding). Wenn das deine Adresse ist: unter Einstellungen → Allgemein als öffentliche Adresse eintragen oder ALLOWED_HOSTS={host} setzen.", host=name), "Anmeldung")  # noqa: E501
 
     def handle_error(self, request, client_address) -> None:
         """A client that hangs up (browser tab closed, health check done) is no error worth a traceback."""
@@ -201,12 +211,9 @@ class Handler(BaseHTTPRequestHandler):
         return self.server.app.accounts.session_user(token, self.client_ip()) if token else None
 
     def _host_ok(self) -> bool:
-        allowed = self.config.allowed_hosts
-        if not allowed:
-            return True
-        host = (self.headers.get("Host") or "").lower()
-        host = host.rsplit(":", 1)[0] if not host.endswith("]") else host
-        return host.strip("[]") in allowed | LOOPBACK_NAMES
+        public = urlparse(self.server.app.settings().get("public_url") or "").hostname or ""
+        return hosts.allowed(self.headers.get("Host") or "", self.config.allowed_hosts, public,
+                             via_proxy=self._trusted(self._addr(self.client_address[0])))
 
     def _same_origin(self) -> bool:
         """Changing requests must come from our own page (CSRF protection).
@@ -267,7 +274,11 @@ class Handler(BaseHTTPRequestHandler):
             or bool(self.headers.get("Transfer-Encoding"))
         # the health check answers under any name: Docker asks as 127.0.0.1, Pangolin/Newt under the target name
         if not self._host_ok() and not (url.path == "/api/health" and self.command in ("GET", "HEAD")):
-            return self._send(421, b"Unbekannter Host", "text/plain")
+            name = hosts.host_name(self.headers.get("Host") or "")[:100]
+            self.server.note_refused_host(name)
+            self.close_connection = True
+            refused = t("Hörwerk antwortet nicht unter dem Namen „{host}“ (Schutz gegen DNS-Rebinding). Ist das deine Adresse, trage sie unter Einstellungen → Allgemein als öffentliche Adresse ein (dafür Hörwerk einmal über die IP-Adresse öffnen) oder setze ALLOWED_HOSTS={host}.", host=name)  # noqa: E501
+            return self._send(421, refused.encode(), "text/plain; charset=utf-8")
         token = self._token()
         reading = self.command in ("GET", "HEAD")
         if reading and url.path == "/favicon.ico":         # Safari & co. ask for it on their own – the logo, no 404

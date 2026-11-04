@@ -835,7 +835,6 @@
  "In diesem Bereich gibt es bei Audible gerade keine gut bewerteten deutschen Hörbücher, die du noch nicht hast.": "Audible currently has no well-rated German audiobooks in this area that you don't have yet.",
  "Sachbuch: Sterne sagen, wie gut ein Buch ankommt – nicht, ob es inhaltlich stimmt. Im Zweifel lieber „Aus der Kritik“.": "Non-fiction: stars tell how well a book is liked – not whether it is accurate. When in doubt, prefer “From the critics”.",
  "{genre} – alle": "{genre} – all",
- "ALLOWED_HOSTS ist leer – Hörwerk antwortet unter jedem Namen": "ALLOWED_HOSTS is empty – Hörwerk answers under any name",
  "Admins ohne Zweitfaktor: {names}": "Admins without a second factor: {names}",
  "Adresse in Benachrichtigungen passt: {url}": "Address in notifications matches: {url}",
  "Alle Admins haben einen Zweitfaktor": "All admins have a second factor",
@@ -882,7 +881,6 @@
  "Oberfläche und Benachrichtigungen": "Interface and notifications",
  "Ohne Audible keine Erkennung, Tags und Vorschläge – Internetzugang des Containers prüfen.": "Without Audible no matching, tags or suggestions – check the container's internet access.",
  "Ohne „X-Forwarded-Proto: https“ vom vertrauenswürdigen Proxy wird das Anmelde-Cookie ohne „Secure“ gesetzt.": "Without “X-Forwarded-Proto: https” from the trusted proxy, the sign-in cookie is set without “Secure”.",
- "Optional, schützt gegen DNS-Rebinding.": "Optional, protects against DNS rebinding.",
  "Ordner im Docker-Template einbinden.": "Mount the folder in the Docker template.",
  "Prüfe …": "Checking …",
  "Qualität, Kontingent": "Quality, quota",
@@ -1282,5 +1280,13 @@
  "{n} besprochene Bücher warten noch auf ihr Hörbuch": "{n} reviewed books are still waiting for their audiobook",
  ": Bücher, die Deutschlandfunk, Deutschlandfunk Kultur (auch „Die Bücher des Monats“ mit den Bestenlisten für Sachbuch und Krimi) oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt – die neuesten rund 40. Gibt es noch kein Hörbuch, merkt sich Hörwerk das Buch zwei Jahre lang und schaut einmal im Monat nach; erscheint es oder ist es angekündigt, taucht es hier wieder oben auf.": ": books reviewed by Deutschlandfunk, Deutschlandfunk Kultur (including “Die Bücher des Monats” with the best-of lists for non-fiction and crime) or the press (according to Perlentaucher) that exist as audiobooks – the newest 40 or so. If there is no audiobook yet, Hörwerk remembers the book for two years and checks once a month; once it is out or announced, it shows up here at the top again.",
  "Platz {rank}: {list} ({source})": "No. {rank}: {list} ({source})",
- "Liste ansehen": "View list"
+ "Liste ansehen": "View list",
+ "ALLOWED_HOSTS=* – Hörwerk antwortet unter jedem Namen": "ALLOWED_HOSTS=* – Hörwerk answers under any name",
+ "Aufruf als „{host}“ abgelehnt": "Access as “{host}” refused",
+ "Aufruf unter dem Namen „{host}“ abgelehnt (Schutz gegen DNS-Rebinding). Wenn das deine Adresse ist: unter Einstellungen → Allgemein als öffentliche Adresse eintragen oder ALLOWED_HOSTS={host} setzen.": "Access under the name “{host}” refused (protection against DNS rebinding). If this is your address: enter it as the public address under Settings → General or set ALLOWED_HOSTS={host}.",
+ "Hörwerk antwortet nicht unter dem Namen „{host}“ (Schutz gegen DNS-Rebinding). Ist das deine Adresse, trage sie unter Einstellungen → Allgemein als öffentliche Adresse ein (dafür Hörwerk einmal über die IP-Adresse öffnen) oder setze ALLOWED_HOSTS={host}.": "Hörwerk does not answer under the name “{host}” (protection against DNS rebinding). If this is your address, enter it as the public address under Settings → General (open Hörwerk once via its IP address for that) or set ALLOWED_HOSTS={host}.",
+ "Hörwerk antwortet unter IP-Adressen, Namen aus dem Heimnetz und der öffentlichen Adresse": "Hörwerk answers under IP addresses, home-network names and the public address",
+ "Kein Schutz gegen DNS-Rebinding. Besser die eigenen Namen eintragen.": "No protection against DNS rebinding. Better list your own names.",
+ "Schutz gegen DNS-Rebinding. Weitere Namen: ALLOWED_HOSTS.": "Protection against DNS rebinding. More names: ALLOWED_HOSTS.",
+ "Zuletzt {ago}. Wenn das deine Adresse ist: als öffentliche Adresse eintragen oder ALLOWED_HOSTS setzen.": "Last {ago}. If this is your address: enter it as the public address or set ALLOWED_HOSTS."
 }

@@ -29,4 +29,4 @@ services:
       # FFMPEG_SANDBOX: "auto"       # ffmpeg im Landlock-Käfig: auto | require | off
       # Konten legst du beim ersten Aufruf im Browser an (Admin), Familienkonten dann unter "Konten".
       # TRUSTED_PROXIES: "172.18.0.0/16"   # hinter Pangolin/Traefik: deren Netz, damit die echte IP geloggt wird
-      # ALLOWED_HOSTS: "tower,192.168.1.10"   # optional: nur unter diesen Namen antworten
+      # ALLOWED_HOSTS: "hoerbuecher.example.de"   # weitere Namen; IPs, tower/*.local und die öffentliche Adresse gehen immer

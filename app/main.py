@@ -20,7 +20,11 @@ def main() -> None:
     if os.environ.get("UMASK"):
         os.umask(int(os.environ["UMASK"], 8))
     applog.capture_stderr()
-    config = Config.from_env()
+    try:
+        config = Config.from_env()
+    except ValueError as e:                 # a setting Hörwerk cannot use: say which, don't start half-configured
+        applog.error(f"Start abgebrochen: {e}", "Start")
+        raise SystemExit(2)
     app = create_app(config)
     server = make_server(app)
     applog.info(f"Hörwerk {VERSION} läuft auf Port {config.port} – Eingang: {config.inbox}, Bibliothek: {config.library}")

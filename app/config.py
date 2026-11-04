@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 import ipaddress
 from typing import FrozenSet, Mapping, Tuple
 
 import library
 
-VERSION = "7.12.0"
+VERSION = "7.13.0"
 
 
 def _bool(env: Mapping[str, str], key: str, default: bool) -> bool:
@@ -40,7 +41,9 @@ class Config:
     port: int = 8080
     auth_user: str = ""
     auth_pass: str = ""
-    # Optional: only answer to these Host names (protects against DNS rebinding), e.g. "tower,192.168.1.10"
+    # Host names Hörwerk answers under (protects against DNS rebinding), e.g. "tower,hoerbuecher.example.de",
+    # "*.example.de" for every subdomain, "*" for any name (not recommended). Empty: IP addresses, home-network
+    # names (tower, nas.local, fritz.box …) and the public address from the settings – see web/hosts.py
     allowed_hosts: FrozenSet[str] = field(default_factory=frozenset)
     # Reverse proxies (Pangolin/Newt, Traefik …) whose X-Forwarded-For is believed – IPs or CIDR ranges
     trusted_proxies: Tuple = ()
@@ -63,7 +66,7 @@ class Config:
             port=int(env.get("PORT", "8080")),
             auth_user=env.get("AUTH_USER", ""),
             auth_pass=env.get("AUTH_PASS", ""),
-            allowed_hosts=frozenset(h.strip().lower() for h in env.get("ALLOWED_HOSTS", "").split(",") if h.strip()),
+            allowed_hosts=parse_hosts(env.get("ALLOWED_HOSTS", "")),
             allow_public=env.get("ALLOW_PUBLIC", "false").lower() == "true",
             trusted_proxies=parse_networks(env.get("TRUSTED_PROXIES", "")),
             cookie_secure=(env.get("COOKIE_SECURE", "auto").strip().lower() or "auto"),
@@ -77,6 +80,30 @@ class Config:
     @property
     def auth(self) -> bool:
         return bool(self.auth_user and self.auth_pass)
+
+
+_HOST_RX = re.compile(r"^(?:\*|(?:\*\.)?[a-z0-9_](?:[a-z0-9_-]{0,62})(?:\.[a-z0-9_](?:[a-z0-9_-]{0,62}))*\.?|"
+                     r"\[?[0-9a-f:.]+\]?)$")
+
+
+def parse_hosts(text: str) -> FrozenSet[str]:
+    """ALLOWED_HOSTS: names without scheme, path or port ("tower", "*.example.de", "*"). A port is tolerated and
+    dropped; anything else stops the start with a clear message instead of guessing."""
+    out = set()
+    for raw in (text or "").replace(";", ",").split(","):
+        name = raw.strip().lower()
+        if not name:
+            continue
+        if not name.startswith("[") and name.count(":") == 1:
+            name, _, port = name.partition(":")
+            if not port.isdigit():
+                name = raw
+        name = name.rstrip(".").strip("[]") if not name.startswith("*") or name == "*" else name.rstrip(".")
+        if "/" in name or "@" in name or " " in name or not _HOST_RX.match(name):
+            raise ValueError(f"ALLOWED_HOSTS: „{raw.strip()}“ ist kein Hostname – nur Namen wie tower, "
+                             f"hoerbuecher.example.de, *.example.de oder 192.168.1.10 (ohne https:// und ohne Pfad)")
+        out.add(name)
+    return frozenset(out)
 
 
 def public_url(text: str) -> str:
