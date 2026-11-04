@@ -118,6 +118,22 @@ and third-party libraries are not in the program at all – most ffmpeg CVEs aff
 package no longer comes from Debian's security maintenance, the version in the Dockerfile must be raised for ffmpeg
 security updates (tag and commit, CI checks both).
 
+## Build and supply chain
+
+Every push and pull request runs: ruff (errors, likely bugs, security rules), pip-audit (Python dependencies),
+npm audit (build tools), the unit tests with a coverage limit (80 %), the click-through tests against the server
+and against the finished image, and Trivy on the image – a critical or high vulnerability with an available fix
+stops the release (exceptions only in `.trivyignore`, each with its reason). Only then the image is published:
+signed with cosign (keyless) and with SBOM and build provenance attached to its digest. All GitHub Actions are
+pinned to commit SHAs; Dependabot proposes updates weekly. Checking an image:
+
+```sh
+cosign verify ghcr.io/larosen/hoerwerk@sha256:<digest> \
+  --certificate-identity-regexp 'https://github.com/Larosen/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify oci://ghcr.io/larosen/hoerwerk@sha256:<digest> --owner Larosen
+```
+
 ## Known residual risks
 
 * **0-day in ffmpeg or mutagen**: strongly contained by the measures above (ffmpeg in a sandbox) but not impossible –

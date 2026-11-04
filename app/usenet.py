@@ -157,9 +157,9 @@ def _check_error(root: ET.Element) -> None:
 
 def _xml(data: bytes) -> ET.Element:
     """Parse an indexer answer; DTDs/entities are refused (entity-expansion bombs, XXE)."""
-    if re.search(rb"<!(DOCTYPE|ENTITY)", data[:4096], re.I) or b"<!ENTITY" in data:
+    if re.search(rb"<!(DOCTYPE|ENTITY)", data, re.I):      # anywhere: comments can push it past any prefix
         raise UsenetError(t("Antwort enthält eine DTD – abgelehnt"))
-    return ET.fromstring(data)
+    return ET.fromstring(data)  # noqa: S314 – DTDs refused above; expat resolves no external entities
 
 
 def _http_url(url) -> Optional[str]:

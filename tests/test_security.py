@@ -337,7 +337,7 @@ class AccessTest(WebTest):
     def _routes(self):
         import re
         from web import router
-        for method, rx, fn, access in router.ROUTES:
+        for method, rx, _fn, access in router.ROUTES:
             path = re.sub(r"\(\?P<\w+>[^)]*\)", "1", rx.pattern).lstrip("^").rstrip("$").replace("\\", "")
             yield method, path, access
 
@@ -533,6 +533,9 @@ class NetworkTest(unittest.TestCase):
                 b"<rss><channel><item><title>&lol2;</title></item></channel></rss>")
         with self.assertRaises(usenet.UsenetError):
             usenet.parse_results(bomb, "x")
+        padded = b'<?xml version="1.0"?>' + b"<!-- " + b"x" * 8000 + b" -->" + bomb[len(b'<?xml version="1.0"?>'):]
+        with self.assertRaises(usenet.UsenetError):                       # pushed past any prefix check
+            usenet.parse_results(padded, "x")
 
     def test_indexer_links_must_be_http(self):
         xml = (b'<rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/"><channel>'

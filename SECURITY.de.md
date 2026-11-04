@@ -119,6 +119,22 @@ Programm – die meisten ffmpeg-CVEs betreffen genau diese Teile. Weil das Paket
 Debian-Sicherheitspflege kommt, muss die Version im Dockerfile bei ffmpeg-Sicherheitsupdates angehoben werden
 (Tag und Commit, die CI prüft beides).
 
+## Bauen und Lieferkette
+
+Jeder Push und Pull Request durchläuft: ruff (Fehler, wahrscheinliche Bugs, Sicherheitsregeln), pip-audit
+(Python-Abhängigkeiten), npm audit (Bauwerkzeuge), die Unit-Tests mit Mindest-Abdeckung (80 %), die Durchklick-Tests
+gegen den Server und gegen das fertige Image sowie Trivy auf dem Image – eine kritische oder hohe Schwachstelle, für
+die es eine Korrektur gibt, stoppt die Veröffentlichung (Ausnahmen nur in `.trivyignore`, jede mit Begründung). Erst
+danach wird das Image veröffentlicht: mit cosign signiert (schlüssellos) und mit SBOM und Build-Provenance am Digest.
+Alle GitHub Actions sind auf Commit-SHAs festgelegt; Dependabot schlägt wöchentlich Updates vor. Ein Image prüfen:
+
+```sh
+cosign verify ghcr.io/larosen/hoerwerk@sha256:<digest> \
+  --certificate-identity-regexp 'https://github.com/Larosen/' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify oci://ghcr.io/larosen/hoerwerk@sha256:<digest> --owner Larosen
+```
+
 ## Bekannte Restrisiken
 
 * **0-Day in ffmpeg oder mutagen**: durch die Maßnahmen oben stark eingegrenzt (ffmpeg im Käfig), aber nicht auszuschließen –

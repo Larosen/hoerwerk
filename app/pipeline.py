@@ -1402,7 +1402,7 @@ def rename_tracks(folder: str, files: List[str], names: List[str]) -> List[str]:
         os.rename(os.path.join(folder, rel), os.path.join(folder, tmp))
         temp.append(tmp)
     out = []
-    for tmp, (rel, new) in zip(temp, plan):
+    for tmp, (_rel, new) in zip(temp, plan):
         if tmp != new:
             target = os.path.join(folder, new)
             if os.path.exists(target):

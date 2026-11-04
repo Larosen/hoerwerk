@@ -11,3 +11,6 @@ app/static/*.js
 test-results/
 playwright-report/
 e2e/.run/
+.coverage
+coverage.xml
+sbom.spdx.json
