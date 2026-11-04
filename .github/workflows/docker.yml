@@ -131,7 +131,7 @@ jobs:
         env:
           E2E_URL: http://127.0.0.1:8095
       - if: failure()
-        run: docker logs br
+        run: docker logs br || echo "(der Container wurde nicht gestartet)"
 
   # Only after every check above passed. The published image is signed (cosign, keyless) and carries its
   # SBOM and build provenance – all bound to its digest:
