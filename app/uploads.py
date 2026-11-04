@@ -8,6 +8,14 @@ From there it is the normal way: tags and folder names → Audible → M4B with 
 Safety: relative paths only (no ``..``, no absolute paths, no hidden names), only audio files,
 covers, cue sheets and the chapter/metadata files Hörwerk understands; size limit per file, free
 space checked before each file; stale staging folders are removed after a day.
+
+Limits (against filling the disk or the server by accident or on purpose): uploads open at the same time
+(overall and per account), size and number of files per upload, bytes per account in all its open uploads.
+Each file reserves its size before the first byte is written, so two parallel uploads of one account cannot
+slip past a limit together. An upload belongs to the account that started it. Finishing is one step at a
+time: no file may still be arriving, and a second "finish" of the same upload is refused. A marker file
+makes finishing resumable – after a crash, half-moved uploads are completed at the next start, unfinished
+ones are removed (they cannot be resumed: the browser has to send them again).
 """
 from __future__ import annotations
 
@@ -29,6 +37,12 @@ STALE = 24 * 3600
 ALLOWED = set(AUDIO_EXTS) | {"jpg", "jpeg", "png", "webp", "cue", "txt", "yml", "yaml", "json", "nfo"}
 TEXT_NAMES = {"chapters.txt", "metadata.yml", "metadata.yaml", "metadata.json", "desc.txt", "reader.txt"}
 CHUNK = 1 << 20
+MAX_SESSIONS = 8                       # uploads open at the same time, all accounts
+MAX_SESSIONS_PER_USER = 3
+MAX_SESSION_BYTES = 64 << 30           # one upload (several CDs as FLAC fit easily)
+MAX_USER_BYTES = 128 << 30             # one account, all its open uploads together
+MAX_FILES = 3000                       # files in one upload
+FINISHING = ".finishing"               # marker inside a staging folder while its entries are moved
 _PART = re.compile(r"^[^\x00-\x1f/\\\\:*?\"<>|]{1,200}$")
 
 
@@ -118,35 +132,71 @@ def clean_path(rel: str) -> List[str]:
 
 class Uploads:
     def __init__(self, inbox: str, on_done: Callable[[List[str]], None] = lambda names: None,
-                 clock=time.time) -> None:
+                 clock=time.time, recover: bool = True) -> None:
         self.inbox = inbox
         self.on_done = on_done
         self.clock = clock
         self.lock = threading.Lock()
+        self.finishing = threading.Lock()     # one finish at a time: names in the inbox are picked safely
         self.sessions: Dict[str, dict] = {}
+        if recover:
+            self.recover()
 
     def _dir(self, uid: str) -> str:
         return os.path.join(self.inbox, f".upload-{uid}")
 
-    def start(self, user: str) -> str:
+    def start(self, user: str, label: str = "") -> str:
+        """A new upload for ``user`` (the owner key – only this account may add to it, finish or cancel it)."""
         if not self.inbox or not os.path.isdir(self.inbox):
             raise UploadError(t("Eingangsordner nicht gefunden"))
         self.cleanup()
-        uid = secrets.token_hex(8)
-        os.makedirs(self._dir(uid), mode=0o775)
         with self.lock:
-            self.sessions[uid] = {"user": user, "started": self.clock(), "files": 0, "bytes": 0}
+            open_now = list(self.sessions.values())
+            if len(open_now) >= MAX_SESSIONS:
+                raise UploadError(t("Gerade laufen zu viele Uploads – bitte später noch einmal"))
+            if sum(1 for x in open_now if x["user"] == user) >= MAX_SESSIONS_PER_USER:
+                raise UploadError(t("Du hast schon {n} Uploads offen – erst diese abschließen", n=MAX_SESSIONS_PER_USER))
+            uid = secrets.token_hex(8)
+            self.sessions[uid] = {"user": user, "label": label or user, "started": self.clock(), "files": 0,
+                                  "bytes": 0, "reserved": 0, "active": 0, "paths": set(), "state": "open"}
+        try:
+            os.makedirs(self._dir(uid), mode=0o775)
+        except OSError:
+            with self.lock:
+                self.sessions.pop(uid, None)
+            raise
         return uid
 
-    def _session(self, uid: str) -> dict:
+    def _session(self, uid: str, owner: Optional[str] = None) -> dict:
+        if not session_id(uid):
+            raise UploadError(t("Upload nicht gefunden – bitte neu starten"))
         with self.lock:
-            s = self.sessions.get(uid or "")
-        if not s or not re.fullmatch(r"[0-9a-f]{16}", uid) or not os.path.isdir(self._dir(uid)):
+            s = self.sessions.get(uid)
+        # someone else's upload looks exactly like a missing one
+        if not s or (owner is not None and s["user"] != owner) or not os.path.isdir(self._dir(uid)):
             raise UploadError(t("Upload nicht gefunden – bitte neu starten"))
         return s
 
-    def put(self, uid: str, rel: str, stream, length: int) -> dict:
-        s = self._session(uid)
+    def _reserve(self, uid: str, s: dict, key: str, length: int) -> None:
+        """Book a file's size and path before writing – all limits checked in one locked step."""
+        with self.lock:
+            if s["state"] != "open":
+                raise UploadError(t("Dieser Upload wird schon abgeschlossen"))
+            if key in s["paths"]:
+                raise UploadError(t("Diese Datei ist schon im Upload: {name}", name=key[-120:]))
+            if s["files"] + s["active"] >= MAX_FILES:
+                raise UploadError(t("Zu viele Dateien in einem Upload (höchstens {n})", n=MAX_FILES))
+            if s["bytes"] + s["reserved"] + length > MAX_SESSION_BYTES:
+                raise UploadError(t("Der Upload wird zu groß – bitte in mehreren Teilen hochladen"))
+            mine = sum(x["bytes"] + x["reserved"] for x in self.sessions.values() if x["user"] == s["user"])
+            if mine + length > MAX_USER_BYTES:
+                raise UploadError(t("Zu viele Daten in deinen offenen Uploads – erst diese abschließen"))
+            s["paths"].add(key)
+            s["reserved"] += length
+            s["active"] += 1
+
+    def put(self, uid: str, rel: str, stream, length: int, owner: Optional[str] = None) -> dict:
+        s = self._session(uid, owner)
         parts = clean_path(rel)
         if length <= 0 or length > MAX_FILE:
             raise UploadError(t("Datei zu groß oder leer: {name}", name=parts[-1]))
@@ -156,8 +206,28 @@ class Uploads:
         target = os.path.realpath(os.path.join(root, *parts))
         if os.path.commonpath([root, target]) != root:
             raise UploadError(t("Ungültiger Dateipfad"))
+        key = "/".join(parts).lower()
+        self._reserve(uid, s, key, length)
+        ok = False
+        try:
+            result = self._write(s, parts, root, target, stream, length)
+            ok = True
+            return result
+        finally:
+            with self.lock:
+                s["reserved"] -= length
+                s["active"] -= 1
+                if ok:
+                    s["files"] += 1
+                    s["bytes"] += length
+                else:
+                    s["paths"].discard(key)
+
+    def _write(self, s: dict, parts: List[str], root: str, target: str, stream, length: int) -> dict:
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        tmp = target + ".part"
+        if os.path.exists(target):
+            raise UploadError(t("Diese Datei ist schon im Upload: {name}", name=parts[-1]))
+        tmp = f"{target}.{secrets.token_hex(4)}.part"
         left = length
         first = True
         try:
@@ -179,48 +249,95 @@ class Uploads:
                     fh.write(chunk)
                     left -= len(chunk)
             os.replace(tmp, target)
+        except (TimeoutError, ConnectionError) as e:        # the browser stopped sending
+            self._unlink(tmp)
+            raise UploadError(t("Upload abgebrochen")) from e
         except BaseException:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
+            self._unlink(tmp)
             raise
-        with self.lock:
-            s["files"] += 1
-            s["bytes"] += length
-        return {"ok": True, "files": s["files"], "bytes": s["bytes"]}
+        return {"ok": True, "files": s["files"] + 1, "bytes": s["bytes"] + length}
 
-    def finish(self, uid: str) -> List[str]:
+    @staticmethod
+    def _unlink(path: str) -> None:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+    def finish(self, uid: str, owner: Optional[str] = None) -> List[str]:
         """Move every top-level entry of the upload into the inbox (in one step each); returns the names."""
-        s = self._session(uid)
-        src = self._dir(uid)
-        moved = []
-        for name in sorted(os.listdir(src)):
-            if name.endswith(".part"):
-                continue
-            dest = os.path.join(self.inbox, name)
-            n = 2
-            while os.path.exists(dest):                      # never overwrite something in the inbox
-                base, ext = os.path.splitext(name) if os.path.isfile(os.path.join(src, name)) else (name, "")
-                dest = os.path.join(self.inbox, f"{base} ({n}){ext}")
-                n += 1
-            os.replace(os.path.join(src, name), dest)
-            moved.append(os.path.basename(dest))
-        shutil.rmtree(src, ignore_errors=True)
+        s = self._session(uid, owner)
+        with self.lock:
+            if s["state"] != "open":
+                raise UploadError(t("Dieser Upload wird schon abgeschlossen"))
+            if s["active"]:
+                raise UploadError(t("Es kommen noch Dateien an – bitte warten"))
+            s["state"] = "finishing"
+        try:
+            moved = self._move_in(self._dir(uid))
+        except BaseException:
+            with self.lock:
+                s["state"] = "open"                       # the rest stays in the staging folder: try again
+            raise
         with self.lock:
             self.sessions.pop(uid, None)
         files = t("1 Datei") if s["files"] == 1 else t("{n} Dateien", n=s["files"])
-        applog.info(t("Hochgeladen von {user}: {names} ({files})", user=s["user"], names=", ".join(moved), files=files),
+        applog.info(t("Hochgeladen von {user}: {names} ({files})", user=s["label"], names=", ".join(moved), files=files),
                     "Eingang")
         if moved:
             self.on_done(moved)
         return moved
 
-    def cancel(self, uid: str) -> None:
-        self._session(uid)
-        shutil.rmtree(self._dir(uid), ignore_errors=True)
+    def _move_in(self, src: str) -> List[str]:
+        """Every top-level entry into the inbox, one atomic rename each; the marker makes it resumable."""
+        with self.finishing:
+            with open(os.path.join(src, FINISHING), "w"):
+                pass
+            moved = []
+            for name in sorted(os.listdir(src)):
+                if name.endswith(".part") or name == FINISHING:
+                    continue
+                dest = os.path.join(self.inbox, name)
+                n = 2
+                while os.path.lexists(dest):                 # never overwrite something in the inbox
+                    base, ext = os.path.splitext(name) if os.path.isfile(os.path.join(src, name)) else (name, "")
+                    dest = os.path.join(self.inbox, f"{base} ({n}){ext}")
+                    n += 1
+                os.replace(os.path.join(src, name), dest)
+                moved.append(os.path.basename(dest))
+            shutil.rmtree(src, ignore_errors=True)
+            return moved
+
+    def cancel(self, uid: str, owner: Optional[str] = None) -> None:
+        s = self._session(uid, owner)
         with self.lock:
+            if s["state"] != "open":
+                raise UploadError(t("Dieser Upload wird schon abgeschlossen"))
+            s["state"] = "cancelled"                      # files still arriving fail at their next check
             self.sessions.pop(uid, None)
+        shutil.rmtree(self._dir(uid), ignore_errors=True)
+
+    def recover(self) -> None:
+        """At start: uploads cannot continue after a restart. Half-finished ones (marker) are completed,
+        everything else is removed – nothing half-copied ever reaches the inbox."""
+        try:
+            names = os.listdir(self.inbox)
+        except OSError:
+            return
+        for name in names:
+            path = os.path.join(self.inbox, name)
+            if not name.startswith(".upload-") or not os.path.isdir(path) or os.path.islink(path):
+                continue
+            try:
+                if os.path.exists(os.path.join(path, FINISHING)):
+                    moved = self._move_in(path)
+                    applog.info(t("Unterbrochenen Upload abgeschlossen: {names}", names=", ".join(moved)), "Eingang")
+                    if moved:
+                        self.on_done(moved)
+                else:
+                    shutil.rmtree(path, ignore_errors=True)
+            except OSError as e:
+                applog.warn(t("Upload-Reste nicht aufgeräumt: {error}", error=e), "Eingang")
 
     def cleanup(self) -> None:
         """Remove staging folders of uploads that never finished (older than a day)."""
@@ -230,7 +347,13 @@ class Uploads:
             return
         for name in names:
             path = os.path.join(self.inbox, name)
-            if name.startswith(".upload-") and os.path.isdir(path) and not os.path.islink(path):
+            uid = name[len(".upload-"):]
+            with self.lock:
+                stale_session = self.sessions.get(uid)
+                if stale_session and self.clock() - stale_session["started"] > STALE and not stale_session["active"]:
+                    self.sessions.pop(uid, None)
+                    stale_session = None
+            if name.startswith(".upload-") and os.path.isdir(path) and not os.path.islink(path) and not stale_session:
                 try:
                     if self.clock() - os.path.getmtime(path) > STALE:
                         shutil.rmtree(path, ignore_errors=True)

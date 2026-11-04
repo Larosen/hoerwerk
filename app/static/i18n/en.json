@@ -1288,5 +1288,15 @@
  "Hörwerk antwortet unter IP-Adressen, Namen aus dem Heimnetz und der öffentlichen Adresse": "Hörwerk answers under IP addresses, home-network names and the public address",
  "Kein Schutz gegen DNS-Rebinding. Besser die eigenen Namen eintragen.": "No protection against DNS rebinding. Better list your own names.",
  "Schutz gegen DNS-Rebinding. Weitere Namen: ALLOWED_HOSTS.": "Protection against DNS rebinding. More names: ALLOWED_HOSTS.",
- "Zuletzt {ago}. Wenn das deine Adresse ist: als öffentliche Adresse eintragen oder ALLOWED_HOSTS setzen.": "Last {ago}. If this is your address: enter it as the public address or set ALLOWED_HOSTS."
+ "Zuletzt {ago}. Wenn das deine Adresse ist: als öffentliche Adresse eintragen oder ALLOWED_HOSTS setzen.": "Last {ago}. If this is your address: enter it as the public address or set ALLOWED_HOSTS.",
+ "Der Upload wird zu groß – bitte in mehreren Teilen hochladen": "The upload is getting too big – please upload in several parts",
+ "Diese Datei ist schon im Upload: {name}": "This file is already in the upload: {name}",
+ "Dieser Upload wird schon abgeschlossen": "This upload is already being finished",
+ "Du hast schon {n} Uploads offen – erst diese abschließen": "You already have {n} uploads open – finish those first",
+ "Es kommen noch Dateien an – bitte warten": "Files are still arriving – please wait",
+ "Gerade laufen zu viele Uploads – bitte später noch einmal": "Too many uploads are running right now – please try again later",
+ "Unterbrochenen Upload abgeschlossen: {names}": "Interrupted upload completed: {names}",
+ "Upload-Reste nicht aufgeräumt: {error}": "Upload leftovers not cleaned up: {error}",
+ "Zu viele Dateien in einem Upload (höchstens {n})": "Too many files in one upload (at most {n})",
+ "Zu viele Daten in deinen offenen Uploads – erst diese abschließen": "Too much data in your open uploads – finish those first"
 }
