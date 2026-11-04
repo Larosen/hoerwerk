@@ -6,6 +6,7 @@ import ipaddress
 import json
 import mimetypes
 import os
+import secrets
 import sys
 import threading
 import time
@@ -345,6 +346,11 @@ class Handler(BaseHTTPRequestHandler):
             result = fn(req, **params)
             if access == "admin" and self.command not in ("GET", "HEAD"):
                 self.server.app.audit(req, f"{self.command} {url.path}")
+        except HTTPException as e:
+            return self._json(e.status_code, {"error": e.detail})
+        except Exception as e:  # noqa: BLE001
+            return self._internal_error(url.path, e)
+        try:
             if isinstance(result, Reply):
                 return self._send(200, json.dumps(result.data, ensure_ascii=False).encode(),
                                   "application/json; charset=utf-8", result.headers)
@@ -354,11 +360,22 @@ class Handler(BaseHTTPRequestHandler):
                 cache = f"private, max-age={result.max_age}" if result.max_age else "no-store"
                 return self._send(200, result.body, result.ctype, {"Cache-Control": cache})
             return self._json(200, result)
-        except HTTPException as e:
-            return self._json(e.status_code, {"error": e.detail})
-        except Exception as e:  # noqa: BLE001
-            self.log_error("Fehler in %s: %r", url.path, e)
-            return self._json(500, {"error": t("Interner Fehler: {error}", error=e)})
+        except (ConnectionError, TimeoutError):
+            self.close_connection = True                 # the browser went away while the answer was sent
+        except Exception as e:  # noqa: BLE001 – e.g. an answer that cannot be turned into JSON
+            return self._internal_error(url.path, e)
+
+    def _internal_error(self, path: str, err: BaseException) -> None:
+        """Unexpected errors: everything into the log, only a number to the browser – no exception text,
+        paths, SQL or keys leave the server. The number finds the entry in the log."""
+        rid = secrets.token_hex(4)
+        applog.error(f"Fehler {rid} in {self.command} {path}: {err!r}\n{traceback.format_exc().rstrip()}", "web")
+        self.close_connection = True
+        try:
+            self._json(500, {"error": t("Interner Fehler (Nr. {id}) – Einzelheiten stehen im Protokoll", id=rid),
+                             "request_id": rid})
+        except OSError:
+            pass                                         # nobody listening any more – the log has it
 
     do_GET = do_POST = do_PUT = do_DELETE = do_HEAD = _dispatch
 

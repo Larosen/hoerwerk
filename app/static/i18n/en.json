@@ -201,7 +201,7 @@
  "Indexer": "Indexer",
  "Indexer nicht gefunden": "Indexer not found",
  "Indien": "India",
- "Interner Fehler: {error}": "Internal error: {error}",
+ "Interner Fehler (Nr. {id}) – Einzelheiten stehen im Protokoll": "Internal error (no. {id}) – details are in the log",
  "Italien": "Italy",
  "JJJJ-MM-TT": "YYYY-MM-DD",
  "Japan": "Japan",

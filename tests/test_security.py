@@ -136,6 +136,31 @@ class WebTest(unittest.TestCase):
         finally:
             c.close()
 
+    def test_internal_error_tells_nothing_but_a_number(self):
+        import applog
+        from web import router
+
+        @router.route("GET", "/api/test-boom", access="user")
+        def boom(req):
+            raise RuntimeError("geheim /config/hoerwerk.db SELECT * FROM accounts apikey=abc123")
+        try:
+            status, _, body = self.req("GET", "/api/test-boom")
+        finally:
+            router.ROUTES[:] = [r for r in router.ROUTES if r[2] is not boom]
+        self.assertEqual(status, 500)
+        answer = json.loads(body)
+        for secret in ("geheim", "/config", "SELECT", "abc123", "RuntimeError", "Traceback"):
+            self.assertNotIn(secret, body.decode())
+        rid = answer["request_id"]
+        self.assertRegex(rid, r"^[0-9a-f]{8}$")
+        self.assertIn(rid, answer["error"])
+        logged = [e["text"] for e in applog.log.since(0, "error") if rid in e["text"]]
+        self.assertEqual(len(logged), 1)
+        self.assertIn("apikey=abc123", logged[0])                         # the full error stays in the log
+        self.assertIn("Traceback", logged[0])
+        status, _, body = self.req("GET", "/api/nothing-here")            # regular HTTP errors unchanged
+        self.assertEqual((status, json.loads(body)["error"]), (404, "Nicht gefunden"))
+
     def test_allowed_hosts(self):
         old = self.app.config
         self.app.config = dataclasses.replace(old, allowed_hosts=frozenset({"tower"}))
