@@ -77,11 +77,17 @@ class UploadsTest(unittest.TestCase):
                     results.append("ok")
                 except uploads.UploadError:
                     results.append("refused")
-            threads = [threading.Thread(target=send, args=(uid, f"B/{i}.mp3")) for i, uid in enumerate((a, b, a, b))]
-            for th in threads:
-                th.start()
             import time
-            time.sleep(0.3)
+            first = threading.Thread(target=send, args=(a, "B/0.mp3"))
+            first.start()                                                            # one file of upload a on its way …
+            for _ in range(200):
+                if self.u.sessions[a]["active"]:
+                    break
+                time.sleep(0.01)
+            threads = [first] + [threading.Thread(target=send, args=(uid, f"B/{i}.mp3"))
+                                 for i, uid in enumerate((b, a, b), 1)]
+            for th in threads[1:]:
+                th.start()                                                           # … the others: over the account limit
             with self.assertRaises(uploads.UploadError):                             # finishing while files arrive
                 self.u.finish(a)
             gate.set()

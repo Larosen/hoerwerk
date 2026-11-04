@@ -242,7 +242,7 @@ class LoadTest(unittest.TestCase):
 
     def setUp(self):
         self.saved = (server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout)
-        server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout = 20, 15, 1
+        server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout = 20, 15, 2
 
     def tearDown(self):
         server.MAX_CONNECTIONS, server.MAX_PER_PEER, server.Handler.timeout = self.saved
@@ -266,39 +266,51 @@ class LoadTest(unittest.TestCase):
             out.append(sock)
         return out
 
+    def until(self, check, seconds=10):
+        import time
+        end = time.monotonic() + seconds
+        while time.monotonic() < end:
+            if check():
+                return True
+            time.sleep(0.05)
+        return check()
+
     @staticmethod
-    def refused(socks):
-        n = 0
-        for sock in socks:
-            sock.settimeout(0.5)
-            try:
-                n += sock.recv(64).startswith(b"HTTP/1.1 503")
-            except OSError:
-                pass
-        return n
+    def refused(socks, expected, seconds=10):
+        """How many got the quick 503 – waiting until ``expected`` answered (a slow machine accepts slowly)."""
+        import select
+        import time
+        answers, pending = {}, list(socks)
+        end = time.monotonic() + seconds
+        while pending and sum(answers.values()) < expected and time.monotonic() < end:
+            ready = select.select(pending, [], [], 0.2)[0]
+            for sock in ready:
+                try:
+                    answers[sock] = sock.recv(64).startswith(b"HTTP/1.1 503")
+                except OSError:
+                    answers[sock] = False
+                pending.remove(sock)
+        return sum(answers.values())
 
     def test_hundred_idle_connections(self):
         import time
         self.server.peak = 0
         socks = self.idle(100, lambda i: f"127.0.0.{2 + i % 10}")         # ten clients, ten connections each
-        time.sleep(0.3)
-        self.assertLessEqual(self.server.peak, 20)                         # the limit holds
-        self.assertEqual(self.server.active, 20)
+        self.assertEqual(self.refused(socks, 80), 80)                       # everyone beyond the limit: 503 …
+        self.assertEqual(self.server.active, 20)                            # … the first 20 are served
+        self.assertLessEqual(self.server.peak, 20)                          # the limit holds
         t0 = time.monotonic()
         status, _, _ = self.req("GET", "/api/health")
         self.assertEqual(status, 503)                                       # answered at once, not hanging
         self.assertLess(time.monotonic() - t0, 1)
-        self.assertEqual(self.refused(socks), 80)
-        time.sleep(1.5)                                                     # idle connections time out …
+        self.assertTrue(self.until(lambda: self.server.active == 0))        # idle connections time out …
         self.assertEqual(self.req("GET", "/api/settings")[0], 200)          # … and free their slots
         for sock in socks:
             sock.close()
 
     def test_one_client_cannot_take_every_slot(self):
         socks = self.idle(20, lambda i: "127.0.0.50")
-        import time
-        time.sleep(0.3)
-        self.assertEqual(self.refused(socks), 5)                            # 15 per address
+        self.assertEqual(self.refused(socks, 5), 5)                         # 15 per address
         self.assertEqual(self.req("GET", "/api/settings")[0], 200)          # everyone else still gets in
         for sock in socks:
             sock.close()
