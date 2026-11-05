@@ -41,6 +41,8 @@ class App:
         os.makedirs(config.config_dir, exist_ok=True)
         self.db = dbm.Database(dbm.db_path(config.config_dir))
         self._db_maintained = 0.0
+        self.library_ready = threading.Event()     # set after the first library scan: processing may start
+        self.library_error = ""
         imported = dbm.import_legacy(self.db, config.config_dir)
         if imported:
             applog.info(f"Übernommen in die Datenbank: {', '.join(imported)}")
@@ -162,21 +164,41 @@ class App:
         if self._started or not self.start_workers:
             return self
         self._started = True
-        self.engine.start()
-        self.pipeline.start()
+        # Books are only processed once the library is known: duplicates are checked against it. The rescanner
+        # reads it first (from the database cache at once, from disk now) and then lets the pipeline start.
+        self.pipeline.scan_note = t("Wartet, bis die Bibliothek eingelesen ist …")
         threading.Thread(target=self._library_rescanner, daemon=True, name="library-index").start()
         threading.Thread(target=self.downloads.run, daemon=True, name="download-watch").start()
         threading.Thread(target=self._request_worker, daemon=True, name="requests").start()
         return self
 
-    def _library_rescanner(self) -> None:
+    def _library_rescanner(self, sleep=time.sleep) -> None:
         """Read the library at start and then every few hours (new books are added right away anyway)."""
+        self.wait_for_library(sleep)
         while True:
+            sleep(max(1, int(self.settings().get("library_rescan_hours") or 6)) * 3600)
             try:
                 self.library_index.scan()
             except Exception as e:  # noqa: BLE001 – keep the thread alive
                 applog.error(t("Bibliothek konnte nicht eingelesen werden: {error}", error=e), "Bibliothek")
-            time.sleep(max(1, int(self.settings().get("library_rescan_hours") or 6)) * 3600)
+
+    def wait_for_library(self, sleep=time.sleep) -> None:
+        """The first scan, then processing starts. If the library cannot be read, nothing is processed (no
+        duplicate check against a half-known library) – the health check says why, and it is tried every minute."""
+        while not self.library_ready.is_set():
+            try:
+                self.library_index.scan()
+            except Exception as e:  # noqa: BLE001
+                self.library_error = str(e) or e.__class__.__name__
+                applog.error(t("Bibliothek konnte nicht eingelesen werden – Verarbeitung wartet: {error}",
+                               error=self.library_error), "Bibliothek")
+                sleep(60)
+                continue
+            self.library_error = ""
+            self.library_ready.set()
+            self.pipeline.scan_note = ""
+            self.engine.start()
+            self.pipeline.start()
 
 
     def _request_worker(self) -> None:

@@ -372,3 +372,35 @@ class LibraryScanRaceTest(unittest.TestCase):
         self.scan_paused(remove_old)
         self.assertEqual(sorted(self.idx.entries), [])
         self.assertEqual(self.db.all("SELECT path FROM library"), [])
+
+
+class StartupOrderTest(unittest.TestCase):
+    """Review 7.13: books were processed before the library was read – the duplicate check could miss copies."""
+
+    def test_processing_waits_for_the_first_library_scan(self):
+        import config
+        import services
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, True)
+        for d in ("cfg", "inbox", "lib"):
+            os.makedirs(os.path.join(root, d))
+        app = services.App(config.Config.from_env({"CONFIG_DIR": os.path.join(root, "cfg"), "INBOX_DIR": os.path.join(root, "inbox"),
+                                                   "LIBRARY_DIR": os.path.join(root, "lib")}), start_workers=False)
+        self.addCleanup(app.db.close)
+        order = []
+        tries = {"n": 0}
+
+        def scan():
+            tries["n"] += 1
+            order.append("scan")
+            if tries["n"] == 1:
+                raise OSError("share not mounted yet")
+            return 0
+        app.library_index.scan = scan
+        app.engine.start = lambda: order.append("engine")
+        app.pipeline.start = lambda: order.append("pipeline")
+        app.wait_for_library(sleep=lambda s: order.append(f"sleep {s}"))
+        # a failed first scan: nothing is processed, it is tried again; only then the queues start
+        self.assertEqual(order, ["scan", "sleep 60", "scan", "engine", "pipeline"])
+        self.assertTrue(app.library_ready.is_set())
+        self.assertEqual(app.library_error, "")

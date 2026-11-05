@@ -1348,5 +1348,10 @@
  "Fertig abgelegt: {name}": "Filed: {name}",
  "Wieder eingereiht: {name} – startet, sobald ein Platz frei ist": "Queued again: {name} – starts as soon as a slot is free",
  "Wird abgebrochen: {name}": "Cancelling: {name}",
- "Die Antwort von Hörwerk war unvollständig – bitte noch einmal versuchen": "The answer from Hörwerk was incomplete – please try again"
+ "Die Antwort von Hörwerk war unvollständig – bitte noch einmal versuchen": "The answer from Hörwerk was incomplete – please try again",
+ "Bibliothek nicht lesbar – es wird nichts verarbeitet": "Library not readable – nothing is processed",
+ "Bibliothek wird eingelesen – Bücher werden danach verarbeitet": "Reading the library – books are processed afterwards",
+ "Erst wenn Hörwerk die Bibliothek kennt, prüft es neue Bücher auf Doppelte.": "Only once Hörwerk knows the library does it check new books for duplicates.",
+ "Wartet, bis die Bibliothek eingelesen ist …": "Waiting until the library has been read …",
+ "Bibliothek konnte nicht eingelesen werden – Verarbeitung wartet: {error}": "Library could not be read – processing waits: {error}"
 }
