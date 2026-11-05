@@ -341,6 +341,119 @@ class Pipeline(ContractTest):
                         30, what="upload becomes a job")
 
 
+class Processing(ContractTest):
+    """The pipeline's other paths: duplicates, broken downloads, packs, own data, taking a book back."""
+
+    TAGS = {"artist": "Anna Autorin", "album_artist": "Anna Autorin", "genre": "Hörbuch"}
+
+    def job(self, name: str, until=("done", "failed", "review", "cancelled"), seconds: float = 90) -> dict:
+        def find():
+            j = next((j for j in self.admin.get("/api/audiobooks")["jobs"] if j["name"] == name), None)
+            return j if j and j["status"] in until else None
+        return self.admin.wait(find, seconds, what=f"{name} in {until}")
+
+    def book(self, name: str, album: str, n: int = 1, extra: dict = None) -> None:
+        deliver(self.server.inbox, name, {f"{i + 1:02d}.mp3": {**self.TAGS, "album": album, "title": f"Teil {i + 1}",
+                                                               "track": str(i + 1), **(extra or {})} for i in range(n)})
+
+    def test_duplicate_is_asked_then_replaced(self):
+        self.book("Anna Autorin - Doppelt", "Doppelt")
+        first = self.job("Anna Autorin - Doppelt")
+        self.assertEqual(first["status"], "done", first)
+        self.book("Anna Autorin - Doppelt (neu)", "Doppelt", n=2)
+        second = self.job("Anna Autorin - Doppelt (neu)")
+        self.assertEqual(second["status"], "review")
+        self.assertEqual(second["duplicate"]["path"], "Anna Autorin/Doppelt")
+        self.assertEqual(second["duplicate"]["why"], "title")
+        self.assertEqual(sorted(second["duplicate"]["quality"]), ["new", "old"])
+        self.admin.call("POST", f'/api/audiobooks/{second["id"]}/duplicate', {"action": "replace"})
+        done = self.job("Anna Autorin - Doppelt (neu)", until=("done", "failed"))
+        self.assertEqual(done["status"], "done", done)
+        self.assertEqual(done["dest"], os.path.join(self.server.library, "Anna Autorin", "Doppelt", "Doppelt.m4b"))
+        moved = os.path.join(self.server.inbox, "_ersetzt", "Anna Autorin", "Doppelt", "Doppelt.m4b")
+        self.assertTrue(os.path.isfile(moved), "the old copy is kept in _ersetzt")
+
+    def test_duplicate_can_be_discarded(self):
+        self.book("Anna Autorin - Einmal", "Einmal")
+        self.assertEqual(self.job("Anna Autorin - Einmal")["status"], "done")
+        self.book("Anna Autorin - Einmal (2)", "Einmal")
+        second = self.job("Anna Autorin - Einmal (2)")
+        self.assertEqual(second["status"], "review")
+        out = self.admin.call("POST", f'/api/audiobooks/{second["id"]}/duplicate', {"action": "discard"})
+        self.assertEqual(out["status"], "cancelled")
+        self.assertTrue(os.path.isdir(os.path.join(self.server.inbox, "_fertig", "Anna Autorin - Einmal (2)")))
+        status, _ = self.admin.call("POST", f'/api/audiobooks/{second["id"]}/duplicate', {"action": "wegwerfen"},
+                                    expect=None)
+        self.assertEqual(status, 400)
+
+    def test_broken_download_fails_and_comes_back_on_retry(self):
+        folder = os.path.join(self.server.dir, ".incoming", "Kaputt - Buch")
+        os.makedirs(folder)
+        with open(os.path.join(folder, "01.mp3"), "wb") as fh:
+            fh.write(b"ID3" + b"\x00" * 4000)                               # looks like MP3, holds no audio
+        os.rename(folder, os.path.join(self.server.inbox, "Kaputt - Buch"))
+        job = self.job("Kaputt - Buch")
+        self.assertEqual(job["status"], "failed")
+        self.assertTrue(job["error"])
+        failed = os.path.join(self.server.inbox, "_failed", "Kaputt - Buch")
+        self.assertTrue(os.path.isfile(os.path.join(failed, "FEHLER.txt")))
+        self.assertEqual(job["dest"], failed)
+        detail = self.admin.get(f'/api/audiobooks/{job["id"]}')
+        self.assertTrue(any("Fehler" in line for line in detail["log"]))
+        again = self.admin.call("POST", f'/api/audiobooks/{job["id"]}/retry')
+        self.assertEqual(again["status"], "queued")
+        self.assertTrue(os.path.isdir(os.path.join(self.server.inbox, "Kaputt - Buch")))
+        self.assertFalse(os.path.exists(os.path.join(self.server.inbox, "Kaputt - Buch", "FEHLER.txt")))
+        self.assertEqual(self.job("Kaputt - Buch")["status"], "failed")
+        self.admin.call("DELETE", f'/api/audiobooks/{job["id"]}')
+        self.assertNotIn(job["id"], [j["id"] for j in self.admin.get("/api/audiobooks")["jobs"]])
+
+    def test_pack_becomes_one_job_per_volume(self):
+        tmp = os.path.join(self.server.dir, ".incoming", "Paula Pack - Reihe 01-02")
+        for vol, title in ((1, "Erster Fall"), (2, "Zweiter Fall")):
+            tone(os.path.join(tmp, f"0{vol} - {title}", "01.mp3"),
+                 tags={"artist": "Paula Pack", "album": title, "title": "Teil 1"})
+        os.rename(tmp, os.path.join(self.server.inbox, "Paula Pack - Reihe 01-02"))
+        a, b = self.job("01 - Erster Fall"), self.job("02 - Zweiter Fall")
+        self.assertEqual((a["status"], b["status"]), ("done", "done"), (a, b))
+        self.assertEqual((a["pack"]["volume"], b["pack"]["volume"]), (1, 2))
+        self.assertEqual(a["pack"]["series"], "Reihe")
+        m4b = sorted(os.path.relpath(os.path.join(r, f), self.server.library)
+                     for r, _, fs in os.walk(self.server.library) for f in fs if f.endswith(".m4b") and "Paula" in r)
+        self.assertEqual(m4b, ["Paula Pack/Erster Fall/Erster Fall.m4b", "Paula Pack/Zweiter Fall/Zweiter Fall.m4b"])
+
+    def test_metadata_file_wins_and_book_can_be_taken_back(self):
+        tmp = os.path.join(self.server.dir, ".incoming", "Unbekannt - Eigenes")
+        tone(os.path.join(tmp, "01.mp3"), tags={"artist": "Irgendwer", "album": "Falscher Titel"})
+        with open(os.path.join(tmp, "metadata.json"), "w", encoding="utf-8") as fh:
+            json.dump({"title": "Richtiger Titel", "authors": ["Ruth Richtig"], "series": ["Meine Reihe #2"],
+                       "narrators": "Sina Sprecherin, Sven Sprecher", "publishedYear": 2001}, fh)
+        os.rename(tmp, os.path.join(self.server.inbox, "Unbekannt - Eigenes"))
+        job = self.job("Unbekannt - Eigenes")
+        self.assertEqual(job["status"], "done", job)
+        self.assertEqual(job["match"]["source"], "metadata.json")
+        self.assertEqual(job["match"]["series_position"], "2")
+        self.assertEqual(job["match"]["narrators"], ["Sina Sprecherin", "Sven Sprecher"])
+        self.assertEqual(job["dest"], os.path.join(self.server.library, "Ruth Richtig", "Meine Reihe",
+                                                   "02 - Richtiger Titel", "Richtiger Titel.m4b"))
+        meta = json.load(open(os.path.join(os.path.dirname(job["dest"]), "metadata.json"), encoding="utf-8"))
+        self.assertEqual((meta["series"], meta["publishedYear"]), (["Meine Reihe #2"], "2001"))
+        back = self.admin.call("POST", f'/api/audiobooks/{job["id"]}/reopen')
+        self.assertEqual(back["status"], "review")
+        self.assertFalse(os.path.exists(job["dest"]))
+        self.assertFalse(os.path.exists(os.path.join(self.server.library, "Ruth Richtig")))   # empty folders go
+        # own data on top of the file's tags: an empty field keeps what the tags say (here: the series)
+        self.admin.call("POST", f'/api/audiobooks/{job["id"]}/manual',
+                        {"title": "Neuer Titel", "authors": "Ruth Richtig, Rolf Richtig", "series": ""})
+        again = self.job("Unbekannt - Eigenes", until=("done", "failed"))
+        self.assertEqual(again["status"], "done", again)
+        self.assertEqual(again["match"]["authors"], ["Ruth Richtig", "Rolf Richtig"])
+        self.assertEqual(again["dest"], os.path.join(self.server.library, "Ruth Richtig", "Meine Reihe",
+                                                     "02 - Neuer Titel", "Neuer Titel.m4b"))
+        books = self.admin.get("/api/library/books?q=richtig")["books"]
+        self.assertEqual([b["title"] for b in books], ["Neuer Titel"])
+
+
 class Live(ContractTest):
     def test_events_stream(self):
         c = http.client.HTTPConnection("127.0.0.1", self.server.port, timeout=10)
