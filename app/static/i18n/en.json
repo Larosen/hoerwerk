@@ -1347,5 +1347,6 @@
  "Fehlgeschlagen: {name} – {error}": "Failed: {name} – {error}",
  "Fertig abgelegt: {name}": "Filed: {name}",
  "Wieder eingereiht: {name} – startet, sobald ein Platz frei ist": "Queued again: {name} – starts as soon as a slot is free",
- "Wird abgebrochen: {name}": "Cancelling: {name}"
+ "Wird abgebrochen: {name}": "Cancelling: {name}",
+ "Die Antwort von Hörwerk war unvollständig – bitte noch einmal versuchen": "The answer from Hörwerk was incomplete – please try again"
 }

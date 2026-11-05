@@ -167,13 +167,11 @@ async function lookupBooks(e?: Event): Promise<void> {
   if (!q) { input.focus(); return; }
   clearBook();
   const btn = $<HTMLButtonElement>("#bookLookupBtn");
-  btn.disabled = true;
-  btn.textContent = t("Suche …");
   try {
     const language = document.querySelector<HTMLInputElement>("#bookLang input:checked")?.value || "de";
     store.set("bookLang", language);
     const res = await api<{ books: Book[]; region: string }>("POST", "/api/search/books", { query: q, language },
-      { key: "booksearch", busy: t("Sucht …") });
+      { key: "booksearch", busy: t("Sucht …"), button: btn });
     const box = $("#bookPick");
     box.hidden = false;
     box.replaceChildren(
@@ -190,7 +188,7 @@ async function lookupBooks(e?: Event): Promise<void> {
             b.runtime_min ? fmtDuration(b.runtime_min * 60) : "", b.format_type === "abridged" ? t("gekürzt") : "",
             b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : ""].filter(Boolean).join(" · ")),
           b.owned ? el("span", { class: "owned", title: b.owned.path }, t("✓ schon in der Bibliothek")) : null)))));
-  } catch (err) { toast(errMsg(err), true); } finally { btn.disabled = false; btn.textContent = t("Suchen"); }
+  } catch (err) { if (!isSuperseded(err)) toast(errMsg(err), true); }
 }
 
 /** The series among the hits (once each): "Ganze Reihe anfragen" without picking a single volume first. */
@@ -244,15 +242,13 @@ async function runSearch(e?: Event, free = false): Promise<void> {
   if (!q) return;
   if (free) clearBook();
   const go = $<HTMLButtonElement>("#searchGo");
-  go.disabled = true;
-  go.textContent = t("Suche …");
   const lang = $<HTMLSelectElement>("#searchLang").value;
   store.set("searchLang", lang);
   try {
     // while the term is still the suggested one, the server tries more spellings and broader terms if nothing fits
     const book = search.book && q === bookQueries(search.book).query ? search.book : null;
     const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, book },
-      { key: "releasesearch", busy: t("Sucht …"), timeout: 120_000 });
+      { key: "releasesearch", busy: t("Sucht …"), timeout: 120_000, button: go });
     search.results = res.results;
     renderResults();
     const queries = res.queries || [];
@@ -262,9 +258,10 @@ async function runSearch(e?: Event, free = false): Promise<void> {
       (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "");
     renderOwnedNote(res.library || []);
   } catch (err) {
+    if (isSuperseded(err)) return;                 // a newer search shows its own result
     toast(errMsg(err), true);
     $("#searchNote").textContent = errMsg(err);
-  } finally { go.disabled = false; go.textContent = t("Releases suchen"); }
+  }
 }
 
 /** The search term itself matches books in the library: say so above the results. */

@@ -322,6 +322,16 @@ class ApiError extends Error {
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
 
+/** A request replaced by a newer one with the same key (a search while typing): not an error, nothing to show.
+ *  Its message is empty, so ``toast(errMsg(e))`` in any caller stays silent; buttons and lists ignore it. */
+class SupersededError extends Error {
+  constructor() { super(""); this.name = "SupersededError"; }
+}
+
+function isSuperseded(e: unknown): boolean {
+  return e instanceof SupersededError;
+}
+
 /** What the server said, readable and short – never a stack trace or a page of HTML. */
 function cleanMessage(text: string): string {
   const first = text.split(/\n\s*(?:Traceback|File ")/)[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -332,39 +342,48 @@ async function request<T>(method: string, url: string, body: unknown, opts: ApiO
   const ctrl = new AbortController();
   const write = method !== "GET" && method !== "HEAD";
   let timedOut = false;
+  // the time limit covers everything: connecting, the headers AND the whole body – a proxy that stalls in the
+  // middle of an answer must not leave a button spinning forever
   const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, opts.timeout ?? (write ? 90_000 : 30_000));
   if (opts.key) {
     latest.get(opts.key)?.abort();
     latest.set(opts.key, ctrl);
   }
-  let res: Response;
+  const current = (): boolean => !opts.key || latest.get(opts.key) === ctrl;
   try {
-    res = await fetch(url, {
-      method, signal: ctrl.signal,
-      // custom header = proof for the server that the request comes from this page (CSRF protection)
-      headers: { "X-Requested-With": "Hoerwerk", ...(body ? { "Content-Type": "application/json" } : {}) },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-  } catch {
+    let res: Response;
+    let text: string;
+    try {
+      res = await fetch(url, {
+        method, signal: ctrl.signal,
+        // custom header = proof for the server that the request comes from this page (CSRF protection)
+        headers: { "X-Requested-With": "Hoerwerk", ...(body ? { "Content-Type": "application/json" } : {}) },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      text = await res.text();
+    } catch {
+      if (!current()) throw new SupersededError();
+      throw new ApiError(timedOut ? t("Der Server antwortet nicht – bitte noch einmal versuchen")
+        : t("Keine Verbindung zu Hörwerk – Netzwerk prüfen und noch einmal versuchen"), 0);
+    }
+    if (!current()) throw new SupersededError();          // a newer search answered meanwhile or is running
+    let data = {} as T & { error?: string; login?: boolean };
+    let parsed = !text;
+    try { if (text) { data = JSON.parse(text) as typeof data; parsed = true; } } catch { /* not JSON: a proxy or the limit page */ }
+    if (res.status === 401 && data.login && location.pathname !== "/login") location.replace("/login");
+    if (!res.ok) {
+      const fallback = res.status === 503 ? t("Hörwerk ist gerade ausgelastet – gleich noch einmal versuchen")
+        : res.status === 502 || res.status === 504 ? t("Hörwerk ist gerade nicht erreichbar")
+        : res.status === 421 ? cleanMessage(text) : `HTTP ${res.status}`;
+      throw new ApiError(cleanMessage(data.error || "") || fallback, res.status);
+    }
+    // a 200 whose body is cut off or no JSON is no success
+    if (!parsed) throw new ApiError(t("Die Antwort von Hörwerk war unvollständig – bitte noch einmal versuchen"), res.status);
+    return data;
+  } finally {
     clearTimeout(timer);
-    if (opts.key && latest.get(opts.key) !== ctrl) return new Promise<T>(() => { /* replaced by a newer one */ });
-    throw new ApiError(timedOut ? t("Der Server antwortet nicht – bitte noch einmal versuchen")
-      : t("Keine Verbindung zu Hörwerk – Netzwerk prüfen und noch einmal versuchen"), 0);
+    if (opts.key && latest.get(opts.key) === ctrl) latest.delete(opts.key);
   }
-  clearTimeout(timer);
-  if (opts.key && latest.get(opts.key) !== ctrl) return new Promise<T>(() => { /* a newer answer counts */ });
-  if (opts.key) latest.delete(opts.key);
-  const text = await res.text().catch(() => "");
-  let data = {} as T & { error?: string; login?: boolean };
-  try { data = (text ? JSON.parse(text) : {}) as typeof data; } catch { /* not JSON: a proxy or the limit page */ }
-  if (res.status === 401 && data.login && location.pathname !== "/login") location.replace("/login");
-  if (!res.ok) {
-    const fallback = res.status === 503 ? t("Hörwerk ist gerade ausgelastet – gleich noch einmal versuchen")
-      : res.status === 502 || res.status === 504 ? t("Hörwerk ist gerade nicht erreichbar")
-      : res.status === 421 ? cleanMessage(text) : `HTTP ${res.status}`;
-    throw new ApiError(cleanMessage(data.error || "") || fallback, res.status);
-  }
-  return data;
 }
 
 async function api<T = unknown>(method: string, url: string, body?: unknown, opts: ApiOptions = {}): Promise<T> {
@@ -416,14 +435,14 @@ function trackButton(btn: HTMLElement, work: Promise<unknown>, label?: string): 
   const n = (busyCount.get(btn) || 0) + 1;
   busyCount.set(btn, n);
   if (n === 1) setBusy(btn, true, label);
-  const end = (ok: boolean): void => {
+  const end = (ok: boolean | null): void => {      // null: replaced by a newer request – no green, no red
     const left = (busyCount.get(btn) || 1) - 1;
     busyCount.set(btn, left);
     if (left) return;
     setBusy(btn, false);
-    flash(btn, ok);
+    if (ok !== null) flash(btn, ok);
   };
-  work.then(() => end(true), () => end(false));
+  work.then(() => end(true), (e: unknown) => end(isSuperseded(e) ? null : false));
 }
 
 function setBusy(btn: HTMLElement, on: boolean, label?: string): void {
@@ -499,6 +518,7 @@ async function loadList(container: HTMLElement, load: () => Promise<void>, opts:
     container.querySelectorAll(":scope > .skeleton").forEach((n) => n.remove());
     return true;
   } catch (e) {
+    if (isSuperseded(e)) return false;              // a newer load of this list is on its way
     if (empty || container.querySelector(":scope > .skeleton")) {
       container.dataset.state = "error";
       const retry = el("button", { type: "button", class: "btn small" }, icon("refresh"), t("Erneut versuchen"));
