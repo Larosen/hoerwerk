@@ -285,6 +285,32 @@ class Settings(ContractTest):
         self.assertNotIn("geheim-123", json.dumps(src))
 
 
+class System(ContractTest):
+    def test_diagnostics_and_system(self):
+        d = self.admin.get("/api/diagnostics")
+        ids = [c["id"] for c in d["checks"]]
+        for want in ("ip", "proxy", "public_url", "hosts", "totp", "totp_required", "authlog", "blocked",
+                     "dir-Eingang", "dir-Bibliothek", "dir-Konfiguration", "indexers", "sab", "ntfy", "audible",
+                     "version", "ffmpeg", "sandbox", "queues"):
+            self.assertIn(want, ids)
+        by = {c["id"]: c for c in d["checks"]}
+        self.assertEqual(by["ip"]["title"], "Hörwerk sieht dich als 127.0.0.1")
+        self.assertEqual((by["authlog"]["status"], by["blocked"]["status"]), ("ok", "ok"))
+        self.assertEqual(by["totp"]["status"], "warn")                     # the admin has no second factor
+        self.assertEqual(by["dir-Eingang"]["status"], "ok")
+        self.assertEqual(by["ffmpeg"]["status"], "ok")
+        for c in d["checks"]:
+            self.assertEqual(sorted(c), ["detail", "group", "hint", "id", "status", "title"])
+            self.assertIn(c["status"], ("ok", "warn", "error", "info"))
+        self.assertEqual(sorted(d["services"]), ["abs", "indexers", "plex", "sab"])
+        self.assertEqual(d["version"], self.admin.get("/api/health")["version"])
+        sysinfo = self.admin.get("/api/system")
+        self.assertEqual(sorted(sysinfo), ["ffmpeg", "queues", "sandbox", "version"])
+        self.assertTrue({"mode", "landlock_abi", "active", "network_blocked"} <= set(sysinfo["sandbox"]))
+        self.assertEqual(sorted(sysinfo["queues"]), ["encode", "io"])
+        self.assertEqual(self.family().call("GET", "/api/diagnostics", expect=None)[0], 403)
+
+
 class Requests(ContractTest):
     BOOK = {"asin": "B0VERTRAG1", "title": "Der Vertrag", "authors": ["Anna Autorin"], "language": "german",
             "runtime_min": 300}

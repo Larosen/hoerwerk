@@ -52,6 +52,9 @@ pub struct App {
     pub settings: Settings,
     pub slots: Slots,
     pub refused_hosts: Mutex<HashMap<String, (f64, f64)>>,
+    /// proxies in the own network that send X-Forwarded-For but are not trusted: peer -> (last seen, last logged)
+    pub untrusted_proxies: Mutex<HashMap<String, (f64, f64)>>,
+    pub started: f64,
     /// topic -> version; a change wakes every live connection
     pub versions: Mutex<HashMap<String, u64>>,
     pub changed: Notify,
@@ -104,6 +107,8 @@ impl App {
             cfg,
             slots: Slots::new(),
             refused_hosts: Mutex::new(HashMap::new()),
+            untrusted_proxies: Mutex::new(HashMap::new()),
+            started: text::now(),
             versions: Mutex::new(HashMap::new()),
             changed: Notify::new(),
             sse_clients: AtomicUsize::new(0),
@@ -153,6 +158,27 @@ impl App {
                 &text::t(
                     "Aufruf unter dem Namen „{host}“ abgelehnt (Schutz gegen DNS-Rebinding). Wenn das deine Adresse ist: unter Einstellungen → Allgemein als öffentliche Adresse eintragen oder ALLOWED_HOSTS={host} setzen.",
                     &[("host", name)],
+                ),
+            );
+        }
+    }
+
+    pub fn note_untrusted(&self, peer: &str) {
+        let now = text::now();
+        let mut seen = self.untrusted_proxies.lock().unwrap_or_else(|p| p.into_inner());
+        if seen.len() > 50 && !seen.contains_key(peer) {
+            return;
+        }
+        let logged = seen.get(peer).map_or(0.0, |x| x.1);
+        let log_now = now - logged >= 3600.0;
+        seen.insert(peer.to_string(), (now, if log_now { now } else { logged }));
+        drop(seen);
+        if log_now {
+            text::warn(
+                "Anmeldung",
+                &text::t(
+                    "{peer} schickt X-Forwarded-For, steht aber nicht in TRUSTED_PROXIES – alle Besucher über diesen Proxy erscheinen mit seiner Adresse (Anmelde-Sperre, CrowdSec). TRUSTED_PROXIES={peer} setzen.",
+                    &[("peer", peer)],
                 ),
             );
         }

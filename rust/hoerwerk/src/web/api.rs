@@ -35,7 +35,7 @@ macro_rules! h {
 
 fn handler_for(method: &str, path: &str) -> Handler {
     match (method, path) {
-        ("GET", "/api/health") => h!(health),
+        ("GET", "/api/health") => h!(super::system::health),
         ("GET", "/api/auth/status") => h!(auth_status),
         ("POST", "/api/auth/setup") => h!(setup),
         ("POST", "/api/auth/login") => h!(login),
@@ -54,7 +54,7 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("PUT", "/api/settings") => h!(settings_put),
         ("GET", "/api/logs") => h!(logs),
         ("GET", "/api/events") => h!(events),
-        ("GET", "/api/system") => h!(system),
+        ("GET", "/api/system") => h!(super::system::system),
         ("GET", "/api/invites") => h!(invites_list),
         ("POST", "/api/invites") => h!(invites_create),
         ("POST", "/api/invites/{iid}/revoke") => h!(invites_revoke),
@@ -127,6 +127,7 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("DELETE", "/api/me/listening/{kind}") => h!(super::listening::unlink),
         ("GET", "/api/listening/accounts") => h!(super::listening::accounts),
         ("PUT", "/api/listening/link") => h!(super::listening::set_link),
+        ("GET", "/api/diagnostics") => h!(super::system::diagnostics),
         _ => h!(not_yet),
     }
 }
@@ -215,21 +216,6 @@ fn home(req: &Req) -> bool {
 }
 
 // -- system ---------------------------------------------------------------------------
-async fn health(_: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
-    if req.user.is_some() {
-        json_reply(json!({"ok": true, "version": crate::settings::version()}))
-    } else {
-        json_reply(json!({"ok": true}))
-    }
-}
-
-async fn system(_: Arc<App>, _: Req, _: HashMap<String, String>) -> Reply {
-    json_reply(
-        json!({"version": crate::settings::version(), "backend": "rust", "ffmpeg": "",
-                      "sandbox": {"mode": "auto", "landlock_abi": 0, "active": false, "network_blocked": false},
-                      "queues": {"encode": {"workers": 1, "running": 0, "waiting": 0}, "io": {"workers": 2, "running": 0, "waiting": 0}}}),
-    )
-}
 
 async fn logs(_: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
     let after = req.query.get("after").and_then(|v| v.parse().ok()).unwrap_or(0);

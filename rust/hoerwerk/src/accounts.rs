@@ -448,6 +448,16 @@ impl Accounts {
         }
     }
 
+    /// Addresses (IPv6: /64 networks) blocked right now – for the health check.
+    pub fn blocked_count(&self) -> usize {
+        let ts = now();
+        let b = self.brake.lock().unwrap_or_else(|p| p.into_inner());
+        b.ip_fails
+            .values()
+            .filter(|q| q.iter().filter(|x| **x >= ts - WINDOW).count() >= IP_FAILS)
+            .count()
+    }
+
     pub fn fail(&self, ip: &str, name: &str) {
         let ts = now();
         let mut b = self.brake.lock().unwrap_or_else(|p| p.into_inner());

@@ -163,6 +163,43 @@ fn absolute(p: &Path) -> String {
         .to_string()
 }
 
+/// How ffmpeg is jailed (sandbox.status): hw-run answers with --status.
+pub fn sandbox_status() -> Value {
+    let mode = sandbox_mode();
+    let launcher = hw_run();
+    if launcher.is_empty() {
+        return json!({"mode": mode, "landlock_abi": 0, "active": false, "network_blocked": false, "launcher": "none", "seccomp": false});
+    }
+    let out = run_output(&[launcher, "--status".into()], Duration::from_secs(10))
+        .and_then(|(_, o, _)| serde_json::from_slice::<Value>(&o).ok())
+        .unwrap_or(json!({}));
+    let abi = out["landlock_abi"].as_i64().unwrap_or(0);
+    json!({"mode": mode, "landlock_abi": abi, "active": mode != "off" && abi > 0, "network_blocked": mode != "off",
+           "launcher": "hw-run", "seccomp": mode != "off"})
+}
+
+static FFMPEG_VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// "7.1" & co. – or "nicht gefunden" (asked once).
+pub fn ffmpeg_version() -> String {
+    FFMPEG_VERSION
+        .get_or_init(|| {
+            let first = command(&ffmpeg_bin(), &["-hide_banner".into(), "-version".into()], &[], &[], "")
+                .ok()
+                .and_then(|a| run_output(&a, Duration::from_secs(20)))
+                .map(|(_, o, _)| String::from_utf8_lossy(&o).lines().next().unwrap_or("").to_string())
+                .unwrap_or_default();
+            let v = first.replace("ffmpeg version ", "");
+            let v = v.split(" Copyright").next().unwrap_or("").to_string();
+            if v.is_empty() {
+                crate::text::t("nicht gefunden", &[])
+            } else {
+                v
+            }
+        })
+        .clone()
+}
+
 pub fn ffmpeg_bin() -> String {
     env_or("FFMPEG", "ffmpeg")
 }

@@ -8,6 +8,7 @@ pub mod library;
 pub mod listening;
 pub mod requests;
 pub mod search;
+pub mod system;
 pub mod upload;
 
 use std::collections::HashMap;
@@ -159,6 +160,16 @@ fn client(app: &App, peer: SocketAddr, h: &HeaderMap) -> Conn {
         .iter()
         .any(|k| !header_str(h, k).is_empty());
     if !trusted {
+        // a proxy in the own network that is not trusted: the visitors' real addresses get lost – say so
+        let private = match peer_ip {
+            IpAddr::V4(v4) => {
+                v4.is_private() || v4.is_link_local() || (v4.octets()[0] == 100 && (64..128).contains(&v4.octets()[1]))
+            }
+            IpAddr::V6(v6) => (v6.segments()[0] & 0xfe00) == 0xfc00 || (v6.segments()[0] & 0xffc0) == 0xfe80,
+        };
+        if forwarded && private && !peer_ip.is_loopback() {
+            app.note_untrusted(&peer_ip.to_string());
+        }
         return Conn {
             peer: peer_ip,
             trusted,
