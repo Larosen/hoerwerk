@@ -22,7 +22,14 @@ RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY frontend/ frontend/
 RUN mkdir -p app/static && npx tsc -p tsconfig.json
 
-# Stage 3: the app. Python 3.15 on Debian 13 "trixie" (stable, security updates via the weekly rebuild).
+# Stage 3: hw-run – the Rust jail for ffmpeg/ffprobe (Landlock + seccomp, rust/hw-run). Cargo.lock pins every
+# crate; --locked refuses a build that would change it.
+FROM rust:1.97-slim-trixie AS rust
+WORKDIR /src
+COPY rust/ ./
+RUN cargo build --release --locked -p hw-run && ./target/release/hw-run --status
+
+# Stage 4: the app. Python 3.15 on Debian 13 "trixie" (stable, security updates via the weekly rebuild).
 FROM python:3.15-slim-trixie
 
 # tini for clean signal handling; ffmpeg/ffprobe from stage 1 (only libc/libm needed)
@@ -30,6 +37,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends tini \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin/
+COPY --from=rust /src/target/release/hw-run /usr/local/bin/hw-run
 
 WORKDIR /app
 COPY requirements.txt /tmp/requirements.txt

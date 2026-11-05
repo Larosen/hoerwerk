@@ -15,6 +15,10 @@ formats Hörwerk reads (``docker/build-ffmpeg.sh``) – the jail is the second w
 
 ``FFMPEG_SANDBOX``: ``auto`` (default: jail when the kernel supports it), ``require``
 (refuse to run ffmpeg without it), ``off``.
+
+**hw-run** (Rust, ``rust/hw-run``, in the image at ``/usr/local/bin/hw-run``) is the same launcher with the same
+command line, plus a seccomp filter (no sockets, ptrace, mounts, namespaces, BPF, io_uring …) and Landlock signal and
+abstract-socket scoping. When it is there it is used; this file's launcher is the fallback (``HW_RUN`` overrides).
 """
 from __future__ import annotations
 
@@ -31,6 +35,20 @@ MODE = os.environ.get("FFMPEG_SANDBOX", "auto").strip().lower()
 MEMORY_MB = int(os.environ.get("FFMPEG_MEMORY_MB", "4096"))
 MAX_FILE_GB = int(os.environ.get("FFMPEG_MAX_FILE_GB", "32"))
 HERE = os.path.abspath(__file__)
+
+
+def hw_run() -> str:
+    """Path of the Rust launcher, "" when it is not installed (HW_RUN=off forces the Python launcher)."""
+    want = os.environ.get("HW_RUN", "")
+    if want.lower() == "off":
+        return ""
+    if want:
+        return want if os.access(want, os.X_OK) else ""
+    for d in ("/usr/local/bin", *os.environ.get("PATH", "").split(os.pathsep)):
+        p = os.path.join(d, "hw-run")
+        if d and os.path.isfile(p) and os.access(p, os.X_OK):
+            return p
+    return ""
 
 # --- Landlock (include/uapi/linux/landlock.h) --------------------------------
 SYS_CREATE, SYS_ADD_RULE, SYS_RESTRICT = 444, 445, 446      # same numbers on x86_64 and arm64
@@ -134,7 +152,8 @@ def command(binary: str, args: Sequence[str], read: Iterable[str] = (), write: I
     if MODE == "off":
         cmd = [binary, *args]
         return (["nice", "-n", nice] + cmd) if nice and nice != "0" else cmd
-    launcher = [sys.executable, "-I", "-S", HERE]
+    rust = hw_run()
+    launcher = [rust] if rust else [sys.executable, "-I", "-S", HERE]
     for p in read:
         launcher += ["--read", os.path.abspath(p)]
     for p in write:
@@ -154,8 +173,10 @@ def ffprobe(args: Sequence[str], read: Iterable[str] = ()) -> List[str]:
 
 def status() -> dict:
     abi = landlock_abi()
+    rust = hw_run()
     return {"mode": MODE, "landlock_abi": abi, "active": MODE != "off" and abi > 0,
-            "network_blocked": MODE != "off" and abi >= 4}
+            "network_blocked": MODE != "off" and (abi >= 4 or bool(rust)),
+            "launcher": "hw-run" if rust else "python", "seccomp": MODE != "off" and bool(rust)}
 
 
 # --------------------------------------------------------------------------- #

@@ -69,6 +69,36 @@ jobs:
         working-directory: contract
         run: python -m unittest discover -s . -v
 
+  # Rust (rust/): format, lints, tests of the ffmpeg jail against the runner's real kernel, the crates' licenses and
+  # advisories – and the app's sandbox and encoder tests through hw-run.
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
+        with:
+          python-version: "3.15"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: rustup show active-toolchain || rustup toolchain install
+      - run: cargo fmt --check
+      - run: cargo clippy --release --all-targets --locked -- -D warnings
+      - run: cargo test --release --locked
+      - name: Licenses, advisories and sources of every crate
+        run: |
+          cargo install --locked cargo-deny@0.20.2
+          cargo deny check
+      - name: The app's ffmpeg calls through hw-run (jail required)
+        working-directory: .
+        env:
+          HW_RUN: ${{ github.workspace }}/rust/target/release/hw-run
+          FFMPEG_SANDBOX: require
+        run: |
+          pip install -r requirements.txt
+          python -m unittest tests.test_sandbox tests.test_encoder -v
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -153,7 +183,7 @@ jobs:
   #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   #   gh attestation verify oci://ghcr.io/<owner>/hoerwerk@sha256:… --owner <owner>
   image:
-    needs: [test, contract, frontend, image-test]
+    needs: [test, contract, rust, frontend, image-test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:

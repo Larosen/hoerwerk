@@ -14,3 +14,4 @@ e2e/.run/
 .coverage
 coverage.xml
 sbom.spdx.json
+rust/target/

@@ -30,10 +30,21 @@ def jailed(cmd, read=(), write=()):
 class CommandTest(unittest.TestCase):
     @unittest.skipIf(sandbox.MODE == "off", "FFMPEG_SANDBOX=off")
     def test_launcher_argv(self):
-        cmd = sandbox.command("ffmpeg", ["-i", "a.mp3"], read=["/in/a.mp3"], write=["/work"], nice="10")
-        self.assertEqual(cmd[:4], [sys.executable, "-I", "-S", sandbox.HERE])
-        self.assertEqual(cmd[4:], ["--read", "/in/a.mp3", "--write", "/work", "--nice", "10", "--",
-                                   "ffmpeg", "-i", "a.mp3"])
+        """Python launcher and hw-run (Rust) take the same command line."""
+        flags = ["--read", "/in/a.mp3", "--write", "/work", "--nice", "10", "--", "ffmpeg", "-i", "a.mp3"]
+        old = os.environ.get("HW_RUN")
+        try:
+            os.environ["HW_RUN"] = "off"
+            cmd = sandbox.command("ffmpeg", ["-i", "a.mp3"], read=["/in/a.mp3"], write=["/work"], nice="10")
+            self.assertEqual(cmd, [sys.executable, "-I", "-S", sandbox.HERE, *flags])
+            os.environ["HW_RUN"] = "/bin/true"                       # any executable stands in for hw-run
+            cmd = sandbox.command("ffmpeg", ["-i", "a.mp3"], read=["/in/a.mp3"], write=["/work"], nice="10")
+            self.assertEqual(cmd, ["/bin/true", *flags])
+        finally:
+            if old is None:
+                os.environ.pop("HW_RUN", None)
+            else:
+                os.environ["HW_RUN"] = old
 
     def test_bad_launcher_arguments(self):
         self.assertEqual(sandbox.main(["--evil", "x", "--", "true"]), 2)
