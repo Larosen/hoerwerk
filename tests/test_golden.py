@@ -1,5 +1,4 @@
 """The tag writer still produces exactly contract/golden/tags.json – the yardstick a Rust writer must meet too."""
-import json
 import os
 import shutil
 import sys
@@ -16,7 +15,7 @@ import tagger  # noqa: E402
 class GoldenTagsTest(unittest.TestCase):
     def test_python_writer_matches_golden(self):
         import make_golden
-        want = json.load(open(os.path.join(HERE, "..", "contract", "golden", "tags.json"), encoding="utf-8"))
+        want = make_golden._load(os.path.join(HERE, "..", "contract", "golden", "tags.json"))
         self.assertEqual(make_golden.golden(tagger.write_tags), want)
 
 

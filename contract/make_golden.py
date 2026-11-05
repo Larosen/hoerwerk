@@ -16,6 +16,11 @@ import tagger  # noqa: E402
 from read_tags import describe  # noqa: E402
 
 
+def _load(path: str):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
 def sample_m4b(path: str) -> None:
     meta = os.path.join(os.path.dirname(path), "chapters.txt")
     with open(meta, "w") as fh:
@@ -26,11 +31,12 @@ def sample_m4b(path: str) -> None:
 
 
 def cover_jpeg() -> bytes:
-    return open(os.path.join(HERE, "golden", "cover.jpg"), "rb").read()
+    with open(os.path.join(HERE, "golden", "cover.jpg"), "rb") as fh:
+        return fh.read()
 
 
 def golden(writer) -> dict:
-    spec = json.load(open(os.path.join(HERE, "golden", "book.json"), encoding="utf-8"))
+    spec = _load(os.path.join(HERE, "golden", "book.json"))
     tmp = tempfile.mkdtemp()
     path = os.path.join(tmp, "book.m4b")
     sample_m4b(path)
