@@ -68,6 +68,10 @@ pub async fn link_abs(app: Arc<App>, req: Req, _: Params) -> Reply {
         Err((from_abs, e)) => {
             if from_abs && (e.contains("falsch") || e.contains("wrong")) {
                 app.accounts.fail(&req.ip, &req.user_name());
+                crate::authlog::event(
+                    "login_failed",
+                    &[("user", &req.user_name()), ("ip", &req.ip), ("reason", "bad_abs_login")],
+                );
             }
             error(400, e)
         }

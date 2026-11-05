@@ -5,6 +5,7 @@
 mod accounts;
 mod app;
 mod audible;
+mod authlog;
 mod chapters;
 mod config;
 mod db;
@@ -69,7 +70,7 @@ fn first_account(app: &mut App) {
             "INSERT INTO users(name, pw, role, perms, created, pw_changed) VALUES(?,?,?,?,?,?)",
             rusqlite::params![name, accounts::hash_password(&app.cfg.auth_pass), "admin", "{}", ts, ts],
         );
-        app.audit(&name, "env", "setup", "");
+        authlog::event("setup", &[("user", &app.cfg.auth_user), ("ip", "env")]);
         text::info(
             "Start",
             &t(
@@ -208,6 +209,7 @@ async fn main() {
         }
     };
     text::load_catalog(&cfg.static_dir);
+    authlog::setup(&cfg.config_dir);
     let _ = std::fs::create_dir_all(&cfg.config_dir);
     let db = match Db::open(&cfg.config_dir.join("hoerwerk.db")) {
         Ok(d) => d,

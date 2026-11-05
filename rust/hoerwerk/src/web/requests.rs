@@ -163,13 +163,13 @@ pub async fn retry(app: Arc<App>, req: Req, p: Params) -> Reply {
 fn searcher(app: &App, req: &Req, rid: &str) -> Result<Value, Reply> {
     let item = visible(app, req, rid)?;
     if !may_search(&user(req)) {
-        crate::text::warn(
-            "Anmeldung",
-            &format!(
-                "forbidden user={} ip={} path=/api/requests/{rid}/releases",
-                req.user_name(),
-                req.ip
-            ),
+        crate::authlog::event(
+            "forbidden",
+            &[
+                ("user", &req.user_name()),
+                ("ip", &req.ip),
+                ("path", &format!("/api/requests/{rid}/releases")),
+            ],
         );
         return Err(error(403, t("Dafür fehlen die Rechte", &[])));
     }

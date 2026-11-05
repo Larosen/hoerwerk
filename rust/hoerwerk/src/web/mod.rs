@@ -505,6 +505,14 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
     if route.access == "admin" {
         let u = user.as_ref().expect("checked above");
         if u["role"] != "admin" {
+            crate::authlog::event(
+                "forbidden",
+                &[
+                    ("user", u["name"].as_str().unwrap_or("")),
+                    ("ip", &conn.ip),
+                    ("path", &path),
+                ],
+            );
             return simple(403, &t("Dafür fehlen die Rechte", &[]));
         }
         if u["totp"] != true && app.setting_bool("admin_totp_required") {

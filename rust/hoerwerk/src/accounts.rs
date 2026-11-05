@@ -498,9 +498,13 @@ impl Accounts {
             status: 401,
             reason: "bad_password",
         };
+        let unknown = row.is_none();
         let Some((_, user)) = row.filter(|_| ok) else {
             self.fail(ip, &name);
-            return Err(wrong());
+            return Err(AuthError {
+                reason: if unknown { "unknown_user" } else { "bad_password" },
+                ..wrong()
+            });
         };
         if user["disabled"] == true {
             self.fail(ip, &name);

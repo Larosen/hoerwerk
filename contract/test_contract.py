@@ -137,6 +137,28 @@ class Security(ContractTest):
         self.assertEqual(c.getresponse().status, 413)
         c.close()
 
+    def test_auth_log_for_crowdsec(self):
+        """One logfmt line per login event in /config/logs/auth.log – the interface CrowdSec reads."""
+        log = os.path.join(self.server.config, "logs", "auth.log")
+        start = os.path.getsize(log) if os.path.exists(log) else 0
+        for body in ({"name": ADMIN["name"], "password": "falsch-falsch"}, {"name": "Niemand\nevent=login_ok", "password": "x"}):
+            self.server.request("POST", "/api/auth/login", body, headers=OWN)
+        eva = self.family()
+        eva.call("GET", "/api/users", expect=403)
+        with open(log, encoding="utf-8") as fh:
+            fh.seek(start)
+            lines = [ln for ln in fh.read().splitlines() if ln]
+        pattern = re.compile(r'^time=\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ app=hoerwerk event=[a-z_]+( [a-z_]+=("[^"]*"|[A-Za-z0-9_.:/@-]+))*$')
+        for ln in lines:
+            self.assertRegex(ln, pattern)
+        def has(*parts):
+            return any(all(p in ln for p in parts) for ln in lines)
+        self.assertTrue(has("event=login_failed", f"user={ADMIN['name']}", "ip=127.0.0.1", "reason=bad_password"), lines)
+        self.assertTrue(has("event=login_failed", 'user="Niemand?event=login_ok"', "reason=unknown_user"), lines)
+        self.assertTrue(has("event=login_ok", "ip=127.0.0.1"), lines)
+        self.assertTrue(has("event=forbidden", "path=/api/users"), lines)
+        self.assertFalse(any(ln.startswith("event=") for ln in lines), "no forged line")
+
     def test_paths_stay_inside_the_library(self):
         for bad in ("../config", "/etc", "x/../../config", ".."):
             status, _ = self.admin.call("GET", f"/api/library/tracks?path={quote(bad)}", expect=None)
@@ -632,6 +654,26 @@ class Lifecycle(unittest.TestCase):
             s.cleanup()
 
     @unittest.skipUnless(os.path.exists(FIXTURE_DB), "fixture missing")
+    def test_guessing_invite_links_is_braked(self):
+        """A wrong invite link counts like a wrong password: after 5 the address is blocked (429)."""
+        s = Server()
+        try:
+            s.start()
+            codes = []
+            for i in range(7):
+                status, _, _ = s.request("GET", f"/api/invite/{'x' * 30}{i:02d}", headers=OWN)
+                codes.append(status)
+            self.assertEqual(codes[:5], [404] * 5)
+            self.assertEqual(codes[5:], [429, 429])
+            status, _, _ = s.request("POST", f"/api/invite/{'y' * 32}", {"name": "a", "password": "b"}, headers=OWN)
+            self.assertEqual(status, 429)
+            with open(os.path.join(s.config, "logs", "auth.log"), encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertEqual(text.count("reason=bad_invite"), 5)
+            self.assertIn("event=login_blocked ip=127.0.0.1 reason=ip_blocked", text)
+        finally:
+            s.cleanup()
+
     def test_takes_over_an_existing_database(self):
         """A database written by Hörwerk 7.13 (Python): accounts, settings, requests and library survive."""
         s = Server(env={"AUTH_USER": "", "AUTH_PASS": ""})

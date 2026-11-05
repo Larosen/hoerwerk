@@ -14,6 +14,7 @@ use serde_json::{Map, Value, json};
 use super::{Reply, Req, error, json_reply};
 use crate::accounts::{SESSION_LONG, me};
 use crate::app::App;
+use crate::authlog;
 use crate::text::{self, t};
 
 type Handler = fn(Arc<App>, Req, HashMap<String, String>) -> Pin<Box<dyn Future<Output = Reply> + Send>>;
@@ -373,6 +374,14 @@ async fn setup(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
         return error(409, t("Es gibt schon ein Konto – bitte anmelden", &[]));
     }
     if !home(&req) && req.str("code").trim().to_uppercase() != app.setup_code {
+        authlog::event(
+            "login_failed",
+            &[
+                ("user", &req.str("name")),
+                ("ip", &req.ip),
+                ("reason", "bad_setup_code"),
+            ],
+        );
         tokio::time::sleep(Duration::from_secs(1)).await;
         return error(403, t("Einrichtungs-Code falsch (steht im Container-Log)", &[]));
     }
@@ -385,6 +394,10 @@ async fn setup(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
         &Value::Null,
     ) {
         Ok(user) => {
+            authlog::event(
+                "setup",
+                &[("user", user["name"].as_str().unwrap_or("")), ("ip", &req.ip)],
+            );
             let token =
                 app.accounts
                     .start_session(&app.db, user["id"].as_i64().unwrap_or(0), true, &req.ip, &req.agent);
@@ -426,9 +439,22 @@ async fn login(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
                 &req.ip,
                 &req.agent,
             );
+            authlog::event(
+                "login_ok",
+                &[("user", user["name"].as_str().unwrap_or("")), ("ip", &req.ip)],
+            );
             with_cookie(json!({"ok": true, "user": me(&user)}), cookie(&req, &token, persistent))
         }
-        Err(e) => error(e.status, e.message),
+        Err(e) => {
+            let ev = if e.status == 429 {
+                "login_blocked"
+            } else {
+                "login_failed"
+            };
+            let short: String = req.str("name").chars().take(40).collect();
+            authlog::event(ev, &[("user", &short), ("ip", &req.ip), ("reason", e.reason)]);
+            error(e.status, e.message)
+        }
     }
 }
 
@@ -448,6 +474,7 @@ fn new_ticket(app: &App, uid: i64, persistent: bool) -> String {
 /// Second step of a login: the code for the ticket from step one (5 tries, 5 minutes).
 async fn login_totp(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
     if app.accounts.blocked(&req.ip) {
+        authlog::event("login_blocked", &[("ip", &req.ip), ("reason", "ip_blocked")]);
         return error(
             429,
             t("Zu viele Fehlversuche – bitte in 15 Minuten erneut versuchen", &[]),
@@ -467,6 +494,7 @@ async fn login_totp(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Repl
         }
     };
     let Some((uid, persistent)) = ticket else {
+        authlog::event("login_failed", &[("ip", &req.ip), ("reason", "ticket_expired")]);
         return error(401, t("Anmeldung abgelaufen – bitte neu anmelden", &[]));
     };
     let user = app.accounts.get(&app.db, uid);
@@ -474,6 +502,7 @@ async fn login_totp(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Repl
     if !good {
         app.accounts
             .fail(&req.ip, user.as_ref().and_then(|u| u["name"].as_str()).unwrap_or(""));
+        authlog::event("login_failed", &[("ip", &req.ip), ("reason", "bad_totp")]);
         return error(401, t("Code falsch", &[]));
     }
     app.totp.lock().unwrap_or_else(|p| p.into_inner()).tickets.remove(&tid);
@@ -481,6 +510,10 @@ async fn login_totp(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Repl
     let token = app
         .accounts
         .start_session(&app.db, uid, persistent, &req.ip, &req.agent);
+    authlog::event(
+        "login_ok",
+        &[("user", user["name"].as_str().unwrap_or("")), ("ip", &req.ip)],
+    );
     with_cookie(json!({"ok": true, "user": me(&user)}), cookie(&req, &token, persistent))
 }
 
@@ -511,6 +544,7 @@ async fn totp_confirm(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Re
                 .lock()
                 .execute("UPDATE users SET totp=? WHERE id=?", rusqlite::params![secret, uid]);
             app.totp.lock().unwrap_or_else(|p| p.into_inner()).pending.remove(&uid);
+            authlog::event("totp_on", &[("user", &req.user_name()), ("ip", &req.ip)]);
             json_reply(json!({"ok": true}))
         }
         _ => error(
@@ -529,6 +563,14 @@ async fn totp_disable(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Re
     match checked {
         Ok(Ok(_)) => {}
         Ok(Err(e)) => {
+            authlog::event(
+                "login_failed",
+                &[
+                    ("user", &req.user_name()),
+                    ("ip", &req.ip),
+                    ("reason", "bad_old_password"),
+                ],
+            );
             return error(
                 if e.status == 429 { 429 } else { 403 },
                 t("Das bisherige Passwort stimmt nicht", &[]),
@@ -543,10 +585,12 @@ async fn totp_disable(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Re
         .db
         .lock()
         .execute("UPDATE users SET totp=NULL WHERE id=?", [req.user_id()]);
+    authlog::event("totp_off", &[("user", &req.user_name()), ("ip", &req.ip)]);
     json_reply(json!({"ok": true}))
 }
 
 async fn logout(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    authlog::event("logout", &[("user", &req.user_name()), ("ip", &req.ip)]);
     app.accounts.end_session(&app.db, &req.token);
     let gone = format!(
         "{}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0{}",
@@ -571,6 +615,14 @@ async fn password(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply 
         .accounts
         .authenticate(&app.db, &req.user_name(), &req.str("old"), &req.ip)
     {
+        authlog::event(
+            "login_failed",
+            &[
+                ("user", &req.user_name()),
+                ("ip", &req.ip),
+                ("reason", "bad_old_password"),
+            ],
+        );
         return error(
             if e.status == 429 { 429 } else { 403 },
             t("Das bisherige Passwort stimmt nicht", &[]),
@@ -579,6 +631,7 @@ async fn password(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply 
     if let Err(e) = app.accounts.set_password(&app.db, req.user_id(), &req.str("new")) {
         return error(400, e);
     }
+    authlog::event("password_changed", &[("user", &req.user_name()), ("ip", &req.ip)]);
     let token = app
         .accounts
         .start_session(&app.db, req.user_id(), true, &req.ip, &req.agent);
@@ -598,6 +651,10 @@ async fn sessions_end(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Re
     } else {
         usize::from(app.accounts.end_session_id(&app.db, req.user_id(), &sid))
     };
+    authlog::event(
+        "sessions_revoked",
+        &[("user", &req.user_name()), ("ip", &req.ip), ("count", &n.to_string())],
+    );
     json_reply(json!({"ok": true, "ended": n}))
 }
 
@@ -654,7 +711,18 @@ async fn users_create(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Re
         req.get("perms"),
         req.get("quota"),
     ) {
-        Ok(user) => json_reply(user),
+        Ok(user) => {
+            authlog::event(
+                "user_created",
+                &[
+                    ("user", user["name"].as_str().unwrap_or("")),
+                    ("by", &req.user_name()),
+                    ("ip", &req.ip),
+                    ("role", user["role"].as_str().unwrap_or("")),
+                ],
+            );
+            json_reply(user)
+        }
         Err(e) => error(400, e),
     }
 }
@@ -689,15 +757,43 @@ async fn users_update(app: Arc<App>, req: Req, params: HashMap<String, String>) 
             Err(_) => return error(500, "intern".to_string()),
         }
     }
+    let mut fields: Vec<&str> = changes.keys().map(String::as_str).collect();
+    if req.get("totp") == &Value::Bool(false) {
+        fields.push("totp");
+    }
+    fields.sort();
+    if !req.str("password").is_empty() {
+        fields.push("password");
+    }
+    authlog::event(
+        "user_changed",
+        &[
+            ("user", user["name"].as_str().unwrap_or("")),
+            ("by", &req.user_name()),
+            ("ip", &req.ip),
+            ("fields", &fields.join(",")),
+        ],
+    );
     json_reply(user)
 }
 
-async fn users_delete(app: Arc<App>, _: Req, params: HashMap<String, String>) -> Reply {
+async fn users_delete(app: Arc<App>, req: Req, params: HashMap<String, String>) -> Reply {
     let Some(uid) = id_param(&params, "uid") else {
         return error(404, t("Nicht gefunden", &[]));
     };
+    let name = app
+        .accounts
+        .get(&app.db, uid)
+        .and_then(|u| u["name"].as_str().map(str::to_string))
+        .unwrap_or_default();
     match app.accounts.delete(&app.db, uid) {
-        Ok(true) => json_reply(json!({"ok": true})),
+        Ok(true) => {
+            authlog::event(
+                "user_deleted",
+                &[("user", &name), ("by", &req.user_name()), ("ip", &req.ip)],
+            );
+            json_reply(json!({"ok": true}))
+        }
         Ok(false) => error(404, t("Nicht gefunden", &[])),
         Err(e) => error(400, e),
     }
@@ -770,7 +866,17 @@ async fn invites_create(app: Arc<App>, req: Req, _: HashMap<String, String>) -> 
         );
     }
     match crate::invites::create(&app.db, &req.user_name(), &req.body) {
-        Ok(i) => json_reply(with_link(i, &base)),
+        Ok(i) => {
+            authlog::event(
+                "invite_created",
+                &[
+                    ("by", &req.user_name()),
+                    ("ip", &req.ip),
+                    ("invite", &i["id"].to_string()),
+                ],
+            );
+            json_reply(with_link(i, &base))
+        }
         Err(e) => error(400, e),
     }
 }
@@ -790,13 +896,33 @@ async fn invites_delete(app: Arc<App>, _: Req, params: HashMap<String, String>) 
     }
 }
 
+fn invite_blocked(app: &App, ip: &str) -> Option<Reply> {
+    if !app.accounts.blocked(ip) {
+        return None;
+    }
+    authlog::event("login_blocked", &[("ip", ip), ("reason", "ip_blocked")]);
+    Some(error(
+        429,
+        t("Zu viele Fehlversuche – bitte in 15 Minuten erneut versuchen", &[]),
+    ))
+}
+
+/// A wrong link counts like a wrong password: IP brake and auth.log (so links can't be guessed).
 async fn refuse_invite(app: &App, ip: &str, message: String, name: &str) -> Reply {
     app.accounts.fail(ip, name);
+    let short: String = name.chars().take(40).collect();
+    authlog::event(
+        "login_failed",
+        &[("user", &short), ("ip", ip), ("reason", "bad_invite")],
+    );
     tokio::time::sleep(Duration::from_secs(1)).await;
     error(404, message)
 }
 
 async fn invite_check(app: Arc<App>, req: Req, params: HashMap<String, String>) -> Reply {
+    if let Some(r) = invite_blocked(&app, &req.ip) {
+        return r;
+    }
     match crate::invites::check(&app.db, params.get("token").map(String::as_str).unwrap_or("")) {
         Ok(i) => json_reply(json!({"ok": true, "note": i["note"], "expires": i["expires"]})),
         Err(e) => refuse_invite(&app, &req.ip, e, "").await,
@@ -804,10 +930,21 @@ async fn invite_check(app: Arc<App>, req: Req, params: HashMap<String, String>) 
 }
 
 async fn invite_accept(app: Arc<App>, req: Req, params: HashMap<String, String>) -> Reply {
+    if let Some(r) = invite_blocked(&app, &req.ip) {
+        return r;
+    }
     let name = req.str("name");
     let token = params.get("token").cloned().unwrap_or_default();
     match crate::invites::accept(&app.db, &app.accounts, &token, &name, &req.str("password")) {
         Ok(user) => {
+            authlog::event(
+                "invite_accepted",
+                &[("user", user["name"].as_str().unwrap_or("")), ("ip", &req.ip)],
+            );
+            authlog::event(
+                "login_ok",
+                &[("user", user["name"].as_str().unwrap_or("")), ("ip", &req.ip)],
+            );
             app.audit(
                 user["name"].as_str().unwrap_or(""),
                 &req.ip,

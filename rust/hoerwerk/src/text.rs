@@ -75,6 +75,11 @@ static LOG: Mutex<Log> = Mutex::new(Log {
 });
 
 pub fn log(level: &str, source: &str, text: &str) {
+    log_entry(level, source, text, true);
+}
+
+/// Into the log the app shows; `echo` = false when the line is printed elsewhere already.
+pub fn log_entry(level: &str, source: &str, text: &str, echo: bool) {
     let level = if LEVELS.contains(&level) { level } else { "info" };
     let time = now();
     {
@@ -85,6 +90,9 @@ pub fn log(level: &str, source: &str, text: &str) {
         while l.entries.len() > SIZE {
             l.entries.pop_front();
         }
+    }
+    if !echo {
+        return;
     }
     let tag = if source.is_empty() {
         String::new()
