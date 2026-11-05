@@ -146,6 +146,52 @@ pub fn civil(days: i64) -> (i64, u32, u32) {
     (yoe + era * 400 + i64::from(m <= 2), m, d)
 }
 
+/// (year, month, day) -> days since 1970-01-01 (inverse of `civil`).
+pub fn days_from_civil(y: i64, m: u32, d: u32) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let mp = (m as i64 + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + d as i64 - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+/// Local time of the container (TZ), like Python's datetime.fromtimestamp.
+pub fn local(ts: f64) -> libc::tm {
+    let t = ts.floor() as libc::time_t;
+    // SAFETY: localtime_r only writes into the struct we own
+    unsafe {
+        let mut tm: libc::tm = std::mem::zeroed();
+        libc::localtime_r(&t, &mut tm);
+        tm
+    }
+}
+
+/// "YYYY-MM" of a moment in local time.
+pub fn local_month(ts: f64) -> (i32, u32) {
+    let tm = local(ts);
+    (tm.tm_year + 1900, tm.tm_mon as u32 + 1)
+}
+
+/// The first moment of the local calendar month of `ts`.
+pub fn local_month_start(ts: f64) -> f64 {
+    let mut tm = local(ts);
+    tm.tm_mday = 1;
+    tm.tm_hour = 0;
+    tm.tm_min = 0;
+    tm.tm_sec = 0;
+    tm.tm_isdst = -1;
+    // SAFETY: mktime reads and normalises the struct we own
+    unsafe { libc::mktime(&mut tm) as f64 }
+}
+
+/// "HH:MM" in local time.
+pub fn local_hm(ts: f64) -> String {
+    let tm = local(ts);
+    format!("{:02}:{:02}", tm.tm_hour, tm.tm_min)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

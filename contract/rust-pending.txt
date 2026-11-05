@@ -1,5 +1,3 @@
 # Contract tests the Rust backend (rust/hoerwerk) does not pass yet – shrinks as the port goes on.
-Lifecycle.test_takes_over_an_existing_database   # /api/requests
 Pipeline.test_inbox_to_library                   # job engine, pipeline, library index
 Pipeline.test_upload_lands_in_the_inbox          # uploads
-Requests.test_family_asks_admin_declines         # requests

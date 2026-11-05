@@ -60,8 +60,29 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("DELETE", "/api/invites/{iid}") => h!(invites_delete),
         ("GET", "/api/invite/{token}") => h!(invite_check),
         ("POST", "/api/invite/{token}") => h!(invite_accept),
-        ("GET", "/api/sources") => h!(sources_get),
-        ("PUT", "/api/sources") => h!(sources_put),
+        ("GET", "/api/sources") => h!(super::requests::sources_get),
+        ("PUT", "/api/sources") => h!(super::requests::sources_put),
+        ("POST", "/api/sources/test") => h!(super::requests::sources_test),
+        ("GET", "/api/downloads") => h!(super::requests::downloads),
+        ("POST", "/api/downloads/clear") => h!(super::requests::downloads_clear),
+        ("GET", "/api/requests") => h!(super::requests::list),
+        ("POST", "/api/requests") => h!(super::requests::create),
+        ("GET", "/api/requests/keys") => h!(super::requests::keys),
+        ("POST", "/api/requests/series") => h!(super::requests::create_series),
+        ("GET", "/api/requests/{rid}") => h!(super::requests::one),
+        ("DELETE", "/api/requests/{rid}") => h!(super::requests::withdraw),
+        ("POST", "/api/requests/{rid}/approve") => h!(super::requests::approve),
+        ("POST", "/api/requests/{rid}/decline") => h!(super::requests::decline),
+        ("POST", "/api/requests/{rid}/retry") => h!(super::requests::retry),
+        ("POST", "/api/requests/{rid}/releases") => h!(super::requests::releases),
+        ("POST", "/api/requests/{rid}/grab") => h!(super::requests::grab),
+        ("POST", "/api/requests/{rid}/block") => h!(super::requests::block),
+        ("GET", "/api/stats") => h!(super::requests::stats),
+        ("GET", "/api/stats/accounts/{uid}") => h!(super::requests::stats_account),
+        ("GET", "/api/notify") => h!(super::requests::notify_get),
+        ("PUT", "/api/notify") => h!(super::requests::notify_put),
+        ("POST", "/api/notify/test") => h!(super::requests::notify_test),
+        ("POST", "/api/auth/prefs/test") => h!(super::requests::prefs_test),
         ("GET", "/api/library") => h!(super::library::stats),
         ("GET", "/api/library/books") => h!(super::library::books),
         ("GET", "/api/library/cover") => h!(super::library::cover),
@@ -649,112 +670,4 @@ async fn invite_accept(app: Arc<App>, req: Req, params: HashMap<String, String>)
         Err((true, e)) => refuse_invite(&app, &req.ip, e, &name).await,
         Err((false, e)) => error(400, e),
     }
-}
-
-// -- sources (indexers, SABnzbd): keys never leave the server ----------------------------------
-fn host_of(url: &str) -> String {
-    let u = url.trim().to_lowercase();
-    let u = if u.starts_with("http://") || u.starts_with("https://") {
-        u
-    } else {
-        format!("http://{u}")
-    };
-    let (scheme, rest) = u.split_once("://").unwrap_or(("http", ""));
-    format!("{scheme}://{}", rest.split('/').next().unwrap_or(""))
-}
-
-fn sources_public(app: &App) -> Value {
-    let data = app.db.get("sources").unwrap_or(json!({}));
-    let hide = |v: &Value| {
-        let mut o = v.as_object().cloned().unwrap_or_default();
-        let set = o
-            .remove("apikey")
-            .and_then(|k| k.as_str().map(|s| !s.is_empty()))
-            .unwrap_or(false);
-        o.insert("apikey_set".into(), json!(set));
-        Value::Object(o)
-    };
-    let indexers: Vec<Value> = data["indexers"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default()
-        .iter()
-        .map(hide)
-        .collect();
-    let sab = hide(&data["sab"]);
-    let configured = json!({
-        "indexers": data["indexers"].as_array().map_or(0, |a| a.iter().filter(|i| i["enabled"] != false && i["apikey"].as_str().is_some_and(|k| !k.is_empty())).count()),
-        "sab": data["sab"]["url"].as_str().is_some_and(|u| !u.is_empty()) && data["sab"]["apikey"].as_str().is_some_and(|k| !k.is_empty()),
-    });
-    json!({"indexers": indexers, "sab": sab, "configured": configured})
-}
-
-async fn sources_get(app: Arc<App>, _: Req, _: HashMap<String, String>) -> Reply {
-    json_reply(sources_public(&app))
-}
-
-async fn sources_put(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
-    let old = app.db.get("sources").unwrap_or(json!({}));
-    let old_idx: HashMap<String, Value> = old["indexers"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default()
-        .into_iter()
-        .map(|i| (i["id"].as_str().unwrap_or("").to_string(), i))
-        .collect();
-    let mut indexers = vec![];
-    for i in req.get("indexers").as_array().cloned().unwrap_or_default() {
-        let url = i["url"].as_str().unwrap_or("").trim().to_string();
-        if url.is_empty() {
-            continue;
-        }
-        let id = i["id"]
-            .as_str()
-            .filter(|s| !s.is_empty())
-            .map(String::from)
-            .unwrap_or_else(|| {
-                use rand::RngCore;
-                let mut b = [0u8; 4];
-                rand::rng().fill_bytes(&mut b);
-                hex::encode(b)
-            });
-        let prev = old_idx
-            .get(&id)
-            .filter(|p| host_of(p["url"].as_str().unwrap_or("")) == host_of(&url))
-            .cloned()
-            .unwrap_or(json!({}));
-        let key = i["apikey"]
-            .as_str()
-            .map(str::trim)
-            .filter(|k| !k.is_empty())
-            .map(String::from)
-            .unwrap_or_else(|| prev["apikey"].as_str().unwrap_or("").to_string());
-        let categories: String = i["categories"]
-            .as_str()
-            .unwrap_or("3030")
-            .chars()
-            .filter(|c| c.is_ascii_digit() || *c == ',')
-            .collect();
-        let name = i["name"]
-            .as_str()
-            .map(str::trim)
-            .filter(|n| !n.is_empty())
-            .map(String::from)
-            .unwrap_or_else(|| host_of(&url).split("://").nth(1).unwrap_or("Indexer").to_string());
-        indexers.push(json!({"id": id, "name": name, "url": url, "categories": if categories.is_empty() { "3030".into() } else { categories },
-                             "enabled": i["enabled"].as_bool().unwrap_or(true), "apikey": key}));
-    }
-    let sab_new = req.get("sab");
-    let sab_url = sab_new["url"].as_str().unwrap_or("").trim().to_string();
-    let old_key = if host_of(old["sab"]["url"].as_str().unwrap_or("")) == host_of(&sab_url) {
-        old["sab"]["apikey"].as_str().unwrap_or("")
-    } else {
-        ""
-    };
-    let sab = json!({"url": sab_url, "category": sab_new["category"].as_str().unwrap_or("").trim(),
-                     "apikey": sab_new["apikey"].as_str().map(str::trim).filter(|k| !k.is_empty()).unwrap_or(old_key)});
-    if let Err(e) = app.db.put("sources", &json!({"indexers": indexers, "sab": sab})) {
-        return error(500, e.to_string());
-    }
-    json_reply(sources_public(&app))
 }

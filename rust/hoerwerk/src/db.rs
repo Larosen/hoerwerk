@@ -103,6 +103,33 @@ impl Db {
         Ok(())
     }
 
+    /// Move the WAL into the main file (SQLite does it every ~4 MB by itself; this keeps it short).
+    pub fn checkpoint(&self) {
+        let c = self.lock();
+        if c.is_autocommit() {
+            let _ = c.execute_batch("PRAGMA wal_checkpoint(PASSIVE)");
+        }
+    }
+
+    /// A consistent copy of the whole database (also while it is in use) – for the daily snapshot.
+    pub fn backup(&self, target: &Path) -> std::result::Result<(), String> {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = target.with_extension("db.tmp");
+        let _ = std::fs::remove_file(&tmp);
+        let done = self
+            .lock()
+            .execute("VACUUM INTO ?", [tmp.display().to_string()])
+            .map_err(|e| e.to_string())
+            .and_then(|_| {
+                std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o600)).map_err(|e| e.to_string())
+            })
+            .and_then(|_| std::fs::rename(&tmp, target).map_err(|e| e.to_string()));
+        if done.is_err() {
+            let _ = std::fs::remove_file(&tmp);
+        }
+        done
+    }
+
     /// Everything into the main file and close (the shutdown path).
     pub fn close(&self) {
         let c = self.lock();

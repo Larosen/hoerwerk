@@ -7,11 +7,20 @@ mod app;
 mod chapters;
 mod config;
 mod db;
+mod http;
 mod invites;
 mod library;
 mod media;
+mod notify;
+mod packs;
+mod quality;
+mod releases;
+mod requests;
+mod rx;
 mod settings;
+mod stats;
 mod text;
+mod usenet;
 mod web;
 mod words;
 
@@ -114,6 +123,28 @@ async fn library_rescanner(app: Arc<App>) {
     }
 }
 
+/// Requests: search again when due, follow downloads and imports (every two minutes); the daily database snapshot.
+fn request_worker(app: &Arc<App>) {
+    std::thread::sleep(Duration::from_secs(60)); // let the library index load first
+    let n = app.requests.import_wanted(app);
+    if n > 0 {
+        let msg = if n == 1 {
+            t("1 Buch aus „Gesucht“ als Anfrage übernommen", &[])
+        } else {
+            t(
+                "{n} Bücher aus „Gesucht“ als Anfragen übernommen",
+                &[("n", &n.to_string())],
+            )
+        };
+        text::info("Anfragen", &msg);
+    }
+    while !app.stopping() {
+        app.requests.tick(app);
+        app.maintain_db(text::now());
+        std::thread::sleep(Duration::from_secs(120));
+    }
+}
+
 async fn stop_signal() {
     use tokio::signal::unix::{SignalKind, signal};
     let mut term = signal(SignalKind::terminate()).expect("SIGTERM handler");
@@ -154,6 +185,10 @@ async fn main() {
     let app = Arc::new(app);
     App::wire(&app);
     tokio::spawn(library_rescanner(app.clone()));
+    std::thread::spawn({
+        let app = app.clone();
+        move || request_worker(&app)
+    });
     let port = app.cfg.port;
     text::info(
         "Start",

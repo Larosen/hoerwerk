@@ -26,4 +26,8 @@ futures-util = { version = "0.3", default-features = false, features = ["std"] }
 http-body-util = "0.1"
 bytes = "1"
 unicode-normalization = "0.1"
+ureq = { version = "3", default-features = false, features = ["rustls-no-provider", "_ring", "platform-verifier", "gzip", "json"] }
+libc = "0.2"
+fancy-regex = "0.16"
+roxmltree = "0.21"
 hw-tags = { path = "../hw-tags", version = "1.0.0" }

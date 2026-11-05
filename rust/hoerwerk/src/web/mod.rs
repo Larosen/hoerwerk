@@ -4,6 +4,7 @@
 pub mod api;
 pub mod hosts;
 pub mod library;
+pub mod requests;
 
 use std::collections::HashMap;
 use std::convert::Infallible;

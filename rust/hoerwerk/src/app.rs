@@ -12,8 +12,12 @@ use crate::accounts::Accounts;
 use crate::config::Config;
 use crate::db::Db;
 use crate::library::LibraryIndex;
+use crate::notify::Notifier;
+use crate::requests::Requests;
 use crate::settings::Settings;
+use crate::stats::Stats;
 use crate::text;
+use crate::usenet::Usenet;
 use crate::web::Slots;
 
 pub const MAX_SSE: usize = 32;
@@ -25,6 +29,12 @@ pub struct App {
     /// the first library scan is done: only then is anything processed (duplicates are checked against it)
     pub library_ready: AtomicBool,
     pub library_error: Mutex<String>,
+    pub notifier: Notifier,
+    /// the daily database snapshot: when it last worked, why it last failed ("" = fine), when it last ran
+    pub db_backup: Mutex<(Option<f64>, String, f64)>,
+    pub usenet: Usenet,
+    pub requests: Requests,
+    pub stats: Stats,
     pub accounts: Accounts,
     pub settings: Settings,
     pub slots: Slots,
@@ -53,6 +63,21 @@ impl App {
             library: LibraryIndex::new(&cfg.library, db.clone()),
             library_ready: AtomicBool::new(false),
             library_error: Mutex::new(String::new()),
+            notifier: Notifier::new(db.clone(), {
+                let (db, settings) = (db.clone(), Settings::new(&cfg.env));
+                Box::new(move || {
+                    settings
+                        .get(&db)
+                        .get("public_url")
+                        .and_then(Value::as_str)
+                        .unwrap_or("")
+                        .to_string()
+                })
+            }),
+            usenet: Usenet::new(db.clone()),
+            db_backup: Mutex::new((None, String::new(), 0.0)),
+            requests: Requests::new(),
+            stats: Stats::default(),
             accounts: Accounts::new(),
             settings,
             db,
@@ -173,6 +198,50 @@ impl App {
         }));
     }
 
+    /// Once a day a consistent snapshot (backups/hoerwerk-<weekday>.db, the last seven days) and the WAL moved
+    /// into the main file; after a failure again in an hour. Blocking.
+    pub fn maintain_db(&self, now: f64) -> Option<std::path::PathBuf> {
+        let mut state = self.db_backup.lock().unwrap_or_else(|p| p.into_inner());
+        let wait = if state.1.is_empty() { 23.0 * 3600.0 } else { 3600.0 };
+        if now - state.2 < wait {
+            return None;
+        }
+        state.2 = now;
+        let day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][text::local(now).tm_wday.clamp(0, 6) as usize];
+        let dir = self.cfg.config_dir.join("backups");
+        let target = dir.join(format!("hoerwerk-{day}.db"));
+        let done = std::fs::create_dir_all(&dir)
+            .map_err(|e| e.to_string())
+            .and_then(|_| {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).map_err(|e| e.to_string())
+            })
+            .and_then(|_| self.db.backup(&target));
+        match done {
+            Ok(()) => {
+                self.db.checkpoint();
+                *state = (Some(now), String::new(), now);
+                Some(target)
+            }
+            Err(e) => {
+                text::warn(
+                    "Datenbank",
+                    &text::t(
+                        "Datenbank-Sicherung fehlgeschlagen, neuer Versuch in einer Stunde: {error}",
+                        &[("error", &e)],
+                    ),
+                );
+                state.1 = e;
+                None
+            }
+        }
+    }
+
+    /// The newest pipeline job of a request (None until the pipeline knows one).
+    pub fn job_for_request(&self, _rid: i64) -> Option<Value> {
+        None
+    }
+
     pub fn stopping(&self) -> bool {
         *self.shutdown.borrow()
     }
@@ -182,5 +251,37 @@ impl App {
             self.sse_clients.fetch_sub(1, Ordering::SeqCst);
             false
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn daily_snapshot() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("hw-app-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let env: std::collections::BTreeMap<String, String> = [
+            ("CONFIG_DIR", dir.join("config")),
+            ("LIBRARY_DIR", dir.join("lib")),
+            ("INBOX_DIR", dir.join("in")),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.display().to_string()))
+        .collect();
+        let cfg = Config::from_map(env).unwrap();
+        let db = Db::open(&cfg.config_dir.join("hoerwerk.db")).unwrap();
+        let app = App::new(cfg, db);
+        let t0 = 1_800_000_000.0;
+        let target = app.maintain_db(t0).expect("snapshot");
+        assert_eq!(std::fs::metadata(&target).unwrap().permissions().mode() & 0o777, 0o600);
+        let copy = rusqlite::Connection::open(&target).unwrap();
+        let v: i64 = copy.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        assert_eq!(v, 5);
+        assert!(app.maintain_db(t0 + 3600.0).is_none()); // once a day
+        assert!(app.maintain_db(t0 + 23.0 * 3600.0).is_some());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
