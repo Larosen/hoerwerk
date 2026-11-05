@@ -12,6 +12,7 @@ pub struct Resp {
     pub body: Vec<u8>,
     pub content_type: String,
     pub retry_after: Option<String>,
+    pub location: Option<String>,
 }
 
 impl Resp {
@@ -108,6 +109,7 @@ impl<'a> Call<'a> {
         let header = |k: &str| resp.headers().get(k).and_then(|v| v.to_str().ok()).map(str::to_string);
         let content_type = header("content-type").unwrap_or_default();
         let retry_after = header("retry-after");
+        let location = header("location");
         let body = resp
             .body_mut()
             .with_config()
@@ -119,6 +121,7 @@ impl<'a> Call<'a> {
             body,
             content_type,
             retry_after,
+            location,
         })
     }
 }

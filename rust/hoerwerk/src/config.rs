@@ -106,6 +106,11 @@ pub struct Config {
     pub allowed_hosts: HashSet<String>,
     pub trusted_proxies: Vec<Net>,
     pub cookie_secure: String,
+    /// ffmpeg threads per conversion, CPU priority, steps at the same time per queue
+    pub cpu_jobs: usize,
+    pub nice: String,
+    pub encode_workers: usize,
+    pub io_workers: usize,
     pub env: BTreeMap<String, String>,
 }
 
@@ -147,6 +152,21 @@ impl Config {
             allowed_hosts: parse_hosts(env.get("ALLOWED_HOSTS").map(String::as_str).unwrap_or(""))?,
             trusted_proxies: parse_networks(env.get("TRUSTED_PROXIES").map(String::as_str).unwrap_or(""))?,
             cookie_secure: get("COOKIE_SECURE", "auto").trim().to_lowercase(),
+            cpu_jobs: match env.get("CPU_CORES").filter(|v| !v.is_empty()) {
+                Some(v) => v.trim().parse().map_err(|_| "CPU_CORES: keine Zahl".to_string())?,
+                None => (std::thread::available_parallelism().map_or(2, |n| n.get()) / 2).max(1),
+            },
+            nice: env.get("NICE").cloned().unwrap_or_else(|| "10".into()),
+            encode_workers: get("ENCODE_WORKERS", "1")
+                .trim()
+                .parse::<usize>()
+                .map_err(|_| "ENCODE_WORKERS: keine Zahl".to_string())?
+                .max(1),
+            io_workers: get("IO_WORKERS", "2")
+                .trim()
+                .parse::<usize>()
+                .map_err(|_| "IO_WORKERS: keine Zahl".to_string())?
+                .max(1),
             env,
         })
     }

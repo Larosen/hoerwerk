@@ -5,18 +5,22 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use serde_json::{Map, Value, json};
+use serde_json::{Map, Value};
 use tokio::sync::{Notify, watch};
 
 use crate::accounts::Accounts;
+use crate::audible::Providers;
 use crate::config::Config;
 use crate::db::Db;
+use crate::engine::Engine;
 use crate::library::LibraryIndex;
 use crate::notify::Notifier;
+use crate::pipeline::Pipeline;
 use crate::requests::Requests;
 use crate::settings::Settings;
 use crate::stats::Stats;
 use crate::text;
+use crate::uploads::Uploads;
 use crate::usenet::Usenet;
 use crate::web::Slots;
 
@@ -30,6 +34,10 @@ pub struct App {
     pub library_ready: AtomicBool,
     pub library_error: Mutex<String>,
     pub notifier: Notifier,
+    pub engine: Arc<Engine>,
+    pub pipeline: Pipeline,
+    pub providers: Providers,
+    pub uploads: Uploads,
     /// the daily database snapshot: when it last worked, why it last failed ("" = fine), when it last ran
     pub db_backup: Mutex<(Option<f64>, String, f64)>,
     pub usenet: Usenet,
@@ -75,6 +83,10 @@ impl App {
                 })
             }),
             usenet: Usenet::new(db.clone()),
+            engine: Arc::new(Engine::new(cfg.encode_workers, cfg.io_workers)),
+            pipeline: Pipeline::new(&cfg.inbox, &cfg.library, &cfg.work_dir),
+            providers: Providers::default(),
+            uploads: Uploads::new(&cfg.inbox),
             db_backup: Mutex::new((None, String::new(), 0.0)),
             requests: Requests::new(),
             stats: Stats::default(),
@@ -173,12 +185,11 @@ impl App {
     /// The state of a live topic (what the pages show).
     pub fn snapshot(&self, topic: &str) -> Value {
         match topic {
-            "audiobooks" => json!({
-                "enabled": self.setting_bool("ab_watch"), "inbox": self.cfg.inbox, "library": self.cfg.library,
-                "inbox_ok": self.cfg.inbox.is_dir(), "library_ok": self.cfg.library.is_dir(), "last_scan": null,
-                "scan_note": "", "waiting": [], "ignored": [], "jobs": [], "review": 0,
-                "queues": {"encode": {"workers": 1, "running": 0, "waiting": 0}, "io": {"workers": 2, "running": 0, "waiting": 0}},
-            }),
+            "audiobooks" => {
+                let mut s = self.pipeline.status(self);
+                s["queues"] = self.engine.stats();
+                s
+            }
             "library" => self.library.stats(),
             _ => Value::Null,
         }
@@ -194,6 +205,12 @@ impl App {
         app.library.on_change(Box::new(move || {
             if let Some(a) = weak.upgrade() {
                 a.publish("library");
+            }
+        }));
+        let weak = Arc::downgrade(app);
+        app.engine.on_change(Box::new(move || {
+            if let Some(a) = weak.upgrade() {
+                a.publish("audiobooks");
             }
         }));
     }
@@ -237,10 +254,18 @@ impl App {
         }
     }
 
-    /// The newest pipeline job of a request (None until the pipeline knows one).
-    pub fn job_for_request(&self, _rid: i64) -> Option<Value> {
-        None
+    /// The newest pipeline job of a request.
+    pub fn job_for_request(&self, rid: i64) -> Option<Value> {
+        self.pipeline
+            .all()
+            .iter()
+            .rev()
+            .map(|j| j.lock().to_dict(true))
+            .find(|j| j["hints"]["request_id"].as_i64() == Some(rid))
     }
+
+    /// Books were filed or replaced: media servers should look again (Audiobookshelf/Plex – not ported yet).
+    pub fn library_changed(&self) {}
 
     pub fn stopping(&self) -> bool {
         *self.shutdown.borrow()

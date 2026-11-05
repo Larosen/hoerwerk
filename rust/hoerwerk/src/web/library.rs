@@ -140,7 +140,17 @@ pub async fn unconverted(app: Arc<App>, _: Req, _: HashMap<String, String>) -> R
                 .iter()
                 .map(|k| (k.to_string(), e.get(*k).cloned().unwrap_or(Value::Null)))
                 .collect();
-            o.insert("job".into(), Value::Null); // conversion jobs: with the pipeline
+            let src = root(&app).join(e["path"].as_str().unwrap_or("")).display().to_string();
+            let job = app
+                .pipeline
+                .all()
+                .into_iter()
+                .map(|j| j.lock().clone())
+                .find(|j| j.source == src && !matches!(j.status.as_str(), "done" | "failed" | "cancelled"));
+            o.insert(
+                "job".into(),
+                job.map_or(Value::Null, |j| json!({"id": j.id, "status": j.status})),
+            );
             Value::Object(o)
         })
         .collect();

@@ -44,6 +44,14 @@ class SettingsContractTest(unittest.TestCase):
             self.assertEqual(json.load(fh), json.loads(json.dumps(make_releases.build())),
                              "contract/golden/releases.json veraltet: python3 contract/make_releases.py")
 
+    def test_audible_json_matches_the_python_rules(self):
+        """contract/golden/audible.json: shop data, match scores, search terms."""
+        import json
+        import make_audible
+        with open(os.path.join(HERE, "..", "contract", "golden", "audible.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh), json.loads(json.dumps(make_audible.build())),
+                             "contract/golden/audible.json veraltet: python3 contract/make_audible.py")
+
 
 if __name__ == "__main__":
     unittest.main()

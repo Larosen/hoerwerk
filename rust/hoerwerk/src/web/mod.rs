@@ -2,9 +2,11 @@
 //! (app/web/server.py): host name, pages and static files, CSRF, route, login, rights, body size.
 
 pub mod api;
+pub mod audiobooks;
 pub mod hosts;
 pub mod library;
 pub mod requests;
+pub mod upload;
 
 use std::collections::HashMap;
 use std::convert::Infallible;

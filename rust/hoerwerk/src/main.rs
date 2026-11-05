@@ -4,10 +4,13 @@
 
 mod accounts;
 mod app;
+mod audible;
 mod chapters;
 mod config;
 mod db;
+mod difflib;
 mod encoder;
+mod engine;
 mod filing;
 mod http;
 mod invites;
@@ -15,6 +18,7 @@ mod library;
 mod media;
 mod notify;
 mod packs;
+mod pipeline;
 mod quality;
 mod releases;
 mod requests;
@@ -23,6 +27,7 @@ mod settings;
 mod stats;
 mod tagger;
 mod text;
+mod uploads;
 mod usenet;
 mod web;
 mod words;
@@ -108,6 +113,31 @@ async fn library_rescanner(app: Arc<App>) {
     }
     app.library_error.lock().unwrap_or_else(|p| p.into_inner()).clear();
     app.library_ready.store(true, Ordering::SeqCst);
+    // only now: books are checked against the library for duplicates
+    app.pipeline.note(String::new());
+    app.engine.start();
+    let mut waiting: Vec<_> = app
+        .pipeline
+        .all()
+        .into_iter()
+        .filter(|j| j.lock().status == "queued")
+        .collect();
+    waiting.sort_by(|a, b| {
+        a.lock()
+            .created
+            .partial_cmp(&b.lock().created)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    for j in &waiting {
+        app.pipeline.schedule(&app, j);
+    }
+    std::thread::Builder::new()
+        .name("inbox-scanner".into())
+        .spawn({
+            let app = app.clone();
+            move || app.pipeline.scanner(&app)
+        })
+        .expect("scanner thread");
     loop {
         let hours = app
             .settings()
@@ -187,6 +217,12 @@ async fn main() {
     first_account(&mut app);
     let app = Arc::new(app);
     App::wire(&app);
+    app.pipeline.load(&app);
+    let recovered = app.uploads.recover(); // uploads cannot continue after a restart; half-finished ones are completed
+    if !recovered.is_empty() {
+        app.pipeline.arrived(&recovered);
+    }
+    app.pipeline.note(t("Wartet, bis die Bibliothek eingelesen ist …", &[]));
     tokio::spawn(library_rescanner(app.clone()));
     std::thread::spawn({
         let app = app.clone();
@@ -230,6 +266,24 @@ async fn main() {
             let _ = tokio::time::timeout(Duration::from_secs(5), serving).await;
         }
     }
+    // orderly shutdown within Docker's grace time: ffmpeg ends, running steps save their state (their jobs continue
+    // after the next start), the database is closed
+    text::info("Start", &t("Hörwerk wird beendet …", &[]));
+    let a = app.clone();
+    let _ = tokio::task::spawn_blocking(move || {
+        a.pipeline.shutdown();
+        if !a.engine.stop(Duration::from_secs(6)) {
+            text::warn(
+                "Start",
+                &t(
+                    "Nicht alle laufenden Schritte sind rechtzeitig fertig geworden – sie laufen nach dem Start neu",
+                    &[],
+                ),
+            );
+        }
+        a.pipeline.save(&a);
+    })
+    .await;
     app.db.close();
     text::info("Start", &t("Hörwerk beendet.", &[]));
 }
