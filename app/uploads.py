@@ -222,9 +222,20 @@ class Uploads:
                     s["bytes"] += length
                 else:
                     s["paths"].discard(key)
+                last_out = s["state"] == "cancelled" and not s["active"]
+            if last_out:                                   # cancelled meanwhile: the last writer tidies up
+                shutil.rmtree(self._dir(uid), ignore_errors=True)
+
+    def _still_open(self, s: dict) -> None:
+        if s["state"] != "open":
+            raise UploadError(t("Upload abgebrochen"))
 
     def _write(self, s: dict, parts: List[str], root: str, target: str, stream, length: int) -> dict:
-        os.makedirs(os.path.dirname(target), exist_ok=True)
+        # folders are made and the file is put in place only while the upload is still open – checked under the
+        # lock, so a cancel in between can never be followed by a folder that brings the deleted upload back
+        with self.lock:
+            self._still_open(s)
+            os.makedirs(os.path.dirname(target), exist_ok=True)
         if os.path.exists(target):
             raise UploadError(t("Diese Datei ist schon im Upload: {name}", name=parts[-1]))
         tmp = f"{target}.{secrets.token_hex(4)}.part"
@@ -248,7 +259,9 @@ class Uploads:
                         chunk, first = head, False
                     fh.write(chunk)
                     left -= len(chunk)
-            os.replace(tmp, target)
+            with self.lock:
+                self._still_open(s)
+                os.replace(tmp, target)
         except (TimeoutError, ConnectionError) as e:        # the browser stopped sending
             self._unlink(tmp)
             raise UploadError(t("Upload abgebrochen")) from e
