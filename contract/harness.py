@@ -245,8 +245,27 @@ class FakeMediaServers:
                 fake.calls.append((self.command, self.path, self.headers.get("Authorization"),
                                    self.headers.get("X-Plex-Token")))
                 path = urllib.parse.urlparse(self.path).path
-                out = {}
-                if path == "/api/libraries":
+                out, status = {}, 200
+                now_ms = int(time.time() * 1000)
+                if path == "/login":
+                    sent = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+                    if sent == {"username": "eva", "password": "richtig"}:
+                        out = {"user": {"id": "abs-eva", "username": "eva"}}
+                    else:
+                        status = 401
+                elif path == "/api/users":
+                    out = {"users": [{"id": "abs-eva", "username": "eva"}, {"id": "abs-max", "username": "max"}]}
+                elif path == "/api/users/abs-eva":
+                    out = {"mediaProgress": [
+                        {"libraryItemId": "li1", "progress": 1, "isFinished": True, "finishedAt": now_ms, "lastUpdate": now_ms},
+                        {"libraryItemId": "li2", "progress": 0.4, "isFinished": False, "lastUpdate": now_ms - 1000},
+                        {"libraryItemId": "pod", "episodeId": "e1", "progress": 1}]}
+                elif path == "/api/users/abs-eva/listening-stats":
+                    out = {"days": {time.strftime("%Y-%m-%d"): 5400}}
+                elif path.startswith("/api/libraries/lib-books/items"):
+                    out = {"results": [{"id": "li1", "media": {"duration": 3600, "metadata": {"title": "Gehört", "authorName": "A", "asin": "b0heard001"}}},
+                                       {"id": "li2", "media": {"duration": 7200, "metadata": {"title": "Halb", "authorName": "B"}}}]}
+                elif path == "/api/libraries":
                     out = {"libraries": [{"id": "lib-books", "name": "Hörbücher", "mediaType": "book"},
                                          {"id": "lib-pods", "name": "Podcasts", "mediaType": "podcast"}]}
                 elif path == "/library/sections":
@@ -254,7 +273,7 @@ class FakeMediaServers:
                         {"key": "1", "title": "Filme", "type": "movie"},
                         {"key": "7", "title": "Hörbücher", "type": "artist", "Location": [{"path": "/audiobooks"}]}]}}
                 body = json.dumps(out).encode()
-                self.send_response(200)
+                self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()

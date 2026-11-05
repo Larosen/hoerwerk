@@ -14,6 +14,7 @@ use crate::config::Config;
 use crate::db::Db;
 use crate::engine::Engine;
 use crate::library::LibraryIndex;
+use crate::listening::Listening;
 use crate::mediaservers::{Abs, Plex};
 use crate::notify::Notifier;
 use crate::pipeline::Pipeline;
@@ -41,6 +42,7 @@ pub struct App {
     pub uploads: Uploads,
     pub abs: Abs,
     pub plex: Plex,
+    pub listening: Listening,
     /// the daily database snapshot: when it last worked, why it last failed ("" = fine), when it last ran
     pub db_backup: Mutex<(Option<f64>, String, f64)>,
     pub usenet: Usenet,
@@ -92,6 +94,7 @@ impl App {
             uploads: Uploads::new(&cfg.inbox),
             abs: Abs::new(db.clone()),
             plex: Plex::new(db.clone()),
+            listening: Listening::default(),
             db_backup: Mutex::new((None, String::new(), 0.0)),
             requests: Requests::new(),
             stats: Stats::default(),

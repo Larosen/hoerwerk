@@ -529,6 +529,41 @@ class Processing(ContractTest):
             self.admin.call("PUT", "/api/sources", {"abs": {"url": ""}, "plex": {"url": ""}})
             fake.close()
 
+    def test_family_links_audiobookshelf_and_sees_what_they_heard(self):
+        fake = FakeMediaServers()
+        try:
+            self.admin.call("PUT", "/api/sources", {"abs": {"url": fake.url, "token": "abs-geheim-123", "library": "lib-books"}})
+            eva = Client(self.server, *self._family())
+            mine = eva.get("/api/me/listening")
+            self.assertEqual((mine["available"]["abs"], mine["links"]["abs"], mine["recent"]), (True, None, None))
+            status, _ = eva.call("POST", "/api/me/listening/abs", {"username": "eva", "password": "falsch"}, expect=None)
+            self.assertEqual(status, 400)
+            linked = eva.call("POST", "/api/me/listening/abs", {"username": "eva", "password": "richtig"})
+            self.assertEqual(linked["links"]["abs"], {"id": "abs-eva", "name": "eva"})
+            recent = eva.get("/api/me/listening")["recent"]
+            self.assertEqual((recent["seconds"], recent["books"], recent["finished"]), (5400, 2, 1))
+            accounts = self.admin.get("/api/listening/accounts")
+            self.assertEqual([a["id"] for a in accounts["abs"]], ["abs-eva", "abs-max"])
+            uid = next(u["id"] for u in accounts["users"] if u["links"]["abs"])
+            stats = self.admin.get("/api/stats?period=30")
+            self.assertEqual((stats["listen"]["seconds"], stats["listen"]["linked"]), (5400, 1))
+            heard = self.admin.get(f"/api/stats/accounts/{uid}?period=30")["heard"]
+            self.assertEqual(sorted(h["title"] for h in heard), ["Gehört", "Halb"])
+            self.admin.call("PUT", "/api/listening/link", {"kind": "abs", "user_id": uid, "target_id": ""})
+            self.assertIsNone(eva.get("/api/me/listening")["links"]["abs"])
+            status, _ = self.admin.call("PUT", "/api/listening/link", {"kind": "abs", "user_id": uid, "target_id": "nicht-da"},
+                                        expect=None)
+            self.assertEqual(status, 400)
+        finally:
+            self.admin.call("PUT", "/api/sources", {"abs": {"url": ""}})
+            fake.close()
+
+    def _family(self):
+        name, pw = "Familie Hören", "Kaffee Garten Hund Sonne 3"
+        if not any(u["name"] == name for u in self.admin.get("/api/users")["users"]):
+            self.admin.call("POST", "/api/users", {"name": name, "password": pw, "role": "user"})
+        return name, pw
+
 
 class Live(ContractTest):
     def test_events_stream(self):

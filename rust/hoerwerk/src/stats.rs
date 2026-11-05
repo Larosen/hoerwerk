@@ -275,8 +275,24 @@ impl Stats {
             .iter()
             .filter_map(|id| users.get(id).map(|a| (*id, a.clone().finish())))
             .collect();
-        for (_, s) in out.iter_mut() {
+        let mut heard_total = json!({"seconds": 0, "books": 0, "finished": 0, "linked": 0});
+        let mut errors: Vec<Value> = Vec::new();
+        for (id, s) in out.iter_mut() {
             s["listen"] = Value::Null;
+            let Some(uid) = id else { continue };
+            let h = app.listening.summary(app, *uid, since);
+            if h["linked"].as_array().is_some_and(|l| !l.is_empty()) {
+                heard_total["linked"] = json!(heard_total["linked"].as_i64().unwrap_or(0) + 1);
+                for k in ["seconds", "books", "finished"] {
+                    heard_total[k] = json!(heard_total[k].as_i64().unwrap_or(0) + h[k].as_i64().unwrap_or(0));
+                }
+                for e in h["errors"].as_array().into_iter().flatten() {
+                    if !errors.contains(e) {
+                        errors.push(e.clone());
+                    }
+                }
+                s["listen"] = h;
+            }
         }
         out.sort_by(|a, b| {
             let k = |s: &Value| {
@@ -306,7 +322,7 @@ impl Stats {
             .collect();
         Some(json!({
             "period": period, "since": if since == 0.0 { Value::Null } else { json!(since) }, "users": users_out,
-            "total": total.finish(), "listen": null, "listen_errors": [],
+            "total": total.finish(), "listen": heard_total, "listen_errors": errors.into_iter().take(5).collect::<Vec<_>>(),
             "months": month_keys.iter().map(|k| { let (b, m) = month_rows[k]; json!({"month": k, "books": b, "minutes": m}) }).collect::<Vec<_>>(),
             "library_books": app.library.stats()["books"],
         }))
@@ -394,8 +410,22 @@ impl Stats {
             .as_object_mut()
             .and_then(|o| o.remove("months"))
             .unwrap_or(json!([]));
+        let heard: Vec<Value> = app.listening.history(app, uid)["books"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|b| {
+                b["last"].as_f64().unwrap_or(0.0) >= since
+                    && (b["progress"].as_f64().unwrap_or(0.0) >= 0.02 || b["finished"] == true)
+            })
+            .take(500)
+            .map(|b| {
+                json!({"title": b["title"], "author": b["author"], "progress": b["progress"], "finished": b["finished"],
+                            "finished_at": b["finished_at"], "last": b["last"], "source": b["source"]})
+            })
+            .collect();
         Some(
-            json!({"period": s["period"], "since": s["since"], "user": user, "months": months, "requests": reqs, "heard": []}),
+            json!({"period": s["period"], "since": s["since"], "user": user, "months": months, "requests": reqs, "heard": heard}),
         )
     }
 }

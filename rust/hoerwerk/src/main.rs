@@ -16,6 +16,7 @@ mod http;
 mod invites;
 mod library;
 mod links;
+mod listening;
 mod media;
 mod mediaservers;
 mod notify;

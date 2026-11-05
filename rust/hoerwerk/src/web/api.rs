@@ -121,6 +121,11 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("POST", "/api/search/books") => h!(super::search::books),
         ("POST", "/api/search/series") => h!(super::search::series),
         ("POST", "/api/search/send") => h!(super::search::send),
+        ("GET", "/api/me/listening") => h!(super::listening::mine),
+        ("POST", "/api/me/listening/abs") => h!(super::listening::link_abs),
+        ("DELETE", "/api/me/listening/{kind}") => h!(super::listening::unlink),
+        ("GET", "/api/listening/accounts") => h!(super::listening::accounts),
+        ("PUT", "/api/listening/link") => h!(super::listening::set_link),
         _ => h!(not_yet),
     }
 }
