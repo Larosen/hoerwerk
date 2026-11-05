@@ -19,5 +19,15 @@ class GoldenTagsTest(unittest.TestCase):
         self.assertEqual(make_golden.golden(tagger.write_tags), want)
 
 
+class SettingsContractTest(unittest.TestCase):
+    def test_settings_json_matches_config(self):
+        """contract/settings.json is what the Rust backend reads – it must follow app/config.py."""
+        import json
+        import make_settings
+        with open(os.path.join(HERE, "..", "contract", "settings.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh), json.loads(json.dumps(make_settings.build())),
+                             "contract/settings.json veraltet: python3 contract/make_settings.py")
+
+
 if __name__ == "__main__":
     unittest.main()

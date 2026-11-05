@@ -1,0 +1,250 @@
+{
+ "description": "Settings of Hörwerk: defaults without environment, allowed values, and the environment variables that change a default (type: bool = true/1/yes/on).",
+ "defaults": {
+  "language": "de",
+  "public_url": "",
+  "bitrate": "auto",
+  "force_mono": false,
+  "audio_quality": "high",
+  "chapter_titles": "auto",
+  "ab_watch": true,
+  "ab_region": "de",
+  "ab_match": "auto",
+  "ab_threshold": 0.8,
+  "ab_folder_template": "{author}/[{series}/][{series_position:2} - ]{title}",
+  "ab_file_template": "{title}",
+  "ab_chapters": "auto",
+  "ab_cover_source": "audible",
+  "ab_originals": "archive",
+  "ab_scan_interval": 60,
+  "ab_fallback": true,
+  "ab_duplicates": "ask",
+  "ab_library_originals": "archive",
+  "library_rescan_hours": 6,
+  "ab_settle": 120,
+  "narrator_in_artist": false,
+  "keep_series_in_title": true,
+  "keep_series_in_subtitle": true,
+  "write_desc": false,
+  "write_reader": false,
+  "write_cover": true,
+  "write_abs": true,
+  "discover_min_rating": 4.3,
+  "discover_min_count": 50,
+  "discover_unabridged": true,
+  "discover_german": true,
+  "discover_nonfiction_store": false,
+  "discover_trusted_authors": "",
+  "discover_genre": "",
+  "request_quota": 5,
+  "admin_totp_required": false,
+  "wanted_interval_hours": 12
+ },
+ "choices": {
+  "audio_quality": [
+   "standard",
+   "high",
+   "original"
+  ],
+  "ab_match": [
+   "auto",
+   "review",
+   "off"
+  ],
+  "ab_duplicates": [
+   "ask",
+   "skip",
+   "keep"
+  ],
+  "ab_library_originals": [
+   "archive",
+   "delete"
+  ],
+  "ab_chapters": [
+   "auto",
+   "audible",
+   "files"
+  ],
+  "ab_originals": [
+   "archive",
+   "delete"
+  ],
+  "ab_cover_source": [
+   "audible",
+   "local"
+  ],
+  "chapter_titles": [
+   "auto",
+   "filename",
+   "tag"
+  ],
+  "language": [
+   "de",
+   "en"
+  ],
+  "ab_region": [
+   "de",
+   "us",
+   "uk",
+   "au",
+   "ca",
+   "fr",
+   "it",
+   "es",
+   "in",
+   "jp"
+  ]
+ },
+ "env": {
+  "AAC_BITRATE": {
+   "key": "bitrate",
+   "type": "str"
+  },
+  "ADMIN_TOTP_REQUIRED": {
+   "key": "admin_totp_required",
+   "type": "bool"
+  },
+  "APP_LANGUAGE": {
+   "key": "language",
+   "type": "str",
+   "lower": true
+  },
+  "AUDIBLE_REGION": {
+   "key": "ab_region",
+   "type": "str"
+  },
+  "AUDIOBOOK_WATCH": {
+   "key": "ab_watch",
+   "type": "bool"
+  },
+  "AUDIO_QUALITY": {
+   "key": "audio_quality",
+   "type": "str"
+  },
+  "CHAPTERS": {
+   "key": "ab_chapters",
+   "type": "str"
+  },
+  "CHAPTER_TITLES": {
+   "key": "chapter_titles",
+   "type": "str"
+  },
+  "COVER_SOURCE": {
+   "key": "ab_cover_source",
+   "type": "str"
+  },
+  "DISCOVER_GENRE": {
+   "key": "discover_genre",
+   "type": "str"
+  },
+  "DISCOVER_GERMAN": {
+   "key": "discover_german",
+   "type": "bool"
+  },
+  "DISCOVER_MIN_COUNT": {
+   "key": "discover_min_count",
+   "type": "int"
+  },
+  "DISCOVER_MIN_RATING": {
+   "key": "discover_min_rating",
+   "type": "float"
+  },
+  "DISCOVER_NONFICTION_STORE": {
+   "key": "discover_nonfiction_store",
+   "type": "bool"
+  },
+  "DISCOVER_TRUSTED_AUTHORS": {
+   "key": "discover_trusted_authors",
+   "type": "str"
+  },
+  "DISCOVER_UNABRIDGED": {
+   "key": "discover_unabridged",
+   "type": "bool"
+  },
+  "DUPLICATES": {
+   "key": "ab_duplicates",
+   "type": "str"
+  },
+  "FILE_TEMPLATE": {
+   "key": "ab_file_template",
+   "type": "str"
+  },
+  "FOLDER_TEMPLATE": {
+   "key": "ab_folder_template",
+   "type": "str"
+  },
+  "FORCE_MONO": {
+   "key": "force_mono",
+   "type": "bool"
+  },
+  "INBOX_ORIGINALS": {
+   "key": "ab_originals",
+   "type": "str"
+  },
+  "KEEP_SERIES_IN_SUBTITLE": {
+   "key": "keep_series_in_subtitle",
+   "type": "bool"
+  },
+  "KEEP_SERIES_IN_TITLE": {
+   "key": "keep_series_in_title",
+   "type": "bool"
+  },
+  "LIBRARY_ORIGINALS": {
+   "key": "ab_library_originals",
+   "type": "str"
+  },
+  "LIBRARY_RESCAN_HOURS": {
+   "key": "library_rescan_hours",
+   "type": "int"
+  },
+  "MATCH_MODE": {
+   "key": "ab_match",
+   "type": "str"
+  },
+  "MATCH_THRESHOLD": {
+   "key": "ab_threshold",
+   "type": "float"
+  },
+  "METADATA_FALLBACK": {
+   "key": "ab_fallback",
+   "type": "bool"
+  },
+  "NARRATOR_IN_ARTIST": {
+   "key": "narrator_in_artist",
+   "type": "bool"
+  },
+  "REQUEST_QUOTA": {
+   "key": "request_quota",
+   "type": "int"
+  },
+  "SCAN_INTERVAL": {
+   "key": "ab_scan_interval",
+   "type": "int"
+  },
+  "SETTLE_SECONDS": {
+   "key": "ab_settle",
+   "type": "int"
+  },
+  "WANTED_INTERVAL_HOURS": {
+   "key": "wanted_interval_hours",
+   "type": "int"
+  },
+  "WRITE_ABS_METADATA": {
+   "key": "write_abs",
+   "type": "bool"
+  },
+  "WRITE_COVER": {
+   "key": "write_cover",
+   "type": "bool"
+  },
+  "WRITE_DESC": {
+   "key": "write_desc",
+   "type": "bool"
+  },
+  "WRITE_READER": {
+   "key": "write_reader",
+   "type": "bool"
+  }
+ },
+ "version": "7.13.0"
+}

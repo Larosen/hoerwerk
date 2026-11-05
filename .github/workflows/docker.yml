@@ -103,6 +103,12 @@ jobs:
         env:
           HW_TAGS: ${{ github.workspace }}/rust/target/release/hw-tags
         run: python -m unittest test_tags -v
+      - name: The Rust backend against the contract tests (rust-pending.txt lists what is not ported yet)
+        working-directory: contract
+        env:
+          HW_SERVER_CMD: ${{ github.workspace }}/rust/target/release/hoerwerk
+          HW_CONTRACT_PENDING: rust-pending.txt
+        run: python -m unittest test_contract -v
 
   frontend:
     runs-on: ubuntu-latest

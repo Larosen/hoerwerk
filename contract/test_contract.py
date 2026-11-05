@@ -383,6 +383,22 @@ class Lifecycle(unittest.TestCase):
             s.cleanup()
 
 
+def _mark_pending() -> None:
+    """HW_CONTRACT_PENDING=file: tests a server under construction does not pass yet (one "Class.test" per line).
+    They run as expected failures – one that starts passing fails the run, so the list can only shrink."""
+    path = os.environ.get("HW_CONTRACT_PENDING")
+    if not path:
+        return
+    with open(path, encoding="utf-8") as f:
+        names = [line.split("#")[0].strip() for line in f]
+    for name in filter(None, names):
+        cls, _, test = name.partition(".")
+        target = globals()[cls]
+        setattr(target, test, unittest.expectedFailure(getattr(target, test)))
+
+
+_mark_pending()
+
 if __name__ == "__main__":
     unittest.main()
 
