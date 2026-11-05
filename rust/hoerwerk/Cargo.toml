@@ -25,3 +25,5 @@ mime_guess = "2"
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 http-body-util = "0.1"
 bytes = "1"
+unicode-normalization = "0.1"
+hw-tags = { path = "../hw-tags", version = "1.0.0" }

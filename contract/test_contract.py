@@ -383,6 +383,52 @@ class Lifecycle(unittest.TestCase):
             s.cleanup()
 
 
+class Library(unittest.TestCase):
+    """An existing collection is read the same way: folder layouts, tags, CD folders, M4B, covers."""
+
+    def test_reads_an_existing_collection(self):
+        s = Server()
+        lib = s.library
+        tone(os.path.join(lib, "Theodor Storm", "Der Schimmelreiter", "01.mp3"),
+             tags={"artist": "Gert Westphal", "album": "Der Schimmelreiter"})                   # artist = narrator
+        tone(os.path.join(lib, "Anna Autorin", "Die Reihe", "03 - Dritter Band", "01.mp3"))
+        tone(os.path.join(lib, "Max Muster - Hörbuch", "CD1", "01.mp3"))
+        tone(os.path.join(lib, "Max Muster - Hörbuch", "CD2", "01.mp3"))
+        tone(os.path.join(lib, "Erika Beispiel", "Eigenes", "Eigenes.m4b"),
+             tags={"album": "Mein Titel", "album_artist": "Erika Beispiel", "artist": "Erika Beispiel"})
+        tone(os.path.join(lib, ".versteckt", "x.mp3"))
+        tone(os.path.join(lib, "_geparkt", "x.mp3"))
+        shutil.copy(os.path.join(os.path.dirname(__file__), "golden", "cover.jpg"),
+                    os.path.join(lib, "Theodor Storm", "Der Schimmelreiter", "cover.jpg"))
+        try:
+            s.start()
+            admin = Client(s, ADMIN["name"], ADMIN["password"])
+            admin.wait(lambda: admin.get("/api/library")["books"] == 4, 30, what="library read")
+            keys = ("path", "title", "authors", "series", "series_position", "format", "files", "cover")
+            books = [{k: b[k] for k in keys} for b in admin.get("/api/library/books")["books"]]
+            self.assertEqual(books, [
+                {"path": "Anna Autorin/Die Reihe/03 - Dritter Band", "title": "Dritter Band", "authors": ["Anna Autorin"],
+                 "series": "Die Reihe", "series_position": "03", "format": "mp3", "files": 1, "cover": False},
+                {"path": "Erika Beispiel/Eigenes", "title": "Mein Titel", "authors": ["Erika Beispiel"], "series": None,
+                 "series_position": None, "format": "m4b", "files": 1, "cover": False},
+                {"path": "Max Muster - Hörbuch", "title": "Hörbuch", "authors": ["Max Muster"], "series": None,
+                 "series_position": None, "format": "mp3", "files": 2, "cover": False},
+                {"path": "Theodor Storm/Der Schimmelreiter", "title": "Der Schimmelreiter", "authors": ["Theodor Storm"],
+                 "series": None, "series_position": None, "format": "mp3", "files": 1, "cover": True},
+            ])
+            found = admin.get("/api/library/books?q=westphal")["books"]              # narrators are found too
+            self.assertEqual([b["path"] for b in found], ["Theodor Storm/Der Schimmelreiter"])
+            status, h, body = s.request("GET", "/api/library/cover?path=" + quote("Theodor Storm/Der Schimmelreiter"),
+                                        cookie=admin.cookie)
+            self.assertEqual((status, h["content-type"]), (200, "image/jpeg"))
+            tracks = admin.get("/api/library/tracks?path=" + quote("Max Muster - Hörbuch"))
+            self.assertEqual([t["file"] for t in tracks["tracks"]], ["CD1/01.mp3", "CD2/01.mp3"])
+            self.assertEqual(admin.get("/api/library/unconverted")["books"][0]["path"],
+                             "Anna Autorin/Die Reihe/03 - Dritter Band")
+        finally:
+            s.cleanup()
+
+
 def _mark_pending() -> None:
     """HW_CONTRACT_PENDING=file: tests a server under construction does not pass yet (one "Class.test" per line).
     They run as expected failures – one that starts passing fails the run, so the list can only shrink."""

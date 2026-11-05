@@ -28,6 +28,14 @@ class SettingsContractTest(unittest.TestCase):
             self.assertEqual(json.load(fh), json.loads(json.dumps(make_settings.build())),
                              "contract/settings.json veraltet: python3 contract/make_settings.py")
 
+    def test_words_json_matches_the_python_rules(self):
+        """contract/golden/words.json: names, titles, track names – what other implementations must match."""
+        import json
+        import make_words
+        with open(os.path.join(HERE, "..", "contract", "golden", "words.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh), json.loads(json.dumps(make_words.build())),
+                             "contract/golden/words.json veraltet: python3 contract/make_words.py")
+
 
 if __name__ == "__main__":
     unittest.main()

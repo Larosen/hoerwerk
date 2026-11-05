@@ -1,4 +1,5 @@
 //! hw-tags write BOOK.m4b --book BOOK.json [--settings SETTINGS.json] [--cover COVER.jpg]
+//! hw-tags read BOOK.m4b   – the book as JSON, like `tagger.read_book`
 //! Writes the audiobook tags (see the library). Exit code 0 on success, 1 with a message otherwise.
 
 use std::path::PathBuf;
@@ -11,7 +12,13 @@ fn read_json(path: &str) -> Result<serde_json::Value, String> {
 
 fn run(args: Vec<String>) -> Result<(), String> {
     let mut it = args.into_iter();
-    if it.next().as_deref() != Some("write") {
+    let command = it.next();
+    if command.as_deref() == Some("read") {
+        let file = PathBuf::from(it.next().ok_or("no M4B given")?);
+        println!("{}", hw_tags::read_book(&file));
+        return Ok(());
+    }
+    if command.as_deref() != Some("write") {
         return Err("usage: hw-tags write BOOK.m4b --book BOOK.json [--settings S.json] [--cover C.jpg]".into());
     }
     let file = PathBuf::from(it.next().ok_or("no M4B given")?);

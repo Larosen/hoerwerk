@@ -1,0 +1,1499 @@
+{
+ "description": "How Hörwerk reads names, titles and track names (Python answers; see make_words.py).",
+ "match_words": [
+  [
+   "Fräulein",
+   [
+    "fraulein"
+   ]
+  ],
+  [
+   "Fraeulein",
+   [
+    "fraulein"
+   ]
+  ],
+  [
+   "FRAULEIN",
+   [
+    "fraulein"
+   ]
+  ],
+  [
+   "Straße",
+   [
+    "strasse"
+   ]
+  ],
+  [
+   "Nesbø",
+   [
+    "nesbo"
+   ]
+  ],
+  [
+   "Łódź",
+   [
+    "lodz"
+   ]
+  ],
+  [
+   "Œuvre",
+   [
+    "ouvre"
+   ]
+  ],
+  [
+   "Þór",
+   [
+    "thor"
+   ]
+  ],
+  [
+   "Bis(s) zum Morgengrauen",
+   [
+    "biss",
+    "zum",
+    "morgengraun"
+   ]
+  ],
+  [
+   "Bis (s) zum",
+   [
+    "bis",
+    "s",
+    "zum"
+   ]
+  ],
+  [
+   "Ab(cde)f",
+   [
+    "ab",
+    "cde",
+    "f"
+   ]
+  ],
+  [
+   "Ab(cd)",
+   [
+    "abcd"
+   ]
+  ],
+  [
+   "Ab(cd)e",
+   [
+    "ab",
+    "cd",
+    "e"
+   ]
+  ],
+  [
+   "Café crème",
+   [
+    "cafe",
+    "creme"
+   ]
+  ],
+  [
+   "Jo Nesbø – Der Schneemann",
+   [
+    "jo",
+    "nesbo",
+    "der",
+    "schneemann"
+   ]
+  ],
+  [
+   "naïve",
+   [
+    "naive"
+   ]
+  ],
+  [
+   "İstanbul",
+   [
+    "istanbul"
+   ]
+  ],
+  [
+   "Ærø",
+   [
+    "aro"
+   ]
+  ],
+  [
+   "Grüße aus Köln",
+   [
+    "grusse",
+    "aus",
+    "koln"
+   ]
+  ],
+  [
+   "Goethe, Johann Wolfgang von",
+   [
+    "gothe",
+    "johann",
+    "wolfgang",
+    "von"
+   ]
+  ],
+  [
+   "„Zitat“ (Hörbuch) [Band 3]",
+   [
+    "zitat",
+    "horbuch",
+    "band",
+    "3"
+   ]
+  ],
+  [
+   "1984",
+   [
+    "1984"
+   ]
+  ],
+  [
+   "Teil 2",
+   [
+    "teil",
+    "2"
+   ]
+  ],
+  [
+   "Der Herr der Ringe: Die Gefährten",
+   [
+    "der",
+    "herr",
+    "der",
+    "ringe",
+    "die",
+    "gefahrten"
+   ]
+  ],
+  [
+   "Das Buch",
+   [
+    "das",
+    "buch"
+   ]
+  ],
+  [
+   "A",
+   [
+    "a"
+   ]
+  ],
+  [
+   "Die drei ??? und der Super-Papagei",
+   [
+    "die",
+    "drei",
+    "und",
+    "der",
+    "super",
+    "papagei"
+   ]
+  ],
+  [
+   "ﬁnal ﬀ ½",
+   [
+    "final",
+    "ff",
+    "1",
+    "2"
+   ]
+  ],
+  [
+   "Mutter Courage und ihre Kinder",
+   [
+    "mutter",
+    "courage",
+    "und",
+    "ihre",
+    "kinder"
+   ]
+  ],
+  [
+   "Ödön von Horváth",
+   [
+    "odon",
+    "von",
+    "horvath"
+   ]
+  ],
+  [
+   "Ἀθῆναι",
+   []
+  ],
+  [
+   "Чехов",
+   []
+  ],
+  [
+   "",
+   []
+  ],
+  [
+   "   ",
+   []
+  ],
+  [
+   "Toedliche.Saat.German.Hoerbuch",
+   [
+    "todliche",
+    "saat",
+    "german",
+    "horbuch"
+   ]
+  ],
+  [
+   "Queue",
+   [
+    "quu"
+   ]
+  ],
+  [
+   "Poesie",
+   [
+    "posie"
+   ]
+  ],
+  [
+   "Aeon Flux",
+   [
+    "aon",
+    "flux"
+   ]
+  ],
+  [
+   "Ruebe",
+   [
+    "rube"
+   ]
+  ],
+  [
+   "Eragon (2) - Der Auftrag des Ältesten",
+   [
+    "eragon",
+    "2",
+    "der",
+    "auftrag",
+    "des",
+    "altesten"
+   ]
+  ],
+  [
+   "Titel (unvollständig",
+   [
+    "titel",
+    "unvollstandig"
+   ]
+  ],
+  [
+   "Titel [eins) (zwei] ende",
+   [
+    "titel",
+    "eins",
+    "zwei",
+    "ende"
+   ]
+  ],
+  [
+   "x(y)z",
+   [
+    "x",
+    "y",
+    "z"
+   ]
+  ],
+  [
+   "(Anfang) Mitte [Ende]",
+   [
+    "anfang",
+    "mitte",
+    "ende"
+   ]
+  ],
+  [
+   "Sebastian Fitzek, Simon Jäger",
+   [
+    "sebastian",
+    "fitzek",
+    "simon",
+    "jager"
+   ]
+  ],
+  [
+   "Storm, Theodor",
+   [
+    "storm",
+    "theodor"
+   ]
+  ],
+  [
+   "Autor / Sprecher",
+   [
+    "autor",
+    "sprecher"
+   ]
+  ],
+  [
+   "A & B",
+   [
+    "a",
+    "b"
+   ]
+  ],
+  [
+   "A und B",
+   [
+    "a",
+    "und",
+    "b"
+   ]
+  ],
+  [
+   "Hund und Katze",
+   [
+    "hund",
+    "und",
+    "katze"
+   ]
+  ],
+  [
+   "A feat. B",
+   [
+    "a",
+    "feat",
+    "b"
+   ]
+  ],
+  [
+   "A feat B",
+   [
+    "a",
+    "feat",
+    "b"
+   ]
+  ],
+  [
+   "Featuring X",
+   [
+    "featuring",
+    "x"
+   ]
+  ],
+  [
+   "Anna gelesen von Bert",
+   [
+    "anna",
+    "gelesen",
+    "von",
+    "bert"
+   ]
+  ],
+  [
+   "Anna read by Bert",
+   [
+    "anna",
+    "read",
+    "by",
+    "bert"
+   ]
+  ],
+  [
+   "Storm, Theodor & Max Muster",
+   [
+    "storm",
+    "theodor",
+    "max",
+    "muster"
+   ]
+  ],
+  [
+   "A, Bert Brecht",
+   [
+    "a",
+    "bert",
+    "brecht"
+   ]
+  ],
+  [
+   "A,Bert Brecht",
+   [
+    "a",
+    "bert",
+    "brecht"
+   ]
+  ],
+  [
+   "Rundfunk",
+   [
+    "rundfunk"
+   ]
+  ],
+  [
+   "Sandra Undine",
+   [
+    "sandra",
+    "undine"
+   ]
+  ],
+  [
+   "A; B; C",
+   [
+    "a",
+    "b",
+    "c"
+   ]
+  ],
+  [
+   "A | B + C",
+   [
+    "a",
+    "b",
+    "c"
+   ]
+  ],
+  [
+   "  Theodor Storm  ",
+   [
+    "theodor",
+    "storm"
+   ]
+  ],
+  [
+   "Brand, Anders",
+   [
+    "brand",
+    "anders"
+   ]
+  ],
+  [
+   "Müller und Söhne, Hans Peter",
+   [
+    "muller",
+    "und",
+    "sohne",
+    "hans",
+    "peter"
+   ]
+  ],
+  [
+   "Und Und",
+   [
+    "und",
+    "und"
+   ]
+  ],
+  [
+   "X , Y Z",
+   [
+    "x",
+    "y",
+    "z"
+   ]
+  ],
+  [
+   "A,  ",
+   [
+    "a"
+   ]
+  ],
+  [
+   ", Ab Cd",
+   [
+    "ab",
+    "cd"
+   ]
+  ]
+ ],
+ "title_words": [
+  [
+   "Fräulein",
+   [
+    "fraulein"
+   ]
+  ],
+  [
+   "Fraeulein",
+   [
+    "fraulein"
+   ]
+  ],
+  [
+   "FRAULEIN",
+   [
+    "fraulein"
+   ]
+  ],
+  [
+   "Straße",
+   [
+    "strasse"
+   ]
+  ],
+  [
+   "Nesbø",
+   [
+    "nesbo"
+   ]
+  ],
+  [
+   "Łódź",
+   [
+    "lodz"
+   ]
+  ],
+  [
+   "Œuvre",
+   [
+    "ouvre"
+   ]
+  ],
+  [
+   "Þór",
+   [
+    "thor"
+   ]
+  ],
+  [
+   "Bis(s) zum Morgengrauen",
+   [
+    "bis",
+    "zum",
+    "morgengraun"
+   ]
+  ],
+  [
+   "Bis (s) zum",
+   [
+    "bis",
+    "zum"
+   ]
+  ],
+  [
+   "Ab(cde)f",
+   [
+    "ab"
+   ]
+  ],
+  [
+   "Ab(cd)",
+   [
+    "ab"
+   ]
+  ],
+  [
+   "Ab(cd)e",
+   [
+    "ab"
+   ]
+  ],
+  [
+   "Café crème",
+   [
+    "cafe",
+    "creme"
+   ]
+  ],
+  [
+   "Jo Nesbø – Der Schneemann",
+   [
+    "jo",
+    "nesbo",
+    "schneemann"
+   ]
+  ],
+  [
+   "naïve",
+   [
+    "naive"
+   ]
+  ],
+  [
+   "İstanbul",
+   [
+    "istanbul"
+   ]
+  ],
+  [
+   "Ærø",
+   [
+    "aro"
+   ]
+  ],
+  [
+   "Grüße aus Köln",
+   [
+    "grusse",
+    "aus",
+    "koln"
+   ]
+  ],
+  [
+   "Goethe, Johann Wolfgang von",
+   [
+    "gothe",
+    "johann",
+    "wolfgang"
+   ]
+  ],
+  [
+   "„Zitat“ (Hörbuch) [Band 3]",
+   [
+    "zitat"
+   ]
+  ],
+  [
+   "1984",
+   [
+    "1984"
+   ]
+  ],
+  [
+   "Teil 2",
+   [
+    "2"
+   ]
+  ],
+  [
+   "Der Herr der Ringe: Die Gefährten",
+   [
+    "herr",
+    "ringe",
+    "gefahrten"
+   ]
+  ],
+  [
+   "Das Buch",
+   [
+    "das",
+    "buch"
+   ]
+  ],
+  [
+   "A",
+   [
+    "a"
+   ]
+  ],
+  [
+   "Die drei ??? und der Super-Papagei",
+   [
+    "drei",
+    "super",
+    "papagei"
+   ]
+  ],
+  [
+   "ﬁnal ﬀ ½",
+   [
+    "final",
+    "ff",
+    "1",
+    "2"
+   ]
+  ],
+  [
+   "Mutter Courage und ihre Kinder",
+   [
+    "mutter",
+    "courage",
+    "ihre",
+    "kinder"
+   ]
+  ],
+  [
+   "Ödön von Horváth",
+   [
+    "odon",
+    "horvath"
+   ]
+  ],
+  [
+   "Ἀθῆναι",
+   []
+  ],
+  [
+   "Чехов",
+   []
+  ],
+  [
+   "",
+   []
+  ],
+  [
+   "   ",
+   []
+  ],
+  [
+   "Toedliche.Saat.German.Hoerbuch",
+   [
+    "todliche",
+    "saat",
+    "german",
+    "horbuch"
+   ]
+  ],
+  [
+   "Queue",
+   [
+    "quu"
+   ]
+  ],
+  [
+   "Poesie",
+   [
+    "posie"
+   ]
+  ],
+  [
+   "Aeon Flux",
+   [
+    "aon",
+    "flux"
+   ]
+  ],
+  [
+   "Ruebe",
+   [
+    "rube"
+   ]
+  ],
+  [
+   "Eragon (2) - Der Auftrag des Ältesten",
+   [
+    "eragon",
+    "auftrag",
+    "des",
+    "altesten"
+   ]
+  ],
+  [
+   "Titel (unvollständig",
+   [
+    "titel",
+    "unvollstandig"
+   ]
+  ],
+  [
+   "Titel [eins) (zwei] ende",
+   [
+    "titel",
+    "ende"
+   ]
+  ],
+  [
+   "x(y)z",
+   [
+    "x",
+    "z"
+   ]
+  ],
+  [
+   "(Anfang) Mitte [Ende]",
+   [
+    "mitte"
+   ]
+  ]
+ ],
+ "names_of": [
+  [
+   "Sebastian Fitzek, Simon Jäger",
+   [
+    "Sebastian Fitzek, Simon Jäger",
+    "Sebastian Fitzek",
+    "Simon Jäger"
+   ]
+  ],
+  [
+   "Storm, Theodor",
+   [
+    "Storm, Theodor"
+   ]
+  ],
+  [
+   "Autor / Sprecher",
+   [
+    "Autor / Sprecher",
+    "Autor",
+    "Sprecher"
+   ]
+  ],
+  [
+   "A & B",
+   [
+    "A & B",
+    "A",
+    "B"
+   ]
+  ],
+  [
+   "A und B",
+   [
+    "A und B",
+    "A",
+    "B"
+   ]
+  ],
+  [
+   "Hund und Katze",
+   [
+    "Hund und Katze",
+    "Hund",
+    "Katze"
+   ]
+  ],
+  [
+   "A feat. B",
+   [
+    "A feat. B",
+    "A",
+    "B"
+   ]
+  ],
+  [
+   "A feat B",
+   [
+    "A feat B",
+    "A",
+    "B"
+   ]
+  ],
+  [
+   "Featuring X",
+   [
+    "Featuring X",
+    "uring X"
+   ]
+  ],
+  [
+   "Anna gelesen von Bert",
+   [
+    "Anna gelesen von Bert",
+    "Anna",
+    "Bert"
+   ]
+  ],
+  [
+   "Anna read by Bert",
+   [
+    "Anna read by Bert",
+    "Anna",
+    "Bert"
+   ]
+  ],
+  [
+   "Storm, Theodor & Max Muster",
+   [
+    "Storm, Theodor & Max Muster",
+    "Storm",
+    "Theodor",
+    "Max Muster"
+   ]
+  ],
+  [
+   "A, Bert Brecht",
+   [
+    "A, Bert Brecht",
+    "A",
+    "Bert Brecht"
+   ]
+  ],
+  [
+   "A,Bert Brecht",
+   [
+    "A,Bert Brecht",
+    "A",
+    "Bert Brecht"
+   ]
+  ],
+  [
+   "Rundfunk",
+   [
+    "Rundfunk"
+   ]
+  ],
+  [
+   "Sandra Undine",
+   [
+    "Sandra Undine"
+   ]
+  ],
+  [
+   "A; B; C",
+   [
+    "A; B; C",
+    "A",
+    "B",
+    "C"
+   ]
+  ],
+  [
+   "A | B + C",
+   [
+    "A | B + C",
+    "A",
+    "B",
+    "C"
+   ]
+  ],
+  [
+   "  Theodor Storm  ",
+   [
+    "Theodor Storm"
+   ]
+  ],
+  [
+   "Brand, Anders",
+   [
+    "Brand, Anders"
+   ]
+  ],
+  [
+   "Müller und Söhne, Hans Peter",
+   [
+    "Müller und Söhne, Hans Peter",
+    "Müller",
+    "Söhne",
+    "Hans Peter"
+   ]
+  ],
+  [
+   "Und Und",
+   [
+    "Und Und"
+   ]
+  ],
+  [
+   "X , Y Z",
+   [
+    "X , Y Z",
+    "X",
+    "Y Z"
+   ]
+  ],
+  [
+   "A,  ",
+   [
+    "A"
+   ]
+  ],
+  [
+   ", Ab Cd",
+   [
+    "Ab Cd"
+   ]
+  ]
+ ],
+ "split_author_title": [
+  [
+   "Storm, Theodor - Der Schimmelreiter",
+   [
+    "Storm, Theodor",
+    "Der Schimmelreiter"
+   ]
+  ],
+  [
+   "01 - Titel",
+   null
+  ],
+  [
+   "Theodor Storm – Der Schimmelreiter",
+   [
+    "Theodor Storm",
+    "Der Schimmelreiter"
+   ]
+  ],
+  [
+   "A - B - C",
+   [
+    "A",
+    "B - C"
+   ]
+  ],
+  [
+   "Kein Trenner",
+   null
+  ],
+  [
+   "A-B",
+   null
+  ],
+  [
+   "  Lead - Space  ",
+   [
+    "Lead",
+    "Space"
+   ]
+  ],
+  [
+   "A -  ",
+   [
+    "A",
+    " "
+   ]
+  ],
+  [
+   "A  -  B",
+   [
+    "A",
+    "B"
+   ]
+  ],
+  [
+   "2001 - Odyssee",
+   null
+  ],
+  [
+   "A – ",
+   null
+  ],
+  [
+   "x\t-\ty",
+   [
+    "x",
+    "y"
+   ]
+  ]
+ ],
+ "natural_sort": {
+  "input": [
+   "Track 10.mp3",
+   "Track 2.mp3",
+   "track 1.mp3",
+   "CD2/01.mp3",
+   "CD1/10.mp3",
+   "CD1/2.mp3",
+   "a",
+   "A10b2",
+   "a10b10",
+   "10",
+   "9",
+   "",
+   "Kapitel 007",
+   "Kapitel 7",
+   "b",
+   "B"
+  ],
+  "sorted": [
+   "",
+   "9",
+   "10",
+   "a",
+   "A10b2",
+   "a10b10",
+   "b",
+   "B",
+   "CD1/2.mp3",
+   "CD1/10.mp3",
+   "CD2/01.mp3",
+   "Kapitel 007",
+   "Kapitel 7",
+   "track 1.mp3",
+   "Track 2.mp3",
+   "Track 10.mp3"
+  ]
+ },
+ "chapter_title": [
+  [
+   "01 - Der Anfang.mp3",
+   {},
+   "auto",
+   "Der Anfang"
+  ],
+  [
+   "01 - Der Anfang.mp3",
+   {},
+   "tag",
+   "Der Anfang"
+  ],
+  [
+   "01 - Der Anfang.mp3",
+   {},
+   "filename",
+   "01 - Der Anfang"
+  ],
+  [
+   "01 - Der Anfang.mp3",
+   {
+    "title": "Track 01"
+   },
+   "auto",
+   "Der Anfang"
+  ],
+  [
+   "01 - Der Anfang.mp3",
+   {
+    "title": "Track 01"
+   },
+   "tag",
+   "Track 01"
+  ],
+  [
+   "01 - Der Anfang.mp3",
+   {
+    "title": "Track 01"
+   },
+   "filename",
+   "01 - Der Anfang"
+  ],
+  [
+   "02_das_ende.mp3",
+   {},
+   "auto",
+   "das ende"
+  ],
+  [
+   "02_das_ende.mp3",
+   {},
+   "tag",
+   "das ende"
+  ],
+  [
+   "02_das_ende.mp3",
+   {},
+   "filename",
+   "02_das_ende"
+  ],
+  [
+   "CD1/03 Kapitel.mp3",
+   {},
+   "auto",
+   "03 Kapitel"
+  ],
+  [
+   "CD1/03 Kapitel.mp3",
+   {},
+   "tag",
+   "03 Kapitel"
+  ],
+  [
+   "CD1/03 Kapitel.mp3",
+   {},
+   "filename",
+   "03 Kapitel"
+  ],
+  [
+   "Track 07.mp3",
+   {
+    "title": ""
+   },
+   "auto",
+   "Track 07"
+  ],
+  [
+   "Track 07.mp3",
+   {
+    "title": ""
+   },
+   "tag",
+   "Track 07"
+  ],
+  [
+   "Track 07.mp3",
+   {
+    "title": ""
+   },
+   "filename",
+   "Track 07"
+  ],
+  [
+   "x.mp3",
+   {
+    "title": "Echter Titel"
+   },
+   "auto",
+   "Echter Titel"
+  ],
+  [
+   "x.mp3",
+   {
+    "title": "Echter Titel"
+   },
+   "tag",
+   "Echter Titel"
+  ],
+  [
+   "x.mp3",
+   {
+    "title": "Echter Titel"
+   },
+   "filename",
+   "x"
+  ],
+  [
+   "12) Zwölf.flac",
+   {},
+   "auto",
+   "Zwölf"
+  ],
+  [
+   "12) Zwölf.flac",
+   {},
+   "tag",
+   "Zwölf"
+  ],
+  [
+   "12) Zwölf.flac",
+   {},
+   "filename",
+   "12) Zwölf"
+  ],
+  [
+   "chapter 3.m4a",
+   {
+    "title": "Kapitel 3"
+   },
+   "auto",
+   "chapter 3"
+  ],
+  [
+   "chapter 3.m4a",
+   {
+    "title": "Kapitel 3"
+   },
+   "tag",
+   "Kapitel 3"
+  ],
+  [
+   "chapter 3.m4a",
+   {
+    "title": "Kapitel 3"
+   },
+   "filename",
+   "chapter 3"
+  ],
+  [
+   "1234 Lang.mp3",
+   {},
+   "auto",
+   "Lang"
+  ],
+  [
+   "1234 Lang.mp3",
+   {},
+   "tag",
+   "Lang"
+  ],
+  [
+   "1234 Lang.mp3",
+   {},
+   "filename",
+   "1234 Lang"
+  ],
+  [
+   "12345 Zu lang.mp3",
+   {},
+   "auto",
+   "12345 Zu lang"
+  ],
+  [
+   "12345 Zu lang.mp3",
+   {},
+   "tag",
+   "12345 Zu lang"
+  ],
+  [
+   "12345 Zu lang.mp3",
+   {},
+   "filename",
+   "12345 Zu lang"
+  ],
+  [
+   "part.mp3",
+   {},
+   "auto",
+   "part"
+  ],
+  [
+   "part.mp3",
+   {},
+   "tag",
+   "part"
+  ],
+  [
+   "part.mp3",
+   {},
+   "filename",
+   "part"
+  ],
+  [
+   "007.mp3",
+   {
+    "title": "  Bond  "
+   },
+   "auto",
+   "Bond"
+  ],
+  [
+   "007.mp3",
+   {
+    "title": "  Bond  "
+   },
+   "tag",
+   "Bond"
+  ],
+  [
+   "007.mp3",
+   {
+    "title": "  Bond  "
+   },
+   "filename",
+   "007"
+  ]
+ ],
+ "chapter_titles": [
+  [
+   [
+    "Der Schimmelreiter - 01",
+    "Der Schimmelreiter - 02",
+    "Der Schimmelreiter - 03"
+   ],
+   "Der Schimmelreiter",
+   [
+    "Kapitel 1",
+    "Kapitel 2",
+    "Kapitel 3"
+   ]
+  ],
+  [
+   [
+    "Sie werden dich jagen - Kapitel 1",
+    "Sie werden dich jagen - Kapitel 2"
+   ],
+   "",
+   [
+    "Kapitel 1",
+    "Kapitel 2"
+   ]
+  ],
+  [
+   [
+    "Track 1",
+    "Track 2",
+    "Track 3"
+   ],
+   "",
+   [
+    "Kapitel 1",
+    "Kapitel 2",
+    "Kapitel 3"
+   ]
+  ],
+  [
+   [
+    "001",
+    "002",
+    "004"
+   ],
+   "",
+   [
+    "Kapitel 1",
+    "Kapitel 2",
+    "Kapitel 4"
+   ]
+  ],
+  [
+   [
+    "3",
+    "1",
+    "2"
+   ],
+   "",
+   [
+    "Kapitel 1",
+    "Kapitel 2",
+    "Kapitel 3"
+   ]
+  ],
+  [
+   [
+    "Montag",
+    "Sonntag"
+   ],
+   "",
+   [
+    "Montag",
+    "Sonntag"
+   ]
+  ],
+  [
+   [
+    "Prolog (2012)",
+    "Das Ende (2012)"
+   ],
+   "",
+   [
+    "Prolog",
+    "Das Ende"
+   ]
+  ],
+  [
+   [
+    "Einzig"
+   ],
+   "Einzig",
+   [
+    "Kapitel 1"
+   ]
+  ],
+  [
+   [
+    "Kapitel 1 - Anfang",
+    "Kapitel 2 - Mitte"
+   ],
+   "",
+   [
+    "Kapitel 1 - Anfang",
+    "Kapitel 2 - Mitte"
+   ]
+  ],
+  [
+   [
+    "",
+    ""
+   ],
+   "",
+   [
+    "Kapitel 1",
+    "Kapitel 2"
+   ]
+  ],
+  [
+   [
+    "ÜBER alles 1",
+    "über ALLES 2"
+   ],
+   "Über Alles",
+   [
+    "Kapitel 1",
+    "Kapitel 2"
+   ]
+  ],
+  [
+   [
+    "A – Eins",
+    "A – Zwei"
+   ],
+   "",
+   [
+    "Eins",
+    "Zwei"
+   ]
+  ],
+  [
+   [
+    "Folge 1: Der Fall",
+    "Folge 2: Die Wende"
+   ],
+   "Folge",
+   [
+    "1: Der Fall",
+    "2: Die Wende"
+   ]
+  ]
+ ]
+}

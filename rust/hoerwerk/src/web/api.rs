@@ -27,7 +27,7 @@ pub struct Route {
 }
 
 macro_rules! h {
-    ($f:ident) => {
+    ($f:path) => {
         |app, req, params| Box::pin($f(app, req, params))
     };
 }
@@ -62,6 +62,14 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("POST", "/api/invite/{token}") => h!(invite_accept),
         ("GET", "/api/sources") => h!(sources_get),
         ("PUT", "/api/sources") => h!(sources_put),
+        ("GET", "/api/library") => h!(super::library::stats),
+        ("GET", "/api/library/books") => h!(super::library::books),
+        ("GET", "/api/library/cover") => h!(super::library::cover),
+        ("POST", "/api/library/scan") => h!(super::library::scan),
+        ("GET", "/api/library/unconverted") => h!(super::library::unconverted),
+        ("GET", "/api/library/tracks") => h!(super::library::tracks),
+        ("GET", "/api/library/cleanup") => h!(super::library::cleanup_preview),
+        ("POST", "/api/library/cleanup") => h!(super::library::cleanup_run),
         _ => h!(not_yet),
     }
 }

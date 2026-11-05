@@ -4,12 +4,16 @@
 
 mod accounts;
 mod app;
+mod chapters;
 mod config;
 mod db;
 mod invites;
+mod library;
+mod media;
 mod settings;
 mod text;
 mod web;
+mod words;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -66,6 +70,50 @@ fn first_account(app: &mut App) {
     );
 }
 
+/// The first library scan, then processing may start; if the library cannot be read, nothing is processed (no
+/// duplicate check against a half-known library) and it is tried every minute. Afterwards every few hours.
+async fn library_rescanner(app: Arc<App>) {
+    use std::sync::atomic::Ordering;
+    loop {
+        let a = app.clone();
+        match tokio::task::spawn_blocking(move || a.library.scan())
+            .await
+            .unwrap_or_else(|e| Err(e.to_string()))
+        {
+            Ok(_) => break,
+            Err(e) => {
+                *app.library_error.lock().unwrap_or_else(|p| p.into_inner()) = e.clone();
+                text::error(
+                    "Bibliothek",
+                    &t(
+                        "Bibliothek konnte nicht eingelesen werden – Verarbeitung wartet: {error}",
+                        &[("error", &e)],
+                    ),
+                );
+                tokio::time::sleep(Duration::from_secs(60)).await;
+            }
+        }
+    }
+    app.library_error.lock().unwrap_or_else(|p| p.into_inner()).clear();
+    app.library_ready.store(true, Ordering::SeqCst);
+    loop {
+        let hours = app
+            .settings()
+            .get("library_rescan_hours")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(6)
+            .max(1) as u64;
+        tokio::time::sleep(Duration::from_secs(hours * 3600)).await;
+        let a = app.clone();
+        if let Ok(Err(e)) = tokio::task::spawn_blocking(move || a.library.scan()).await {
+            text::error(
+                "Bibliothek",
+                &t("Bibliothek konnte nicht eingelesen werden: {error}", &[("error", &e)]),
+            );
+        }
+    }
+}
+
 async fn stop_signal() {
     use tokio::signal::unix::{SignalKind, signal};
     let mut term = signal(SignalKind::terminate()).expect("SIGTERM handler");
@@ -104,6 +152,8 @@ async fn main() {
     text::set_language(app.settings().get("language").and_then(|v| v.as_str()).unwrap_or("de"));
     first_account(&mut app);
     let app = Arc::new(app);
+    App::wire(&app);
+    tokio::spawn(library_rescanner(app.clone()));
     let port = app.cfg.port;
     text::info(
         "Start",

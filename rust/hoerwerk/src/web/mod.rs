@@ -3,6 +3,7 @@
 
 pub mod api;
 pub mod hosts;
+pub mod library;
 
 use std::collections::HashMap;
 use std::convert::Infallible;

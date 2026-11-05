@@ -1,8 +1,9 @@
 //! The running application: configuration, database, accounts, settings, live updates and the shutdown signal.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use serde_json::{Map, Value, json};
 use tokio::sync::{Notify, watch};
@@ -10,6 +11,7 @@ use tokio::sync::{Notify, watch};
 use crate::accounts::Accounts;
 use crate::config::Config;
 use crate::db::Db;
+use crate::library::LibraryIndex;
 use crate::settings::Settings;
 use crate::text;
 use crate::web::Slots;
@@ -19,6 +21,10 @@ pub const MAX_SSE: usize = 32;
 pub struct App {
     pub cfg: Config,
     pub db: Db,
+    pub library: LibraryIndex,
+    /// the first library scan is done: only then is anything processed (duplicates are checked against it)
+    pub library_ready: AtomicBool,
+    pub library_error: Mutex<String>,
     pub accounts: Accounts,
     pub settings: Settings,
     pub slots: Slots,
@@ -44,6 +50,9 @@ impl App {
         let settings = Settings::new(&cfg.env);
         let (shutdown, _) = watch::channel(false);
         App {
+            library: LibraryIndex::new(&cfg.library, db.clone()),
+            library_ready: AtomicBool::new(false),
+            library_error: Mutex::new(String::new()),
             accounts: Accounts::new(),
             settings,
             db,
@@ -145,13 +154,23 @@ impl App {
                 "scan_note": "", "waiting": [], "ignored": [], "jobs": [], "review": 0,
                 "queues": {"encode": {"workers": 1, "running": 0, "waiting": 0}, "io": {"workers": 2, "running": 0, "waiting": 0}},
             }),
-            "library" => json!({"books": 0, "m4b": 0, "other": 0, "last_scan": null, "scanning": false}),
+            "library" => self.library.stats(),
             _ => Value::Null,
         }
     }
 
     pub fn topics(&self) -> [&'static str; 2] {
         ["audiobooks", "library"]
+    }
+
+    /// Live updates of the library index reach the browser (called once the app is shared).
+    pub fn wire(app: &Arc<App>) {
+        let weak = Arc::downgrade(app);
+        app.library.on_change(Box::new(move || {
+            if let Some(a) = weak.upgrade() {
+                a.publish("library");
+            }
+        }));
     }
 
     pub fn stopping(&self) -> bool {

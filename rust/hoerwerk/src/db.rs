@@ -15,8 +15,9 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../migrations/0005.sql"),
 ];
 
+#[derive(Clone)]
 pub struct Db {
-    conn: Mutex<Connection>,
+    conn: std::sync::Arc<Mutex<Connection>>,
 }
 
 pub type Result<T> = rusqlite::Result<T>;
@@ -40,7 +41,9 @@ impl Db {
             .map_err(|e| e.to_string())?;
         conn.pragma_update(None, "foreign_keys", "ON")
             .map_err(|e| e.to_string())?;
-        let db = Db { conn: Mutex::new(conn) };
+        let db = Db {
+            conn: std::sync::Arc::new(Mutex::new(conn)),
+        };
         db.migrate()?;
         Ok(db)
     }
@@ -48,7 +51,7 @@ impl Db {
     #[cfg(test)]
     pub fn memory() -> Self {
         let db = Db {
-            conn: Mutex::new(Connection::open_in_memory().unwrap()),
+            conn: std::sync::Arc::new(Mutex::new(Connection::open_in_memory().unwrap())),
         };
         db.migrate().unwrap();
         db

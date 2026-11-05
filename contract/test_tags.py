@@ -59,6 +59,22 @@ class RustTagWriter(unittest.TestCase):
         self.assertEqual(len(tags["chapters"]), 2)                        # chapters untouched
         shutil.rmtree(tmp)
 
+    def test_reads_what_python_reads(self):
+        """hw-tags read gives the same book as tagger.read_book (what the library index uses)."""
+        import sys
+        sys.path.insert(0, os.path.join(HERE, "..", "app"))
+        import tagger
+        spec = _load(os.path.join(HERE, "golden", "book.json"))
+        tmp = tempfile.mkdtemp()
+        try:
+            path = os.path.join(tmp, "b.m4b")
+            make_golden.sample_m4b(path)
+            tagger.write_tags(path, spec["book"], spec["settings"], make_golden.cover_jpeg())
+            out = subprocess.run([BINARY, "read", path], check=True, capture_output=True, text=True).stdout
+            self.assertEqual(json.loads(out), tagger.read_book(path))
+        finally:
+            shutil.rmtree(tmp)
+
 
 if __name__ == "__main__":
     unittest.main()

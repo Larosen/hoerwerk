@@ -251,6 +251,66 @@ pub fn write(path: &std::path::Path, book: &Value, settings: &Value, cover: Opti
     Ok(())
 }
 
+/// Existing tags of an M4B as a book (same fields as `tagger.read_book`); `_cover` says whether a picture is inside.
+pub fn read_book(path: &std::path::Path) -> Value {
+    let tag = Tag::read_from_path(path).ok();
+    let one = |ident: &dyn Fn(&Tag) -> Option<String>| tag.as_ref().and_then(ident).unwrap_or_default();
+    let atom = |key: &'static [u8; 4]| move |t: &Tag| t.data_of(&Fourcc(*key)).next().and_then(data_text);
+    let free = |name: &'static str| {
+        move |t: &Tag| {
+            t.data_of(&FreeformIdentBorrowed::new_borrowed(MEAN, name))
+                .next()
+                .and_then(data_text)
+        }
+    };
+    let or_none = |s: String| if s.is_empty() { Value::Null } else { Value::String(s) };
+    let first = |a: String, b: String| if a.is_empty() { b } else { a };
+    let split = |s: String| -> Vec<Value> {
+        let rx = regex_lite::Regex::new(r"\s*[,;&]\s*|\s+und\s+|\s+and\s+").expect("valid regex");
+        rx.split(&s)
+            .map(str::trim)
+            .filter(|x| !x.is_empty())
+            .map(|x| Value::String(x.to_string()))
+            .collect()
+    };
+    let date: String = one(&atom(b"\xa9day")).chars().take(10).collect();
+    serde_json::json!({
+        "_cover": tag.as_ref().is_some_and(|t| t.artworks().next().is_some()),
+        "asin": or_none(one(&free("ASIN"))),
+        "title": first(one(&atom(b"\xa9alb")), one(&atom(b"\xa9nam"))),
+        "subtitle": or_none(one(&free("SUBTITLE"))),
+        "authors": split(first(one(&atom(b"aART")), one(&atom(b"\xa9ART")))),
+        "narrators": split(first(one(&atom(b"\xa9wrt")), one(&free("NARRATOR")))),
+        "series": or_none(first(one(&atom(b"\xa9mvn")), one(&free("SERIES")))),
+        "series_position": or_none(first(one(&free("SERIES-PART")), tag.as_ref().and_then(|t| t.movement_index()).map(|i| i.to_string()).unwrap_or_default())),
+        "publisher": or_none(first(one(&free("PUBLISHER")), one(&atom(b"cprt")))),
+        "release_date": or_none(date),
+        "language": or_none(one(&free("LANGUAGE"))),
+        "genres": one(&atom(b"\xa9gen")).split('/').filter(|g| !g.is_empty()).collect::<Vec<_>>(),
+        "description": first(first(one(&atom(b"ldes")), one(&atom(b"desc"))), one(&atom(b"\xa9cmt"))),
+        "region": or_none(one(&free("REGION"))),
+        "url": or_none(one(&free("WWWAUDIOFILE"))),
+        "source": "tags",
+    })
+}
+
+/// The first picture inside an M4B/M4A.
+pub fn embedded_cover(path: &std::path::Path) -> Option<Vec<u8>> {
+    Tag::read_from_path(path)
+        .ok()?
+        .artworks()
+        .next()
+        .map(|i| i.data.to_vec())
+}
+
+fn data_text(d: &Data) -> Option<String> {
+    match d {
+        Data::Utf8(s) | Data::Utf16(s) => Some(s.clone()),
+        Data::Reserved(b) | Data::Unknown { data: b, .. } => Some(String::from_utf8_lossy(b).into_owned()),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
