@@ -83,6 +83,9 @@ class LibraryIndex:
         self.entries: Dict[str, dict] = {}  # book folder (relative) -> entry
         self.last_scan: Optional[float] = None
         self.scanning = False
+        # changes by add()/remove() while a scan walks the disk: the scan's picture is older than them, so they are
+        # applied on top of it at the end instead of being overwritten (path -> entry, None = removed)
+        self._during: Optional[Dict[str, Optional[dict]]] = None
         self.lock = threading.Lock()
         self._load()
 
@@ -110,6 +113,7 @@ class LibraryIndex:
             if self.scanning:
                 return len(self.entries)
             self.scanning = True
+            self._during = {}
         self.notify()
         try:
             books: Dict[str, List[str]] = {}       # book folder (relative) -> its audio files
@@ -139,13 +143,21 @@ class LibraryIndex:
                 found[rel] = self._entry(folder, rel, sorted(audio), mtime)
                 changed.append(found[rel])
             with self.lock:
+                for rel, entry in (self._during or {}).items():      # newer than what the walk saw
+                    if entry is None:
+                        found.pop(rel, None)
+                    else:
+                        found[rel] = entry
+                changed = [c for c in changed if c["path"] not in (self._during or {})]
                 removed = [p for p in self.entries if p not in found]
                 self.entries = found
                 self.last_scan = time.time()
                 self._store(changed, removed)
             return len(found)
         finally:
-            self.scanning = False
+            with self.lock:
+                self.scanning = False
+                self._during = None
             self.notify()
 
     def _entry(self, folder: str, rel: str, audio: List[str], mtime: float) -> dict:
@@ -209,12 +221,16 @@ class LibraryIndex:
         }
         with self.lock:
             self.entries[rel] = entry
+            if self._during is not None:
+                self._during[rel] = entry
             self._store([entry], [])
         self.notify()
 
     def remove(self, dest_file: str) -> None:
         rel = os.path.relpath(os.path.dirname(dest_file), self.root)
         with self.lock:
+            if self._during is not None:
+                self._during[rel] = None
             if self.entries.pop(rel, None) is not None:
                 self._store([], [rel])
         self.notify()

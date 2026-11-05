@@ -314,3 +314,61 @@ class RunnerCancelTest(unittest.TestCase):
             state = "gone"
         self.assertIn(state, ("gone", "Z", "X"))
         del subprocess
+
+
+class LibraryScanRaceTest(unittest.TestCase):
+    """Review 7.13: a book filed while a scan walked the disk vanished from the index (and the database)."""
+
+    def setUp(self):
+        import library_index
+        self.li = library_index
+        self.root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.db = dbm.Database(os.path.join(self.root, "t.db"))
+        self.addCleanup(self.db.close)
+        self.lib = os.path.join(self.root, "lib")
+        self.book("Z/Old")
+        self.idx = library_index.LibraryIndex(self.lib, self.db)
+        self.idx.scan()
+
+    def book(self, rel):
+        os.makedirs(os.path.join(self.lib, rel), exist_ok=True)
+        path = os.path.join(self.lib, rel, "book.mp3")
+        with open(path, "wb") as fh:
+            fh.write(b"ID3")
+        return path
+
+    def scan_paused(self, during):
+        """Run a scan whose walk is frozen after reading the disk; ``during`` runs in that gap."""
+        real = self.li.os.walk
+        reached, go = threading.Event(), threading.Event()
+
+        def frozen(top, *a, **kw):
+            seen = list(real(top, *a, **kw))     # the picture of the disk …
+            reached.set()
+            go.wait(10)                           # … is old by the time it is used
+            yield from seen
+        self.li.os.walk = frozen
+        self.addCleanup(setattr, self.li.os, "walk", real)
+        th = threading.Thread(target=self.idx.scan)
+        th.start()
+        reached.wait(10)
+        during()
+        go.set()
+        th.join(10)
+
+    def test_book_filed_during_a_scan_stays(self):
+        def file_new():
+            self.idx.add(self.book("A/New"), {"title": "New", "authors": ["Anna Autorin"]})
+        self.scan_paused(file_new)
+        self.assertEqual(sorted(self.idx.entries), ["A/New", "Z/Old"])
+        stored = {r["path"] for r in self.db.all("SELECT path FROM library")}
+        self.assertEqual(stored, {"A/New", "Z/Old"})
+
+    def test_book_removed_during_a_scan_stays_removed(self):
+        def remove_old():
+            shutil.rmtree(os.path.join(self.lib, "Z"))
+            self.idx.remove(os.path.join(self.lib, "Z/Old", "book.mp3"))
+        self.scan_paused(remove_old)
+        self.assertEqual(sorted(self.idx.entries), [])
+        self.assertEqual(self.db.all("SELECT path FROM library"), [])
