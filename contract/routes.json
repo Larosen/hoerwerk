@@ -1,0 +1,581 @@
+{
+ "description": "Every API route of Hörwerk: method, path, who may call it (public | user | admin). Any backend must offer exactly these.",
+ "routes": [
+  {
+   "method": "DELETE",
+   "path": "/api/audiobooks",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/audiobooks",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/audiobooks/paths",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/scan",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/audiobooks/{job_id}",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/audiobooks/{job_id}",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/cancel",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/choose",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/delete-source",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/duplicate",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/ignore",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/link",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/manual",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/reopen",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/retry",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/search",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/audit",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/login",
+   "access": "public",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/login/totp",
+   "access": "public",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/logout",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/auth/me",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/password",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/auth/prefs",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "PUT",
+   "path": "/api/auth/prefs",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/prefs/test",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/sessions/end",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/setup",
+   "access": "public",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/auth/status",
+   "access": "public",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/totp/confirm",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/totp/disable",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/totp/setup",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/diagnostics",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/discover",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/discover/genres",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/discover/refresh",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/downloads",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/downloads/clear",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/events",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/health",
+   "access": "public",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/inbox/unignore",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/invite/{token}",
+   "access": "public",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/invite/{token}",
+   "access": "public",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/invites",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/invites",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/invites/{iid}",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/invites/{iid}/revoke",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/library",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/library/books",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/library/cleanup",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/library/cleanup",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/library/convert",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/library/cover",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/library/scan",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/library/tracks",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/library/unconverted",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/listening/accounts",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "PUT",
+   "path": "/api/listening/link",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/logs",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/me/listening",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/me/listening/abs",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/me/listening/{kind}",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/notify",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "PUT",
+   "path": "/api/notify",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/notify/test",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/requests",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/requests",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/requests/keys",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/requests/series",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/requests/{rid}",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/requests/{rid}",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/requests/{rid}/approve",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/requests/{rid}/block",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/requests/{rid}/decline",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/requests/{rid}/grab",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/requests/{rid}/releases",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/requests/{rid}/retry",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/search",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/search/books",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/search/send",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/search/series",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/settings",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "PUT",
+   "path": "/api/settings",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/sources",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "PUT",
+   "path": "/api/sources",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/sources/test",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/stats",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/stats/accounts/{uid}",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/system",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/upload",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/upload/{uid}",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "PUT",
+   "path": "/api/upload/{uid}",
+   "access": "admin",
+   "raw_body": true
+  },
+  {
+   "method": "POST",
+   "path": "/api/upload/{uid}/finish",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/users",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/users",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/users/{uid}",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "PUT",
+   "path": "/api/users/{uid}",
+   "access": "admin",
+   "raw_body": false
+  }
+ ]
+}

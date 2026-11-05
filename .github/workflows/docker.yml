@@ -55,6 +55,20 @@ jobs:
           FFMPEG="$RUNNER_TEMP/ffmpeg/bin/ffmpeg" FFPROBE="$RUNNER_TEMP/ffmpeg/bin/ffprobe" FFMPEG_SANDBOX=require \
             python -m unittest discover -s tests
 
+  # The API contract (contract/): black-box tests every backend must pass – today against the Python server.
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
+        with:
+          python-version: "3.15"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: pip install -r requirements.txt
+      - name: API contract against the Python server
+        working-directory: contract
+        run: python -m unittest discover -s . -v
+
   frontend:
     runs-on: ubuntu-latest
     steps:
@@ -139,7 +153,7 @@ jobs:
   #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   #   gh attestation verify oci://ghcr.io/<owner>/hoerwerk@sha256:… --owner <owner>
   image:
-    needs: [test, frontend, image-test]
+    needs: [test, contract, frontend, image-test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:

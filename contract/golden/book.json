@@ -1,0 +1,12 @@
+{
+ "description": "A fully known book as Hörwerk files it (from Audible). Every tag writer must produce contract/golden/tags.json for it.",
+ "book": {
+  "asin": "B0GOLDEN01", "title": "Der Schimmelreiter", "subtitle": "Novelle",
+  "authors": ["Theodor Storm"], "narrators": ["Erika Muster", "Max Muster"],
+  "series": "Novellen", "series_position": "3", "publisher": "Hörwerk Testverlag",
+  "release_date": "2020-05-01", "genres": ["Literatur & Belletristik", "Klassiker"],
+  "description": "Die Geschichte des Deichgrafen Hauke Haien – mit Umlauten: äöüß.",
+  "language": "german", "isbn": "9783000000000", "region": "de", "source": "audible"
+ },
+ "settings": {}
+}

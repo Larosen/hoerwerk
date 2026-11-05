@@ -1,0 +1,114 @@
+{
+ "----:com.apple.iTunes:ASIN": [
+  "B0GOLDEN01"
+ ],
+ "----:com.apple.iTunes:AUDIBLE_ASIN": [
+  "B0GOLDEN01"
+ ],
+ "----:com.apple.iTunes:LANGUAGE": [
+  "german"
+ ],
+ "----:com.apple.iTunes:NARRATOR": [
+  "Erika Muster, Max Muster"
+ ],
+ "----:com.apple.iTunes:PUBLISHER": [
+  "Hörwerk Testverlag"
+ ],
+ "----:com.apple.iTunes:REGION": [
+  "de"
+ ],
+ "----:com.apple.iTunes:RELEASETYPE": [
+  "audiobook"
+ ],
+ "----:com.apple.iTunes:SERIES": [
+  "Novellen"
+ ],
+ "----:com.apple.iTunes:SERIES-PART": [
+  "3"
+ ],
+ "----:com.apple.iTunes:SUBTITLE": [
+  "Novelle"
+ ],
+ "aART": [
+  "Theodor Storm"
+ ],
+ "chapters": [
+  [
+   0.0,
+   "Erster Teil"
+  ],
+  [
+   1.0,
+   "Zweiter Teil"
+  ]
+ ],
+ "covr": [
+  {
+   "format": "jpeg",
+   "sha256": "ab9a631c7f60892d3aa3420c6138fa84a7a88a200ef75db11f1413fbd55d4996"
+  }
+ ],
+ "cprt": [
+  "Hörwerk Testverlag"
+ ],
+ "desc": [
+  "Die Geschichte des Deichgrafen Hauke Haien – mit Umlauten: äöüß."
+ ],
+ "disk": [
+  [
+   1,
+   1
+  ]
+ ],
+ "ldes": [
+  "Die Geschichte des Deichgrafen Hauke Haien – mit Umlauten: äöüß."
+ ],
+ "shwm": [
+  1
+ ],
+ "soal": [
+  "Novellen 3 - Der Schimmelreiter"
+ ],
+ "stik": [
+  2
+ ],
+ "trkn": [
+  [
+   1,
+   1
+  ]
+ ],
+ "©ART": [
+  "Theodor Storm"
+ ],
+ "©alb": [
+  "Der Schimmelreiter"
+ ],
+ "©cmt": [
+  "Die Geschichte des Deichgrafen Hauke Haien – mit Umlauten: äöüß."
+ ],
+ "©day": [
+  "2020-05-01"
+ ],
+ "©gen": [
+  "Literatur & Belletristik/Klassiker"
+ ],
+ "©grp": [
+  "Novellen, Book #3"
+ ],
+ "©mvi": [
+  3
+ ],
+ "©mvn": [
+  "Novellen"
+ ],
+ "©nam": [
+  "Der Schimmelreiter"
+ ],
+ "©too": [
+  "Hörwerk"
+ ],
+ "©wrt": [
+  "Erika Muster, Max Muster"
+ ]
+}
