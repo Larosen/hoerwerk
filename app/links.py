@@ -50,8 +50,9 @@ def _split_names(value) -> List[str]:
         return out
     if isinstance(value, dict):
         return _split_names(value.get("name"))
-    parts = re.split(r"\s*(?:,|;|&|\bund\b|\band\b)\s*", str(value))
-    return [unescape(p).strip() for p in parts if p.strip()]
+    # entities first: "Max &amp; Moritz" are two names, not "Max", "amp" and "Moritz"
+    parts = re.split(r"\s*(?:,|;|&|\bund\b|\band\b)\s*", unescape(str(value)))
+    return [p.strip() for p in parts if p.strip()]
 
 
 def _empty_book(source: str, url: str) -> dict:
