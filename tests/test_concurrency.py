@@ -258,3 +258,59 @@ class AtomicMoveTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RunnerCancelTest(unittest.TestCase):
+    """Review 7.13: a cancel between starting ffmpeg and noting the process down left it running (up to 6 h)."""
+
+    def test_cancel_while_the_process_starts(self):
+        import encoder
+        import subprocess
+        flag = {"cancel": False}
+        runner = encoder.Runner(lambda: flag["cancel"], timeout=60)
+        real = subprocess.Popen
+
+        def popen_then_cancel(*args, **kw):
+            proc = real(["sleep", "30"], **{k: v for k, v in kw.items() if k != "text"}, text=True)
+            flag["cancel"] = True                     # the user cancels exactly now …
+            runner.kill()                             # … before run() has registered the process
+            return proc
+        encoder.subprocess.Popen = popen_then_cancel
+        self.addCleanup(setattr, encoder.subprocess, "Popen", real)
+        t0 = time.monotonic()
+        with self.assertRaises(encoder.Cancelled):
+            runner.run(["ffmpeg", "-version"])
+        self.assertLess(time.monotonic() - t0, 5)     # killed at once, not after the sleep or the timeout
+
+    def test_nothing_starts_after_a_kill(self):
+        import encoder
+        runner = encoder.Runner(lambda: False)
+        runner.kill()
+        with self.assertRaises(encoder.Cancelled):
+            runner.run(["sleep", "30"])
+
+    def test_kill_reaches_the_whole_process_group(self):
+        import encoder
+        import subprocess
+        runner = encoder.Runner(lambda: False, timeout=60)
+        marker = os.path.join(tempfile.mkdtemp(), "child-alive")
+        # a wrapper that starts a child and waits – like a jail launcher in front of ffmpeg
+        script = f"sleep 30 & echo $! > {marker}; wait"
+        th = threading.Thread(target=lambda: self.assertRaises(encoder.Cancelled, runner.run, ["sh", "-c", script]))
+        th.start()
+        for _ in range(100):
+            if os.path.exists(marker) and open(marker).read().strip():
+                break
+            time.sleep(0.05)
+        child = int(open(marker).read().strip())
+        runner.kill()
+        th.join(5)
+        self.assertFalse(th.is_alive())
+        time.sleep(0.2)
+        try:                                          # the grandchild is gone too (or a zombie waiting for init)
+            with open(f"/proc/{child}/stat") as fh:
+                state = fh.read().rsplit(")", 1)[1].split()[0]
+        except FileNotFoundError:
+            state = "gone"
+        self.assertIn(state, ("gone", "Z", "X"))
+        del subprocess

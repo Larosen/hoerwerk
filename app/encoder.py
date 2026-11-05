@@ -16,6 +16,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import tempfile
 import threading
@@ -284,42 +285,58 @@ def pick_rate(infos: List[dict]) -> int:
 
 
 class Runner:
-    """Starts ffmpeg processes and kills them all on cancel."""
+    """Starts ffmpeg processes and kills them all on cancel.
+
+    A cancel can arrive at any moment – also between starting a process and noting it down. So ``kill()``
+    leaves a mark, and a process started after (or while) it is killed right away. Each ffmpeg runs in its
+    own process group, so a kill also reaches anything it started."""
 
     def __init__(self, cancelled: Callable[[], bool], timeout: int = 6 * 3600) -> None:
         self.cancelled = cancelled
         self.timeout = timeout          # a broken/malicious file must not block the queue forever
         self._procs: set = set()
         self._lock = threading.Lock()
+        self._killed = False
+
+    @staticmethod
+    def _terminate(proc: subprocess.Popen) -> None:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (OSError, AttributeError):
+            try:
+                proc.kill()
+            except OSError:
+                pass
 
     def run(self, cmd: List[str]) -> subprocess.CompletedProcess:
         """``cmd`` comes from sandbox.ffmpeg() – jailed, with its own CPU priority."""
-        if self.cancelled():
+        if self._killed or self.cancelled():
             raise Cancelled()
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
         with self._lock:
             self._procs.add(proc)
+            late = self._killed or self.cancelled()     # cancelled while it was starting: kill() missed it
+        if late:
+            self._terminate(proc)
         try:
             try:
                 out, err = proc.communicate(timeout=self.timeout)
             except subprocess.TimeoutExpired:
-                proc.kill()
+                self._terminate(proc)
                 proc.communicate()
                 raise EncodeError(t("ffmpeg hat nach {hours} h nicht geantwortet – abgebrochen", hours=self.timeout // 3600))
         finally:
             with self._lock:
                 self._procs.discard(proc)
-        if self.cancelled():
+        if self._killed or self.cancelled():
             raise Cancelled()
         return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
 
     def kill(self) -> None:
         with self._lock:
+            self._killed = True
             for p in list(self._procs):
-                try:
-                    p.kill()
-                except OSError:
-                    pass
+                self._terminate(p)
 
 
 def _adts_seconds(path: str, rate: int) -> float:
