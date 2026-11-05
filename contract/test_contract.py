@@ -18,7 +18,7 @@ import subprocess
 import time
 import unittest
 
-from harness import ADMIN, OWN, ROOT, Client, Server, deliver, quote, tone
+from harness import ADMIN, OWN, ROOT, Client, FakeUsenet, Server, deliver, quote, tone
 
 ROUTES = json.load(open(os.path.join(os.path.dirname(__file__), "routes.json"), encoding="utf-8"))["routes"]
 FIXTURE_DB = os.path.join(os.path.dirname(__file__), "fixtures", "hoerwerk-7.13.db")
@@ -239,6 +239,50 @@ class Requests(ContractTest):
         self.admin.call("POST", f'/api/requests/{item["id"]}/decline', {"reason": "gibt es schon"})
         self.assertEqual(eva.get(f'/api/requests/{item["id"]}')["status"], "declined")
         self.assertIn("total", self.admin.get("/api/stats?period=all"))
+
+    def test_search_finds_the_book_and_sends_it_to_sabnzbd(self):
+        """Indexer and SABnzbd (a local fake): the request finds the right release; keys never reach the browser."""
+        size = 300 * 60 * 128000 // 8
+        fake = FakeUsenet([{"title": "Bert.Andere-Der.Vertrag.German.M4B", "size": size},          # other author
+                           {"title": "Anna.Autorin-Der.Vertrag.German.M4B", "size": size},
+                           {"title": "Anna.Autorin-Der.Vertrag.English.M4B", "size": size}])       # other language
+        try:
+            saved = self.admin.call("PUT", "/api/sources", {
+                "indexers": [{"name": "Fake", "url": fake.url, "apikey": "indexerkey123"}],
+                "sab": {"url": fake.url, "apikey": "sabkey123456", "category": "hoerbuecher"}})
+            self.assertEqual(saved["configured"], {"indexers": 1, "sab": True})
+            self.assertTrue(saved["sab"]["apikey_set"])
+            idx = saved["indexers"][0]
+            self.assertEqual(self.admin.call("POST", "/api/sources/test", {"kind": "sab"}),
+                             {"ok": True, "message": "SABnzbd 4.5.0"})
+            self.assertTrue(self.admin.call("POST", "/api/sources/test", {"kind": "indexer", "id": idx["id"]})["ok"])
+            book = {**self.BOOK, "asin": "B0VERTRAG2"}
+            item = self.admin.call("POST", "/api/requests", {"book": book})
+            self.assertEqual(item["status"], "searching")                     # admins need no approval
+
+            def sent():
+                r = self.admin.get(f'/api/requests/{item["id"]}')
+                return r if r["status"] == "downloading" else None
+            r = self.admin.wait(sent, 30, what="release sent")
+            self.assertEqual(r["release"], "Anna.Autorin-Der.Vertrag.German.M4B")
+            self.assertEqual(len(fake.added), 1)
+            self.assertTrue(fake.added[0]["name"].endswith("/getnzb/1?r=secretkey123"))
+            self.assertEqual((fake.added[0]["cat"], fake.added[0]["apikey"]), ("hoerbuecher", "sabkey123456"))
+            downloads = self.admin.get("/api/downloads")
+            self.assertEqual([d["name"] for d in downloads["items"]], ["Anna.Autorin-Der.Vertrag.German.M4B"])
+            found = self.admin.call("POST", f'/api/requests/{item["id"]}/releases', {})
+            verdicts = {x["title"]: x["verdict"]["ok"] for x in found["results"]}
+            self.assertEqual(verdicts, {"Anna.Autorin-Der.Vertrag.German.M4B": True,
+                                        "Bert.Andere-Der.Vertrag.German.M4B": False,
+                                        "Anna.Autorin-Der.Vertrag.English.M4B": False})
+            for path in ("/api/sources", f'/api/requests/{item["id"]}', "/api/requests", "/api/downloads"):
+                body = json.dumps(self.admin.get(path))
+                for secret in ("indexerkey123", "sabkey123456", "secretkey123"):
+                    self.assertNotIn(secret, body, path)
+            self.assertNotIn("secretkey123", json.dumps(found))
+        finally:
+            self.admin.call("PUT", "/api/sources", {"indexers": [], "sab": {}})
+            fake.close()
 
 
 class Pipeline(ContractTest):

@@ -168,5 +168,65 @@ def deliver(inbox: str, name: str, files: dict) -> str:
     return dest
 
 
+class FakeUsenet:
+    """A Newznab indexer and a SABnzbd in one tiny local server (both answer under /api)."""
+
+    def __init__(self, releases: list) -> None:
+        import http.server
+        import threading
+        self.releases, self.calls, self.added = releases, [], []
+        fake = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def do_GET(self):
+                q = {k: v[0] for k, v in urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).items()}
+                fake.calls.append(q)
+                body, ctype = fake.answer(q)
+                self.send_response(200)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def answer(self, q: dict):
+        if q.get("t") == "caps":
+            return (b'<caps><server title="Fake-Indexer"/><categories><category id="3000" name="Audio">'
+                    b'<subcat id="3030" name="Audiobook"/></category></categories></caps>'), "application/xml"
+        if q.get("t") == "search":
+            items = "".join(
+                f'<item><title>{r["title"]}</title><link>{self.url}/getnzb/{i}?r=secretkey123</link>'
+                f'<newznab:attr name="size" value="{r["size"]}"/><newznab:attr name="category" value="3030"/></item>'
+                for i, r in enumerate(self.releases))
+            return (f'<rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/"><channel>{items}'
+                    f'</channel></rss>').encode(), "application/xml"
+        mode = q.get("mode")
+        if mode == "version":
+            out = {"version": "4.5.0"}
+        elif mode == "get_cats":
+            out = {"categories": ["*", "hoerbuecher"]}
+        elif mode == "addurl":
+            self.added.append(q)
+            out = {"status": True, "nzo_ids": [f"SABnzbd_nzo_{len(self.added)}"]}
+        elif mode == "queue":
+            out = {"queue": {"paused": False, "speed": "0", "slots": [
+                {"nzo_id": f"SABnzbd_nzo_{n + 1}", "filename": a["nzbname"], "status": "Downloading",
+                 "percentage": "42", "cat": "hoerbuecher"} for n, a in enumerate(self.added)]}}
+        elif mode == "history":
+            out = {"history": {"slots": []}}
+        else:
+            out = {"status": False, "error": "unknown mode"}
+        return json.dumps(out).encode(), "application/json"
+
+    def close(self) -> None:
+        self.server.shutdown()
+
+
 def quote(path: str) -> str:
     return urllib.parse.quote(path, safe="")
