@@ -115,8 +115,27 @@ pub async fn search(app: Arc<App>, req: Req, p: Params) -> Reply {
     }
 }
 
-pub async fn link(_: Arc<App>, _: Req, _: Params) -> Reply {
-    error(501, "Links zu Shops: im Rust-Backend noch nicht umgesetzt".to_string())
+/// Fetch book data from a shop link; returns the job and the new candidate.
+pub async fn link(app: Arc<App>, req: Req, p: Params) -> Reply {
+    if let Err(r) = job_or_404(&app, &p) {
+        return r;
+    }
+    let url = req.str("url").trim().to_string();
+    if !crate::links::is_link(&url) {
+        return error(
+            400,
+            t("Bitte einen Link von Audible, BookBeat oder Thalia einfügen", &[]),
+        );
+    }
+    let (a, id) = (app.clone(), p["job_id"].clone());
+    match blocking(move || a.pipeline.add_link(&a, &id, &url)).await {
+        Ok((slot, _)) => {
+            let data = slot.lock().to_dict(false);
+            let first = data["candidates"][0].clone();
+            json_reply(json!({"job": data, "candidate": first}))
+        }
+        Err(e) => pipe_error(e, 400, 502),
+    }
 }
 
 pub async fn duplicate(app: Arc<App>, req: Req, p: Params) -> Reply {

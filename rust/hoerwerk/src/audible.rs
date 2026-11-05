@@ -636,6 +636,110 @@ impl Client {
         Ok(normalize_product(p, region))
     }
 
+    /// The released volumes of a series in order: {asin, title, books}. Box sets and other editions of the same
+    /// volume are left out – one book per position, unabridged and in the wanted language first.
+    pub fn series(&self, series_asin: &str, region: &str, language: &str, limit: usize) -> Result<Value> {
+        let params = [
+            ("response_groups", "relationships,product_attrs".to_string()),
+            ("image_sizes", "500".into()),
+        ];
+        let data = self.cached(&format!(
+            "{}/1.0/catalog/products/{series_asin}?{}",
+            api_host(region),
+            form(&params)
+        ))?;
+        let p = data["product"].clone();
+        let mut rel: Vec<Value> = p["relationships"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|r| {
+                !s(r, "asin").is_empty()
+                    && r["relationship_type"] == "series"
+                    && r["relationship_to_product"] == "child"
+            })
+            .cloned()
+            .collect();
+        let sortkey = |r: &Value| {
+            r["sort"]
+                .as_f64()
+                .or_else(|| r["sort"].as_str().and_then(|x| x.parse().ok()))
+                .unwrap_or(0.0)
+        };
+        rel.sort_by(|a, b| sortkey(a).partial_cmp(&sortkey(b)).unwrap_or(std::cmp::Ordering::Equal));
+        let mut asins: Vec<String> = Vec::new();
+        for r in &rel {
+            let a = s(r, "asin").to_string();
+            if !asins.contains(&a) {
+                asins.push(a);
+            }
+        }
+        asins.truncate(limit * 2);
+        let mut products: Vec<Value> = Vec::new();
+        for chunk in asins.chunks(50) {
+            let q = [
+                ("response_groups", RESPONSE_GROUPS.to_string()),
+                ("image_sizes", "500,1024".into()),
+                ("asins", chunk.join(",")),
+            ];
+            let got = self.cached(&format!("{}/1.0/catalog/products?{}", api_host(region), form(&q)))?;
+            products.extend(got["products"].as_array().cloned().unwrap_or_default());
+        }
+        let by_asin: HashMap<String, Value> = products.into_iter().map(|x| (s(&x, "asin").to_string(), x)).collect();
+        let mut best: Vec<(String, (bool, bool), Value)> = Vec::new();
+        for r in &rel {
+            let Some(raw) = by_asin.get(s(r, "asin")) else { continue };
+            let Some(mut book) = Self::products(&json!([raw]), region, false).into_iter().next() else {
+                continue;
+            };
+            let own = raw["series"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .find(|x| s(x, "asin") == series_asin)
+                .cloned()
+                .unwrap_or(Value::Null);
+            let seq = if s(&own, "sequence").is_empty() {
+                r["sequence"].clone()
+            } else {
+                own["sequence"].clone()
+            };
+            let pos = series_position(&seq);
+            let Some(pos) = pos.as_str().filter(|x| !x.contains('-')).map(str::to_string) else {
+                continue;
+            };
+            let title = [s(&own, "title"), s(&p, "title")]
+                .into_iter()
+                .find(|x| !x.is_empty())
+                .map(|x| json!(x))
+                .unwrap_or(book["series"].clone());
+            book["series"] = title;
+            book["series_asin"] = json!(series_asin);
+            book["series_position"] = json!(pos);
+            let rank = (
+                !language.is_empty() && s(&book, "language").to_lowercase() != language,
+                book["format_type"] == "abridged",
+            );
+            match best.iter_mut().find(|b| b.0 == pos) {
+                Some(b) if rank < b.1 => *b = (pos, rank, book),
+                Some(_) => {}
+                None => best.push((pos, rank, book)),
+            }
+        }
+        let num = |b: &Value| s(b, "series_position").parse::<f64>().unwrap_or(0.0);
+        let mut books: Vec<Value> = best.into_iter().map(|b| b.2).collect();
+        books.sort_by(|a, b| num(a).partial_cmp(&num(b)).unwrap_or(std::cmp::Ordering::Equal));
+        if !language.is_empty() {
+            books.retain(|b| matches!(s(b, "language").to_lowercase().as_str(), l if l == language || l.is_empty()));
+        }
+        let title = match s(&p, "title").trim() {
+            "" => books.first().map(|b| s(b, "series").to_string()).unwrap_or_default(),
+            x => x.to_string(),
+        };
+        books.truncate(limit);
+        Ok(json!({"asin": series_asin, "title": title, "books": books}))
+    }
+
     /// Audnexus chapter data: {accurate, runtime_ms, chapters: [{start, title}]} – None when there is none.
     pub fn chapters(&self, asin: &str, region: &str) -> Option<Value> {
         let data = self
@@ -1439,6 +1543,62 @@ mod tests {
             from_openlibrary(&json!({"key": "/works/OL1W", "title": "T", "author_name": ["A", "B"],
             "first_publish_year": 1888, "cover_i": 5, "isbn": ["123"]})),
             g["openlibrary"]
+        );
+    }
+
+    #[test]
+    fn links_and_series_like_python() {
+        crate::text::set_language("de");
+        let g: Value =
+            serde_json::from_str(include_str!("../../../contract/golden/audible.json")).expect("audible.json");
+        let src = include_str!("../../../contract/make_audible.py");
+        let grab = |name: &str| -> String {
+            let start = src.find(&format!("{name} = \"\"\"")).unwrap() + name.len() + 6;
+            let end = start + src[start..].find("\"\"\"").unwrap();
+            src[start..end].to_string()
+        };
+        assert_eq!(
+            crate::links::parse_product_page(&grab("PAGE"), "https://www.thalia.de/x", "thalia").unwrap(),
+            g["page"]
+        );
+        assert_eq!(
+            crate::links::parse_product_page(&grab("PAGE_OG"), "https://www.thalia.de/y", "thalia").unwrap(),
+            g["page_og"]
+        );
+        let bb: Value = serde_json::from_value(json!({"id": 4711, "title": "Titel ", "author": "A & B", "narrator": ["C", {"name": "D"}],
+            "series": {"name": "S", "partnumber": 2}, "language": "german", "audiobooklength": 3725,
+            "editions": [{"format": "Ebook", "isbn": "1"}, {"format": "Audiobook", "isbn": "2", "publisher": "P", "published": "2021-02-03T00:00:00Z"}],
+            "genres": [{"name": "G"}, {}], "summary": "<b>Hi</b>", "cover": "https://c.example/x.jpg?w=200&h=1"})).unwrap();
+        assert_eq!(crate::links::normalize_bookbeat(&bb, ""), g["bookbeat"]);
+        for c in g["shops"].as_array().unwrap() {
+            assert_eq!(json!(crate::links::shop_of(c[0].as_str().unwrap())), c[1], "{}", c[0]);
+        }
+        let series = json!({"relationships": [
+            {"asin": "B0VOL00002", "relationship_type": "series", "relationship_to_product": "child", "sort": "2", "sequence": "2"},
+            {"asin": "B0VOL00001", "relationship_type": "series", "relationship_to_product": "child", "sort": "1", "sequence": "1"},
+            {"asin": "B0BOX00013", "relationship_type": "series", "relationship_to_product": "child", "sort": "3", "sequence": "1-3"},
+            {"asin": "B0VOL0001E", "relationship_type": "series", "relationship_to_product": "child", "sort": "1.5", "sequence": "1"}],
+            "title": "Die Reihe"});
+        let products = json!([
+            {"asin": "B0VOL00001", "title": "Eins", "language": "german", "format_type": "unabridged", "authors": [{"name": "A"}]},
+            {"asin": "B0VOL0001E", "title": "One", "language": "english", "format_type": "unabridged", "authors": [{"name": "A"}]},
+            {"asin": "B0VOL00002", "title": "Zwei", "language": "german", "format_type": "abridged", "authors": [{"name": "A"}],
+             "series": [{"asin": "B0SERIES01", "title": "Die Reihe (Eigentitel)", "sequence": "2"}]},
+            {"asin": "B0BOX00013", "title": "Box", "language": "german", "authors": [{"name": "A"}]}]);
+        let client = Client::new(Box::new(move |url: &str| {
+            Ok(if url.contains("/catalog/products/B0SERIES01") {
+                json!({"product": series})
+            } else {
+                json!({"products": products})
+            })
+        }));
+        assert_eq!(
+            client.series("B0SERIES01", "de", "", SERIES_MAX).unwrap(),
+            g["series"]["all"]
+        );
+        assert_eq!(
+            client.series("B0SERIES01", "de", "german", SERIES_MAX).unwrap(),
+            g["series"]["german"]
         );
     }
 

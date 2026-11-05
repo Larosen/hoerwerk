@@ -1250,6 +1250,297 @@
    ]
   ]
  ],
+ "page": {
+  "asin": null,
+  "title": "Das Fräulein von Scuderi",
+  "subtitle": null,
+  "authors": [
+   "E. T. A. Hoffmann",
+   "Max",
+   "Moritz"
+  ],
+  "narrators": [
+   "Erika Muster",
+   "Max Muster"
+  ],
+  "translators": [],
+  "series": "Erzählungen",
+  "series_position": "3",
+  "publisher": "Hörverlag",
+  "release_date": "2020-05-01",
+  "language": "de",
+  "runtime_min": 332,
+  "format_type": null,
+  "genres": [
+   "Klassiker",
+   "Krimi"
+  ],
+  "tags": [],
+  "description": "Paris & ein Mord",
+  "cover_url": "https://img.example/c.jpg",
+  "region": null,
+  "url": "https://www.thalia.de/x",
+  "source": "thalia",
+  "isbn": "978222",
+  "id": "thalia:978222"
+ },
+ "page_og": {
+  "asin": null,
+  "title": "Der vierte Fall",
+  "subtitle": null,
+  "authors": [],
+  "narrators": [],
+  "translators": [],
+  "series": "Krimi-Reihe",
+  "series_position": "4",
+  "publisher": null,
+  "release_date": null,
+  "language": null,
+  "runtime_min": 0,
+  "format_type": null,
+  "genres": [],
+  "tags": [],
+  "description": "Kurz & gut",
+  "cover_url": null,
+  "region": null,
+  "url": "https://www.thalia.de/y",
+  "source": "thalia",
+  "isbn": null,
+  "id": "thalia:https://www.thalia.de/y"
+ },
+ "bookbeat": {
+  "asin": null,
+  "title": "Titel",
+  "subtitle": null,
+  "authors": [
+   "A",
+   "B"
+  ],
+  "narrators": [
+   "C",
+   "D"
+  ],
+  "translators": [],
+  "series": "S",
+  "series_position": "2",
+  "publisher": "P",
+  "release_date": "2021-02-03",
+  "language": "german",
+  "runtime_min": 62,
+  "format_type": "unabridged",
+  "genres": [
+   "G"
+  ],
+  "tags": [],
+  "description": "Hi",
+  "cover_url": "https://c.example/x.jpg?w=1400&h=1",
+  "region": null,
+  "url": "https://www.bookbeat.com/de/book/4711",
+  "source": "bookbeat",
+  "isbn": "2",
+  "id": "bookbeat:4711"
+ },
+ "bookbeat_hit": {
+  "asin": null,
+  "title": "T",
+  "subtitle": null,
+  "authors": [
+   "A",
+   "B C"
+  ],
+  "narrators": [],
+  "translators": [],
+  "series": null,
+  "series_position": null,
+  "publisher": null,
+  "release_date": null,
+  "language": "german",
+  "runtime_min": 0,
+  "format_type": null,
+  "genres": [],
+  "tags": [],
+  "description": "",
+  "cover_url": "https://i/x?w=500",
+  "region": null,
+  "url": null,
+  "source": "bookbeat",
+  "isbn": "9",
+  "id": "bookbeat:5"
+ },
+ "shops": [
+  [
+   "https://www.audible.de/pd/B0X",
+   "audible"
+  ],
+  [
+   "https://audible.co.uk/x",
+   "audible"
+  ],
+  [
+   "https://www.bookbeat.com/de/book/a-1",
+   "bookbeat"
+  ],
+  [
+   "https://thalia.at/p",
+   "thalia"
+  ],
+  [
+   "https://evil-audible.de.example/",
+   null
+  ],
+  [
+   "https://notthalia.de/",
+   null
+  ]
+ ],
+ "series": {
+  "all": {
+   "asin": "B0SERIES01",
+   "title": "Die Reihe",
+   "books": [
+    {
+     "id": "B0VOL00001",
+     "asin": "B0VOL00001",
+     "title": "Eins",
+     "subtitle": null,
+     "authors": [
+      "A"
+     ],
+     "translators": [],
+     "narrators": [],
+     "series": "Die Reihe",
+     "series_asin": "B0SERIES01",
+     "series_position": "1",
+     "all_series": [],
+     "publisher": null,
+     "release_date": null,
+     "language": "German",
+     "runtime_min": 0,
+     "format_type": "unabridged",
+     "genres": [],
+     "tags": [],
+     "description": "",
+     "summary_html": "",
+     "cover_url": null,
+     "region": "de",
+     "url": "https://www.audible.de/pd/B0VOL00001",
+     "is_adult": false,
+     "rating": 0.0,
+     "ratings": 0,
+     "source": "audible"
+    },
+    {
+     "id": "B0VOL00002",
+     "asin": "B0VOL00002",
+     "title": "Zwei",
+     "subtitle": null,
+     "authors": [
+      "A"
+     ],
+     "translators": [],
+     "narrators": [],
+     "series": "Die Reihe (Eigentitel)",
+     "series_asin": "B0SERIES01",
+     "series_position": "2",
+     "all_series": [
+      {
+       "name": "Die Reihe (Eigentitel)",
+       "position": "2"
+      }
+     ],
+     "publisher": null,
+     "release_date": null,
+     "language": "German",
+     "runtime_min": 0,
+     "format_type": "abridged",
+     "genres": [],
+     "tags": [],
+     "description": "",
+     "summary_html": "",
+     "cover_url": null,
+     "region": "de",
+     "url": "https://www.audible.de/pd/B0VOL00002",
+     "is_adult": false,
+     "rating": 0.0,
+     "ratings": 0,
+     "source": "audible"
+    }
+   ]
+  },
+  "german": {
+   "asin": "B0SERIES01",
+   "title": "Die Reihe",
+   "books": [
+    {
+     "id": "B0VOL00001",
+     "asin": "B0VOL00001",
+     "title": "Eins",
+     "subtitle": null,
+     "authors": [
+      "A"
+     ],
+     "translators": [],
+     "narrators": [],
+     "series": "Die Reihe",
+     "series_asin": "B0SERIES01",
+     "series_position": "1",
+     "all_series": [],
+     "publisher": null,
+     "release_date": null,
+     "language": "German",
+     "runtime_min": 0,
+     "format_type": "unabridged",
+     "genres": [],
+     "tags": [],
+     "description": "",
+     "summary_html": "",
+     "cover_url": null,
+     "region": "de",
+     "url": "https://www.audible.de/pd/B0VOL00001",
+     "is_adult": false,
+     "rating": 0.0,
+     "ratings": 0,
+     "source": "audible"
+    },
+    {
+     "id": "B0VOL00002",
+     "asin": "B0VOL00002",
+     "title": "Zwei",
+     "subtitle": null,
+     "authors": [
+      "A"
+     ],
+     "translators": [],
+     "narrators": [],
+     "series": "Die Reihe (Eigentitel)",
+     "series_asin": "B0SERIES01",
+     "series_position": "2",
+     "all_series": [
+      {
+       "name": "Die Reihe (Eigentitel)",
+       "position": "2"
+      }
+     ],
+     "publisher": null,
+     "release_date": null,
+     "language": "German",
+     "runtime_min": 0,
+     "format_type": "abridged",
+     "genres": [],
+     "tags": [],
+     "description": "",
+     "summary_html": "",
+     "cover_url": null,
+     "region": "de",
+     "url": "https://www.audible.de/pd/B0VOL00002",
+     "is_adult": false,
+     "rating": 0.0,
+     "ratings": 0,
+     "source": "audible"
+    }
+   ]
+  }
+ },
  "audnexus": {
   "asin": "B0N",
   "title": "T",

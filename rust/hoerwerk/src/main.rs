@@ -15,6 +15,7 @@ mod filing;
 mod http;
 mod invites;
 mod library;
+mod links;
 mod media;
 mod notify;
 mod packs;

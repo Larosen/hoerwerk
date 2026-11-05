@@ -117,6 +117,10 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("POST", "/api/auth/totp/setup") => h!(totp_setup),
         ("POST", "/api/auth/totp/confirm") => h!(totp_confirm),
         ("POST", "/api/auth/totp/disable") => h!(totp_disable),
+        ("POST", "/api/search") => h!(super::search::indexers),
+        ("POST", "/api/search/books") => h!(super::search::books),
+        ("POST", "/api/search/series") => h!(super::search::series),
+        ("POST", "/api/search/send") => h!(super::search::send),
         _ => h!(not_yet),
     }
 }

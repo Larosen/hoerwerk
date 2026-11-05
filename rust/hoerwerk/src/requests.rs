@@ -117,7 +117,7 @@ fn auto_approve(user: &Value) -> bool {
 }
 
 /// Only what the shops tell about a book, cut to size; title and author are required.
-fn clean(book: &Value) -> Res<Value> {
+pub fn clean(book: &Value) -> Res<Value> {
     let Some(obj) = book.as_object() else {
         return err(t("Ungültige Daten", &[]), 400);
     };

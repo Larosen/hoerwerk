@@ -1005,6 +1005,9 @@ impl Pipeline {
     }
 
     pub fn search(&self, app: &Arc<App>, id: &str, query: &str, region: &str) -> Res<JobRef> {
+        if crate::links::is_link(query) {
+            return Ok(self.add_link(app, id, query)?.0);
+        }
         let slot = self.need(id)?;
         let mut hints = slot.lock().hints.clone();
         let cq = audible::clean_query(query);
@@ -1029,6 +1032,31 @@ impl Pipeline {
         }
         self.save(app);
         Ok(slot)
+    }
+
+    /// Book data from an Audible/BookBeat/Thalia link becomes the top candidate. Blocking.
+    pub fn add_link(&self, app: &Arc<App>, id: &str, url: &str) -> Res<(JobRef, Value)> {
+        let slot = self.need(id)?;
+        let book = crate::links::fetch(url, &app.providers.client).map_err(|e| PipeError::Refused(e.0))?;
+        let hints = slot.lock().hints.clone();
+        let book = audible::rank(&[book], &hints).into_iter().next().unwrap_or(Value::Null);
+        let cid = candidate_id(&book);
+        {
+            let mut j = slot.lock();
+            let rest: Vec<Value> = j
+                .candidates
+                .iter()
+                .filter(|c| candidate_id(c) != cid)
+                .cloned()
+                .collect();
+            j.candidates = std::iter::once(book.clone()).chain(rest).collect();
+            j.info(&t(
+                "Daten aus Link: {title} ({source})",
+                &[("title", s(&book, "title")), ("source", s(&book, "source"))],
+            ));
+        }
+        self.save(app);
+        Ok((slot, book))
     }
 
     pub fn choose(&self, app: &Arc<App>, id: &str, cand_id: &str, asin: &str, region: &str) -> Res<JobRef> {

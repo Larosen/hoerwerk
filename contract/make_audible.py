@@ -41,10 +41,40 @@ CONTENT = [("Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl Hör
 RATIOS = [("schimmelreiter", "der schimmelreiter"), ("abc", ""), ("theodor storm", "storm theodor"),
           ("a" * 250 + "b" * 10, "a" * 240 + "c" * 30), ("e " * 150 + "x", "e " * 149 + "y")]
 
+PAGE = """<html><head><meta property="og:title" content="Nicht das - Shop"/>
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebPage"},
+ {"@type": ["Book"], "name": "Das Fr&auml;ulein von Scuderi", "author": [{"name": "E. T. A. Hoffmann"}, "Max &amp; Moritz"],
+  "isPartOf": {"name": "Erzählungen", "position": "3"}, "image": [{"url": "https://img.example/c.jpg"}],
+  "genre": "Klassiker, Krimi", "description": "<p>Paris &amp; ein Mord</p>",
+  "workExample": [{"@type": "Book", "bookFormat": "EBook", "isbn": "111"},
+                  {"@type": "Audiobook", "readBy": "Erika Muster und Max Muster", "duration": "PT5H31M40S",
+                   "datePublished": "2020-05-01T00:00", "inLanguage": "de", "isbn": "978222",
+                   "publisher": {"name": "Hörverlag"}}]}]}</script></head></html>"""
+PAGE_OG = """<meta property="og:title" content="Krimi-Reihe, Band 4: Der vierte Fall - Thalia">
+<meta property="og:image" content="javascript:alert(1)"><meta property="og:description" content="Kurz &amp; gut">"""
+BOOKBEAT = {"id": 4711, "title": "Titel ", "author": "A & B", "narrator": ["C", {"name": "D"}],
+            "series": {"name": "S", "partnumber": 2}, "language": "german", "audiobooklength": 3725,
+            "editions": [{"format": "Ebook", "isbn": "1"}, {"format": "Audiobook", "isbn": "2", "publisher": "P",
+                                                          "published": "2021-02-03T00:00:00Z"}],
+            "genres": [{"name": "G"}, {}], "summary": "<b>Hi</b>", "cover": "https://c.example/x.jpg?w=200&h=1"}
+SERIES = {"relationships": [{"asin": "B0VOL00002", "relationship_type": "series", "relationship_to_product": "child", "sort": "2", "sequence": "2"},
+                            {"asin": "B0VOL00001", "relationship_type": "series", "relationship_to_product": "child", "sort": "1", "sequence": "1"},
+                            {"asin": "B0BOX00013", "relationship_type": "series", "relationship_to_product": "child", "sort": "3", "sequence": "1-3"},
+                            {"asin": "B0VOL0001E", "relationship_type": "series", "relationship_to_product": "child", "sort": "1.5", "sequence": "1"}],
+          "title": "Die Reihe"}
+SERIES_PRODUCTS = [
+    {"asin": "B0VOL00001", "title": "Eins", "language": "german", "format_type": "unabridged", "authors": [{"name": "A"}]},
+    {"asin": "B0VOL0001E", "title": "One", "language": "english", "format_type": "unabridged", "authors": [{"name": "A"}]},
+    {"asin": "B0VOL00002", "title": "Zwei", "language": "german", "format_type": "abridged", "authors": [{"name": "A"}],
+     "series": [{"asin": "B0SERIES01", "title": "Die Reihe (Eigentitel)", "sequence": "2"}]},
+    {"asin": "B0BOX00013", "title": "Box", "language": "german", "authors": [{"name": "A"}]},
+]
+
 
 def build() -> dict:
     import audible
     import i18n
+    import links
     import providers
     from difflib import SequenceMatcher
     i18n.set_language("de")
@@ -79,6 +109,16 @@ def build() -> dict:
         "ratio": [[a, b, SequenceMatcher(None, a, b).ratio()] for a, b in RATIOS],
         "series_position": [[x, audible.series_position(x)] for x in ["3", "Buch 3,5", "1-3", "Band 2 - 4", "", None, "x"]],
         "lookup": looks,
+        "page": links.parse_product_page(PAGE, "https://www.thalia.de/x", "thalia"),
+        "page_og": links.parse_product_page(PAGE_OG, "https://www.thalia.de/y", "thalia"),
+        "bookbeat": links.normalize_bookbeat(BOOKBEAT, ""),
+        "bookbeat_hit": links._bookbeat_hit({"id": 5, "title": "T", "author": "A, B C", "image": "https://i/x?w=99",
+                                             "series": "kein dict", "language": "GERMAN", "shareurl": "http://unsicher",
+                                             "audiobookisbn": "9"}),
+        "shops": [[u, links.shop_of(u)] for u in ["https://www.audible.de/pd/B0X", "https://audible.co.uk/x",
+                                                   "https://www.bookbeat.com/de/book/a-1", "https://thalia.at/p",
+                                                   "https://evil-audible.de.example/", "https://notthalia.de/"]],
+        "series": series_of(),
         "audnexus": providers.from_audnexus({"asin": "B0N", "title": "T ", "authors": [{"name": "A"}],
                                               "genres": [{"type": "genre", "name": "G"}, {"type": "tag", "name": "X"}],
                                               "seriesPrimary": {"name": "S", "position": "2"}, "language": "english",
@@ -88,6 +128,17 @@ def build() -> dict:
         "openlibrary": providers.from_openlibrary({"key": "/works/OL1W", "title": "T", "author_name": ["A", "B"],
                                                    "first_publish_year": 1888, "cover_i": 5, "isbn": ["123"]}),
     }
+
+
+def series_of() -> dict:
+    import audible
+
+    def get(url):
+        if "/catalog/products/B0SERIES01" in url:
+            return {"product": SERIES}
+        return {"products": SERIES_PRODUCTS}
+    client = audible.AudibleClient(get=get)
+    return {"all": client.series("B0SERIES01", "de"), "german": client.series("B0SERIES01", "de", "german")}
 
 
 if __name__ == "__main__":

@@ -1252,6 +1252,15 @@ impl Usenet {
     }
 }
 
+impl Usenet {
+    /// Results in search order for `query` (best first; equal ones keep their order).
+    pub fn rank_results(&self, list: &mut [Value], query: &str, language: &str) -> Vec<Value> {
+        let mut keyed: Vec<(RankKey, Value)> = list.iter().map(|r| (rank_key(r, query, language), r.clone())).collect();
+        keyed.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+        keyed.into_iter().map(|x| x.1).collect()
+    }
+}
+
 pub fn grab_key(name: &str) -> String {
     sub(rx!(r"[\W_]+"), &name.to_lowercase(), "")
 }

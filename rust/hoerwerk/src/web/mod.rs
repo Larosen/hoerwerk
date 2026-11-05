@@ -6,6 +6,7 @@ pub mod audiobooks;
 pub mod hosts;
 pub mod library;
 pub mod requests;
+pub mod search;
 pub mod upload;
 
 use std::collections::HashMap;
