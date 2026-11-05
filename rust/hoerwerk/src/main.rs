@@ -27,6 +27,7 @@ mod settings;
 mod stats;
 mod tagger;
 mod text;
+mod totp;
 mod uploads;
 mod usenet;
 mod web;

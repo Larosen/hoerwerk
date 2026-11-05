@@ -194,6 +194,46 @@ class Accounts(ContractTest):
         finally:
             self.admin.call("PUT", "/api/settings", {"public_url": ""})
 
+    def test_second_factor(self):
+        """TOTP: set up with a code, then every login needs one; a code works once; the admin can switch it off."""
+        import base64
+        import hashlib
+        import hmac as hmaclib
+
+        def code(secret: str, step: int) -> str:
+            key = base64.b32decode(secret + "=" * (-len(secret) % 8), casefold=True)
+            d = hmaclib.new(key, step.to_bytes(8, "big"), hashlib.sha1).digest()
+            o = d[-1] & 15
+            return f"{(int.from_bytes(d[o:o + 4], 'big') & 0x7FFFFFFF) % 1000000:06d}"
+
+        name, pw = "Zweifaktor", "Kaffee Garten Hund Regen 9"
+        self.admin.call("POST", "/api/users", {"name": name, "password": pw, "role": "user"})
+        user = Client(self.server, name, pw)
+        setup = user.call("POST", "/api/auth/totp/setup")
+        self.assertTrue(setup["uri"].startswith("otpauth://totp/"))
+        step = int(time.time() // 30)
+        status, _ = user.call("POST", "/api/auth/totp/confirm", {"code": "000000" if code(setup["secret"], step) != "000000" else "111111"}, expect=None)
+        self.assertEqual(status, 400)
+        user.call("POST", "/api/auth/totp/confirm", {"code": code(setup["secret"], step)})
+        status, _, body = self.server.request("POST", "/api/auth/login", {"name": name, "password": pw}, headers=OWN)
+        first = json.loads(body)
+        self.assertEqual((status, first["ok"], first["totp"]), (200, False, True))
+        ticket = first["ticket"]
+        status, h, body = self.server.request("POST", "/api/auth/login/totp", {"ticket": ticket, "code": code(setup["secret"], step)},
+                                              headers=OWN)
+        self.assertEqual(status, 401, "a code that was used once does not work again")
+        status, h, body = self.server.request("POST", "/api/auth/login/totp",
+                                              {"ticket": ticket, "code": code(setup["secret"], step + 1)}, headers=OWN)
+        self.assertEqual(status, 200, body)
+        self.assertIn("hw_session=", h.get("set-cookie", ""))
+        status, _, _ = self.server.request("POST", "/api/auth/login/totp", {"ticket": ticket, "code": "123456"}, headers=OWN)
+        self.assertEqual(status, 401, "a ticket ends with the login")
+        uid = next(u["id"] for u in self.admin.get("/api/users")["users"] if u["name"] == name)
+        self.assertTrue(next(u for u in self.admin.get("/api/users")["users"] if u["id"] == uid)["totp"])
+        self.admin.call("PUT", f"/api/users/{uid}", {"totp": False})            # lost phone: the admin switches it off
+        status, _, body = self.server.request("POST", "/api/auth/login", {"name": name, "password": pw}, headers=OWN)
+        self.assertEqual((status, json.loads(body)["ok"]), (200, True))
+
 
 class Settings(ContractTest):
     def test_read_change_refuse(self):

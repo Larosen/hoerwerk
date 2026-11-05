@@ -434,7 +434,7 @@ impl Accounts {
     }
 
     // -- login ---------------------------------------------------------------------
-    fn blocked(&self, ip: &str) -> bool {
+    pub fn blocked(&self, ip: &str) -> bool {
         let ts = now();
         let mut b = self.brake.lock().unwrap_or_else(|p| p.into_inner());
         match b.ip_fails.get_mut(&ip_bucket(ip)) {

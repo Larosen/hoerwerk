@@ -113,6 +113,10 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("PUT", "/api/upload/{uid}") => h!(super::upload::put_file),
         ("POST", "/api/upload/{uid}/finish") => h!(super::upload::finish),
         ("DELETE", "/api/upload/{uid}") => h!(super::upload::cancel),
+        ("POST", "/api/auth/login/totp") => h!(login_totp),
+        ("POST", "/api/auth/totp/setup") => h!(totp_setup),
+        ("POST", "/api/auth/totp/confirm") => h!(totp_confirm),
+        ("POST", "/api/auth/totp/disable") => h!(totp_disable),
         _ => h!(not_yet),
     }
 }
@@ -432,6 +436,107 @@ fn new_ticket(app: &App, uid: i64, persistent: bool) -> String {
     ticket
 }
 
+/// Second step of a login: the code for the ticket from step one (5 tries, 5 minutes).
+async fn login_totp(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    if app.accounts.blocked(&req.ip) {
+        return error(
+            429,
+            t("Zu viele Fehlversuche – bitte in 15 Minuten erneut versuchen", &[]),
+        );
+    }
+    let tid = req.str("ticket");
+    let ticket = {
+        let mut st = app.totp.lock().unwrap_or_else(|p| p.into_inner());
+        let valid = st.tickets.get(&tid).is_some_and(|x| x.2 >= text::now() && x.3 < 5);
+        if !valid {
+            st.tickets.remove(&tid);
+            None
+        } else {
+            let x = st.tickets.get_mut(&tid).expect("checked");
+            x.3 += 1;
+            Some((x.0, x.1))
+        }
+    };
+    let Some((uid, persistent)) = ticket else {
+        return error(401, t("Anmeldung abgelaufen – bitte neu anmelden", &[]));
+    };
+    let user = app.accounts.get(&app.db, uid);
+    let good = user.as_ref().is_some_and(|u| u["disabled"] != true) && crate::totp::check(&app, uid, &req.str("code"));
+    if !good {
+        app.accounts
+            .fail(&req.ip, user.as_ref().and_then(|u| u["name"].as_str()).unwrap_or(""));
+        return error(401, t("Code falsch", &[]));
+    }
+    app.totp.lock().unwrap_or_else(|p| p.into_inner()).tickets.remove(&tid);
+    let user = user.unwrap_or(Value::Null);
+    let token = app
+        .accounts
+        .start_session(&app.db, uid, persistent, &req.ip, &req.agent);
+    with_cookie(json!({"ok": true, "user": me(&user)}), cookie(&req, &token, persistent))
+}
+
+/// A new secret for the authenticator app – active only after a correct code (confirm).
+async fn totp_setup(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let secret = crate::totp::secret();
+    app.totp
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .pending
+        .insert(req.user_id(), secret.clone());
+    json_reply(json!({"secret": secret, "uri": crate::totp::uri(&secret, &req.user_name())}))
+}
+
+async fn totp_confirm(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let uid = req.user_id();
+    let pending = app
+        .totp
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .pending
+        .get(&uid)
+        .cloned();
+    match pending {
+        Some(secret) if crate::totp::ok(&app, uid, &secret, &req.str("code")) => {
+            let _ = app
+                .db
+                .lock()
+                .execute("UPDATE users SET totp=? WHERE id=?", rusqlite::params![secret, uid]);
+            app.totp.lock().unwrap_or_else(|p| p.into_inner()).pending.remove(&uid);
+            json_reply(json!({"ok": true}))
+        }
+        _ => error(
+            400,
+            t(
+                "Code falsch – Uhrzeit des Handys prüfen und den aktuellen Code eingeben",
+                &[],
+            ),
+        ),
+    }
+}
+
+async fn totp_disable(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let (a, name, password, ip) = (app.clone(), req.user_name(), req.str("password"), req.ip.clone());
+    let checked = tokio::task::spawn_blocking(move || a.accounts.authenticate(&a.db, &name, &password, &ip)).await;
+    match checked {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => {
+            return error(
+                if e.status == 429 { 429 } else { 403 },
+                t("Das bisherige Passwort stimmt nicht", &[]),
+            );
+        }
+        Err(_) => return error(500, "intern".to_string()),
+    }
+    if !crate::totp::check(&app, req.user_id(), &req.str("code")) {
+        return error(403, t("Code falsch", &[]));
+    }
+    let _ = app
+        .db
+        .lock()
+        .execute("UPDATE users SET totp=NULL WHERE id=?", [req.user_id()]);
+    json_reply(json!({"ok": true}))
+}
+
 async fn logout(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
     app.accounts.end_session(&app.db, &req.token);
     let gone = format!(
@@ -555,11 +660,27 @@ async fn users_update(app: Arc<App>, req: Req, params: HashMap<String, String>) 
             changes.insert(k.into(), v.clone());
         }
     }
-    match app.accounts.update(&app.db, uid, &changes) {
-        Ok(Some(u)) => json_reply(u),
-        Ok(None) => error(404, t("Nicht gefunden", &[])),
-        Err(e) => error(400, e),
+    let user = match app.accounts.update(&app.db, uid, &changes) {
+        Ok(Some(u)) => u,
+        Ok(None) => return error(404, t("Nicht gefunden", &[])),
+        Err(e) => return error(400, e),
+    };
+    if req.get("totp") == &Value::Bool(false) {
+        // lost phone: the admin switches the factor off (and every session of the account ends)
+        let _ = app.db.lock().execute("UPDATE users SET totp=NULL WHERE id=?", [uid]);
+        app.accounts.end_sessions(&app.db, uid, "");
     }
+    let password = req.str("password");
+    if !password.is_empty() && req.get("password") != &Value::Bool(false) {
+        let a = app.clone();
+        let set = tokio::task::spawn_blocking(move || a.accounts.set_password(&a.db, uid, &password)).await;
+        match set {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => return error(400, e),
+            Err(_) => return error(500, "intern".to_string()),
+        }
+    }
+    json_reply(user)
 }
 
 async fn users_delete(app: Arc<App>, _: Req, params: HashMap<String, String>) -> Reply {
