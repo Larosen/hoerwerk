@@ -3,6 +3,7 @@
 
 pub mod api;
 pub mod audiobooks;
+pub mod discover;
 pub mod hosts;
 pub mod library;
 pub mod listening;

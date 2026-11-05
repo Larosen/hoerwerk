@@ -10,9 +10,11 @@ mod chapters;
 mod config;
 mod db;
 mod difflib;
+mod discover;
 mod encoder;
 mod engine;
 mod filing;
+mod htmlent;
 mod http;
 mod invites;
 mod library;
@@ -22,6 +24,7 @@ mod media;
 mod mediaservers;
 mod notify;
 mod packs;
+mod pdftext;
 mod pipeline;
 mod quality;
 mod releases;
@@ -178,6 +181,7 @@ fn request_worker(app: &Arc<App>) {
     }
     while !app.stopping() {
         app.requests.tick(app);
+        discover::tick(&(app.clone() as Arc<dyn discover::Env>)); // review list daily, late audiobooks monthly
         app.maintain_db(text::now());
         std::thread::sleep(Duration::from_secs(120));
     }
@@ -223,6 +227,7 @@ async fn main() {
     first_account(&mut app);
     let app = Arc::new(app);
     App::wire(&app);
+    discover::cleanup(&app.db);
     app.pipeline.load(&app);
     let recovered = app.uploads.recover(); // uploads cannot continue after a restart; half-finished ones are completed
     if !recovered.is_empty() {

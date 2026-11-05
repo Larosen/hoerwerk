@@ -298,69 +298,9 @@ pub fn get_json(url: &str) -> Result<Value> {
 
 // -- normalisation ------------------------------------------------------------------------------------
 
-fn entity(name: &str) -> Option<String> {
-    if let Some(num) = name.strip_prefix('#') {
-        let code = match num.strip_prefix(['x', 'X']) {
-            Some(hex) => u32::from_str_radix(hex, 16).ok()?,
-            None => num.parse().ok()?,
-        };
-        return Some(
-            char::from_u32(code)
-                .filter(|c| *c != '\0')
-                .unwrap_or('\u{fffd}')
-                .to_string(),
-        );
-    }
-    Some(
-        match name {
-            "amp" => "&",
-            "lt" => "<",
-            "gt" => ">",
-            "quot" => "\"",
-            "apos" => "'",
-            "nbsp" => "\u{a0}",
-            "auml" => "ä",
-            "ouml" => "ö",
-            "uuml" => "ü",
-            "Auml" => "Ä",
-            "Ouml" => "Ö",
-            "Uuml" => "Ü",
-            "szlig" => "ß",
-            "eacute" => "é",
-            "egrave" => "è",
-            "aacute" => "á",
-            "agrave" => "à",
-            "ndash" => "–",
-            "mdash" => "—",
-            "hellip" => "…",
-            "laquo" => "«",
-            "raquo" => "»",
-            "bdquo" => "„",
-            "ldquo" => "“",
-            "rdquo" => "”",
-            "lsquo" => "‘",
-            "rsquo" => "’",
-            "sbquo" => "‚",
-            "copy" => "©",
-            "reg" => "®",
-            "trade" => "™",
-            "deg" => "°",
-            "euro" => "€",
-            "middot" => "·",
-            "shy" => "\u{ad}",
-            _ => return None,
-        }
-        .to_string(),
-    )
-}
-
-/// html.unescape for the entities shop texts use.
+/// html.unescape.
 pub fn unescape(text: &str) -> String {
-    rx!(r"&(#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);?")
-        .replace_all(text, |c: &fancy_regex::Captures| {
-            entity(&c[1]).unwrap_or_else(|| c[0].to_string())
-        })
-        .into_owned()
+    crate::htmlent::unescape(text)
 }
 
 /// Shop HTML (descriptions) -> plain text with paragraphs.
@@ -616,6 +556,71 @@ impl Client {
         Ok(Self::products(&data["products"], region, upcoming))
     }
 
+    /// The store's genres with their subcategories: [{id, name, children: [{id, name}]}].
+    pub fn genres(&self, region: &str) -> Result<Vec<Value>> {
+        let data = self.cached(&format!("{}/1.0/catalog/categories?root=Genres", api_host(region)))?;
+        let id = |v: &Value| match &v["id"] {
+            Value::Null => None,
+            Value::String(x) if x.is_empty() => None,
+            Value::String(x) => Some(x.clone()),
+            Value::Number(n) if n.as_f64() == Some(0.0) => None,
+            other => Some(other.to_string()),
+        };
+        Ok(data["categories"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|c| {
+                let kids: Vec<Value> = c["children"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|x| id(x).map(|i| json!({"id": i, "name": s(x, "name")})))
+                    .collect();
+                id(c).map(|i| json!({"id": i, "name": s(c, "name"), "children": kids}))
+            })
+            .collect())
+    }
+
+    /// Books of one genre, sorted by Audible (BestSellers, -ReleaseDate, AvgRating).
+    pub fn genre_products(
+        &self,
+        region: &str,
+        genre_id: &str,
+        sort: &str,
+        limit: usize,
+        page: usize,
+    ) -> Result<Vec<Value>> {
+        let mut params = vec![
+            ("response_groups", RESPONSE_GROUPS.to_string()),
+            ("image_sizes", "500".into()),
+            ("num_results", limit.to_string()),
+            ("products_sort_by", sort.to_string()),
+            ("category_id", genre_id.to_string()),
+        ];
+        if page > 1 {
+            params.push(("page", page.to_string()));
+        }
+        let data = self.cached(&format!("{}/1.0/catalog/products?{}", api_host(region), form(&params)))?;
+        Ok(Self::products(&data["products"], region, false))
+    }
+
+    /// Books that Audible's listeners connect with this one.
+    pub fn similar(&self, asin: &str, region: &str, limit: usize) -> Result<Vec<Value>> {
+        let params = [
+            ("response_groups", RESPONSE_GROUPS.to_string()),
+            ("image_sizes", "500".into()),
+            ("num_results", limit.to_string()),
+            ("similarity_type", "RawSimilarities".into()),
+        ];
+        let data = self.cached(&format!(
+            "{}/1.0/catalog/products/{asin}/sims?{}",
+            api_host(region),
+            form(&params)
+        ))?;
+        Ok(Self::products(&data["similar_products"], region, false))
+    }
+
     pub fn product(&self, asin: &str, region: &str) -> Result<Value> {
         let params = [
             ("response_groups", RESPONSE_GROUPS.to_string()),
@@ -829,7 +834,7 @@ fn tokens(text: &str) -> BTreeSet<String> {
         .collect()
 }
 
-fn ratio(a: &str, b: &str) -> f64 {
+pub fn ratio(a: &str, b: &str) -> f64 {
     let (a, b) = (fold(a), fold(b));
     if a.is_empty() || b.is_empty() {
         0.0

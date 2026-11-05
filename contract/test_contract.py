@@ -310,6 +310,19 @@ class System(ContractTest):
         self.assertEqual(sorted(sysinfo["queues"]), ["encode", "io"])
         self.assertEqual(self.family().call("GET", "/api/diagnostics", expect=None)[0], 403)
 
+    def test_discover_refuses_odd_requests(self):
+        """Entdecken: only its three sections, only store genres (digits) – nothing is looked up for the rest."""
+        fam = self.family()
+        self.assertEqual(fam.call("GET", "/api/discover?section=everything", expect=None)[0], 400)
+        self.assertEqual(fam.get("/api/discover?section=genre&genre=abc"),
+                         {"items": [], "updated": None, "error": None, "running": False})
+        self.assertEqual(fam.get("/api/discover?section=genre"),
+                         {"items": [], "updated": None, "error": None, "running": False})
+        self.assertEqual(self.admin.call("POST", "/api/discover/refresh", {"section": "nope"}, expect=None)[0], 400)
+        self.assertEqual(self.admin.call("POST", "/api/discover/refresh", {"section": "genre", "genre": "../1"},
+                                         expect=None)[0], 400)
+        self.assertEqual(fam.call("POST", "/api/discover/refresh", {"section": "foryou"}, expect=None)[0], 403)
+
 
 class Requests(ContractTest):
     BOOK = {"asin": "B0VERTRAG1", "title": "Der Vertrag", "authors": ["Anna Autorin"], "language": "german",

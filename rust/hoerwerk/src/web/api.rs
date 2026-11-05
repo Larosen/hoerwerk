@@ -128,6 +128,9 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("GET", "/api/listening/accounts") => h!(super::listening::accounts),
         ("PUT", "/api/listening/link") => h!(super::listening::set_link),
         ("GET", "/api/diagnostics") => h!(super::system::diagnostics),
+        ("GET", "/api/discover") => h!(super::discover::suggestions),
+        ("GET", "/api/discover/genres") => h!(super::discover::genres),
+        ("POST", "/api/discover/refresh") => h!(super::discover::refresh),
         _ => h!(not_yet),
     }
 }

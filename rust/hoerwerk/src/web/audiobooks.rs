@@ -222,7 +222,7 @@ pub async fn retry(app: Arc<App>, _: Req, p: Params) -> Reply {
     }
     let (a, id) = (app.clone(), p["job_id"].clone());
     match blocking(move || a.pipeline.retry(&a, &id)).await {
-        Ok(slot) => out(&slot),
+        Ok(job) => json_reply(job),
         Err(PipeError::Failed(e)) => error(
             500,
             t(

@@ -43,6 +43,7 @@ pub struct App {
     pub abs: Abs,
     pub plex: Plex,
     pub listening: Listening,
+    pub discover: crate::discover::Discover,
     /// the daily database snapshot: when it last worked, why it last failed ("" = fine), when it last ran
     pub db_backup: Mutex<(Option<f64>, String, f64)>,
     pub usenet: Usenet,
@@ -98,6 +99,7 @@ impl App {
             abs: Abs::new(db.clone()),
             plex: Plex::new(db.clone()),
             listening: Listening::default(),
+            discover: crate::discover::Discover::new(true),
             db_backup: Mutex::new((None, String::new(), 0.0)),
             requests: Requests::new(),
             stats: Stats::default(),
@@ -307,6 +309,99 @@ impl App {
             self.sse_clients.fetch_sub(1, Ordering::SeqCst);
             false
         }
+    }
+}
+
+/// Entdecken's view of the app: the shop, the feeds, the library, what is on its way.
+impl crate::discover::Env for App {
+    fn db(&self) -> &Db {
+        &self.db
+    }
+    fn discover(&self) -> &crate::discover::Discover {
+        &self.discover
+    }
+    fn settings(&self) -> Map<String, Value> {
+        self.settings.get(&self.db)
+    }
+    fn similar(&self, asin: &str, region: &str, limit: usize) -> Result<Vec<Value>, crate::audible::AudibleError> {
+        self.providers.client.similar(asin, region, limit)
+    }
+    fn genre_products(
+        &self,
+        region: &str,
+        genre: &str,
+        sort: &str,
+        limit: usize,
+        page: usize,
+    ) -> Result<Vec<Value>, crate::audible::AudibleError> {
+        self.providers.client.genre_products(region, genre, sort, limit, page)
+    }
+    fn genres(&self, region: &str) -> Result<Vec<Value>, crate::audible::AudibleError> {
+        self.providers.client.genres(region)
+    }
+    fn search(
+        &self,
+        region: &str,
+        title: &str,
+        author: &str,
+        limit: usize,
+    ) -> Result<Vec<Value>, crate::audible::AudibleError> {
+        self.providers.client.search(region, "", title, author, limit, true)
+    }
+    fn fetch(&self, url: &str) -> Result<Vec<u8>, String> {
+        crate::discover::fetch_feed(url)
+    }
+    /// Books on their way: grabbed in the last 30 days or being processed.
+    fn pending(&self) -> std::collections::HashSet<String> {
+        let mut out = std::collections::HashSet::new();
+        for slot in self.pipeline.all() {
+            let j = slot.lock();
+            if matches!(j.status.as_str(), "failed" | "cancelled") {
+                continue;
+            }
+            let m = j
+                .matched
+                .as_ref()
+                .and_then(|m| m["asin"].as_str())
+                .filter(|a| !a.is_empty());
+            if let Some(a) = m.or_else(|| j.hints["asin"].as_str()) {
+                out.insert(a.to_string());
+            }
+        }
+        let c = self.db.lock();
+        if let Ok(mut st) = c.prepare("SELECT data FROM grabs WHERE time > ?") {
+            let rows = st.query_map([crate::text::now() - 30.0 * 86400.0], |r| r.get::<_, String>(0));
+            for d in rows.into_iter().flatten().flatten() {
+                if let Some(a) = serde_json::from_str::<Value>(&d)
+                    .ok()
+                    .and_then(|v| v["asin"].as_str().map(str::to_string))
+                {
+                    out.insert(a);
+                }
+            }
+        }
+        out.retain(|a| !a.is_empty());
+        out
+    }
+    fn owned(&self, book: &Value) -> bool {
+        !self.library.find(book).is_empty()
+    }
+    fn library_seeds(&self) -> Vec<Value> {
+        let mut all: Vec<Value> = self
+            .library
+            .entries()
+            .into_iter()
+            .filter(|e| !e["asin"].as_str().unwrap_or("").is_empty())
+            .collect();
+        all.sort_by(|a, b| {
+            let m = |e: &Value| e["mtime"].as_f64().unwrap_or(0.0);
+            m(b).partial_cmp(&m(a)).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        all.truncate(30);
+        all
+    }
+    fn seeds(&self, uid: i64) -> Vec<Value> {
+        self.listening.seeds(self, uid, 25)
     }
 }
 

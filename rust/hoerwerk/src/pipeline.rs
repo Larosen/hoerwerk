@@ -1301,12 +1301,13 @@ impl Pipeline {
         Ok(slot)
     }
 
-    pub fn retry(&self, app: &Arc<App>, id: &str) -> Res<JobRef> {
+    /// Back into the queue; the answer is the job as queued (a worker may pick it up at once).
+    pub fn retry(&self, app: &Arc<App>, id: &str) -> Res<Value> {
         let slot = self.need(id)?;
-        {
+        let queued = {
             let mut j = slot.lock();
             if !matches!(j.status.as_str(), "failed" | "cancelled") {
-                return Ok(slot.clone());
+                return Ok(j.to_dict(false));
             }
             let failed = j.dest.clone().filter(|d| j.origin == "inbox" && Path::new(d).exists());
             if let Some(failed) = failed {
@@ -1328,10 +1329,11 @@ impl Pipeline {
             j.stage = "prepare".into();
             j.m4b = None;
             j.info(&t("Erneut eingereiht", &[]));
-        }
+            j.to_dict(false)
+        };
         self.save(app);
         self.schedule(app, &slot);
-        Ok(slot)
+        Ok(queued)
     }
 
     /// Hörwerk stops (docker stop): running ffmpeg ends now, its job goes back to the queue (not cancelled).
