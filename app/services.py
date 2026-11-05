@@ -41,6 +41,8 @@ class App:
         os.makedirs(config.config_dir, exist_ok=True)
         self.db = dbm.Database(dbm.db_path(config.config_dir))
         self._db_maintained = 0.0
+        self.db_backup_error = ""                  # last snapshot failed: why (health check)
+        self.db_backup_at: Optional[float] = None
         self.library_ready = threading.Event()     # set after the first library scan: processing may start
         self.library_error = ""
         imported = dbm.import_legacy(self.db, config.config_dir)
@@ -228,7 +230,9 @@ class App:
         and the WAL moved into the main file. A copy of /config taken while Hörwerk runs (Unraid appdata
         backup) may catch the database between two writes – the snapshot never does."""
         now = time.time() if now is None else now
-        if now - self._db_maintained < 23 * 3600:
+        # after a success the next one in a day; after a failure (disk full for a moment) again in an hour
+        wait = 3600 if self.db_backup_error else 23 * 3600
+        if now - self._db_maintained < wait:
             return None
         self._db_maintained = now
         target = os.path.join(self.config.config_dir, "backups", time.strftime("hoerwerk-%a.db", time.localtime(now)))
@@ -236,10 +240,14 @@ class App:
             os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
             self.db.backup(target)
             self.db.checkpoint()
-            return target
         except Exception as e:  # noqa: BLE001 – a failed snapshot must not stop the worker
-            applog.warn(t("Datenbank-Sicherung fehlgeschlagen: {error}", error=e), "Datenbank")
+            self.db_backup_error = str(e) or e.__class__.__name__
+            applog.warn(t("Datenbank-Sicherung fehlgeschlagen, neuer Versuch in einer Stunde: {error}",
+                          error=self.db_backup_error), "Datenbank")
             return None
+        self.db_backup_error = ""
+        self.db_backup_at = now
+        return target
 
 
 def create_app(config: Optional[Config] = None, start: bool = True) -> App:

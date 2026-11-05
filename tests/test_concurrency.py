@@ -105,6 +105,25 @@ class DatabaseTest(unittest.TestCase):
         self.assertIsNone(app.maintain_db(now=1_800_000_000 + 3600))           # once a day
         app.db.close()
 
+    def test_failed_snapshot_is_tried_again_within_the_hour(self):
+        """Review 7.13: after a failed snapshot (disk full for a moment) the next try came only a day later."""
+        import services
+        import config
+        cfg_dir = os.path.join(self.dir, "cfg2")
+        app = services.App(config.Config.from_env({"CONFIG_DIR": cfg_dir, "INBOX_DIR": self.dir,
+                                                   "LIBRARY_DIR": self.dir}), start_workers=False)
+        self.addCleanup(app.db.close)
+        real = app.db.backup
+        app.db.backup = lambda target: (_ for _ in ()).throw(OSError(28, "No space left on device"))
+        t0 = 1_800_000_000
+        self.assertIsNone(app.maintain_db(now=t0))
+        self.assertIn("No space", app.db_backup_error)
+        self.assertIsNone(app.maintain_db(now=t0 + 600))                         # not every two minutes …
+        app.db.backup = real
+        self.assertTrue(app.maintain_db(now=t0 + 3600))                         # … but within the hour
+        self.assertEqual(app.db_backup_error, "")
+        self.assertIsNone(app.maintain_db(now=t0 + 3 * 3600))                   # then daily again
+
 
 class EngineTest(unittest.TestCase):
     def test_steps_of_one_job_never_overlap(self):

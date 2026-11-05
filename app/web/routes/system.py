@@ -188,6 +188,10 @@ def diagnostics(req: Req):
             else t("Bibliothek nicht lesbar – es wird nichts verarbeitet"), id="library-ready",
             detail=app.library_error or t("Erst wenn Hörwerk die Bibliothek kennt, prüft es neue Bücher auf Doppelte."))
 
+    if getattr(app, "db_backup_error", ""):
+        add("storage", "error", t("Tägliche Datenbank-Sicherung fehlgeschlagen"), id="db-backup",
+            detail=t("{error} – neuer Versuch jede Stunde.", error=app.db_backup_error))
+
     # -- security --
     users = app.accounts.list()
     no_totp = [u["name"] for u in users if u.get("role") == "admin" and not u.get("totp") and not u.get("disabled")]
