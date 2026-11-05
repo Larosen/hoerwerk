@@ -125,7 +125,7 @@ npm audit (build tools), the unit tests with a coverage limit (80 %), the click-
 and against the finished image, and Trivy on the image – a critical or high vulnerability with an available fix
 stops the release (exceptions only in `.trivyignore`, each with its reason). Only then the image is published:
 signed with cosign (keyless) and with SBOM and build provenance attached to its digest. All GitHub Actions are
-pinned to commit SHAs; Dependabot proposes updates weekly. Checking an image:
+pinned to commit SHAs; Renovate checks weekly for updates (FFmpeg, Trivy and cosign included) and merges small ones itself once the whole CI is green – major versions and FFmpeg only after approval. Checking an image:
 
 ```sh
 cosign verify ghcr.io/larosen/hoerwerk@sha256:<digest> \

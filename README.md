@@ -59,7 +59,7 @@ The interface is available in **English and German**.
 ### Unraid
 
 1. **Docker → Add Container**, enter as *Template*:
-   `https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/hoerwerk.xml`
+   `https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/hoerwerk.xml`
 2. Set the paths:
    * **Hörbuch-Eingang** (`/inbox`) – where new audiobooks arrive
    * **Hörbuch-Bibliothek** (`/audiobooks`) – the finished library (add it to Audiobookshelf/Plex)

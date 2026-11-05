@@ -63,9 +63,9 @@ EXPOSE 8080
 
 LABEL org.opencontainers.image.title="Hörwerk" \
       org.opencontainers.image.description="Hörbuch-Automatik: Eingang -> M4B mit Kapiteln -> Audible-Tags -> Bibliothek (Audiobookshelf, Plex)" \
-      org.opencontainers.image.source="https://github.com/Larosen/rename_merge" \
+      org.opencontainers.image.source="https://github.com/Larosen/hoerwerk" \
       net.unraid.docker.webui="http://[IP]:[PORT:8080]/" \
-      net.unraid.docker.icon="https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/icon.png"
+      net.unraid.docker.icon="https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/icon.png"
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/api/health' % os.environ.get('PORT', '8080'), timeout=4).read()" || exit 1
