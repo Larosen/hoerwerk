@@ -133,11 +133,14 @@ fn abs_call(method: &str, url: &str, token: &str, timeout: u64) -> Res<Value> {
     }
 }
 
+/// (when read, library id, item id -> {title, author, asin, duration})
+type ItemCache = (f64, String, HashMap<String, Value>);
+
 pub struct Abs {
     db: Db,
     debounce: Debounce,
     pub last: Arc<Mutex<Option<String>>>,
-    items: Mutex<Option<(f64, String, HashMap<String, Value>)>>,
+    items: Mutex<Option<ItemCache>>,
 }
 
 impl Abs {
