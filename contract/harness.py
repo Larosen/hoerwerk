@@ -228,5 +228,47 @@ class FakeUsenet:
         self.server.shutdown()
 
 
+class FakeMediaServers:
+    """Audiobookshelf and Plex in one tiny local server: answers what Hörwerk asks and notes every call."""
+
+    def __init__(self) -> None:
+        import http.server
+        import threading
+        self.calls = []
+        fake = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def answer(self):
+                fake.calls.append((self.command, self.path, self.headers.get("Authorization"),
+                                   self.headers.get("X-Plex-Token")))
+                path = urllib.parse.urlparse(self.path).path
+                out = {}
+                if path == "/api/libraries":
+                    out = {"libraries": [{"id": "lib-books", "name": "Hörbücher", "mediaType": "book"},
+                                         {"id": "lib-pods", "name": "Podcasts", "mediaType": "podcast"}]}
+                elif path == "/library/sections":
+                    out = {"MediaContainer": {"Directory": [
+                        {"key": "1", "title": "Filme", "type": "movie"},
+                        {"key": "7", "title": "Hörbücher", "type": "artist", "Location": [{"path": "/audiobooks"}]}]}}
+                body = json.dumps(out).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            do_GET = do_POST = do_PUT = answer
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def close(self) -> None:
+        self.server.shutdown()
+
+
 def quote(path: str) -> str:
     return urllib.parse.quote(path, safe="")

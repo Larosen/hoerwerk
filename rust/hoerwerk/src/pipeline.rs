@@ -2616,7 +2616,7 @@ impl Pipeline {
             "info",
         );
         drop(j);
-        app.library_changed();
+        crate::mediaservers::request_scans(app);
         Ok(())
     }
 

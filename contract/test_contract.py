@@ -18,7 +18,7 @@ import subprocess
 import time
 import unittest
 
-from harness import ADMIN, OWN, ROOT, Client, FakeUsenet, Server, deliver, quote, tone
+from harness import ADMIN, OWN, ROOT, Client, FakeMediaServers, FakeUsenet, Server, deliver, quote, tone
 
 ROUTES = json.load(open(os.path.join(os.path.dirname(__file__), "routes.json"), encoding="utf-8"))["routes"]
 FIXTURE_DB = os.path.join(os.path.dirname(__file__), "fixtures", "hoerwerk-7.13.db")
@@ -492,6 +492,42 @@ class Processing(ContractTest):
                                                      "02 - Neuer Titel", "Neuer Titel.m4b"))
         books = self.admin.get("/api/library/books?q=richtig")["books"]
         self.assertEqual([b["title"] for b in books], ["Neuer Titel"])
+
+    def test_media_servers_are_asked_to_scan_after_filing(self):
+        """Audiobookshelf and Plex (a local fake): connection test picks the library, tokens stay on the server,
+        one scan each after a book was filed."""
+        fake = FakeMediaServers()
+        try:
+            saved = self.admin.call("PUT", "/api/sources", {
+                "abs": {"url": fake.url, "token": "abs-geheim-123"},
+                "plex": {"url": fake.url + "/web/index.html", "token": "plex-geheim-456"}})
+            self.assertEqual((saved["abs"]["token_set"], saved["plex"]["token_set"]), (True, True))
+            self.assertEqual(saved["plex"]["url"], fake.url)
+            abs_test = self.admin.call("POST", "/api/sources/test", {"kind": "abs"})
+            plex_test = self.admin.call("POST", "/api/sources/test", {"kind": "plex"})
+            self.assertTrue(abs_test["ok"] and "Hörbücher" in abs_test["message"], abs_test)
+            self.assertTrue(plex_test["ok"] and "Hörbücher" in plex_test["message"], plex_test)
+            sources = self.admin.get("/api/sources")
+            self.assertEqual((sources["abs"]["library"], sources["abs"]["configured"]), ("lib-books", True))
+            self.assertEqual((sources["plex"]["section"], sources["plex"]["configured"]), ("7", True))
+            self.assertNotIn("geheim", json.dumps(sources))
+            self.book("Anna Autorin - Gescannt", "Gescannt")
+            self.assertEqual(self.job("Anna Autorin - Gescannt")["status"], "done")
+
+            def scanned():
+                paths = [c[1] for c in fake.calls]
+                return "/api/libraries/lib-books/scan" in paths and "/library/sections/7/refresh" in paths
+            self.admin.wait(scanned, 75, what="scans after filing")
+            scan = next(c for c in fake.calls if c[1] == "/api/libraries/lib-books/scan")
+            self.assertEqual((scan[0], scan[2]), ("POST", "Bearer abs-geheim-123"))
+            refresh = next(c for c in fake.calls if c[1] == "/library/sections/7/refresh")
+            self.assertEqual(refresh[3], "plex-geheim-456")
+            # another server: the stored token does not go there
+            moved = self.admin.call("PUT", "/api/sources", {"abs": {"url": "http://127.0.0.2:9", "library": "x"}})
+            self.assertFalse(moved["abs"]["token_set"])
+        finally:
+            self.admin.call("PUT", "/api/sources", {"abs": {"url": ""}, "plex": {"url": ""}})
+            fake.close()
 
 
 class Live(ContractTest):

@@ -14,6 +14,7 @@ use crate::config::Config;
 use crate::db::Db;
 use crate::engine::Engine;
 use crate::library::LibraryIndex;
+use crate::mediaservers::{Abs, Plex};
 use crate::notify::Notifier;
 use crate::pipeline::Pipeline;
 use crate::requests::Requests;
@@ -38,6 +39,8 @@ pub struct App {
     pub pipeline: Pipeline,
     pub providers: Providers,
     pub uploads: Uploads,
+    pub abs: Abs,
+    pub plex: Plex,
     /// the daily database snapshot: when it last worked, why it last failed ("" = fine), when it last ran
     pub db_backup: Mutex<(Option<f64>, String, f64)>,
     pub usenet: Usenet,
@@ -87,6 +90,8 @@ impl App {
             pipeline: Pipeline::new(&cfg.inbox, &cfg.library, &cfg.work_dir),
             providers: Providers::default(),
             uploads: Uploads::new(&cfg.inbox),
+            abs: Abs::new(db.clone()),
+            plex: Plex::new(db.clone()),
             db_backup: Mutex::new((None, String::new(), 0.0)),
             requests: Requests::new(),
             stats: Stats::default(),
@@ -263,9 +268,6 @@ impl App {
             .map(|j| j.lock().to_dict(true))
             .find(|j| j["hints"]["request_id"].as_i64() == Some(rid))
     }
-
-    /// Books were filed or replaced: media servers should look again (Audiobookshelf/Plex – not ported yet).
-    pub fn library_changed(&self) {}
 
     pub fn stopping(&self) -> bool {
         *self.shutdown.borrow()

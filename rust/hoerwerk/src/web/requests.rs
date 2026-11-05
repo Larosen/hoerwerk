@@ -308,25 +308,42 @@ pub async fn prefs_test(app: Arc<App>, req: Req, _: Params) -> Reply {
 }
 
 // -- sources and downloads --------------------------------------------------------------------------
+fn with_servers(app: &App, mut v: Value) -> Value {
+    v["abs"] = app.abs.public_config();
+    v["plex"] = app.plex.public_config();
+    v
+}
+
 pub async fn sources_get(app: Arc<App>, _: Req, _: Params) -> Reply {
-    json_reply(app.usenet.public_config())
+    json_reply(with_servers(&app, app.usenet.public_config()))
 }
 
 pub async fn sources_put(app: Arc<App>, req: Req, _: Params) -> Reply {
     if !req.body.is_object() {
         return error(400, t("Ungültige Daten", &[]));
     }
-    json_reply(app.usenet.update_config(&req.body))
+    if req.body["abs"].is_object() {
+        app.abs.update_config(&req.body["abs"]);
+    }
+    if req.body["plex"].is_object()
+        && let Err(e) = app.plex.update_config(&req.body["plex"])
+    {
+        return error(400, e.message);
+    }
+    json_reply(with_servers(&app, app.usenet.update_config(&req.body)))
 }
 
 pub async fn sources_test(app: Arc<App>, req: Req, _: Params) -> Reply {
     let (a, kind, id) = (app.clone(), req.str("kind"), req.str("id"));
-    if kind == "abs" || kind == "plex" {
-        return json_reply(json!({"ok": false, "message": format!("{kind}: im Rust-Backend noch nicht umgesetzt")}));
-    }
-    match blocking(move || a.usenet.test(&kind, &id)).await {
+    let res = blocking(move || match kind.as_str() {
+        "abs" => a.abs.test().map_err(|e| e.message),
+        "plex" => a.plex.test().map_err(|e| e.message),
+        _ => a.usenet.test(&kind, &id).map_err(|e| e.to_string()),
+    })
+    .await;
+    match res {
         Ok(m) => json_reply(json!({"ok": true, "message": m})),
-        Err(e) => json_reply(json!({"ok": false, "message": e.to_string()})),
+        Err(e) => json_reply(json!({"ok": false, "message": e})),
     }
 }
 

@@ -17,6 +17,7 @@ mod invites;
 mod library;
 mod links;
 mod media;
+mod mediaservers;
 mod notify;
 mod packs;
 mod pipeline;
