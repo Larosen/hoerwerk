@@ -1495,5 +1495,619 @@
     "2: Die Wende"
    ]
   ]
+ ],
+ "destination": [
+  [
+   {
+    "title": "Das Fräulein von Scuderi",
+    "authors": [
+     "E.T.A. Hoffmann"
+    ],
+    "series": "Die Serapionsbrüder",
+    "series_position": "3",
+    "release_date": "1819-01-01",
+    "narrators": [
+     "Erika Muster",
+     "Max Muster"
+    ]
+   },
+   "{author}/[{series}/][{series_position:2} - ]{title}",
+   "{title}",
+   [
+    "/lib/E.T.A. Hoffmann/Die Serapionsbrüder/03 - Das Fräulein von Scuderi",
+    "Das Fräulein von Scuderi.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "Das Fräulein von Scuderi",
+    "authors": [
+     "E.T.A. Hoffmann"
+    ],
+    "series": "Die Serapionsbrüder",
+    "series_position": "3",
+    "release_date": "1819-01-01",
+    "narrators": [
+     "Erika Muster",
+     "Max Muster"
+    ]
+   },
+   "{author}/[{series}/][{series_position} - ]{title}",
+   "[{series_position:3} - ]{title} ({year})",
+   [
+    "/lib/E.T.A. Hoffmann/Die Serapionsbrüder/3 - Das Fräulein von Scuderi",
+    "003 - Das Fräulein von Scuderi (1819).m4b"
+   ]
+  ],
+  [
+   {
+    "title": "Das Fräulein von Scuderi",
+    "authors": [
+     "E.T.A. Hoffmann"
+    ],
+    "series": "Die Serapionsbrüder",
+    "series_position": "3",
+    "release_date": "1819-01-01",
+    "narrators": [
+     "Erika Muster",
+     "Max Muster"
+    ]
+   },
+   "{authors}/[{narrator}/]{title}[ - {subtitle}]",
+   "{asin}-{language}-{genre}",
+   [
+    "/lib/E.T.A. Hoffmann/Erika Muster/Das Fräulein von Scuderi",
+    "--.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "Das Fräulein von Scuderi",
+    "authors": [
+     "E.T.A. Hoffmann"
+    ],
+    "series": "Die Serapionsbrüder",
+    "series_position": "3",
+    "release_date": "1819-01-01",
+    "narrators": [
+     "Erika Muster",
+     "Max Muster"
+    ]
+   },
+   "",
+   "",
+   [
+    "/lib/E.T.A. Hoffmann/Die Serapionsbrüder/03 - Das Fräulein von Scuderi",
+    "Das Fräulein von Scuderi.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "Das Fräulein von Scuderi",
+    "authors": [
+     "E.T.A. Hoffmann"
+    ],
+    "series": "Die Serapionsbrüder",
+    "series_position": "3",
+    "release_date": "1819-01-01",
+    "narrators": [
+     "Erika Muster",
+     "Max Muster"
+    ]
+   },
+   "[{series}]",
+   "/{title}/",
+   [
+    "/lib/Die Serapionsbrüder",
+    "Das Fräulein von Scuderi.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "Faust: Der Tragödie erster Teil",
+    "authors": [
+     "Johann Wolfgang von Goethe"
+    ],
+    "genres": [
+     "Klassiker"
+    ]
+   },
+   "{author}/[{series}/][{series_position:2} - ]{title}",
+   "{title}",
+   [
+    "/lib/Johann Wolfgang von Goethe/Faust - Der Tragödie erster Teil",
+    "Faust - Der Tragödie erster Teil.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "Faust: Der Tragödie erster Teil",
+    "authors": [
+     "Johann Wolfgang von Goethe"
+    ],
+    "genres": [
+     "Klassiker"
+    ]
+   },
+   "{author}/[{series}/][{series_position} - ]{title}",
+   "[{series_position:3} - ]{title} ({year})",
+   [
+    "/lib/Johann Wolfgang von Goethe/Faust - Der Tragödie erster Teil",
+    "Faust - Der Tragödie erster Teil ().m4b"
+   ]
+  ],
+  [
+   {
+    "title": "Faust: Der Tragödie erster Teil",
+    "authors": [
+     "Johann Wolfgang von Goethe"
+    ],
+    "genres": [
+     "Klassiker"
+    ]
+   },
+   "{authors}/[{narrator}/]{title}[ - {subtitle}]",
+   "{asin}-{language}-{genre}",
+   [
+    "/lib/Johann Wolfgang von Goethe/Faust - Der Tragödie erster Teil",
+    "--Klassiker.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "Faust: Der Tragödie erster Teil",
+    "authors": [
+     "Johann Wolfgang von Goethe"
+    ],
+    "genres": [
+     "Klassiker"
+    ]
+   },
+   "",
+   "",
+   [
+    "/lib/Johann Wolfgang von Goethe/Faust - Der Tragödie erster Teil",
+    "Faust - Der Tragödie erster Teil.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "Faust: Der Tragödie erster Teil",
+    "authors": [
+     "Johann Wolfgang von Goethe"
+    ],
+    "genres": [
+     "Klassiker"
+    ]
+   },
+   "[{series}]",
+   "/{title}/",
+   [
+    "/lib/Faust - Der Tragödie erster Teil",
+    "Faust - Der Tragödie erster Teil.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "AC/DC? <Live> | \"Mitschnitt\"",
+    "authors": [],
+    "series": "Reihe/Unter",
+    "series_position": "1.5"
+   },
+   "{author}/[{series}/][{series_position:2} - ]{title}",
+   "{title}",
+   [
+    "/lib/Unbekannt/Reihe-Unter/01.5 - AC-DC Live Mitschnitt",
+    "AC-DC Live Mitschnitt.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "AC/DC? <Live> | \"Mitschnitt\"",
+    "authors": [],
+    "series": "Reihe/Unter",
+    "series_position": "1.5"
+   },
+   "{author}/[{series}/][{series_position} - ]{title}",
+   "[{series_position:3} - ]{title} ({year})",
+   [
+    "/lib/Unbekannt/Reihe-Unter/1.5 - AC-DC Live Mitschnitt",
+    "001.5 - AC-DC Live Mitschnitt ().m4b"
+   ]
+  ],
+  [
+   {
+    "title": "AC/DC? <Live> | \"Mitschnitt\"",
+    "authors": [],
+    "series": "Reihe/Unter",
+    "series_position": "1.5"
+   },
+   "{authors}/[{narrator}/]{title}[ - {subtitle}]",
+   "{asin}-{language}-{genre}",
+   [
+    "/lib/Unbekannt/AC-DC Live Mitschnitt",
+    "--.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "AC/DC? <Live> | \"Mitschnitt\"",
+    "authors": [],
+    "series": "Reihe/Unter",
+    "series_position": "1.5"
+   },
+   "",
+   "",
+   [
+    "/lib/Unbekannt/Reihe-Unter/01.5 - AC-DC Live Mitschnitt",
+    "AC-DC Live Mitschnitt.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "AC/DC? <Live> | \"Mitschnitt\"",
+    "authors": [],
+    "series": "Reihe/Unter",
+    "series_position": "1.5"
+   },
+   "[{series}]",
+   "/{title}/",
+   [
+    "/lib/Reihe-Unter",
+    "AC-DC Live Mitschnitt.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "  Punkt. ",
+    "authors": [
+     "A"
+    ],
+    "series_position": "12",
+    "asin": "B0X",
+    "language": "German"
+   },
+   "{author}/[{series}/][{series_position:2} - ]{title}",
+   "{title}",
+   [
+    "/lib/A/12 - Punkt",
+    "Punkt.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "  Punkt. ",
+    "authors": [
+     "A"
+    ],
+    "series_position": "12",
+    "asin": "B0X",
+    "language": "German"
+   },
+   "{author}/[{series}/][{series_position} - ]{title}",
+   "[{series_position:3} - ]{title} ({year})",
+   [
+    "/lib/A/12 - Punkt",
+    "012 - Punkt. ().m4b"
+   ]
+  ],
+  [
+   {
+    "title": "  Punkt. ",
+    "authors": [
+     "A"
+    ],
+    "series_position": "12",
+    "asin": "B0X",
+    "language": "German"
+   },
+   "{authors}/[{narrator}/]{title}[ - {subtitle}]",
+   "{asin}-{language}-{genre}",
+   [
+    "/lib/A/Punkt",
+    "B0X-German-.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "  Punkt. ",
+    "authors": [
+     "A"
+    ],
+    "series_position": "12",
+    "asin": "B0X",
+    "language": "German"
+   },
+   "",
+   "",
+   [
+    "/lib/A/12 - Punkt",
+    "Punkt.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "  Punkt. ",
+    "authors": [
+     "A"
+    ],
+    "series_position": "12",
+    "asin": "B0X",
+    "language": "German"
+   },
+   "[{series}]",
+   "/{title}/",
+   [
+    "/lib/Punkt",
+    "Punkt.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "authors": [
+     "ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ"
+    ]
+   },
+   "{author}/[{series}/][{series_position:2} - ]{title}",
+   "{title}",
+   [
+    "/lib/ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "authors": [
+     "ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ"
+    ]
+   },
+   "{author}/[{series}/][{series_position} - ]{title}",
+   "[{series_position:3} - ]{title} ({year})",
+   [
+    "/lib/ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "authors": [
+     "ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ"
+    ]
+   },
+   "{authors}/[{narrator}/]{title}[ - {subtitle}]",
+   "{asin}-{language}-{genre}",
+   [
+    "/lib/ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "--.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "authors": [
+     "ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ"
+    ]
+   },
+   "",
+   "",
+   [
+    "/lib/ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "authors": [
+     "ÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖÖ"
+    ]
+   },
+   "[{series}]",
+   "/{title}/",
+   [
+    "/lib/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "",
+    "authors": [
+     "Leer"
+    ],
+    "series": "S",
+    "series_position": ""
+   },
+   "{author}/[{series}/][{series_position:2} - ]{title}",
+   "{title}",
+   [
+    "/lib/Leer/S/Unbenannt",
+    "Unbenannt.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "",
+    "authors": [
+     "Leer"
+    ],
+    "series": "S",
+    "series_position": ""
+   },
+   "{author}/[{series}/][{series_position} - ]{title}",
+   "[{series_position:3} - ]{title} ({year})",
+   [
+    "/lib/Leer/S/Unbenannt",
+    "Unbenannt ().m4b"
+   ]
+  ],
+  [
+   {
+    "title": "",
+    "authors": [
+     "Leer"
+    ],
+    "series": "S",
+    "series_position": ""
+   },
+   "{authors}/[{narrator}/]{title}[ - {subtitle}]",
+   "{asin}-{language}-{genre}",
+   [
+    "/lib/Leer/Unbenannt",
+    "--.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "",
+    "authors": [
+     "Leer"
+    ],
+    "series": "S",
+    "series_position": ""
+   },
+   "",
+   "",
+   [
+    "/lib/Leer/S/Unbenannt",
+    "Unbenannt.m4b"
+   ]
+  ],
+  [
+   {
+    "title": "",
+    "authors": [
+     "Leer"
+    ],
+    "series": "S",
+    "series_position": ""
+   },
+   "[{series}]",
+   "/{title}/",
+   [
+    "/lib/S",
+    "Unbenannt.m4b"
+   ]
+  ]
+ ],
+ "folder_keys": [
+  [
+   "E.T.A. Hoffmann",
+   [
+    "etahoffmann",
+    "a e hoffmann t"
+   ]
+  ],
+  [
+   "E. T. A. Hoffmann",
+   [
+    "etahoffmann",
+    "a e hoffmann t"
+   ]
+  ],
+  [
+   "Hoffmann, E. T. A.",
+   [
+    "hoffmanneta",
+    "a e hoffmann t"
+   ]
+  ],
+  [
+   "Die Serapionsbrüder",
+   [
+    "dieserapionsbrueder",
+    "die serapionsbrueder"
+   ]
+  ],
+  [
+   "die serapionsbrueder",
+   [
+    "dieserapionsbrueder",
+    "die serapionsbrueder"
+   ]
+  ],
+  [
+   "Band 01",
+   [
+    "band1",
+    "1 band"
+   ]
+  ],
+  [
+   "Band 1",
+   [
+    "band1",
+    "1 band"
+   ]
+  ],
+  [
+   "Straße",
+   [
+    "strasse",
+    "strasse"
+   ]
+  ],
+  [
+   "Café",
+   [
+    "cafe",
+    "cafe"
+   ]
+  ],
+  [
+   "__x__",
+   [
+    "x",
+    "x"
+   ]
+  ],
+  [
+   "007 0 00",
+   [
+    "700",
+    "0 0 7"
+   ]
+  ]
+ ],
+ "sanitize": [
+  [
+   "a:b",
+   "a - b"
+  ],
+  [
+   "a : b",
+   "a - b"
+  ],
+  [
+   "x/y\\z",
+   "x-y-z"
+  ],
+  [
+   "  .versteckt. ",
+   "versteckt"
+  ],
+  [
+   "a  -  - b",
+   "a - b"
+  ],
+  [
+   "",
+   "_"
+  ],
+  [
+   "...",
+   "_"
+  ],
+  [
+   "<>|?*",
+   "_"
+  ],
+  [
+   "ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ",
+   "ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ"
+  ]
  ]
 }

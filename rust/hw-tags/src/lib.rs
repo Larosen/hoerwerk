@@ -294,6 +294,35 @@ pub fn read_book(path: &std::path::Path) -> Value {
     })
 }
 
+/// Carry tags + cover over after an ffmpeg remux (ffmpeg drops freeform atoms); the chapters of `dst` stay.
+pub fn copy_tags(src: &std::path::Path, dst: &std::path::Path) -> Result<(), Error> {
+    let meta_only = mp4ameta::ReadConfig {
+        read_meta_items: true,
+        read_image_data: true,
+        ..mp4ameta::ReadConfig::NONE
+    };
+    let from = Tag::read_with_path(src, &meta_only)?;
+    let mut to = Tag::read_with_path(dst, &meta_only)?;
+    let mut idents: Vec<DataIdent> = Vec::new();
+    for (id, _) in from.data() {
+        if !idents.contains(id) {
+            idents.push(id.clone());
+        }
+    }
+    for id in idents {
+        let values: Vec<Data> = from.data().filter(|(i, _)| **i == id).map(|(_, d)| d.clone()).collect();
+        to.set_all_data(id, values);
+    }
+    to.write_with_path(
+        dst,
+        &mp4ameta::WriteConfig {
+            write_meta_items: true,
+            ..mp4ameta::WriteConfig::NONE
+        },
+    )?;
+    Ok(())
+}
+
 /// The first picture inside an M4B/M4A.
 pub fn embedded_cover(path: &std::path::Path) -> Option<Vec<u8>> {
     Tag::read_from_path(path)

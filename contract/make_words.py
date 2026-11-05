@@ -43,10 +43,30 @@ TITLE_SETS = [
     (["A – Eins", "A – Zwei"], ""), (["Folge 1: Der Fall", "Folge 2: Die Wende"], "Folge"),
 ]
 
+PATH_BOOKS = [
+    {"title": "Das Fräulein von Scuderi", "authors": ["E.T.A. Hoffmann"], "series": "Die Serapionsbrüder",
+     "series_position": "3", "release_date": "1819-01-01", "narrators": ["Erika Muster", "Max Muster"]},
+    {"title": "Faust: Der Tragödie erster Teil", "authors": ["Johann Wolfgang von Goethe"], "genres": ["Klassiker"]},
+    {"title": "AC/DC? <Live> | \"Mitschnitt\"", "authors": [], "series": "Reihe/Unter", "series_position": "1.5"},
+    {"title": "  Punkt. ", "authors": ["A"], "series_position": "12", "asin": "B0X", "language": "German"},
+    {"title": "x" * 200, "authors": ["Ö" * 100]},
+    {"title": "", "authors": ["Leer"], "series": "S", "series_position": ""},
+]
+TEMPLATES = [
+    ("{author}/[{series}/][{series_position:2} - ]{title}", "{title}"),
+    ("{author}/[{series}/][{series_position} - ]{title}", "[{series_position:3} - ]{title} ({year})"),
+    ("{authors}/[{narrator}/]{title}[ - {subtitle}]", "{asin}-{language}-{genre}"),
+    ("", ""), ("[{series}]", "/{title}/"),
+]
+KEYS = ["E.T.A. Hoffmann", "E. T. A. Hoffmann", "Hoffmann, E. T. A.", "Die Serapionsbrüder", "die serapionsbrueder",
+        "Band 01", "Band 1", "Straße", "Café", "__x__", "007 0 00"]
+SANITIZE = ["a:b", "a : b", "x/y\\z", "  .versteckt. ", "a  -  - b", "", "...", "<>|?*", "Ä" * 120]
+
 
 def build() -> dict:
     import encoder
     import i18n
+    import library
     from library_index import names_of, split_author_title, title_words
     from natsort import natural_key
     from usenet import match_words
@@ -61,6 +81,9 @@ def build() -> dict:
         "chapter_title": [[path, tags, mode, encoder.chapter_title(path, tags, mode)]
                           for path, tags in TRACKS for mode in ("auto", "tag", "filename")],
         "chapter_titles": [[names, title, encoder.chapter_titles(names, title)] for names, title in TITLE_SETS],
+        "destination": [[b, f, n, list(library.destination("/lib", b, f, n))] for b in PATH_BOOKS for f, n in TEMPLATES],
+        "folder_keys": [[k, list(library.folder_keys(k))] for k in KEYS],
+        "sanitize": [[x, library.sanitize(x)] for x in SANITIZE],
     }
 
 
