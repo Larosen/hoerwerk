@@ -1355,5 +1355,8 @@
  "Bibliothek konnte nicht eingelesen werden – Verarbeitung wartet: {error}": "Library could not be read – processing waits: {error}",
  "Datenbank-Sicherung fehlgeschlagen, neuer Versuch in einer Stunde: {error}": "Database snapshot failed, trying again in an hour: {error}",
  "Tägliche Datenbank-Sicherung fehlgeschlagen": "Daily database snapshot failed",
- "{error} – neuer Versuch jede Stunde.": "{error} – tried again every hour."
+ "{error} – neuer Versuch jede Stunde.": "{error} – tried again every hour.",
+ "Beim Beenden unterbrochen – geht nach dem nächsten Start weiter": "Interrupted by shutdown – continues after the next start",
+ "Hörwerk wird beendet …": "Hörwerk is shutting down …",
+ "Nicht alle laufenden Schritte sind rechtzeitig fertig geworden – sie laufen nach dem Start neu": "Not all running steps finished in time – they run again after the start"
 }

@@ -423,3 +423,74 @@ class StartupOrderTest(unittest.TestCase):
         self.assertEqual(order, ["scan", "sleep 60", "scan", "engine", "pipeline"])
         self.assertTrue(app.library_ready.is_set())
         self.assertEqual(app.library_error, "")
+
+
+class ShutdownTest(unittest.TestCase):
+    """Review 7.13: docker stop ended Hörwerk hard – a running conversion counted as lost, the database stayed open."""
+
+    def test_running_conversion_goes_back_to_the_queue(self):
+        import encoder
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, True)
+        db = dbm.Database(os.path.join(root, "t.db"))
+        self.addCleanup(db.close)
+        engine = Engine({"encode": 1, "io": 1})
+        engine.start()
+        p = pipeline.Pipeline(lambda: {}, db, os.path.join(root, "in"), os.path.join(root, "lib"),
+                              os.path.join(root, "work"), engine=engine)
+        src = os.path.join(root, "in", "Buch")
+        os.makedirs(src)
+        job = pipeline.Job(source=src, stage="convert", match={"title": "Buch"})
+        started = threading.Event()
+
+        def convert(j):
+            j.runner = encoder.Runner(lambda: j.cancel)
+            started.set()
+            j.runner.run(["sleep", "30"])              # a long ffmpeg
+        p._convert = convert
+        with p.lock:
+            p.jobs.append(job)
+        p._schedule(job)
+        self.assertTrue(started.wait(5))
+        t0 = time.monotonic()
+        p.shutdown()
+        self.assertTrue(engine.stop(5))
+        self.assertLess(time.monotonic() - t0, 3)       # ffmpeg ended at once
+        self.assertEqual((job.status, job.stage), ("queued", "convert"))
+        again = pipeline.Pipeline(lambda: {}, db, os.path.join(root, "in"), os.path.join(root, "lib"),
+                                  os.path.join(root, "work"))
+        self.assertEqual(again.get(job.id).status, "queued")   # continues after the next start
+
+    def test_sigterm_stops_the_server_in_order(self):
+        import signal
+        import socket
+        import subprocess
+        import sys
+        import urllib.request
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, True)
+        for d in ("cfg", "in", "lib"):
+            os.makedirs(os.path.join(root, d))
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+        env = {**os.environ, "PORT": str(port), "CONFIG_DIR": os.path.join(root, "cfg"),
+               "INBOX_DIR": os.path.join(root, "in"), "LIBRARY_DIR": os.path.join(root, "lib")}
+        app_dir = os.path.join(os.path.dirname(__file__), "..", "app")
+        proc = subprocess.Popen([sys.executable, os.path.join(app_dir, "main.py")], env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(lambda: proc.poll() is None and proc.kill())
+        for _ in range(100):
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=1).read()
+                break
+            except OSError:
+                time.sleep(0.1)
+        t0 = time.monotonic()
+        proc.send_signal(signal.SIGTERM)
+        out, _ = proc.communicate(timeout=10)
+        self.assertLess(time.monotonic() - t0, 8)        # within Docker's grace time
+        self.assertEqual(proc.returncode, 0, out)
+        self.assertIn("wird beendet", out)
+        wal = os.path.join(root, "cfg", "hoerwerk.db-wal")
+        self.assertTrue(not os.path.exists(wal) or os.path.getsize(wal) == 0)   # everything in the main file

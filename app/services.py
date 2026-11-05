@@ -174,6 +174,17 @@ class App:
         threading.Thread(target=self._request_worker, daemon=True, name="requests").start()
         return self
 
+    def stop(self, timeout: float = 6.0) -> None:
+        """Orderly shutdown within Docker's grace time (10 s): no new work, ffmpeg ends, running steps save their
+        state (their jobs continue after the next start), live connections close, the database is closed."""
+        applog.info(t("Hörwerk wird beendet …"), "Start")
+        self.pipeline.shutdown()
+        if not self.engine.stop(timeout):
+            applog.warn(t("Nicht alle laufenden Schritte sind rechtzeitig fertig geworden – sie laufen nach dem Start neu"), "Start")
+        self.pipeline.save()
+        self.events.close()
+        self.db.close()
+
     def _library_rescanner(self, sleep=time.sleep) -> None:
         """Read the library at start and then every few hours (new books are added right away anyway)."""
         self.wait_for_library(sleep)

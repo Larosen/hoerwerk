@@ -8,6 +8,8 @@ Start: ``python main.py``. The pieces:
 from __future__ import annotations
 
 import os
+import signal
+import threading
 
 import applog
 from config import VERSION, Config
@@ -28,10 +30,20 @@ def main() -> None:
     app = create_app(config)
     server = make_server(app)
     applog.info(f"Hörwerk {VERSION} läuft auf Port {config.port} – Eingang: {config.inbox}, Bibliothek: {config.library}")
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
+    stopping = threading.Event()
+
+    def on_signal(signum, frame) -> None:   # docker stop (SIGTERM) or Ctrl+C
+        if stopping.is_set():
+            return
+        stopping.set()
+        # serve_forever runs in this very thread: shutting it down has to happen in another one
+        threading.Thread(target=server.shutdown, daemon=True, name="shutdown").start()
+
+    signal.signal(signal.SIGTERM, on_signal)
+    signal.signal(signal.SIGINT, on_signal)
+    server.serve_forever()                  # returns once the server is shut down: no new requests from here on
+    server.server_close()
+    app.stop()
 
 
 if __name__ == "__main__":
