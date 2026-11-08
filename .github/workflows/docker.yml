@@ -256,6 +256,6 @@ jobs:
           push-to-registry: true
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
         with:
-          name: sbom-${{ steps.build.outputs.digest }}
+          name: sbom-${{ github.sha }}          # artifact names may not contain ":" (the digest has one)
           path: sbom.spdx.json
           retention-days: 90
