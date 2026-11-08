@@ -29,6 +29,42 @@ WORKDIR /src
 COPY rust/ ./
 RUN cargo build --release --locked -p hw-run && ./target/release/hw-run --status
 
+# Target "next" (docker build --target next): the same app with the Rust backend (rust/hoerwerk) instead of
+# Python – same API (contract/), same database, same web UI. For trying it out next to the Python image on a copy
+# of /config (docs/VERGLEICH.md); the default image below stays the Python one.
+FROM rust AS rust-next
+RUN cargo build --release --locked -p hoerwerk
+
+FROM debian:trixie-slim AS next
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tini ca-certificates tzdata \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin/
+COPY --from=rust /src/target/release/hw-run /usr/local/bin/hw-run
+COPY --from=rust-next /src/target/release/hoerwerk /usr/local/bin/hoerwerk
+COPY docker/entrypoint.sh /entrypoint.sh
+COPY app/static/ /app/static/
+COPY --from=web /src/app/static/*.js /app/static/
+WORKDIR /app
+ENV CONFIG_DIR=/config \
+    INBOX_DIR=/inbox \
+    LIBRARY_DIR=/audiobooks \
+    PORT=8080 \
+    PUID=99 \
+    PGID=100 \
+    UMASK=000
+RUN mkdir -p /config /inbox /audiobooks && chmod +x /entrypoint.sh
+VOLUME ["/config", "/inbox", "/audiobooks"]
+EXPOSE 8080
+LABEL org.opencontainers.image.title="Hörwerk (next)" \
+      org.opencontainers.image.description="Hörwerk mit dem Rust-Backend – zum Ausprobieren neben dem Python-Image" \
+      org.opencontainers.image.source="https://github.com/Larosen/hoerwerk" \
+      net.unraid.docker.webui="http://[IP]:[PORT:8080]/" \
+      net.unraid.docker.icon="https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/icon.png"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD ["/usr/local/bin/hoerwerk", "health"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]
+CMD ["/usr/local/bin/hoerwerk"]
+
 # Stage 4: the app. Python 3.15 on Debian 13 "trixie" (stable, security updates via the weekly rebuild).
 FROM python:3.15-slim-trixie
 

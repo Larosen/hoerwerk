@@ -79,6 +79,12 @@ Image: `ghcr.io/larosen/hoerwerk:latest` (amd64 + arm64, wöchentlich für Siche
 docker compose up -d
 ```
 
+### Vorschau: hoerwerk:next
+
+`ghcr.io/larosen/hoerwerk:next` ist dieselbe App mit dem neuen Backend in Rust. Es lässt sich gefahrlos **neben**
+dem laufenden Hörwerk ausprobieren – auf einer Kopie der AppData, mit nur lesbarer Bibliothek und ohne Downloads,
+Benachrichtigungen oder Scans (`COMPARE_MODE=true`). Anleitung und Vergleichsskript: [docs/VERGLEICH.md](docs/VERGLEICH.md).
+
 ---
 
 ## Hörbücher

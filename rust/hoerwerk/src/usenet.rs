@@ -1179,6 +1179,9 @@ impl Usenet {
     }
 
     pub fn send(&self, result_id: &str, hints: &Value) -> Result<Value> {
+        if crate::config::compare_mode() {
+            return fail(t("Vergleichsbetrieb: diese Instanz startet keine Downloads", &[]));
+        }
         let r = self
             .results
             .lock()

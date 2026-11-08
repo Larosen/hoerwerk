@@ -264,6 +264,7 @@ pub fn page_access(path: &str) -> Option<&'static str> {
     match (parts[0], parts.len()) {
         ("settings", 2) if !SETTINGS_SECTIONS.contains(&parts[1]) => None,
         ("settings", n) if n > 2 => None,
+        ("settings", _) => Some(access),
         ("stats", 2) => (parts[1].len() < 10 && parts[1].chars().all(|c| c.is_ascii_digit())).then_some("user"),
         (_, n) if n > 1 => None,
         _ => Some(access),

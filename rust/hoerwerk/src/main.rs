@@ -167,6 +167,13 @@ async fn library_rescanner(app: Arc<App>) {
 /// Requests: search again when due, follow downloads and imports (every two minutes); the daily database snapshot.
 fn request_worker(app: &Arc<App>) {
     std::thread::sleep(Duration::from_secs(60)); // let the library index load first
+    if config::compare_mode() {
+        while !app.stopping() {
+            app.maintain_db(text::now()); // the comparison instance leaves requests and downloads alone
+            std::thread::sleep(Duration::from_secs(120));
+        }
+        return;
+    }
     let n = app.requests.import_wanted(app);
     if n > 0 {
         let msg = if n == 1 {
@@ -196,8 +203,31 @@ async fn stop_signal() {
     }
 }
 
+/// `hoerwerk health`: the container's health check (the image has no curl or Python) – exit 0 when /api/health answers.
+fn health_check() -> ! {
+    use std::io::{Read, Write};
+    let port = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(8080);
+    let ok = (|| -> std::io::Result<bool> {
+        let addr = SocketAddr::from(([127, 0, 0, 1], port));
+        let mut s = std::net::TcpStream::connect_timeout(&addr, Duration::from_secs(4))?;
+        s.set_read_timeout(Some(Duration::from_secs(4)))?;
+        s.write_all(b"GET /api/health HTTP/1.0\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")?;
+        let mut head = [0u8; 12];
+        s.read_exact(&mut head)?;
+        Ok(head.starts_with(b"HTTP/1.") && &head[9..12] == b"200")
+    })()
+    .unwrap_or(false);
+    std::process::exit(if ok { 0 } else { 1 });
+}
+
 #[tokio::main]
 async fn main() {
+    if std::env::args().nth(1).as_deref() == Some("health") {
+        health_check();
+    }
     if let Some(mask) = std::env::var("UMASK")
         .ok()
         .and_then(|m| u32::from_str_radix(m.trim(), 8).ok())
@@ -213,6 +243,10 @@ async fn main() {
         }
     };
     text::load_catalog(&cfg.static_dir);
+    config::set_compare_mode(matches!(
+        cfg.env.get("COMPARE_MODE").map(|v| v.trim().to_lowercase()).as_deref(),
+        Some("true" | "1" | "yes" | "on")
+    ));
     authlog::setup(&cfg.config_dir);
     let _ = std::fs::create_dir_all(&cfg.config_dir);
     let db = match Db::open(&cfg.config_dir.join("hoerwerk.db")) {
@@ -239,6 +273,15 @@ async fn main() {
         let app = app.clone();
         move || request_worker(&app)
     });
+    if config::compare_mode() {
+        text::warn(
+            "Start",
+            &t(
+                "Vergleichsbetrieb: keine Downloads, keine automatische Suche für Anfragen, keine Benachrichtigungen, keine Scans in Audiobookshelf/Plex",
+                &[],
+            ),
+        );
+    }
     let port = app.cfg.port;
     text::info(
         "Start",

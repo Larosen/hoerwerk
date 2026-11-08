@@ -80,6 +80,17 @@ class Access(ContractTest):
         self.assertEqual(s.request("GET", "/static/app.js")[0], 401)           # no app code before login
         self.assertEqual(s.request("GET", "/static/style.css")[0], 200)
 
+    def test_app_pages(self):
+        """Every page of the app has its own address (deep links, back and forward) – only the known ones."""
+        for path, want in (("/discover", 200), ("/settings", 200), ("/settings/general", 200), ("/settings/logs", 200),
+                           ("/stats/7", 200), ("/books", 200), ("/settings/nope", 404), ("/settings/general/x", 404),
+                           ("/stats/x", 404), ("/books/1", 404), ("/nirgends", 404)):
+            status, data = self.admin.call("GET", path, expect=None)
+            self.assertEqual(status, want, path)
+            if want == 200:
+                self.assertIn(b"<html", data)
+        self.assertEqual(self.family().call("GET", "/settings/general", expect=None)[0], 303)   # admins only: back to the start
+
     def test_health_tells_the_version_only_after_login(self):
         self.assertNotIn("version", json.loads(self.server.request("GET", "/api/health")[2]))
         self.assertRegex(self.admin.get("/api/health")["version"], r"^\d+\.\d+\.\d+$")

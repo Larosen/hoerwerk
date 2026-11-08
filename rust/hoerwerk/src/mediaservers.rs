@@ -704,6 +704,9 @@ impl Plex {
 
 /// Media servers should look again after books were filed (each once things calm down, 30 s after the last).
 pub fn request_scans(app: &Arc<crate::app::App>) {
+    if crate::config::compare_mode() {
+        return;
+    }
     if app.abs.configured() {
         let a = app.clone();
         app.abs.debounce.later(Duration::from_secs(30), move || {

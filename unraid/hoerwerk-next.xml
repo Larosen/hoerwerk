@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>hoerwerk-next</Name>
+  <Repository>ghcr.io/larosen/hoerwerk:next</Repository>
+  <Registry>https://github.com/Larosen/hoerwerk/pkgs/container/hoerwerk</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Larosen/hoerwerk/issues</Support>
+  <Project>https://github.com/Larosen/hoerwerk/blob/main/docs/VERGLEICH.md</Project>
+  <Overview>Hörwerk „next“ – the same app with the new Rust backend, for trying it out NEXT TO your running Hörwerk on a copy of its AppData (docs/VERGLEICH.md). Comparison mode: no downloads, no automatic request searches, no notifications, no Audiobookshelf/Plex scans; the library is mounted read-only.&#xD;
+&#xD;
+Hörwerk „next“ – dieselbe App mit dem neuen Rust-Backend, zum Ausprobieren NEBEN dem laufenden Hörwerk auf einer Kopie seiner AppData (docs/VERGLEICH.md). Vergleichsbetrieb: keine Downloads, keine automatische Suche für Anfragen, keine Benachrichtigungen, keine Scans in Audiobookshelf/Plex; die Bibliothek ist nur lesbar eingebunden.</Overview>
+  <Category>MediaApp:Books Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/hoerwerk-next.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/icon.png</Icon>
+  <ExtraParams>--security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Vorher die AppData des laufenden Hörwerk kopieren: Hörwerk kurz stoppen, dann im Terminal  cp -a /mnt/user/appdata/hoerwerk /mnt/user/appdata/hoerwerk-next  und Hörwerk wieder starten.</Requires>
+  <Config Name="WebUI-Port" Target="8080" Default="8081" Mode="tcp" Description="Port der Weboberfläche – ein anderer als beim laufenden Hörwerk" Type="Port" Display="always" Required="true" Mask="false">8081</Config>
+  <Config Name="AppData (Kopie)" Target="/config" Default="/mnt/user/appdata/hoerwerk-next" Mode="rw" Description="Die KOPIE der AppData des laufenden Hörwerk – nie dessen eigenen Ordner eintragen" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/hoerwerk-next</Config>
+  <Config Name="Hörbuch-Bibliothek (nur lesen)" Target="/audiobooks" Default="/mnt/user/media/audiobooks/" Mode="ro" Description="Dieselbe Bibliothek wie beim laufenden Hörwerk – nur lesend, damit der Vergleich nichts ändert" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/media/audiobooks/</Config>
+  <Config Name="Eigener Eingang" Target="/inbox" Default="/mnt/user/appdata/hoerwerk-next/eingang/" Mode="rw" Description="Ein eigener, leerer Eingang – nicht der des laufenden Hörwerk" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/hoerwerk-next/eingang/</Config>
+  <Config Name="Vergleichsbetrieb" Target="COMPARE_MODE" Default="true" Mode="" Description="true: keine Downloads, keine automatische Suche für Anfragen, keine Benachrichtigungen, keine Scans – bitte so lassen" Type="Variable" Display="always" Required="true" Mask="false">true</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="Wie beim laufenden Hörwerk" Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Wie beim laufenden Hörwerk" Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
+  <Config Name="UMASK" Target="UMASK" Default="000" Mode="" Description="Wie beim laufenden Hörwerk" Type="Variable" Display="advanced" Required="false" Mask="false">000</Config>
+  <Config Name="Erlaubte Host-Namen" Target="ALLOWED_HOSTS" Default="" Mode="" Description="Wie beim laufenden Hörwerk (leer passt für tower und IP-Adressen)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>

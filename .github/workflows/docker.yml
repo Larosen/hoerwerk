@@ -188,13 +188,59 @@ jobs:
       - if: failure()
         run: docker logs br || echo "(der Container wurde nicht gestartet)"
 
+  # hoerwerk:next – the Rust backend as an image (Dockerfile target "next"), tried out next to the Python one
+  # (docs/VERGLEICH.md). Same checks as the shipped image: scanned, started like on Unraid, clicked through.
+  image-next:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7
+        with:
+          node-version: "26"
+          cache: npm
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
+        with:
+          context: .
+          target: next
+          load: true
+          tags: hoerwerk:next-ci
+          cache-from: type=gha,scope=next
+          cache-to: type=gha,mode=max,scope=next
+      - name: Vulnerabilities in the image (critical/high with a fix available)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/.trivyignore:/.trivyignore:ro" \
+            "$TRIVY" image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --ignorefile /.trivyignore \
+            --exit-code 1 --no-progress hoerwerk:next-ci
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Start the container like on Unraid
+        run: |
+          node e2e/setup.mjs
+          R="$PWD/e2e/.run"
+          docker run -d --name next --network host -e PORT=8095 -e PUID="$(id -u)" -e PGID="$(id -g)" -e UMASK=002 \
+            -e MATCH_MODE=off -e METADATA_FALLBACK=false -e SETTLE_SECONDS=0 -e SCAN_INTERVAL=2 -e DUPLICATES=ask \
+            -e AUTH_USER=admin -e AUTH_PASS=E2E-Admin-Kaffee-1 \
+            --security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID \
+            -v "$R/config:/config" -v "$R/inbox:/inbox" -v "$R/library:/audiobooks" hoerwerk:next-ci
+          for i in $(seq 30); do curl -sf http://127.0.0.1:8095/api/health && break; sleep 1; done
+          for i in $(seq 40); do [ "$(docker inspect -f '{{.State.Health.Status}}' next)" = healthy ] && break; sleep 1; done
+          docker inspect -f 'Health check: {{.State.Health.Status}}' next
+      - name: Click-through tests against the container
+        run: npx playwright test
+        env:
+          E2E_URL: http://127.0.0.1:8095
+      - if: failure()
+        run: docker logs next || echo "(der Container wurde nicht gestartet)"
+
   # Only after every check above passed. The published image is signed (cosign, keyless) and carries its
   # SBOM and build provenance – all bound to its digest:
   #   cosign verify ghcr.io/<owner>/hoerwerk@sha256:… --certificate-identity-regexp 'github.com/<owner>/.*' \
   #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   #   gh attestation verify oci://ghcr.io/<owner>/hoerwerk@sha256:… --owner <owner>
   image:
-    needs: [test, contract, rust, frontend, image-test]
+    needs: [test, contract, rust, frontend, image-test, image-next]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -277,3 +323,25 @@ jobs:
           name: sbom-${{ steps.build.outputs.digest }}
           path: sbom.spdx.json
           retention-days: 90
+      # hoerwerk:next (Rust backend) – amd64 only for now (compiling Rust for arm64 under QEMU takes far too long);
+      # follows main, so it is always the newest state to try out next to the release
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
+        id: next
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        with:
+          context: .
+          target: next
+          platforms: linux/amd64
+          sbom: true
+          provenance: mode=max
+          push: true
+          pull: true
+          tags: ${{ steps.names.outputs.main }}:next
+          cache-from: type=gha,scope=next
+          cache-to: type=gha,mode=max,scope=next
+      - name: Sign hoerwerk:next (keyless, by digest)
+        if: steps.next.outputs.digest != ''
+        env:
+          DIGEST: ${{ steps.next.outputs.digest }}
+          MAIN: ${{ steps.names.outputs.main }}
+        run: cosign sign --yes "$MAIN@$DIGEST"

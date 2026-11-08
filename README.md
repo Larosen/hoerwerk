@@ -79,6 +79,12 @@ Image: `ghcr.io/larosen/hoerwerk:latest` (amd64 + arm64, rebuilt weekly for secu
 docker compose up -d
 ```
 
+### Preview: hoerwerk:next
+
+`ghcr.io/larosen/hoerwerk:next` is the same app with the new backend in Rust. You can try it safely **next to**
+your running Hörwerk – on a copy of its AppData, with the library read-only and without downloads, notifications or
+scans (`COMPARE_MODE=true`). Guide (German) and comparison script: [docs/VERGLEICH.md](docs/VERGLEICH.md).
+
 ---
 
 ## Audiobooks

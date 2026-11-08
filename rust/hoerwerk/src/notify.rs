@@ -238,7 +238,7 @@ impl Notifier {
 
     /// Send in the background if this event is switched on.
     pub fn send(&self, event: &str, title: &str, message: &str, prio: Option<i64>) {
-        if !self.wants(event) {
+        if !self.wants(event) || crate::config::compare_mode() {
             return;
         }
         let (url, body, headers) = self.message(event, title, message, prio);
@@ -257,7 +257,7 @@ impl Notifier {
 
     /// A message to another topic on the same ntfy server (a family member's own topic).
     pub fn send_to(&self, topic: &str, title: &str, message: &str) {
-        if !self.configured() || !valid_topic(topic) {
+        if !self.configured() || !valid_topic(topic) || crate::config::compare_mode() {
             return;
         }
         let c = self.load();

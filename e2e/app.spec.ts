@@ -657,7 +657,7 @@ test("Zweitfaktor: einrichten, dann Anmeldung nur mit Code", async ({ page, brow
   await expect(ole.locator("#loginError")).toHaveText("Code falsch");
   await code.getByLabel("Code").fill(totp(secret, 1));          // the next code (the current one was used)
   await code.getByRole("button", { name: "Bestätigen" }).click();
-  await expect(ole).toHaveURL(/\/$/);
+  await expect(ole).toHaveURL(/\/discover$/);                   // signed in: the start page ("/" leads there)
   await expect(ole.locator("#accountName")).toHaveText("Ole");
   expect(errors).toEqual([]);
   await ole.close();

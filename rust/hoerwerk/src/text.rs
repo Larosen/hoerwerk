@@ -129,15 +129,17 @@ pub fn since(after: u64, level: &str, limit: usize) -> (Vec<Value>, u64) {
     (out[skip..].to_vec(), l.seq)
 }
 
+/// "YYYY-MM-DD HH:MM:SS" in the container's local time (TZ), like the Python log lines.
 fn stamp(t: f64) -> String {
-    let secs = t as i64;
-    let (days, rest) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
-    let (y, m, d) = civil(days);
+    let tm = local(t);
     format!(
-        "{y:04}-{m:02}-{d:02} {:02}:{:02}:{:02}",
-        rest / 3600,
-        rest % 3600 / 60,
-        rest % 60
+        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+        tm.tm_year + 1900,
+        tm.tm_mon + 1,
+        tm.tm_mday,
+        tm.tm_hour,
+        tm.tm_min,
+        tm.tm_sec
     )
 }
 
