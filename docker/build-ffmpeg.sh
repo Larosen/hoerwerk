@@ -12,7 +12,7 @@ SRC=$1
 PREFIX=$2
 JOBS=${JOBS:-$(nproc)}
 
-# Audio inputs (keep in sync with AUDIO_DEMUXERS in app/meta.py), plus the video containers the
+# Audio inputs (keep in sync with AUDIO_DEMUXERS in rust/hoerwerk/src/media.rs), plus the video containers the
 # renamer reads for {resolution}/{codec}/{fps} (VIDEO_DEMUXERS) – containers only, no video decoders.
 # concat: Dolby / ALAC books from several files are put together without re-encoding (only Hörwerk's own lists)
 DEMUXERS="mp3,mov,aac,flac,ogg,wav,w64,aiff,asf,matroska,ape,wv,caf,mpc,mpc8,tta,au,amr,dsf,ffmetadata,concat,\

@@ -1,4 +1,4 @@
-//! Push notifications via ntfy (notify.py): each event on or off on its own, sent in the background; the access
+//! Push notifications via ntfy: each event on or off on its own, sent in the background; the access
 //! token / password stays on the server, never follows a changed address and never follows a redirect.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -238,7 +238,7 @@ impl Notifier {
 
     /// Send in the background if this event is switched on.
     pub fn send(&self, event: &str, title: &str, message: &str, prio: Option<i64>) {
-        if !self.wants(event) || crate::config::compare_mode() {
+        if !self.wants(event) {
             return;
         }
         let (url, body, headers) = self.message(event, title, message, prio);
@@ -257,7 +257,7 @@ impl Notifier {
 
     /// A message to another topic on the same ntfy server (a family member's own topic).
     pub fn send_to(&self, topic: &str, title: &str, message: &str) {
-        if !self.configured() || !valid_topic(topic) || crate::config::compare_mode() {
+        if !self.configured() || !valid_topic(topic) {
             return;
         }
         let c = self.load();
@@ -352,9 +352,108 @@ fn priority(v: Option<&Value>) -> i64 {
         .unwrap_or(3)
 }
 
+// -- finished downloads ------------------------------------------------------------------------------
+
+/// SABnzbd history entries sent by Hörwerk (`ours`) that are done and not told yet: (id, failed, name, error).
+pub fn downloads_to_tell(items: &[Value], ours: &[String], told: &[String]) -> Vec<(String, bool, String, String)> {
+    let text = |v: &Value| match v {
+        Value::Null => String::new(),
+        Value::String(x) => x.clone(),
+        other => other.to_string(),
+    };
+    items
+        .iter()
+        .filter(|i| i["done"] == true)
+        .filter_map(|i| {
+            let id = i["id"].as_str()?.to_string();
+            (ours.contains(&id) && !told.contains(&id))
+                .then(|| (id, i["status"] == "Failed", text(&i["name"]), text(&i["error"])))
+        })
+        .collect()
+}
+
+/// Every 30 s: tell about finished / failed downloads that were sent to SABnzbd (from the search or for a
+/// request); a finished one makes the inbox look at once. Returns the ids told about.
+pub fn watch_downloads(app: &crate::app::App) -> Vec<String> {
+    if app.usenet.configured()["sab"] != true {
+        return Vec::new();
+    }
+    let since = text::now() - 14.0 * 86400.0;
+    let ours: Vec<String> = {
+        let c = app.db.lock();
+        let Ok(mut st) = c.prepare("SELECT data FROM grabs WHERE time > ?") else {
+            return Vec::new();
+        };
+        st.query_map([since], |r| r.get::<_, String>(0))
+            .map(|rows| {
+                rows.flatten()
+                    .filter_map(|d| serde_json::from_str::<Value>(&d).ok())
+                    .filter_map(|v| v["nzo_id"].as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    if ours.is_empty() {
+        return Vec::new();
+    }
+    let Ok(activity) = app.usenet.activity(15) else {
+        return Vec::new(); // SABnzbd away for a moment: next time
+    };
+    let mut told: Vec<String> = app
+        .db
+        .get("ntfy_downloads_told")
+        .and_then(|v| serde_json::from_value(v).ok())
+        .unwrap_or_default();
+    let items = activity["items"].as_array().cloned().unwrap_or_default();
+    let new = downloads_to_tell(&items, &ours, &told);
+    for (id, failed, name, error) in &new {
+        if *failed {
+            let msg = format!("{name}\n{error}");
+            app.notifier.send(
+                "download_failed",
+                &t("Download fehlgeschlagen", &[]),
+                msg.trim(),
+                Some(4),
+            );
+        } else {
+            app.notifier
+                .send("download_done", &t("Download fertig", &[]), name, None);
+            text::info(name, &t("SABnzbd ist fertig – der Eingang übernimmt", &[]));
+            app.pipeline.scan_now();
+        }
+        told.push(id.clone());
+    }
+    if !new.is_empty() {
+        told.sort();
+        let keep = told.len().saturating_sub(500);
+        let _ = app.db.put("ntfy_downloads_told", &json!(told[keep..]));
+    }
+    new.into_iter().map(|x| x.0).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn finished_downloads_are_told_once() {
+        let items = vec![
+            json!({"id": "a", "done": true, "status": "Completed", "name": "Eins"}),
+            json!({"id": "b", "done": true, "status": "Failed", "name": "Zwei", "error": "CRC"}),
+            json!({"id": "c", "done": false, "status": "Downloading", "name": "Drei"}),
+            json!({"id": "d", "done": true, "status": "Completed", "name": "Fremd"}),
+            json!({"id": "e", "done": true, "status": "Completed", "name": "Schon gesagt"}),
+        ];
+        let ours: Vec<String> = ["a", "b", "c", "e"].map(String::from).into();
+        let got = downloads_to_tell(&items, &ours, &["e".to_string()]);
+        assert_eq!(
+            got,
+            vec![
+                ("a".to_string(), false, "Eins".to_string(), String::new()),
+                ("b".to_string(), true, "Zwei".to_string(), "CRC".to_string())
+            ]
+        );
+    }
 
     #[test]
     fn secrets_stay_with_their_server() {

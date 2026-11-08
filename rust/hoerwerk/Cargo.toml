@@ -1,7 +1,7 @@
 [package]
 name = "hoerwerk"
-version = "8.0.0-dev"
-description = "Hörwerk backend in Rust – same API (contract/), same database, same frontend"
+version = "7.14.0"
+description = "Hörwerk server – the API of contract/, the database, the web UI"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

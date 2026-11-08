@@ -1,4 +1,4 @@
-//! Security log (authlog.py): one logfmt line per login event, for people and for CrowdSec.
+//! Security log: one logfmt line per login event, for people and for CrowdSec.
 //!
 //!     time=2026-10-31T17:02:03Z app=hoerwerk event=login_failed user="max" ip=203.0.113.7 reason=bad_password
 //!

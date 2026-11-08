@@ -1,4 +1,4 @@
-//! Upload audiobooks from the browser into the inbox, e.g. ripped from CD (routes/upload.py).
+//! Upload audiobooks from the browser into the inbox, e.g. ripped from CD.
 
 use std::collections::HashMap;
 use std::sync::Arc;

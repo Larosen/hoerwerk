@@ -1,4 +1,4 @@
-//! Tags and sidecar files of a filed book (tagger.py, abs.write_metadata): the tags themselves are hw-tags.
+//! Tags and sidecar files of a filed book (with metadata.json for Audiobookshelf): the tags themselves are hw-tags.
 
 use std::path::Path;
 

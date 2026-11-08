@@ -1,4 +1,4 @@
-//! Listening history: link Hörwerk accounts with Audiobookshelf accounts and Plex profiles (routes/listening.py).
+//! Listening history: link Hörwerk accounts with Audiobookshelf accounts and Plex profiles.
 
 use std::collections::HashMap;
 use std::sync::Arc;

@@ -1,4 +1,4 @@
-//! Downloads with several volumes of a series ("Sneijder und Nemez 01 - 07", "Band 1-3") – packs.py.
+//! Downloads with several volumes of a series ("Sneijder und Nemez 01 - 07", "Band 1-3").
 
 use serde_json::{Value, json};
 

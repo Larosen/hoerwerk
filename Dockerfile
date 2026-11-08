@@ -20,32 +20,31 @@ WORKDIR /src
 COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY frontend/ frontend/
-RUN mkdir -p app/static && npx tsc -p tsconfig.json
+RUN mkdir -p static && npx tsc -p tsconfig.json
 
-# Stage 3: hw-run – the Rust jail for ffmpeg/ffprobe (Landlock + seccomp, rust/hw-run). Cargo.lock pins every
-# crate; --locked refuses a build that would change it.
+# Stage 3: the server (rust/hoerwerk) and hw-run, the jail for ffmpeg/ffprobe (Landlock + seccomp, rust/hw-run).
+# Cargo.lock pins every crate; --locked refuses a build that would change it. The server reads the settings and
+# routes of the API contract at build time (contract/settings.json, contract/routes.json).
 FROM rust:1.97-slim-trixie AS rust
-WORKDIR /src
+WORKDIR /src/rust
+COPY contract/settings.json contract/routes.json /src/contract/
 COPY rust/ ./
-RUN cargo build --release --locked -p hw-run && ./target/release/hw-run --status
+RUN cargo build --release --locked -p hw-run -p hoerwerk && ./target/release/hw-run --status
 
-# Target "next" (docker build --target next): the same app with the Rust backend (rust/hoerwerk) instead of
-# Python – same API (contract/), same database, same web UI. For trying it out next to the Python image on a copy
-# of /config (docs/VERGLEICH.md); the default image below stays the Python one.
-FROM rust AS rust-next
-RUN cargo build --release --locked -p hoerwerk
-
-FROM debian:trixie-slim AS next
+# Stage 4: the app – Debian 13 "trixie" (stable, security updates via the weekly rebuild), one Rust program,
+# our ffmpeg and the web UI. No Python, no interpreter at all.
+FROM debian:trixie-slim
+# tini for clean signal handling, CA certificates for HTTPS (Audible, indexers, ntfy), time zones for TZ
 RUN apt-get update \
  && apt-get install -y --no-install-recommends tini ca-certificates tzdata \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin/
-COPY --from=rust /src/target/release/hw-run /usr/local/bin/hw-run
-COPY --from=rust-next /src/target/release/hoerwerk /usr/local/bin/hoerwerk
+COPY --from=rust /src/rust/target/release/hw-run /src/rust/target/release/hoerwerk /usr/local/bin/
 COPY docker/entrypoint.sh /entrypoint.sh
-COPY app/static/ /app/static/
-COPY --from=web /src/app/static/*.js /app/static/
+COPY static/ /app/static/
+COPY --from=web /src/static/*.js /app/static/
 WORKDIR /app
+
 ENV CONFIG_DIR=/config \
     INBOX_DIR=/inbox \
     LIBRARY_DIR=/audiobooks \
@@ -53,53 +52,6 @@ ENV CONFIG_DIR=/config \
     PUID=99 \
     PGID=100 \
     UMASK=000
-RUN mkdir -p /config /inbox /audiobooks && chmod +x /entrypoint.sh
-VOLUME ["/config", "/inbox", "/audiobooks"]
-EXPOSE 8080
-LABEL org.opencontainers.image.title="Hörwerk (next)" \
-      org.opencontainers.image.description="Hörwerk mit dem Rust-Backend – zum Ausprobieren neben dem Python-Image" \
-      org.opencontainers.image.source="https://github.com/Larosen/hoerwerk" \
-      net.unraid.docker.webui="http://[IP]:[PORT:8080]/" \
-      net.unraid.docker.icon="https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/icon.png"
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD ["/usr/local/bin/hoerwerk", "health"]
-ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]
-CMD ["/usr/local/bin/hoerwerk"]
-
-# Stage 4: the app. Python 3.15 on Debian 13 "trixie" (stable, security updates via the weekly rebuild).
-FROM python:3.15-slim-trixie
-
-# tini for clean signal handling; ffmpeg/ffprobe from stage 1 (only libc/libm needed)
-RUN apt-get update \
- && apt-get install -y --no-install-recommends tini \
- && rm -rf /var/lib/apt/lists/*
-COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin/
-COPY --from=rust /src/target/release/hw-run /usr/local/bin/hw-run
-
-WORKDIR /app
-COPY requirements.txt /tmp/requirements.txt
-# pip is only needed for this one install: afterwards it goes, with the wheels Python brings along
-# (ensurepip, setuptools). Their bundled libraries (urllib3, msgpack …) are never used by Hörwerk, but would
-# carry their vulnerabilities into the image. The import check makes sure nothing the app needs went with them.
-RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt \
- && pip uninstall -y pip setuptools wheel 2>/dev/null; \
-    STDLIB="$(python -c 'import sysconfig; print(sysconfig.get_paths()["stdlib"])')" \
- && rm -rf "$STDLIB/ensurepip" /usr/local/bin/pip /usr/local/bin/pip3* \
- && find / -xdev \( -name '*.whl' -o -name 'setuptools*' -o -name 'pip-*.dist-info' \) -path '*python3*' \
-      -exec rm -rf {} + 2>/dev/null; \
-    python -c "import mutagen, yaml, sqlite3, ssl; print('python deps ok')"
-COPY docker/entrypoint.sh /entrypoint.sh
-COPY app/ /app/
-COPY --from=web /src/app/static/*.js /app/static/
-
-ENV CONFIG_DIR=/config \
-    INBOX_DIR=/inbox \
-    LIBRARY_DIR=/audiobooks \
-    PORT=8080 \
-    PUID=99 \
-    PGID=100 \
-    UMASK=000 \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
 
 RUN mkdir -p /config /inbox /audiobooks && chmod +x /entrypoint.sh
 VOLUME ["/config", "/inbox", "/audiobooks"]
@@ -111,8 +63,7 @@ LABEL org.opencontainers.image.title="Hörwerk" \
       net.unraid.docker.webui="http://[IP]:[PORT:8080]/" \
       net.unraid.docker.icon="https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/icon.png"
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-  CMD python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/api/health' % os.environ.get('PORT', '8080'), timeout=4).read()" || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD ["/usr/local/bin/hoerwerk", "health"]
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]
-CMD ["python", "main.py"]
+CMD ["/usr/local/bin/hoerwerk"]

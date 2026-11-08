@@ -1,4 +1,4 @@
-//! What the family listens to (listening.py): Hörwerk accounts linked to Audiobookshelf accounts and Plex profiles.
+//! What the family listens to: Hörwerk accounts linked to Audiobookshelf accounts and Plex profiles.
 //! Links live in the account's prefs (`abs_user` / `plex_account` = {id, name}); one target belongs to at most one
 //! account. Audiobookshelf knows progress and time per day; Plex only keeps plays that reached the end.
 
@@ -221,6 +221,10 @@ impl Listening {
                             v
                         }
                         Err(e) => {
+                            crate::text::warn(
+                                "Hörverlauf",
+                                &t("Hörverlauf ({source}): {error}", &[("source", kind), ("error", &e)]),
+                            );
                             errors.push(e);
                             continue;
                         }

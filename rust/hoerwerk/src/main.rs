@@ -167,13 +167,6 @@ async fn library_rescanner(app: Arc<App>) {
 /// Requests: search again when due, follow downloads and imports (every two minutes); the daily database snapshot.
 fn request_worker(app: &Arc<App>) {
     std::thread::sleep(Duration::from_secs(60)); // let the library index load first
-    if config::compare_mode() {
-        while !app.stopping() {
-            app.maintain_db(text::now()); // the comparison instance leaves requests and downloads alone
-            std::thread::sleep(Duration::from_secs(120));
-        }
-        return;
-    }
     let n = app.requests.import_wanted(app);
     if n > 0 {
         let msg = if n == 1 {
@@ -243,10 +236,6 @@ async fn main() {
         }
     };
     text::load_catalog(&cfg.static_dir);
-    config::set_compare_mode(matches!(
-        cfg.env.get("COMPARE_MODE").map(|v| v.trim().to_lowercase()).as_deref(),
-        Some("true" | "1" | "yes" | "on")
-    ));
     authlog::setup(&cfg.config_dir);
     let _ = std::fs::create_dir_all(&cfg.config_dir);
     let db = match Db::open(&cfg.config_dir.join("hoerwerk.db")) {
@@ -273,15 +262,15 @@ async fn main() {
         let app = app.clone();
         move || request_worker(&app)
     });
-    if config::compare_mode() {
-        text::warn(
-            "Start",
-            &t(
-                "Vergleichsbetrieb: keine Downloads, keine automatische Suche für Anfragen, keine Benachrichtigungen, keine Scans in Audiobookshelf/Plex",
-                &[],
-            ),
-        );
-    }
+    std::thread::spawn({
+        let app = app.clone();
+        move || {
+            while !app.stopping() {
+                notify::watch_downloads(&app); // finished / failed SABnzbd downloads: tell, and look at the inbox
+                std::thread::sleep(Duration::from_secs(30));
+            }
+        }
+    });
     let port = app.cfg.port;
     text::info(
         "Start",

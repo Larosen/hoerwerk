@@ -1,4 +1,4 @@
-//! Is this release the requested book – and how good is it? (releases.py, like Radarr's decision engine.)
+//! Is this release the requested book – and how good is it? (like Radarr's decision engine.)
 //! `evaluate` gives every indexer result a verdict with a reason a person can read.
 
 use std::collections::BTreeSet;

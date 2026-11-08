@@ -1,4 +1,4 @@
-# Checks in CI (not part of the image)
-ruff==0.17.4        # lint: errors, likely bugs, security rules (ruff.toml)
-coverage==7.17.2    # test coverage (.coveragerc)
-pip-audit==2.10.1   # known vulnerabilities in requirements.txt
+# Test tools – nothing of it goes into the image (the server is one Rust program)
+mutagen==1.48.1     # contract/read_tags.py: reads the M4B tags the tag writer leaves (contract/test_tags.py)
+ruff==0.17.4        # lint of the test code: errors, likely bugs, security rules (ruff.toml)
+pip-audit==2.10.1   # known vulnerabilities in these tools

@@ -1,4 +1,4 @@
-//! Text with positions from simple PDFs (pdftext.py) – enough for Deutschlandfunk's monthly best-of lists.
+//! Text with positions from simple PDFs – enough for Deutschlandfunk's monthly best-of lists.
 //! Deliberately small and defensive: only FlateDecode streams are unpacked (size-limited each and in total),
 //! images are skipped, nothing is executed or rendered. Text is decoded with the font's ToUnicode map
 //! (two-byte Identity-H fonts) or as WinAnsi; positions come from Tm/Td/TD/T*.

@@ -3,7 +3,7 @@
 Nothing here imports the application. The server is started as a process with the same environment the
 Docker image uses; the tests only see HTTP answers and the folders (inbox, library, config).
 
-    HW_SERVER_CMD   command that starts the server (default: python3 app/main.py) – e.g. the Rust binary
+    HW_SERVER_CMD   command that starts the server (default: rust/target/release/hoerwerk – cargo build --release)
     HW_URL          use an already running server instead (folders: HW_ROOT)
 """
 from __future__ import annotations
@@ -16,7 +16,6 @@ import shutil
 import signal
 import socket
 import subprocess
-import sys
 import tempfile
 import time
 import urllib.parse
@@ -55,7 +54,7 @@ class Server:
         self.log = os.path.join(self.dir, "server.log")
 
     def start(self) -> "Server":
-        cmd = shlex.split(os.environ.get("HW_SERVER_CMD") or f"{shlex.quote(sys.executable)} app/main.py")
+        cmd = shlex.split(os.environ.get("HW_SERVER_CMD") or shlex.quote(os.path.join(ROOT, "rust", "target", "release", "hoerwerk")))
         self._out = open(self.log, "w")
         self.proc = subprocess.Popen(cmd, cwd=ROOT, env=self.env, stdout=self._out, stderr=subprocess.STDOUT)
         for _ in range(300):

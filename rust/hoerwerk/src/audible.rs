@@ -1,4 +1,4 @@
-//! Audible metadata (search, details, chapters) and the other shops as fallbacks (audible.py, providers.py).
+//! Audible metadata (search, details, chapters) and the other shops as fallbacks.
 //! Search and details come from the Audible catalog API of the chosen marketplace; chapters from Audnexus.
 
 use std::collections::{BTreeSet, HashMap};
@@ -1556,18 +1556,14 @@ mod tests {
         crate::text::set_language("de");
         let g: Value =
             serde_json::from_str(include_str!("../../../contract/golden/audible.json")).expect("audible.json");
-        let src = include_str!("../../../contract/make_audible.py");
-        let grab = |name: &str| -> String {
-            let start = src.find(&format!("{name} = \"\"\"")).unwrap() + name.len() + 6;
-            let end = start + src[start..].find("\"\"\"").unwrap();
-            src[start..end].to_string()
-        };
         assert_eq!(
-            crate::links::parse_product_page(&grab("PAGE"), "https://www.thalia.de/x", "thalia").unwrap(),
+            crate::links::parse_product_page(g["page_html"].as_str().unwrap(), "https://www.thalia.de/x", "thalia")
+                .unwrap(),
             g["page"]
         );
         assert_eq!(
-            crate::links::parse_product_page(&grab("PAGE_OG"), "https://www.thalia.de/y", "thalia").unwrap(),
+            crate::links::parse_product_page(g["page_og_html"].as_str().unwrap(), "https://www.thalia.de/y", "thalia")
+                .unwrap(),
             g["page_og"]
         );
         let bb: Value = serde_json::from_value(json!({"id": 4711, "title": "Titel ", "author": "A & B", "narrator": ["C", {"name": "D"}],

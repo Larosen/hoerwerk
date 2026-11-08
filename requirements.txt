@@ -1,3 +1,0 @@
-# Runtime dependencies (everything else is the Python standard library + ffmpeg)
-mutagen==1.48.1   # MP4/M4B audiobook tags (series, ASIN, cover …) – ffmpeg can't write them all
-PyYAML==6.0.3     # metadata.yml for books that aren't on Audible (beets-audible format)

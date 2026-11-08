@@ -1,4 +1,4 @@
-//! Entdecken: suggested audiobooks – for the library, by genre, from book reviews (routes/discover.py).
+//! Entdecken: suggested audiobooks – for the library, by genre, from book reviews.
 
 use std::collections::HashMap;
 use std::sync::Arc;

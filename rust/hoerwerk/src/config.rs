@@ -93,18 +93,6 @@ pub fn parse_hosts(text: &str) -> Result<HashSet<String>, String> {
     Ok(out)
 }
 
-static COMPARE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// COMPARE_MODE=true: a second instance next to the live one (a copy of /config, see docs/VERGLEICH.md) – it
-/// starts no downloads, searches no requests on its own, sends no notifications and asks no media server to scan.
-pub fn compare_mode() -> bool {
-    COMPARE.load(std::sync::atomic::Ordering::Relaxed)
-}
-
-pub fn set_compare_mode(on: bool) {
-    COMPARE.store(on, std::sync::atomic::Ordering::Relaxed);
-}
-
 #[derive(Debug, Clone)]
 pub struct Config {
     pub config_dir: PathBuf,
@@ -140,7 +128,7 @@ impl Config {
         };
         let inbox = PathBuf::from(get("INBOX_DIR", "/inbox"));
         let static_dir = env.get("STATIC_DIR").map(PathBuf::from).unwrap_or_else(|| {
-            ["/app/static", "app/static", "../app/static"]
+            ["/app/static", "static", "../static", "../../static"]
                 .iter()
                 .map(PathBuf::from)
                 .find(|p| p.join("index.html").exists())

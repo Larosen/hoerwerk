@@ -1,4 +1,4 @@
-//! What is already in the library – so nothing gets downloaded or filed twice (library_index.py).
+//! What is already in the library – so nothing gets downloaded or filed twice.
 //! Covers the books Hörwerk filed (M4B with ASIN tags) and older collections: folders of MP3s/M4As/… are
 //! recognised by their tags or, failing that, by the usual "Author/Title" or "Author/Series/Title" layout.
 

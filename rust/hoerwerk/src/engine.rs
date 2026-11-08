@@ -1,4 +1,4 @@
-//! One job engine for everything that runs in the background (engine.py). Steps go to a queue with its own
+//! One job engine for everything that runs in the background. Steps go to a queue with its own
 //! workers: `encode` (ffmpeg; one worker – a conversion already uses all configured cores) and `io` (lookups,
 //! tags, filing – short steps that must not wait behind a two-hour conversion). Two steps of one job never
 //! run at the same time.

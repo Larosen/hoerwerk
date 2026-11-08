@@ -1,4 +1,4 @@
-//! Book requests – like Overseerr/Jellyseerr in front of Radarr (bookrequests.py).
+//! Book requests – like Overseerr/Jellyseerr in front of Radarr.
 //!
 //!     pending ──approve──▶ searching ──grab──▶ downloading ──SABnzbd done──▶ processing ──filed──▶ available
 //!        │                    ▲   (nothing found: again every few hours)             │

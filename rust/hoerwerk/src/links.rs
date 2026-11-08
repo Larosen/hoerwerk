@@ -1,4 +1,4 @@
-//! Book data from a shop link: Audible, BookBeat, Thalia (links.py). Only these shops are fetched – no arbitrary
+//! Book data from a shop link: Audible, BookBeat, Thalia. Only these shops are fetched – no arbitrary
 //! URLs; Audible links resolve to the ASIN, BookBeat to its public book API, Thalia through the schema.org data
 //! embedded in the product page.
 

@@ -1,4 +1,4 @@
-//! What runs here and the health check page (routes/system.py): connection & proxy, security, storage, services,
+//! What runs here and the health check page: connection & proxy, security, storage, services,
 //! system – each check: group, ok/warn/error/info, what to do.
 
 use std::collections::HashMap;

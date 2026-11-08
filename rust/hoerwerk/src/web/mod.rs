@@ -1,5 +1,5 @@
-//! HTTP: every request goes through ``dispatch`` – the same checks in the same order as the Python server
-//! (app/web/server.py): host name, pages and static files, CSRF, route, login, rights, body size.
+//! HTTP: every request goes through ``dispatch``, always with the same checks in the same order:
+//! host name, pages and static files, CSRF, route, login, rights, body size.
 
 pub mod api;
 pub mod audiobooks;
@@ -21,7 +21,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use axum::body::{Body, Bytes};
 use axum::extract::{ConnectInfo, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, Response, StatusCode, header};
-use futures_util::Stream;
+use futures_util::{FutureExt, Stream};
 use http_body_util::{BodyExt, Limited};
 use serde_json::{Value, json};
 
@@ -394,7 +394,35 @@ pub async fn dispatch(
         return r;
     }
     let _slot = SlotGuard(&app.slots.0);
-    handle(app.clone(), peer, req).await
+    let (method, path) = (req.method().clone(), req.uri().path().to_string());
+    match std::panic::AssertUnwindSafe(handle(app.clone(), peer, req))
+        .catch_unwind()
+        .await
+    {
+        Ok(r) => r,
+        Err(p) => internal_error(&method, &path, p.as_ref()),
+    }
+}
+
+/// Unexpected errors: everything into the log, only a number to the browser – no error text, paths, SQL or keys
+/// leave the server. The number finds the entry in the log.
+fn internal_error(method: &Method, path: &str, panic: &(dyn std::any::Any + Send)) -> Response<Body> {
+    let rid = hex::encode(rand::random::<[u8; 4]>());
+    let why = panic
+        .downcast_ref::<&str>()
+        .map(|s| s.to_string())
+        .or_else(|| panic.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "panic".into());
+    crate::text::error("web", &format!("Fehler {rid} in {method} {path}: {why}"));
+    let body = json!({"error": t("Interner Fehler (Nr. {id}) – Einzelheiten stehen im Protokoll", &[("id", &rid)]),
+                      "request_id": rid});
+    respond(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "application/json",
+        Bytes::from(body.to_string()),
+        &[],
+        true,
+    )
 }
 
 async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body> {
@@ -621,5 +649,32 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
             }
             r.body(Body::from_stream(stream)).expect("valid response")
         }
+    }
+}
+
+#[cfg(test)]
+mod internal_error_tests {
+    use super::*;
+
+    #[test]
+    fn only_a_number_leaves_the_server() {
+        crate::text::set_language("de");
+        let secret: Box<dyn std::any::Any + Send> = Box::new(String::from("SELECT pw FROM users /config/x"));
+        let r = internal_error(&Method::GET, "/api/x", secret.as_ref());
+        assert_eq!(r.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let body = futures_util::FutureExt::now_or_never(r.into_body().collect())
+            .unwrap()
+            .unwrap()
+            .to_bytes();
+        let v: Value = serde_json::from_slice(&body).unwrap();
+        let rid = v["request_id"].as_str().unwrap();
+        assert_eq!(rid.len(), 8);
+        assert_eq!(
+            v["error"],
+            json!(format!(
+                "Interner Fehler (Nr. {rid}) – Einzelheiten stehen im Protokoll"
+            ))
+        );
+        assert!(!String::from_utf8_lossy(&body).contains("SELECT"));
     }
 }

@@ -1,4 +1,4 @@
-//! Audiobook pipeline: status, review (search, choose, own data), duplicates, retry (routes/audiobooks.py).
+//! Audiobook pipeline: status, review (search, choose, own data), duplicates, retry.
 
 use std::collections::HashMap;
 use std::sync::Arc;

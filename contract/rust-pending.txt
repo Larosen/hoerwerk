@@ -1,1 +1,0 @@
-# Contract tests the Rust backend (rust/hoerwerk) does not pass yet – shrinks as the port goes on.

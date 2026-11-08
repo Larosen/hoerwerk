@@ -1,4 +1,4 @@
-//! Which Host names Hörwerk answers under – protection against DNS rebinding (same rules as app/web/hosts.py):
+//! Which Host names Hörwerk answers under – protection against DNS rebinding:
 //! IPs and localhost always; ALLOWED_HOSTS exactly when set (``*.domain``, ``*`` = any); otherwise home-network
 //! names plus the public address from the settings; through a trusted proxy any name the proxy forwards.
 

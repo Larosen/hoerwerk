@@ -1,4 +1,4 @@
-//! Book requests, statistics, notifications, sources and downloads (routes/requests.py, notify.py, search.py).
+//! Book requests, statistics, notifications, sources and downloads.
 
 use std::collections::HashMap;
 use std::sync::Arc;
