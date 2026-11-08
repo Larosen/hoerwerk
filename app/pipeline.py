@@ -252,6 +252,7 @@ class Pipeline:
         self.last_scan: Optional[float] = None
         self.scan_note = ""
         self._force_scan = False
+        self.stopping = False                  # shutting down: running conversions stop, jobs stay queued
         self._load()
         if start:
             self.start()
@@ -517,6 +518,14 @@ class Pipeline:
         self._schedule(job)
         return job
 
+    def shutdown(self) -> None:
+        """Hörwerk stops (docker stop): running ffmpeg ends now, its job goes back to the queue (not cancelled)."""
+        with self.lock:
+            self.stopping = True
+            runners = [j.runner for j in self.jobs if j.runner]
+        for r in runners:
+            r.kill()
+
     def cancel(self, job_id: str) -> Job:
         job = self.get(job_id)
         with self.lock:
@@ -750,11 +759,18 @@ class Pipeline:
                 with self._file_lock:
                     self._finish(job)
         except encoder.Cancelled:
-            job.status = "cancelled"
-            job.say(t("Abgebrochen"))
-            self._cleanup_work(job)
+            if self.stopping and not job.cancel:          # Hörwerk shuts down: the step runs again after the start
+                job.status = "queued"
+                job.say(t("Beim Beenden unterbrochen – geht nach dem nächsten Start weiter"))
+            else:
+                job.status = "cancelled"
+                job.say(t("Abgebrochen"))
+                self._cleanup_work(job)
         except Exception as e:  # noqa: BLE001 – every error ends up in the UI
-            if job.cancel:
+            if self.stopping and not job.cancel:          # an error caused by the shutdown itself is no failure
+                job.status = "queued"
+                job.say(t("Beim Beenden unterbrochen – geht nach dem nächsten Start weiter"))
+            elif job.cancel:
                 job.status = "cancelled"
                 job.say(t("Abgebrochen"))
                 self._cleanup_work(job)

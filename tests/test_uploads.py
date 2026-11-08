@@ -246,3 +246,57 @@ class WebUploadTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CancelRaceTest(unittest.TestCase):
+    """Review 7.13: a cancel while a file was about to be written left a recreated, orphaned staging folder."""
+
+    def setUp(self):
+        self.inbox = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.inbox, True)
+        self.u = uploads.Uploads(self.inbox)
+
+    def test_cancel_before_the_folder_is_made(self):
+        uid = self.u.start("u1")
+        real = uploads.Uploads._write
+        paused, go = threading.Event(), threading.Event()
+
+        def slow_write(this, *args):
+            paused.set()                      # reserved, but nothing on disk yet …
+            go.wait(5)
+            return real(this, *args)
+        uploads.Uploads._write = slow_write
+        self.addCleanup(setattr, uploads.Uploads, "_write", real)
+        errors = []
+
+        def send():
+            try:
+                self.u.put(uid, "Book/01.mp3", io.BytesIO(b"ID3audio"), 8)
+            except uploads.UploadError as e:
+                errors.append(str(e))
+        th = threading.Thread(target=send)
+        th.start()
+        paused.wait(5)
+        self.u.cancel(uid)                    # … the user cancels
+        go.set()
+        th.join(5)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(os.listdir(self.inbox), [])           # no folder came back
+
+    def test_cancel_while_the_file_arrives(self):
+        uid = self.u.start("u1")
+        arrived, go = threading.Event(), threading.Event()
+
+        class Trickle(io.BytesIO):
+            def read(s, n=-1):
+                arrived.set()
+                go.wait(5)
+                return super().read(n)
+        th = threading.Thread(target=lambda: self.assertRaises((uploads.UploadError, OSError), self.u.put, uid, "Book/01.mp3",
+                                                                                    Trickle(b"ID3audio"), 8))
+        th.start()
+        arrived.wait(5)
+        self.u.cancel(uid)
+        go.set()
+        th.join(5)
+        self.assertEqual(os.listdir(self.inbox), [])

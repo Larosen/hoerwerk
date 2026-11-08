@@ -32,6 +32,7 @@ class Engine:
         self.running: Dict[str, List[str]] = {q: [] for q in QUEUES}   # keys of the steps being worked on
         self.done = 0
         self._started = False
+        self.stopping = False
 
     def start(self) -> None:
         with self.lock:
@@ -91,9 +92,25 @@ class Engine:
             except Exception:  # noqa: BLE001 – a listener must never stop the engine
                 pass
 
+    def stop(self, timeout: float = 5.0) -> bool:
+        """Shutting down: no new step starts; waits (up to ``timeout``) for the running ones to end.
+        Waiting steps stay where they are – the jobs are persisted and queued again at the next start."""
+        with self.lock:
+            self.stopping = True
+            self.wake.notify_all()
+        end = time.time() + timeout
+        while time.time() < end:
+            with self.lock:
+                if not any(self.running.values()):
+                    return True
+            time.sleep(0.05)
+        return False
+
     def _next(self, queue: str) -> Optional[Tuple[str, Callable[[], None]]]:
         """The first waiting step whose job is not being worked on right now (in any queue) – two steps of one
         job never run at the same time, even when it was queued again while running."""
+        if self.stopping:
+            return None
         busy = {k for keys in self.running.values() for k in keys}
         for item in self.queues[queue]:
             if item[0] not in busy:

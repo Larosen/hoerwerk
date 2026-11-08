@@ -15,3 +15,4 @@ e2e/
 test-results
 playwright-report
 app/static/*.js
+rust/target/

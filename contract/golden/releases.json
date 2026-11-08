@@ -1,0 +1,5065 @@
+{
+ "description": "How Hörwerk judges releases (Python answers; see make_releases.py).",
+ "books": [
+  {
+   "title": "Der Schimmelreiter",
+   "authors": [
+    "Theodor Storm"
+   ],
+   "runtime_min": 300,
+   "language": "german"
+  },
+  {
+   "title": "Twilight",
+   "authors": [
+    "Stephenie Meyer"
+   ],
+   "series": "Twilight-Saga",
+   "series_position": "1",
+   "runtime_min": 700,
+   "language": "german"
+  },
+  {
+   "title": "Todesmal",
+   "authors": [
+    "Andreas Gruber"
+   ],
+   "series": "Ein Sneijder-und-Nemez-Krimi",
+   "series_position": "5",
+   "runtime_min": 720
+  },
+  {
+   "title": "Eragon - Der Auftrag des Ältesten (Eragon 2)",
+   "authors": [
+    "Christopher Paolini"
+   ],
+   "series": "Eragon",
+   "series_position": "2,0",
+   "runtime_min": 1500,
+   "language": "German"
+  },
+  {
+   "title": "The Hobbit",
+   "authors": [
+    "J. R. R. Tolkien"
+   ],
+   "runtime_min": 660,
+   "language": "english",
+   "format_type": "dramatized"
+  },
+  {
+   "title": "Faust: Band 1",
+   "authors": [
+    "Johann Wolfgang von Goethe"
+   ],
+   "narrators": [
+    "A",
+    "B",
+    "C",
+    "D"
+   ]
+  },
+  {
+   "title": "Die drei ??? und der Super-Papagei",
+   "authors": [
+    "Robert Arthur"
+   ],
+   "series": "Die drei ???",
+   "series_position": "1",
+   "runtime_min": 75,
+   "genres": [
+    "Hörspiel"
+   ]
+  },
+  {
+   "title": "Ng",
+   "authors": [
+    "Celeste Ng"
+   ]
+  }
+ ],
+ "evaluate": [
+  [
+   0,
+   {
+    "title": "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+    "size": 288000000,
+    "grabs": 40
+   },
+   {
+    "ok": true,
+    "score": 59.8,
+    "reason": null,
+    "notes": [
+     "M4B",
+     "Sprache passt"
+    ],
+    "kbps": 128
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "andere Sprache (de)",
+    "notes": [],
+    "kbps": 128
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+    "size": 146800640
+   },
+   {
+    "ok": true,
+    "score": 26.5,
+    "reason": null,
+    "notes": [
+     "MP3"
+    ],
+    "kbps": 65
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "vermutlich andere Sprache (de)",
+    "notes": [],
+    "kbps": 65
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Storm - Schimmelreiter - gekürzt - German",
+    "size": 52428800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "gekürzte Fassung",
+    "notes": [],
+    "kbps": 23
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "andere Sprache (de)",
+    "notes": [],
+    "kbps": 23
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+    "size": 419430400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "andere Sprache (en)",
+    "notes": [],
+    "kbps": 186
+   },
+   {
+    "ok": true,
+    "score": 43.0,
+    "reason": null,
+    "notes": [
+     "Sprache passt"
+    ],
+    "kbps": 186
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter FLAC",
+    "size": 94371840
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "verlustfrei, aber viel zu klein für 5.0 h Laufzeit (42 kbit/s)",
+    "notes": [],
+    "kbps": 42
+   },
+   {
+    "ok": true,
+    "score": 15.0,
+    "reason": null,
+    "notes": [
+     "FLAC"
+    ],
+    "kbps": 42
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+    "size": 943718400,
+    "grabs": 500
+   },
+   {
+    "ok": true,
+    "score": 56.0,
+    "reason": null,
+    "notes": [
+     "Dolby Atmos"
+    ],
+    "kbps": 419
+   },
+   {
+    "ok": true,
+    "score": 56.0,
+    "reason": null,
+    "notes": [
+     "Dolby Atmos"
+    ],
+    "kbps": 419
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+    "size": 629145600
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 280
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 280
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+    "size": 734003200
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 326
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 326
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Stephenie Meyer - Twilight Band 01-04 German",
+    "size": 3145728000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+    "size": 4194304000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+    "size": 524288000,
+    "grabs": 3
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 233
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 233
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 4",
+    "size": 524288000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 233
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 233
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+    "size": 1572864000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 699
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 699
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+    "size": 1468006400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 652
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 652
+   }
+  ],
+  [
+   0,
+   {
+    "title": "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 140
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 140
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Tolkien - Der Hobbit - Hörspiel - German",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 140
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 140
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Goethe - Faust 1 - Hörspiel",
+    "size": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+    "size": 62914560
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 28
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 28
+   }
+  ],
+  [
+   0,
+   {
+    "title": "Celeste Ng - Kleine Feuer überall",
+    "size": 100
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Theodor Storm“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+    "size": 288000000,
+    "grabs": 40
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 55
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 55
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+    "size": 146800640
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 28
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 28
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Storm - Schimmelreiter - gekürzt - German",
+    "size": 52428800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 10
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 10
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+    "size": 419430400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 80
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 80
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter FLAC",
+    "size": 94371840
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 18
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 18
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+    "size": 943718400,
+    "grabs": 500
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 180
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 180
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+    "size": 629145600
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "anderer Band (5 statt 1)",
+    "notes": [],
+    "kbps": 120
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "anderer Band (5 statt 1)",
+    "notes": [],
+    "kbps": 120
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+    "size": 734003200
+   },
+   {
+    "ok": true,
+    "score": 54.0,
+    "reason": null,
+    "notes": [
+     "Band 1 passt",
+     "Sprache passt"
+    ],
+    "kbps": 140
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "andere Sprache (de)",
+    "notes": [
+     "Band 1 passt"
+    ],
+    "kbps": 140
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Stephenie Meyer - Twilight Band 01-04 German",
+    "size": 3145728000
+   },
+   {
+    "ok": true,
+    "score": 12.0,
+    "reason": null,
+    "notes": [
+     "Paket – nur Band 1 wird übernommen",
+     "Sprache passt"
+    ],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "andere Sprache (de)",
+    "notes": [
+     "Paket – nur Band 1 wird übernommen"
+    ],
+    "kbps": null
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+    "size": 4194304000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+    "size": 524288000,
+    "grabs": 3
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 100
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 100
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 4",
+    "size": 524288000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 100
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 100
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+    "size": 1572864000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 300
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 300
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+    "size": 1468006400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 280
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 280
+   }
+  ],
+  [
+   1,
+   {
+    "title": "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 60
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 60
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Tolkien - Der Hobbit - Hörspiel - German",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 60
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 60
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Goethe - Faust 1 - Hörspiel",
+    "size": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+    "size": 62914560
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 12
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 12
+   }
+  ],
+  [
+   1,
+   {
+    "title": "Celeste Ng - Kleine Feuer überall",
+    "size": 100
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Stephenie Meyer“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+    "size": 288000000,
+    "grabs": 40
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 53
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 53
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+    "size": 146800640
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 27
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 27
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Storm - Schimmelreiter - gekürzt - German",
+    "size": 52428800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 10
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 10
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+    "size": 419430400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 78
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 78
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter FLAC",
+    "size": 94371840
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 17
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 17
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+    "size": 943718400,
+    "grabs": 500
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 175
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 175
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+    "size": 629145600
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 117
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 117
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+    "size": 734003200
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 136
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 136
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Stephenie Meyer - Twilight Band 01-04 German",
+    "size": 3145728000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+    "size": 4194304000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Titel passt nicht (0 % der Wörter)",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Titel passt nicht (0 % der Wörter)",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+    "size": 524288000,
+    "grabs": 3
+   },
+   {
+    "ok": true,
+    "score": 39.85,
+    "reason": null,
+    "notes": [
+     "Band 5 passt"
+    ],
+    "kbps": 97
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "vermutlich andere Sprache (de)",
+    "notes": [
+     "Band 5 passt"
+    ],
+    "kbps": 97
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 4",
+    "size": 524288000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "anderer Band (4 statt 5)",
+    "notes": [],
+    "kbps": 97
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "anderer Band (4 statt 5)",
+    "notes": [],
+    "kbps": 97
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+    "size": 1572864000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 291
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 291
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+    "size": 1468006400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 272
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 272
+   }
+  ],
+  [
+   2,
+   {
+    "title": "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 58
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 58
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Tolkien - Der Hobbit - Hörspiel - German",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 58
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 58
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Goethe - Faust 1 - Hörspiel",
+    "size": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+    "size": 62914560
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 12
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 12
+   }
+  ],
+  [
+   2,
+   {
+    "title": "Celeste Ng - Kleine Feuer überall",
+    "size": 100
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Andreas Gruber“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+    "size": 288000000,
+    "grabs": 40
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 26
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 26
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+    "size": 146800640
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 13
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 13
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Storm - Schimmelreiter - gekürzt - German",
+    "size": 52428800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 5
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 5
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+    "size": 419430400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 37
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 37
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter FLAC",
+    "size": 94371840
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 8
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 8
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+    "size": 943718400,
+    "grabs": 500
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 84
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 84
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+    "size": 629145600
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 56
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 56
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+    "size": 734003200
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 65
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 65
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Stephenie Meyer - Twilight Band 01-04 German",
+    "size": 3145728000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+    "size": 4194304000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+    "size": 524288000,
+    "grabs": 3
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 47
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 47
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 4",
+    "size": 524288000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 47
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 47
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+    "size": 1572864000
+   },
+   {
+    "ok": true,
+    "score": 44.0,
+    "reason": null,
+    "notes": [
+     "Band 2 passt"
+    ],
+    "kbps": 140
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "vermutlich andere Sprache (de)",
+    "notes": [
+     "Band 2 passt"
+    ],
+    "kbps": 140
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+    "size": 1468006400
+   },
+   {
+    "ok": true,
+    "score": 53.0,
+    "reason": null,
+    "notes": [
+     "Band 2 passt",
+     "Sprache passt"
+    ],
+    "kbps": 130
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "andere Sprache (de)",
+    "notes": [
+     "Band 2 passt"
+    ],
+    "kbps": 130
+   }
+  ],
+  [
+   3,
+   {
+    "title": "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 28
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 28
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Tolkien - Der Hobbit - Hörspiel - German",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 28
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 28
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Goethe - Faust 1 - Hörspiel",
+    "size": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+    "size": 62914560
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 6
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 6
+   }
+  ],
+  [
+   3,
+   {
+    "title": "Celeste Ng - Kleine Feuer überall",
+    "size": 100
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Christopher Paolini“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+    "size": 288000000,
+    "grabs": 40
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 58
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 58
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+    "size": 146800640
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 30
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 30
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Storm - Schimmelreiter - gekürzt - German",
+    "size": 52428800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 11
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 11
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+    "size": 419430400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 85
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 85
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter FLAC",
+    "size": 94371840
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 19
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 19
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+    "size": 943718400,
+    "grabs": 500
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 191
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 191
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+    "size": 629145600
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 127
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 127
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+    "size": 734003200
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 148
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 148
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Stephenie Meyer - Twilight Band 01-04 German",
+    "size": 3145728000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+    "size": 4194304000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+    "size": 524288000,
+    "grabs": 3
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 106
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 106
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 4",
+    "size": 524288000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 106
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 106
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+    "size": 1572864000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 318
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 318
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+    "size": 1468006400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 297
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 297
+   }
+  ],
+  [
+   4,
+   {
+    "title": "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "andere Sprache (en)",
+    "notes": [],
+    "kbps": 64
+   },
+   {
+    "ok": true,
+    "score": 26.4,
+    "reason": null,
+    "notes": [
+     "Sprache passt"
+    ],
+    "kbps": 64
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Tolkien - Der Hobbit - Hörspiel - German",
+    "size": 314572800
+   },
+   {
+    "ok": true,
+    "score": 26.4,
+    "reason": null,
+    "notes": [
+     "Sprache passt"
+    ],
+    "kbps": 64
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "andere Sprache (de)",
+    "notes": [],
+    "kbps": 64
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Goethe - Faust 1 - Hörspiel",
+    "size": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+    "size": 62914560
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 13
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 13
+   }
+  ],
+  [
+   4,
+   {
+    "title": "Celeste Ng - Kleine Feuer überall",
+    "size": 100
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „J. R. R. Tolkien“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+    "size": 288000000,
+    "grabs": 40
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+    "size": 146800640
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Storm - Schimmelreiter - gekürzt - German",
+    "size": 52428800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+    "size": 419430400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter FLAC",
+    "size": 94371840
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+    "size": 943718400,
+    "grabs": 500
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+    "size": 629145600
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+    "size": 734003200
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Stephenie Meyer - Twilight Band 01-04 German",
+    "size": 3145728000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+    "size": 4194304000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+    "size": 524288000,
+    "grabs": 3
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 4",
+    "size": 524288000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+    "size": 1572864000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+    "size": 1468006400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Tolkien - Der Hobbit - Hörspiel - German",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Goethe - Faust 1 - Hörspiel",
+    "size": 0
+   },
+   {
+    "ok": true,
+    "score": 10.0,
+    "reason": null,
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "vermutlich andere Sprache (de)",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+    "size": 62914560
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   5,
+   {
+    "title": "Celeste Ng - Kleine Feuer überall",
+    "size": 100
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Johann Wolfgang von Goethe“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+    "size": 288000000,
+    "grabs": 40
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 512
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 512
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+    "size": 146800640
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 261
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 261
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Storm - Schimmelreiter - gekürzt - German",
+    "size": 52428800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 93
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 93
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+    "size": 419430400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 746
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 746
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter FLAC",
+    "size": 94371840
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 168
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 168
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+    "size": 943718400,
+    "grabs": 500
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 1678
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 1678
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+    "size": 629145600
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 1118
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 1118
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+    "size": 734003200
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 1305
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 1305
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Stephenie Meyer - Twilight Band 01-04 German",
+    "size": 3145728000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+    "size": 4194304000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+    "size": 524288000,
+    "grabs": 3
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 932
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 932
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 4",
+    "size": 524288000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 932
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 932
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+    "size": 1572864000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 2796
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 2796
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+    "size": 1468006400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 2610
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 2610
+   }
+  ],
+  [
+   6,
+   {
+    "title": "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 559
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 559
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Tolkien - Der Hobbit - Hörspiel - German",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 559
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 559
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Goethe - Faust 1 - Hörspiel",
+    "size": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+    "size": 62914560
+   },
+   {
+    "ok": true,
+    "score": 41.2,
+    "reason": null,
+    "notes": [
+     "Band 1 passt"
+    ],
+    "kbps": 112
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "vermutlich andere Sprache (de)",
+    "notes": [
+     "Band 1 passt"
+    ],
+    "kbps": 112
+   }
+  ],
+  [
+   6,
+   {
+    "title": "Celeste Ng - Kleine Feuer überall",
+    "size": 100
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Robert Arthur“ fehlt im Namen",
+    "notes": [],
+    "kbps": 0
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+    "size": 288000000,
+    "grabs": 40
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+    "size": 146800640
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Storm - Schimmelreiter - gekürzt - German",
+    "size": 52428800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+    "size": 419430400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter FLAC",
+    "size": 94371840
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+    "size": 943718400,
+    "grabs": 500
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+    "size": 629145600
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+    "size": 734003200
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Stephenie Meyer - Twilight Band 01-04 German",
+    "size": 3145728000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+    "size": 4194304000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+    "size": 524288000,
+    "grabs": 3
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Andreas Gruber - Todesmal - Band 4",
+    "size": 524288000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+    "size": 1572864000
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+    "size": 1468006400
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Tolkien - Der Hobbit - Hörspiel - German",
+    "size": 314572800
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Goethe - Faust 1 - Hörspiel",
+    "size": 0
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+    "size": 62914560
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "Autor „Celeste Ng“ fehlt im Namen",
+    "notes": [],
+    "kbps": null
+   }
+  ],
+  [
+   7,
+   {
+    "title": "Celeste Ng - Kleine Feuer überall",
+    "size": 100
+   },
+   {
+    "ok": true,
+    "score": 10.0,
+    "reason": null,
+    "notes": [],
+    "kbps": null
+   },
+   {
+    "ok": false,
+    "score": 0.0,
+    "reason": "vermutlich andere Sprache (de)",
+    "notes": [],
+    "kbps": null
+   }
+  ]
+ ],
+ "blocked": {
+  "ok": false,
+  "score": 0.0,
+  "reason": "gesperrt (Download oder Import ging schief)",
+  "notes": [],
+  "kbps": null
+ },
+ "rank": [
+  "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+  "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+  "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+  "Storm - Schimmelreiter - gekürzt - German",
+  "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+  "Theodor Storm - Der Schimmelreiter FLAC",
+  "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+  "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+  "Stephenie Meyer - Twilight Band 01-04 German",
+  "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+  "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+  "Andreas Gruber - Todesmal - Band 4",
+  "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+  "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+  "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+  "Tolkien - Der Hobbit - Hörspiel - German",
+  "Goethe - Faust 1 - Hörspiel",
+  "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+  "Celeste Ng - Kleine Feuer überall"
+ ],
+ "search_stages": [
+  [
+   [
+    "Storm Der Schimmelreiter"
+   ],
+   [
+    "Der Schimmelreiter"
+   ],
+   [
+    "Storm"
+   ]
+  ],
+  [
+   [
+    "Meyer Twilight"
+   ],
+   [
+    "Twilight"
+   ],
+   [
+    "Meyer"
+   ]
+  ],
+  [
+   [
+    "Gruber Todesmal"
+   ],
+   [
+    "Todesmal",
+    "Gruber Sneijder und Nemez"
+   ],
+   [
+    "Gruber"
+   ]
+  ],
+  [
+   [
+    "Paolini Eragon - Der Auftrag des Ältesten"
+   ],
+   [
+    "Eragon - Der Auftrag des Ältesten",
+    "Paolini Eragon - Der",
+    "Paolini Eragon"
+   ],
+   [
+    "Paolini"
+   ]
+  ],
+  [
+   [
+    "Tolkien The Hobbit"
+   ],
+   [
+    "The Hobbit"
+   ],
+   [
+    "Tolkien"
+   ]
+  ],
+  [
+   [
+    "Goethe Faust"
+   ],
+   [
+    "Goethe"
+   ]
+  ],
+  [
+   [
+    "Arthur Die drei ??? und der Super-Papagei"
+   ],
+   [
+    "Die drei ??? und der Super-Papagei",
+    "Arthur Die drei ???",
+    "Arthur drei ???"
+   ],
+   [
+    "Arthur"
+   ]
+  ],
+  [
+   [
+    "Ng Ng"
+   ],
+   [
+    "Celeste Ng"
+   ]
+  ]
+ ],
+ "release_volumes": [
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   0,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   0,
+   []
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   0,
+   []
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   0,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   0,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   0,
+   []
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   0,
+   [
+    5
+   ]
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   0,
+   []
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   0,
+   [
+    1
+   ]
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   0,
+   []
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   0,
+   [
+    5
+   ]
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   0,
+   [
+    4
+   ]
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   0,
+   []
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   0,
+   [
+    2
+   ]
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   0,
+   []
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   0,
+   []
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   0,
+   []
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   0,
+   [
+    1
+   ]
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   0,
+   []
+  ],
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   1,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   1,
+   []
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   1,
+   []
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   1,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   1,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   1,
+   []
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   1,
+   [
+    5
+   ]
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   1,
+   [
+    1
+   ]
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   1,
+   [
+    1
+   ]
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   1,
+   []
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   1,
+   [
+    5
+   ]
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   1,
+   [
+    4
+   ]
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   1,
+   []
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   1,
+   [
+    2
+   ]
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   1,
+   []
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   1,
+   []
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   1,
+   []
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   1,
+   [
+    1
+   ]
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   1,
+   []
+  ],
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   2,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   2,
+   []
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   2,
+   []
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   2,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   2,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   2,
+   []
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   2,
+   [
+    5
+   ]
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   2,
+   []
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   2,
+   [
+    1
+   ]
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   2,
+   [
+    1
+   ]
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   2,
+   [
+    5
+   ]
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   2,
+   [
+    4
+   ]
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   2,
+   []
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   2,
+   [
+    2
+   ]
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   2,
+   []
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   2,
+   []
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   2,
+   []
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   2,
+   [
+    1
+   ]
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   2,
+   []
+  ],
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   3,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   3,
+   []
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   3,
+   []
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   3,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   3,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   3,
+   []
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   3,
+   [
+    5
+   ]
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   3,
+   []
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   3,
+   [
+    1
+   ]
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   3,
+   []
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   3,
+   [
+    5
+   ]
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   3,
+   [
+    4
+   ]
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   3,
+   [
+    2
+   ]
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   3,
+   [
+    2
+   ]
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   3,
+   []
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   3,
+   []
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   3,
+   []
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   3,
+   [
+    1
+   ]
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   3,
+   []
+  ],
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   4,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   4,
+   []
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   4,
+   []
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   4,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   4,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   4,
+   []
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   4,
+   [
+    5
+   ]
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   4,
+   []
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   4,
+   [
+    1
+   ]
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   4,
+   []
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   4,
+   [
+    5
+   ]
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   4,
+   [
+    4
+   ]
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   4,
+   []
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   4,
+   [
+    2
+   ]
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   4,
+   []
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   4,
+   []
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   4,
+   []
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   4,
+   [
+    1
+   ]
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   4,
+   []
+  ],
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   5,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   5,
+   []
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   5,
+   []
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   5,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   5,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   5,
+   []
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   5,
+   [
+    5
+   ]
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   5,
+   []
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   5,
+   [
+    1
+   ]
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   5,
+   []
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   5,
+   [
+    5
+   ]
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   5,
+   [
+    4
+   ]
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   5,
+   []
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   5,
+   [
+    2
+   ]
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   5,
+   []
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   5,
+   []
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   5,
+   [
+    1
+   ]
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   5,
+   [
+    1
+   ]
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   5,
+   []
+  ],
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   6,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   6,
+   []
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   6,
+   []
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   6,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   6,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   6,
+   []
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   6,
+   [
+    5
+   ]
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   6,
+   []
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   6,
+   [
+    1
+   ]
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   6,
+   []
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   6,
+   [
+    5
+   ]
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   6,
+   [
+    4
+   ]
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   6,
+   []
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   6,
+   [
+    2
+   ]
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   6,
+   []
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   6,
+   []
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   6,
+   []
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   6,
+   [
+    1
+   ]
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   6,
+   []
+  ],
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   7,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   7,
+   []
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   7,
+   []
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   7,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   7,
+   []
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   7,
+   []
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   7,
+   [
+    5
+   ]
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   7,
+   []
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   7,
+   [
+    1
+   ]
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   7,
+   []
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   7,
+   [
+    5
+   ]
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   7,
+   [
+    4
+   ]
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   7,
+   []
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   7,
+   [
+    2
+   ]
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   7,
+   []
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   7,
+   []
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   7,
+   []
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   7,
+   [
+    1
+   ]
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   7,
+   []
+  ]
+ ],
+ "pack_info": [
+  [
+   "Sneijder und Nemez 01 - 07",
+   {
+    "volumes": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "series": "Sneijder und Nemez",
+    "author": ""
+   }
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 1-7",
+   {
+    "volumes": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "series": "Sneijder und Nemez",
+    "author": "Andreas Gruber"
+   }
+  ],
+  [
+   "Band 1-3",
+   {
+    "volumes": [
+     1,
+     2,
+     3
+    ],
+    "series": "",
+    "author": ""
+   }
+  ],
+  [
+   "Folgen 10–12",
+   {
+    "volumes": [
+     10,
+     11,
+     12
+    ],
+    "series": "",
+    "author": ""
+   }
+  ],
+  [
+   "Harry Potter 1 bis 7 (Hörbuch)",
+   {
+    "volumes": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "series": "Harry Potter",
+    "author": ""
+   }
+  ],
+  [
+   "7CD",
+   null
+  ],
+  [
+   "128kbps",
+   null
+  ],
+  [
+   "Album 1-4CD",
+   null
+  ],
+  [
+   "Paket 3 - 2",
+   null
+  ],
+  [
+   "Reihe 1 - 99",
+   null
+  ],
+  [
+   "Die.Tribute.von.Panem.Teil.1-3.German",
+   {
+    "volumes": [
+     1,
+     2,
+     3
+    ],
+    "series": "Die Tribute von Panem",
+    "author": ""
+   }
+  ],
+  [
+   "Max Muster - Krimi-Reihe Bände 1-5",
+   {
+    "volumes": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "series": "Krimi Reihe",
+    "author": "Max Muster"
+   }
+  ]
+ ],
+ "volume_of": [
+  [
+   "03 - Todesmal",
+   "Andreas Gruber - Sneijder und Nemez 01 - 07",
+   3
+  ],
+  [
+   "Band 3 - Titel",
+   null,
+   3
+  ],
+  [
+   "Sneijder und Nemez 3 - Todesfrist",
+   "Andreas Gruber - Sneijder und Nemez 01 - 07",
+   3
+  ],
+  [
+   "Teil 9",
+   "Band 1-3",
+   null
+  ],
+  [
+   "CD 1",
+   null,
+   1
+  ],
+  [
+   "Hörbuch 128kbps",
+   null,
+   null
+  ],
+  [
+   "Folge.04.Die.Spur",
+   "Folgen 1-6",
+   4
+  ]
+ ],
+ "title_of": [
+  [
+   "03 - Todesmal",
+   "Andreas Gruber - Sneijder und Nemez 01 - 07",
+   "Todesmal"
+  ],
+  [
+   "Band 3 - Titel",
+   null,
+   "Titel"
+  ],
+  [
+   "Sneijder und Nemez 3 - Todesfrist",
+   "Andreas Gruber - Sneijder und Nemez 01 - 07",
+   "Todesfrist"
+  ],
+  [
+   "Teil 9",
+   "Band 1-3",
+   ""
+  ],
+  [
+   "CD 1",
+   null,
+   "CD 1"
+  ],
+  [
+   "Hörbuch 128kbps",
+   null,
+   "Hörbuch 128kbps"
+  ],
+  [
+   "Folge.04.Die.Spur",
+   "Folgen 1-6",
+   "Die Spur"
+  ]
+ ],
+ "release_info": [
+  [
+   "Buch.German.M4B",
+   {
+    "format": "M4B",
+    "language": "de",
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Book ENG MP3 64kbps",
+   {
+    "format": "MP3",
+    "language": "en",
+    "bitrate": 64,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Hoerbuch-DE-gekuerzt",
+   {
+    "format": null,
+    "language": "de",
+    "bitrate": null,
+    "abridged": true,
+    "drama": false
+   }
+  ],
+  [
+   "Hörspiel UNGEKÜRZT FLAC",
+   {
+    "format": "FLAC",
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": true
+   }
+  ],
+  [
+   "Book abridged english 96 kbit",
+   {
+    "format": null,
+    "language": "en",
+    "bitrate": 96,
+    "abridged": true,
+    "drama": false
+   }
+  ],
+  [
+   "DEcember Song",
+   {
+    "format": null,
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Bonde - AAC",
+   {
+    "format": "AAC",
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Dramatisierung opus",
+   {
+    "format": "OPUS",
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": true
+   }
+  ],
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   {
+    "format": "M4B",
+    "language": "de",
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   {
+    "format": "MP3",
+    "language": null,
+    "bitrate": 64,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   {
+    "format": null,
+    "language": "de",
+    "bitrate": null,
+    "abridged": true,
+    "drama": false
+   }
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   {
+    "format": null,
+    "language": "en",
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   {
+    "format": "FLAC",
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   {
+    "format": null,
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   {
+    "format": null,
+    "language": "de",
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   {
+    "format": null,
+    "language": "de",
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   {
+    "format": null,
+    "language": "de",
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   {
+    "format": null,
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   {
+    "format": null,
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   {
+    "format": null,
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   {
+    "format": null,
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   {
+    "format": null,
+    "language": "de",
+    "bitrate": 128,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   {
+    "format": null,
+    "language": "en",
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   {
+    "format": null,
+    "language": "de",
+    "bitrate": null,
+    "abridged": false,
+    "drama": true
+   }
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   {
+    "format": null,
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": true
+   }
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   {
+    "format": null,
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   {
+    "format": null,
+    "language": null,
+    "bitrate": null,
+    "abridged": false,
+    "drama": false
+   }
+  ]
+ ],
+ "query_variants": [
+  [
+   "Fräulein Smilla",
+   [
+    "Fräulein Smilla",
+    "Fraeulein Smilla",
+    "Fraulein Smilla"
+   ]
+  ],
+  [
+   "Jo Nesbø",
+   [
+    "Jo Nesbø",
+    "Jo Nesboe",
+    "Jo Nesbo"
+   ]
+  ],
+  [
+   "Céline Dion",
+   [
+    "Céline Dion",
+    "Celine Dion"
+   ]
+  ],
+  [
+   "Straße",
+   [
+    "Straße",
+    "Strasse"
+   ]
+  ],
+  [
+   "plain ascii",
+   [
+    "plain ascii"
+   ]
+  ],
+  [
+   "Ærø Œuvre Łódź",
+   [
+    "Ærø Œuvre Łódź",
+    "Aeroe Oeuvre Lodz",
+    "Aero Oeuvre Lodz"
+   ]
+  ]
+ ],
+ "clean_title": [
+  [
+   "Der Schimmelreiter",
+   "Der Schimmelreiter"
+  ],
+  [
+   "Die Wolke (Ein Jugendroman 3)",
+   "Die Wolke"
+  ],
+  [
+   "Mord im Orientexpress: Band 4",
+   "Mord im Orientexpress"
+  ],
+  [
+   "Tannöd - Teil 2",
+   "Tannöd"
+  ],
+  [
+   "[Band 1]",
+   "[Band 1]"
+  ],
+  [
+   "Titel (A) [B]",
+   "Titel"
+  ],
+  [
+   "  viel   Raum  ",
+   "viel Raum"
+  ]
+ ],
+ "series_core": [
+  [
+   "Ein Bodenstein-Kirchhoff-Krimi",
+   "Bodenstein Kirchhoff"
+  ],
+  [
+   "Die Tribute von Panem",
+   "Tribute von Panem"
+  ],
+  [
+   "The Expanse Series",
+   "Expanse"
+  ],
+  [
+   "Harry Potter",
+   "Harry Potter"
+  ],
+  [
+   "Die drei ???",
+   "drei ???"
+  ],
+  [
+   "Eine Sneijder-und-Nemez-Reihe",
+   "Sneijder und Nemez"
+  ],
+  [
+   "Twilight-Saga",
+   "Twilight"
+  ]
+ ],
+ "guess_language": [
+  [
+   "Theodor.Storm-Der.Schimmelreiter.German.Hoerbuch.M4B-GROUP",
+   "de"
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter (ungekürzt) 64kbps MP3",
+   "de"
+  ],
+  [
+   "Storm - Schimmelreiter - gekürzt - German",
+   "de"
+  ],
+  [
+   "Theodor.Storm.Der.Schimmelreiter.English.Audiobook.2019",
+   ""
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter FLAC",
+   ""
+  ],
+  [
+   "Theodor Storm - Der Schimmelreiter Dolby Atmos 2021",
+   ""
+  ],
+  [
+   "Stephenie.Meyer-Twilight-Saga.5.German.Hoerbuch",
+   ""
+  ],
+  [
+   "Stephenie Meyer - Twilight 1 - Biss zum Morgengrauen - DE",
+   "de"
+  ],
+  [
+   "Stephenie Meyer - Twilight Band 01-04 German",
+   ""
+  ],
+  [
+   "Andreas Gruber - Sneijder und Nemez 01 - 07 (2024)",
+   ""
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 5 - ungekuerzt",
+   "de"
+  ],
+  [
+   "Andreas Gruber - Todesmal - Band 4",
+   ""
+  ],
+  [
+   "Christopher Paolini - Eragon 2 - Der Auftrag des Aeltesten - Hoerbuch",
+   "de"
+  ],
+  [
+   "Paolini.Eragon.Der.Auftrag.des.Altesten.Teil.2.German.128k",
+   "de"
+  ],
+  [
+   "J.R.R.Tolkien.The.Hobbit.BBC.Full.Cast.Radio.Drama.ENG",
+   ""
+  ],
+  [
+   "Tolkien - Der Hobbit - Hörspiel - German",
+   "de"
+  ],
+  [
+   "Goethe - Faust 1 - Hörspiel",
+   "de"
+  ],
+  [
+   "Die drei ??? Folge 1 und der Super-Papagei - Robert Arthur",
+   "de"
+  ],
+  [
+   "Celeste Ng - Kleine Feuer überall",
+   "de"
+  ]
+ ],
+ "mismatch": [
+  [
+   "Stephenie Meyer - Twilight 3",
+   1,
+   0,
+   "anderer Band (3 statt 1)"
+  ],
+  [
+   "Twilight English",
+   1,
+   0,
+   "andere Sprache (en)"
+  ],
+  [
+   "Twilight",
+   1,
+   3000,
+   "Laufzeit passt nicht (50 statt 700 min)"
+  ],
+  [
+   "Twilight",
+   1,
+   42000,
+   null
+  ],
+  [
+   "Twilight Band 1-4",
+   1,
+   0,
+   null
+  ],
+  [
+   "Schimmelreiter",
+   0,
+   18000,
+   null
+  ]
+ ],
+ "feed": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<rss version=\"2.0\" xmlns:newznab=\"http://www.newznab.com/DTD/2010/feeds/attributes/\">\n<channel><title>Indexer</title>\n<item><title>Theodor.Storm-Der.Schimmelreiter.German.M4B</title><guid>https://idx.example/details/1</guid>\n <link>https://idx.example/getnzb/1</link><comments>https://idx.example/details/1#comments</comments>\n <pubDate>Mon, 02 Mar 2026 14:05:09 +0100</pubDate><category>Audio &gt; Audiobook</category>\n <enclosure url=\"https://idx.example/getnzb/1.nzb\" length=\"123456\" type=\"application/x-nzb\"/>\n <newznab:attr name=\"category\" value=\"3000\"/><newznab:attr name=\"category\" value=\"3030\"/>\n <newznab:attr name=\"size\" value=\"987654321\"/><newznab:attr name=\"grabs\" value=\"17\"/></item>\n<item><title>Ohne Link</title><link>javascript:alert(1)</link></item>\n<item><title> Zweites Buch 64kbps </title><link>http://idx.example/getnzb/2</link>\n <pubDate>kein Datum</pubDate><newznab:attr name=\"grabs\" value=\"viele\"/></item>\n</channel></rss>",
+ "parsed": [
+  {
+   "title": "Theodor.Storm-Der.Schimmelreiter.German.M4B",
+   "link": "https://idx.example/getnzb/1.nzb",
+   "size": 987654321,
+   "published": 1772456709.0,
+   "grabs": 17,
+   "category": "3030",
+   "categories": [
+    "3000",
+    "3030"
+   ],
+   "category_name": "Audio > Audiobook",
+   "details": "https://idx.example/details/1#comments",
+   "indexer": "Test",
+   "format": "M4B",
+   "language": "de",
+   "bitrate": null,
+   "abridged": false,
+   "drama": false
+  },
+  {
+   "title": "Zweites Buch 64kbps",
+   "link": "http://idx.example/getnzb/2",
+   "size": 0,
+   "published": null,
+   "grabs": null,
+   "category": null,
+   "categories": [],
+   "category_name": "",
+   "details": null,
+   "indexer": "Test",
+   "format": null,
+   "language": null,
+   "bitrate": 64,
+   "abridged": false,
+   "drama": false
+  }
+ ],
+ "caps": "<caps><server title=\"Test-Indexer\"/><categories>\n<category id=\"3000\" name=\"Audio\"><subcat id=\"3010\" name=\"MP3\"/><subcat id=\"3030\" name=\"Audiobook\"/></category>\n<category id=\"7000\" name=\"Other\"><subcat id=\"7020\" name=\"Hoerbuecher\"/><subcat id=\"7030\" name=\"Ebook\"/></category>\n<category id=\"8000\" name=\"Musik\"><subcat id=\"8010\" name=\"Pop\"/></category>\n<category id=\"x\" name=\"Hörspiel\"/><category id=\"5070\" name=\"Hörspiele\"/></categories></caps>",
+ "caps_categories": [
+  "3000",
+  "3010",
+  "3030",
+  "7020",
+  "8000",
+  "8010",
+  "5070"
+ ],
+ "dtd_refused": "Antwort enthält eine DTD – abgelehnt"
+}

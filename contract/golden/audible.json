@@ -1,0 +1,1629 @@
+{
+ "description": "How Hörwerk reads and matches shop data (Python answers; see make_audible.py).",
+ "products": [
+  {
+   "asin": "B0STORM001",
+   "title": " Der Schimmelreiter ",
+   "subtitle": "",
+   "language": "german",
+   "runtime_length_min": 302,
+   "authors": [
+    {
+     "name": "Theodor Storm"
+    },
+    {
+     "name": "Max Muster - Übersetzer"
+    },
+    {
+     "name": "Eva Vorwort - foreword"
+    }
+   ],
+   "narrators": [
+    {
+     "name": "Erika Beispiel"
+    },
+    {
+     "name": "Erika Beispiel"
+    }
+   ],
+   "publisher_name": "Hörverlag",
+   "release_date": "2019-03-01",
+   "format_type": "unabridged",
+   "series": [
+    {
+     "title": "Novellen",
+     "asin": "B0SER",
+     "sequence": "Buch 3,5"
+    },
+    {
+     "title": "Andere",
+     "sequence": "2-4"
+    }
+   ],
+   "category_ladders": [
+    {
+     "ladder": [
+      {
+       "name": "Klassiker"
+      },
+      {
+       "name": "Novellen"
+      }
+     ]
+    },
+    {
+     "ladder": [
+      {
+       "name": "Klassiker"
+      },
+      {
+       "name": "Deutsch"
+      }
+     ]
+    }
+   ],
+   "product_images": {
+    "500": "https://m.media-amazon.com/images/I/51abc._SL500_.jpg"
+   },
+   "publisher_summary": "<p>Ein <b>Deich</b>graf &amp; sein Schimmel.</p><p>Zweiter&nbsp;Absatz<br>neue Zeile</p><ul><li>eins</li><li>zwei</li></ul>",
+   "rating": {
+    "overall_distribution": {
+     "display_average_rating": "4.6",
+     "num_ratings": 1234
+    }
+   }
+  },
+  {
+   "asin": "B0STORM002",
+   "title": "Der Schimmelreiter",
+   "authors": [
+    {
+     "name": "Theodor Storm"
+    }
+   ],
+   "runtime_length_min": 120,
+   "format_type": "abridged",
+   "language": "GERMAN"
+  },
+  {
+   "asin": "B0OTHER003",
+   "title": "Der Schimmelreiter und andere Novellen",
+   "authors": [
+    {
+     "name": "Theodor Storm"
+    }
+   ],
+   "runtime_length_min": 900,
+   "format_type": "unabridged",
+   "issue_date": "2001-01-01T00:00"
+  },
+  {
+   "asin": "B0TWILI004",
+   "title": "Biss zum Morgengrauen",
+   "authors": [
+    {
+     "name": "Stephenie Meyer"
+    }
+   ],
+   "narrators": [
+    {
+     "name": "Ulrike Grote"
+    }
+   ],
+   "runtime_length_min": 690,
+   "format_type": "unabridged",
+   "series": [
+    {
+     "title": "Twilight-Saga",
+     "sequence": "1"
+    }
+   ]
+  }
+ ],
+ "normalized": [
+  {
+   "id": "B0STORM001",
+   "asin": "B0STORM001",
+   "title": "Der Schimmelreiter",
+   "subtitle": null,
+   "authors": [
+    "Theodor Storm"
+   ],
+   "translators": [
+    "Max Muster"
+   ],
+   "narrators": [
+    "Erika Beispiel"
+   ],
+   "series": "Novellen",
+   "series_asin": "B0SER",
+   "series_position": "3.5",
+   "all_series": [
+    {
+     "name": "Novellen",
+     "position": "3.5"
+    },
+    {
+     "name": "Andere",
+     "position": "2-4"
+    }
+   ],
+   "publisher": "Hörverlag",
+   "release_date": "2019-03-01",
+   "language": "German",
+   "runtime_min": 302,
+   "format_type": "unabridged",
+   "genres": [
+    "Klassiker"
+   ],
+   "tags": [
+    "Novellen",
+    "Deutsch"
+   ],
+   "description": "Ein Deichgraf & sein Schimmel.\n\nZweiter Absatz\nneue Zeile\n\neins\nzwei",
+   "summary_html": "<p>Ein <b>Deich</b>graf &amp; sein Schimmel.</p><p>Zweiter&nbsp;Absatz<br>neue Zeile</p><ul><li>eins</li><li>zwei</li></ul>",
+   "cover_url": "https://m.media-amazon.com/images/I/51abc.jpg",
+   "region": "de",
+   "url": "https://www.audible.de/pd/B0STORM001",
+   "is_adult": false,
+   "rating": 4.6,
+   "ratings": 1234,
+   "source": "audible"
+  },
+  {
+   "id": "B0STORM002",
+   "asin": "B0STORM002",
+   "title": "Der Schimmelreiter",
+   "subtitle": null,
+   "authors": [
+    "Theodor Storm"
+   ],
+   "translators": [],
+   "narrators": [],
+   "series": null,
+   "series_asin": null,
+   "series_position": null,
+   "all_series": [],
+   "publisher": null,
+   "release_date": null,
+   "language": "German",
+   "runtime_min": 120,
+   "format_type": "abridged",
+   "genres": [],
+   "tags": [],
+   "description": "",
+   "summary_html": "",
+   "cover_url": null,
+   "region": "de",
+   "url": "https://www.audible.de/pd/B0STORM002",
+   "is_adult": false,
+   "rating": 0.0,
+   "ratings": 0,
+   "source": "audible"
+  },
+  {
+   "id": "B0OTHER003",
+   "asin": "B0OTHER003",
+   "title": "Der Schimmelreiter und andere Novellen",
+   "subtitle": null,
+   "authors": [
+    "Theodor Storm"
+   ],
+   "translators": [],
+   "narrators": [],
+   "series": null,
+   "series_asin": null,
+   "series_position": null,
+   "all_series": [],
+   "publisher": null,
+   "release_date": "2001-01-01",
+   "language": "",
+   "runtime_min": 900,
+   "format_type": "unabridged",
+   "genres": [],
+   "tags": [],
+   "description": "",
+   "summary_html": "",
+   "cover_url": null,
+   "region": "de",
+   "url": "https://www.audible.de/pd/B0OTHER003",
+   "is_adult": false,
+   "rating": 0.0,
+   "ratings": 0,
+   "source": "audible"
+  },
+  {
+   "id": "B0TWILI004",
+   "asin": "B0TWILI004",
+   "title": "Biss zum Morgengrauen",
+   "subtitle": null,
+   "authors": [
+    "Stephenie Meyer"
+   ],
+   "translators": [],
+   "narrators": [
+    "Ulrike Grote"
+   ],
+   "series": "Twilight-Saga",
+   "series_asin": null,
+   "series_position": "1",
+   "all_series": [
+    {
+     "name": "Twilight-Saga",
+     "position": "1"
+    }
+   ],
+   "publisher": null,
+   "release_date": null,
+   "language": "",
+   "runtime_min": 690,
+   "format_type": "unabridged",
+   "genres": [],
+   "tags": [],
+   "description": "",
+   "summary_html": "",
+   "cover_url": null,
+   "region": "de",
+   "url": "https://www.audible.de/pd/B0TWILI004",
+   "is_adult": false,
+   "rating": 0.0,
+   "ratings": 0,
+   "source": "audible"
+  }
+ ],
+ "hints": [
+  {
+   "query": "Theodor Storm Der Schimmelreiter",
+   "title": "Der Schimmelreiter",
+   "author": "Theodor Storm",
+   "duration": 18100
+  },
+  {
+   "query": "Schimmelreiter",
+   "title": "",
+   "author": "",
+   "duration": 0
+  },
+  {
+   "query": "Storm Schimmelreiter",
+   "title": "Schimmelreiter",
+   "author": "Storm, Theodor",
+   "narrator": "Erika Beispiel",
+   "duration": 7300
+  },
+  {
+   "query": "Stephenie Meyer Twilight 1 Bis(s) zum Morgengrauen",
+   "title": "",
+   "author": "Stephenie Meyer",
+   "duration": 41400
+  }
+ ],
+ "ranked": [
+  [
+   {
+    "id": "B0STORM001",
+    "asin": "B0STORM001",
+    "title": "Der Schimmelreiter",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [
+     "Max Muster"
+    ],
+    "narrators": [
+     "Erika Beispiel"
+    ],
+    "series": "Novellen",
+    "series_asin": "B0SER",
+    "series_position": "3.5",
+    "all_series": [
+     {
+      "name": "Novellen",
+      "position": "3.5"
+     },
+     {
+      "name": "Andere",
+      "position": "2-4"
+     }
+    ],
+    "publisher": "Hörverlag",
+    "release_date": "2019-03-01",
+    "language": "German",
+    "runtime_min": 302,
+    "format_type": "unabridged",
+    "genres": [
+     "Klassiker"
+    ],
+    "tags": [
+     "Novellen",
+     "Deutsch"
+    ],
+    "description": "Ein Deichgraf & sein Schimmel.\n\nZweiter Absatz\nneue Zeile\n\neins\nzwei",
+    "summary_html": "<p>Ein <b>Deich</b>graf &amp; sein Schimmel.</p><p>Zweiter&nbsp;Absatz<br>neue Zeile</p><ul><li>eins</li><li>zwei</li></ul>",
+    "cover_url": "https://m.media-amazon.com/images/I/51abc.jpg",
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0STORM001",
+    "is_adult": false,
+    "rating": 4.6,
+    "ratings": 1234,
+    "source": "audible",
+    "match": {
+     "score": 1.0,
+     "title": 1.0,
+     "author": 1.0,
+     "duration": 1.0
+    }
+   },
+   {
+    "id": "B0STORM002",
+    "asin": "B0STORM002",
+    "title": "Der Schimmelreiter",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [],
+    "narrators": [],
+    "series": null,
+    "series_asin": null,
+    "series_position": null,
+    "all_series": [],
+    "publisher": null,
+    "release_date": null,
+    "language": "German",
+    "runtime_min": 120,
+    "format_type": "abridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0STORM002",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.8,
+     "title": 1.0,
+     "author": 1.0,
+     "duration": 0.0
+    }
+   },
+   {
+    "id": "B0OTHER003",
+    "asin": "B0OTHER003",
+    "title": "Der Schimmelreiter und andere Novellen",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [],
+    "narrators": [],
+    "series": null,
+    "series_asin": null,
+    "series_position": null,
+    "all_series": [],
+    "publisher": null,
+    "release_date": "2001-01-01",
+    "language": "",
+    "runtime_min": 900,
+    "format_type": "unabridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0OTHER003",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.604,
+     "title": 0.643,
+     "author": 1.0,
+     "duration": 0.0
+    }
+   },
+   {
+    "id": "B0TWILI004",
+    "asin": "B0TWILI004",
+    "title": "Biss zum Morgengrauen",
+    "subtitle": null,
+    "authors": [
+     "Stephenie Meyer"
+    ],
+    "translators": [],
+    "narrators": [
+     "Ulrike Grote"
+    ],
+    "series": "Twilight-Saga",
+    "series_asin": null,
+    "series_position": "1",
+    "all_series": [
+     {
+      "name": "Twilight-Saga",
+      "position": "1"
+     }
+    ],
+    "publisher": null,
+    "release_date": null,
+    "language": "",
+    "runtime_min": 690,
+    "format_type": "unabridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0TWILI004",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.223,
+     "title": 0.308,
+     "author": 0.214,
+     "duration": 0.0
+    }
+   }
+  ],
+  [
+   {
+    "id": "B0STORM001",
+    "asin": "B0STORM001",
+    "title": "Der Schimmelreiter",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [
+     "Max Muster"
+    ],
+    "narrators": [
+     "Erika Beispiel"
+    ],
+    "series": "Novellen",
+    "series_asin": "B0SER",
+    "series_position": "3.5",
+    "all_series": [
+     {
+      "name": "Novellen",
+      "position": "3.5"
+     },
+     {
+      "name": "Andere",
+      "position": "2-4"
+     }
+    ],
+    "publisher": "Hörverlag",
+    "release_date": "2019-03-01",
+    "language": "German",
+    "runtime_min": 302,
+    "format_type": "unabridged",
+    "genres": [
+     "Klassiker"
+    ],
+    "tags": [
+     "Novellen",
+     "Deutsch"
+    ],
+    "description": "Ein Deichgraf & sein Schimmel.\n\nZweiter Absatz\nneue Zeile\n\neins\nzwei",
+    "summary_html": "<p>Ein <b>Deich</b>graf &amp; sein Schimmel.</p><p>Zweiter&nbsp;Absatz<br>neue Zeile</p><ul><li>eins</li><li>zwei</li></ul>",
+    "cover_url": "https://m.media-amazon.com/images/I/51abc.jpg",
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0STORM001",
+    "is_adult": false,
+    "rating": 4.6,
+    "ratings": 1234,
+    "source": "audible",
+    "match": {
+     "score": 0.65,
+     "title": 1.0,
+     "author": 0.0,
+     "duration": null
+    }
+   },
+   {
+    "id": "B0STORM002",
+    "asin": "B0STORM002",
+    "title": "Der Schimmelreiter",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [],
+    "narrators": [],
+    "series": null,
+    "series_asin": null,
+    "series_position": null,
+    "all_series": [],
+    "publisher": null,
+    "release_date": null,
+    "language": "German",
+    "runtime_min": 120,
+    "format_type": "abridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0STORM002",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.65,
+     "title": 1.0,
+     "author": 0.0,
+     "duration": null
+    }
+   },
+   {
+    "id": "B0OTHER003",
+    "asin": "B0OTHER003",
+    "title": "Der Schimmelreiter und andere Novellen",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [],
+    "narrators": [],
+    "series": null,
+    "series_asin": null,
+    "series_position": null,
+    "all_series": [],
+    "publisher": null,
+    "release_date": "2001-01-01",
+    "language": "",
+    "runtime_min": 900,
+    "format_type": "unabridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0OTHER003",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.165,
+     "title": 0.253,
+     "author": 0.0,
+     "duration": null
+    }
+   },
+   {
+    "id": "B0TWILI004",
+    "asin": "B0TWILI004",
+    "title": "Biss zum Morgengrauen",
+    "subtitle": null,
+    "authors": [
+     "Stephenie Meyer"
+    ],
+    "translators": [],
+    "narrators": [
+     "Ulrike Grote"
+    ],
+    "series": "Twilight-Saga",
+    "series_asin": null,
+    "series_position": "1",
+    "all_series": [
+     {
+      "name": "Twilight-Saga",
+      "position": "1"
+     }
+    ],
+    "publisher": null,
+    "release_date": null,
+    "language": "",
+    "runtime_min": 690,
+    "format_type": "unabridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0TWILI004",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.0,
+     "title": 0.0,
+     "author": 0.0,
+     "duration": null
+    }
+   }
+  ],
+  [
+   {
+    "id": "B0STORM002",
+    "asin": "B0STORM002",
+    "title": "Der Schimmelreiter",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [],
+    "narrators": [],
+    "series": null,
+    "series_asin": null,
+    "series_position": null,
+    "all_series": [],
+    "publisher": null,
+    "release_date": null,
+    "language": "German",
+    "runtime_min": 120,
+    "format_type": "abridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0STORM002",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 1.0,
+     "title": 1.0,
+     "author": 1.0,
+     "duration": 1.0
+    }
+   },
+   {
+    "id": "B0STORM001",
+    "asin": "B0STORM001",
+    "title": "Der Schimmelreiter",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [
+     "Max Muster"
+    ],
+    "narrators": [
+     "Erika Beispiel"
+    ],
+    "series": "Novellen",
+    "series_asin": "B0SER",
+    "series_position": "3.5",
+    "all_series": [
+     {
+      "name": "Novellen",
+      "position": "3.5"
+     },
+     {
+      "name": "Andere",
+      "position": "2-4"
+     }
+    ],
+    "publisher": "Hörverlag",
+    "release_date": "2019-03-01",
+    "language": "German",
+    "runtime_min": 302,
+    "format_type": "unabridged",
+    "genres": [
+     "Klassiker"
+    ],
+    "tags": [
+     "Novellen",
+     "Deutsch"
+    ],
+    "description": "Ein Deichgraf & sein Schimmel.\n\nZweiter Absatz\nneue Zeile\n\neins\nzwei",
+    "summary_html": "<p>Ein <b>Deich</b>graf &amp; sein Schimmel.</p><p>Zweiter&nbsp;Absatz<br>neue Zeile</p><ul><li>eins</li><li>zwei</li></ul>",
+    "cover_url": "https://m.media-amazon.com/images/I/51abc.jpg",
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0STORM001",
+    "is_adult": false,
+    "rating": 4.6,
+    "ratings": 1234,
+    "source": "audible",
+    "match": {
+     "score": 0.83,
+     "title": 1.0,
+     "author": 1.0,
+     "duration": 0.0
+    }
+   },
+   {
+    "id": "B0OTHER003",
+    "asin": "B0OTHER003",
+    "title": "Der Schimmelreiter und andere Novellen",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [],
+    "narrators": [],
+    "series": null,
+    "series_asin": null,
+    "series_position": null,
+    "all_series": [],
+    "publisher": null,
+    "release_date": "2001-01-01",
+    "language": "",
+    "runtime_min": 900,
+    "format_type": "unabridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0OTHER003",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.546,
+     "title": 0.538,
+     "author": 1.0,
+     "duration": 0.0
+    }
+   },
+   {
+    "id": "B0TWILI004",
+    "asin": "B0TWILI004",
+    "title": "Biss zum Morgengrauen",
+    "subtitle": null,
+    "authors": [
+     "Stephenie Meyer"
+    ],
+    "translators": [],
+    "narrators": [
+     "Ulrike Grote"
+    ],
+    "series": "Twilight-Saga",
+    "series_asin": null,
+    "series_position": "1",
+    "all_series": [
+     {
+      "name": "Twilight-Saga",
+      "position": "1"
+     }
+    ],
+    "publisher": null,
+    "release_date": null,
+    "language": "",
+    "runtime_min": 690,
+    "format_type": "unabridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0TWILI004",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.278,
+     "title": 0.343,
+     "author": 0.357,
+     "duration": 0.0
+    }
+   }
+  ],
+  [
+   {
+    "id": "B0TWILI004",
+    "asin": "B0TWILI004",
+    "title": "Biss zum Morgengrauen",
+    "subtitle": null,
+    "authors": [
+     "Stephenie Meyer"
+    ],
+    "translators": [],
+    "narrators": [
+     "Ulrike Grote"
+    ],
+    "series": "Twilight-Saga",
+    "series_asin": null,
+    "series_position": "1",
+    "all_series": [
+     {
+      "name": "Twilight-Saga",
+      "position": "1"
+     }
+    ],
+    "publisher": null,
+    "release_date": null,
+    "language": "",
+    "runtime_min": 690,
+    "format_type": "unabridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0TWILI004",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.817,
+     "title": 0.667,
+     "author": 1.0,
+     "duration": 1.0
+    }
+   },
+   {
+    "id": "B0STORM001",
+    "asin": "B0STORM001",
+    "title": "Der Schimmelreiter",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [
+     "Max Muster"
+    ],
+    "narrators": [
+     "Erika Beispiel"
+    ],
+    "series": "Novellen",
+    "series_asin": "B0SER",
+    "series_position": "3.5",
+    "all_series": [
+     {
+      "name": "Novellen",
+      "position": "3.5"
+     },
+     {
+      "name": "Andere",
+      "position": "2-4"
+     }
+    ],
+    "publisher": "Hörverlag",
+    "release_date": "2019-03-01",
+    "language": "German",
+    "runtime_min": 302,
+    "format_type": "unabridged",
+    "genres": [
+     "Klassiker"
+    ],
+    "tags": [
+     "Novellen",
+     "Deutsch"
+    ],
+    "description": "Ein Deichgraf & sein Schimmel.\n\nZweiter Absatz\nneue Zeile\n\neins\nzwei",
+    "summary_html": "<p>Ein <b>Deich</b>graf &amp; sein Schimmel.</p><p>Zweiter&nbsp;Absatz<br>neue Zeile</p><ul><li>eins</li><li>zwei</li></ul>",
+    "cover_url": "https://m.media-amazon.com/images/I/51abc.jpg",
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0STORM001",
+    "is_adult": false,
+    "rating": 4.6,
+    "ratings": 1234,
+    "source": "audible",
+    "match": {
+     "score": 0.071,
+     "title": 0.0,
+     "author": 0.286,
+     "duration": 0.0
+    }
+   },
+   {
+    "id": "B0OTHER003",
+    "asin": "B0OTHER003",
+    "title": "Der Schimmelreiter und andere Novellen",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [],
+    "narrators": [],
+    "series": null,
+    "series_asin": null,
+    "series_position": null,
+    "all_series": [],
+    "publisher": null,
+    "release_date": "2001-01-01",
+    "language": "",
+    "runtime_min": 900,
+    "format_type": "unabridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0OTHER003",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.071,
+     "title": 0.0,
+     "author": 0.286,
+     "duration": 0.0
+    }
+   },
+   {
+    "id": "B0STORM002",
+    "asin": "B0STORM002",
+    "title": "Der Schimmelreiter",
+    "subtitle": null,
+    "authors": [
+     "Theodor Storm"
+    ],
+    "translators": [],
+    "narrators": [],
+    "series": null,
+    "series_asin": null,
+    "series_position": null,
+    "all_series": [],
+    "publisher": null,
+    "release_date": null,
+    "language": "German",
+    "runtime_min": 120,
+    "format_type": "abridged",
+    "genres": [],
+    "tags": [],
+    "description": "",
+    "summary_html": "",
+    "cover_url": null,
+    "region": "de",
+    "url": "https://www.audible.de/pd/B0STORM002",
+    "is_adult": false,
+    "rating": 0.0,
+    "ratings": 0,
+    "source": "audible",
+    "match": {
+     "score": 0.071,
+     "title": 0.0,
+     "author": 0.286,
+     "duration": 0.0
+    }
+   }
+  ]
+ ],
+ "best": [
+  [
+   "B0STORM001",
+   "B0STORM001",
+   "B0STORM001"
+  ],
+  [
+   "B0STORM001",
+   null,
+   null
+  ],
+  [
+   "B0STORM002",
+   "B0STORM002",
+   "B0STORM002"
+  ],
+  [
+   "B0TWILI004",
+   "B0TWILI004",
+   null
+  ]
+ ],
+ "auto": [
+  "B0STORM001",
+  "B0STORM001",
+  "B0STORM002",
+  "B0TWILI004"
+ ],
+ "clean_query": [
+  [
+   "Stephenie.Meyer.-.Twilight.1.-.Bis(s).zum.Morgengrauen",
+   "Stephenie Meyer. .Twilight.1. .Biss zum Morgengrauen"
+  ],
+  [
+   "Der Schimmelreiter (Ungekürzt) [MP3 128kbps] 2019",
+   "Der Schimmelreiter"
+  ],
+  [
+   "Autor - Titel (CD 1) {B0ABCDEFGH}",
+   "Autor Titel"
+  ],
+  [
+   "Freund(in) im Sturm_Teil 2 – Hörbuch",
+   "Freundin im Sturm Teil 2"
+  ],
+  [
+   "Mord: Im Orient | Express (1934)",
+   "Mord Im Orient Express"
+  ],
+  [
+   "J.K. Rowling - Harry Potter und der Stein der Weisen",
+   "J.K. Rowling Harry Potter und der Stein der Weisen"
+  ],
+  [
+   "(Hörspiel) Die drei ??? Folge 1",
+   "Die drei ??? Folge 1"
+  ]
+ ],
+ "find_asin": [
+  [
+   [
+    "B0ABCDEFGH"
+   ],
+   "B0ABCDEFGH"
+  ],
+  [
+   [
+    "xx b0abcdefgh"
+   ],
+   "B0ABCDEFGH"
+  ],
+  [
+   [
+    "3453123456"
+   ],
+   "3453123456"
+  ],
+  [
+   [
+    "ASIN 3453123456 im Text"
+   ],
+   "3453123456"
+  ],
+  [
+   [
+    "Buch 1234567890 lang"
+   ],
+   null
+  ],
+  [
+   [
+    ""
+   ],
+   null
+  ]
+ ],
+ "content_queries": [
+  [
+   "Stephenie Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl HörbucHHamburg DE MP3",
+   "Stephenie Meyer",
+   [
+    "Meyer-Twilight-Saga 5 - Biss zum ersten Sonnenstrahl Meyer",
+    "- Biss zum ersten Sonnenstrahl Meyer",
+    "Biss zum ersten Sonnenstrahl Meyer",
+    "Meyer-Twilight-Saga Meyer",
+    "Meyer-Twilight-Saga 5 - Biss Meyer",
+    "zum ersten Sonnenstrahl"
+   ]
+  ],
+  [
+   "Maerchen aus aller Welt Teil Gruene Feuer",
+   "",
+   [
+    "Märchen aus aller Welt Teil Grüne Feuer",
+    "Maerchen aus aller Welt",
+    "Teil Gruene Feuer"
+   ]
+  ],
+  [
+   "Twilight 4 Biss zum Ende der Nacht",
+   "Meyer, Stephenie",
+   [
+    "Twilight 4 Biss zum Ende der Nacht Meyer",
+    "Biss zum Ende der Nacht Meyer",
+    "zum Ende der Nacht Meyer",
+    "Twilight Meyer",
+    "Twilight 4 Biss zum Meyer",
+    "Ende der Nacht"
+   ]
+  ],
+  [
+   "Ein ganz langer Titel mit vielen Woertern 2019 2CDs",
+   "Ng",
+   [
+    "Ein ganz langer Titel mit vielen Woertern Ng",
+    "Ein ganz langer Titel mit vielen Wörtern Ng",
+    "Ein ganz langer Titel Ng",
+    "mit vielen Woertern"
+   ]
+  ],
+  [
+   "Kurz",
+   "",
+   []
+  ]
+ ],
+ "ratio": [
+  [
+   "schimmelreiter",
+   "der schimmelreiter",
+   0.875
+  ],
+  [
+   "abc",
+   "",
+   0.0
+  ],
+  [
+   "theodor storm",
+   "storm theodor",
+   0.5384615384615384
+  ],
+  [
+   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbb",
+   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaacccccccccccccccccccccccccccccc",
+   0.9056603773584906
+  ],
+  [
+   "e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e x",
+   "e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e e y",
+   0.9933333333333333
+  ]
+ ],
+ "series_position": [
+  [
+   "3",
+   "3"
+  ],
+  [
+   "Buch 3,5",
+   "3.5"
+  ],
+  [
+   "1-3",
+   "1-3"
+  ],
+  [
+   "Band 2 - 4",
+   "2-4"
+  ],
+  [
+   "",
+   null
+  ],
+  [
+   null,
+   null
+  ],
+  [
+   "x",
+   null
+  ]
+ ],
+ "lookup": [
+  [
+   {
+    "asin": "B0STORM001",
+    "query": "x"
+   },
+   [
+    "B0STORM001"
+   ],
+   [
+    "https://api.audible.de/1.0/catalog/products/B0STORM001?response_groups=contributors%2Cproduct_attrs%2Cproduct_desc%2Cproduct_extended_attrs%2Cseries%2Cmedia%2Ccategory_ladders%2Crating&image_sizes=500%2C1024"
+   ]
+  ],
+  [
+   {
+    "query": "Schimmelreiter",
+    "title": "",
+    "author": ""
+   },
+   [
+    "B0STORM001",
+    "B0STORM002",
+    "B0OTHER003"
+   ],
+   [
+    "https://api.audible.de/1.0/catalog/products?response_groups=contributors%2Cproduct_attrs%2Cproduct_desc%2Cproduct_extended_attrs%2Cseries%2Cmedia%2Ccategory_ladders%2Crating&image_sizes=500%2C1024&num_results=10&products_sort_by=Relevance&keywords=Schimmelreiter"
+   ]
+  ],
+  [
+   {
+    "query": "Nichts da",
+    "title": "T",
+    "author": "A",
+    "alt_query": "Kurz"
+   },
+   [
+    "B0STORM001",
+    "B0STORM002",
+    "B0OTHER003"
+   ],
+   [
+    "https://api.audible.de/1.0/catalog/products?response_groups=contributors%2Cproduct_attrs%2Cproduct_desc%2Cproduct_extended_attrs%2Cseries%2Cmedia%2Ccategory_ladders%2Crating&image_sizes=500%2C1024&num_results=10&products_sort_by=Relevance&title=T&author=A",
+    "https://api.audible.de/1.0/catalog/products?response_groups=contributors%2Cproduct_attrs%2Cproduct_desc%2Cproduct_extended_attrs%2Cseries%2Cmedia%2Ccategory_ladders%2Crating&image_sizes=500%2C1024&num_results=10&products_sort_by=Relevance&keywords=Nichts+da",
+    "https://api.audible.de/1.0/catalog/products?response_groups=contributors%2Cproduct_attrs%2Cproduct_desc%2Cproduct_extended_attrs%2Cseries%2Cmedia%2Ccategory_ladders%2Crating&image_sizes=500%2C1024&num_results=10&products_sort_by=Relevance&keywords=Kurz"
+   ]
+  ]
+ ],
+ "page": {
+  "asin": null,
+  "title": "Das Fräulein von Scuderi",
+  "subtitle": null,
+  "authors": [
+   "E. T. A. Hoffmann",
+   "Max",
+   "Moritz"
+  ],
+  "narrators": [
+   "Erika Muster",
+   "Max Muster"
+  ],
+  "translators": [],
+  "series": "Erzählungen",
+  "series_position": "3",
+  "publisher": "Hörverlag",
+  "release_date": "2020-05-01",
+  "language": "de",
+  "runtime_min": 332,
+  "format_type": null,
+  "genres": [
+   "Klassiker",
+   "Krimi"
+  ],
+  "tags": [],
+  "description": "Paris & ein Mord",
+  "cover_url": "https://img.example/c.jpg",
+  "region": null,
+  "url": "https://www.thalia.de/x",
+  "source": "thalia",
+  "isbn": "978222",
+  "id": "thalia:978222"
+ },
+ "page_og": {
+  "asin": null,
+  "title": "Der vierte Fall",
+  "subtitle": null,
+  "authors": [],
+  "narrators": [],
+  "translators": [],
+  "series": "Krimi-Reihe",
+  "series_position": "4",
+  "publisher": null,
+  "release_date": null,
+  "language": null,
+  "runtime_min": 0,
+  "format_type": null,
+  "genres": [],
+  "tags": [],
+  "description": "Kurz & gut",
+  "cover_url": null,
+  "region": null,
+  "url": "https://www.thalia.de/y",
+  "source": "thalia",
+  "isbn": null,
+  "id": "thalia:https://www.thalia.de/y"
+ },
+ "bookbeat": {
+  "asin": null,
+  "title": "Titel",
+  "subtitle": null,
+  "authors": [
+   "A",
+   "B"
+  ],
+  "narrators": [
+   "C",
+   "D"
+  ],
+  "translators": [],
+  "series": "S",
+  "series_position": "2",
+  "publisher": "P",
+  "release_date": "2021-02-03",
+  "language": "german",
+  "runtime_min": 62,
+  "format_type": "unabridged",
+  "genres": [
+   "G"
+  ],
+  "tags": [],
+  "description": "Hi",
+  "cover_url": "https://c.example/x.jpg?w=1400&h=1",
+  "region": null,
+  "url": "https://www.bookbeat.com/de/book/4711",
+  "source": "bookbeat",
+  "isbn": "2",
+  "id": "bookbeat:4711"
+ },
+ "bookbeat_hit": {
+  "asin": null,
+  "title": "T",
+  "subtitle": null,
+  "authors": [
+   "A",
+   "B C"
+  ],
+  "narrators": [],
+  "translators": [],
+  "series": null,
+  "series_position": null,
+  "publisher": null,
+  "release_date": null,
+  "language": "german",
+  "runtime_min": 0,
+  "format_type": null,
+  "genres": [],
+  "tags": [],
+  "description": "",
+  "cover_url": "https://i/x?w=500",
+  "region": null,
+  "url": null,
+  "source": "bookbeat",
+  "isbn": "9",
+  "id": "bookbeat:5"
+ },
+ "shops": [
+  [
+   "https://www.audible.de/pd/B0X",
+   "audible"
+  ],
+  [
+   "https://audible.co.uk/x",
+   "audible"
+  ],
+  [
+   "https://www.bookbeat.com/de/book/a-1",
+   "bookbeat"
+  ],
+  [
+   "https://thalia.at/p",
+   "thalia"
+  ],
+  [
+   "https://evil-audible.de.example/",
+   null
+  ],
+  [
+   "https://notthalia.de/",
+   null
+  ]
+ ],
+ "series": {
+  "all": {
+   "asin": "B0SERIES01",
+   "title": "Die Reihe",
+   "books": [
+    {
+     "id": "B0VOL00001",
+     "asin": "B0VOL00001",
+     "title": "Eins",
+     "subtitle": null,
+     "authors": [
+      "A"
+     ],
+     "translators": [],
+     "narrators": [],
+     "series": "Die Reihe",
+     "series_asin": "B0SERIES01",
+     "series_position": "1",
+     "all_series": [],
+     "publisher": null,
+     "release_date": null,
+     "language": "German",
+     "runtime_min": 0,
+     "format_type": "unabridged",
+     "genres": [],
+     "tags": [],
+     "description": "",
+     "summary_html": "",
+     "cover_url": null,
+     "region": "de",
+     "url": "https://www.audible.de/pd/B0VOL00001",
+     "is_adult": false,
+     "rating": 0.0,
+     "ratings": 0,
+     "source": "audible"
+    },
+    {
+     "id": "B0VOL00002",
+     "asin": "B0VOL00002",
+     "title": "Zwei",
+     "subtitle": null,
+     "authors": [
+      "A"
+     ],
+     "translators": [],
+     "narrators": [],
+     "series": "Die Reihe (Eigentitel)",
+     "series_asin": "B0SERIES01",
+     "series_position": "2",
+     "all_series": [
+      {
+       "name": "Die Reihe (Eigentitel)",
+       "position": "2"
+      }
+     ],
+     "publisher": null,
+     "release_date": null,
+     "language": "German",
+     "runtime_min": 0,
+     "format_type": "abridged",
+     "genres": [],
+     "tags": [],
+     "description": "",
+     "summary_html": "",
+     "cover_url": null,
+     "region": "de",
+     "url": "https://www.audible.de/pd/B0VOL00002",
+     "is_adult": false,
+     "rating": 0.0,
+     "ratings": 0,
+     "source": "audible"
+    }
+   ]
+  },
+  "german": {
+   "asin": "B0SERIES01",
+   "title": "Die Reihe",
+   "books": [
+    {
+     "id": "B0VOL00001",
+     "asin": "B0VOL00001",
+     "title": "Eins",
+     "subtitle": null,
+     "authors": [
+      "A"
+     ],
+     "translators": [],
+     "narrators": [],
+     "series": "Die Reihe",
+     "series_asin": "B0SERIES01",
+     "series_position": "1",
+     "all_series": [],
+     "publisher": null,
+     "release_date": null,
+     "language": "German",
+     "runtime_min": 0,
+     "format_type": "unabridged",
+     "genres": [],
+     "tags": [],
+     "description": "",
+     "summary_html": "",
+     "cover_url": null,
+     "region": "de",
+     "url": "https://www.audible.de/pd/B0VOL00001",
+     "is_adult": false,
+     "rating": 0.0,
+     "ratings": 0,
+     "source": "audible"
+    },
+    {
+     "id": "B0VOL00002",
+     "asin": "B0VOL00002",
+     "title": "Zwei",
+     "subtitle": null,
+     "authors": [
+      "A"
+     ],
+     "translators": [],
+     "narrators": [],
+     "series": "Die Reihe (Eigentitel)",
+     "series_asin": "B0SERIES01",
+     "series_position": "2",
+     "all_series": [
+      {
+       "name": "Die Reihe (Eigentitel)",
+       "position": "2"
+      }
+     ],
+     "publisher": null,
+     "release_date": null,
+     "language": "German",
+     "runtime_min": 0,
+     "format_type": "abridged",
+     "genres": [],
+     "tags": [],
+     "description": "",
+     "summary_html": "",
+     "cover_url": null,
+     "region": "de",
+     "url": "https://www.audible.de/pd/B0VOL00002",
+     "is_adult": false,
+     "rating": 0.0,
+     "ratings": 0,
+     "source": "audible"
+    }
+   ]
+  }
+ },
+ "audnexus": {
+  "asin": "B0N",
+  "title": "T",
+  "subtitle": null,
+  "authors": [
+   "A"
+  ],
+  "narrators": [],
+  "translators": [],
+  "series": "S",
+  "series_position": "2",
+  "publisher": null,
+  "release_date": "2020-01-02",
+  "language": "English",
+  "runtime_min": 0,
+  "format_type": null,
+  "genres": [
+   "G"
+  ],
+  "tags": [
+   "X"
+  ],
+  "description": "Hi",
+  "cover_url": null,
+  "region": "us",
+  "url": "https://www.audible.com/pd/B0N",
+  "source": "audnexus",
+  "isbn": null,
+  "id": "B0N"
+ },
+ "itunes": {
+  "asin": null,
+  "title": "Titel",
+  "subtitle": null,
+  "authors": [
+   "A",
+   "B",
+   "C"
+  ],
+  "narrators": [],
+  "translators": [],
+  "series": null,
+  "series_position": null,
+  "publisher": null,
+  "release_date": null,
+  "language": null,
+  "runtime_min": 0,
+  "format_type": null,
+  "genres": [],
+  "tags": [],
+  "description": "",
+  "cover_url": "https://x/1400x1400bb.jpg",
+  "region": null,
+  "url": "https://a/b",
+  "source": "apple",
+  "isbn": null,
+  "id": "apple:7"
+ },
+ "openlibrary": {
+  "asin": null,
+  "title": "T",
+  "subtitle": null,
+  "authors": [
+   "A",
+   "B"
+  ],
+  "narrators": [],
+  "translators": [],
+  "series": null,
+  "series_position": null,
+  "publisher": null,
+  "release_date": "1888",
+  "language": null,
+  "runtime_min": 0,
+  "format_type": null,
+  "genres": [],
+  "tags": [],
+  "description": "",
+  "cover_url": "https://covers.openlibrary.org/b/id/5-L.jpg",
+  "region": null,
+  "url": "https://openlibrary.org/works/OL1W",
+  "source": "openlibrary",
+  "isbn": "123",
+  "id": "openlibrary:/works/OL1W"
+ }
+}

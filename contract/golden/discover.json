@@ -1,0 +1,1007 @@
+{
+ "review_titles": [
+  [
+   "Buchkritik: \"Machtspiele\" von Alice Zeniter",
+   {
+    "title": "Machtspiele",
+    "author": "Alice Zeniter"
+   }
+  ],
+  [
+   "Gaia Vince: \"Das nomadische Jahrhundert\"",
+   {
+    "title": "Das nomadische Jahrhundert",
+    "author": "Gaia Vince"
+   }
+  ],
+  [
+   "„Zwei Leben“ von A. Autorin und B. Berger",
+   {
+    "title": "Zwei Leben",
+    "author": "A. Autorin"
+   }
+  ],
+  [
+   "Ein Gespräch über Bücher",
+   null
+  ],
+  [
+   "Manuel Bittorf: „Goldener Retriever“ – Weltschmerz und Übermut (Buchkritik)",
+   {
+    "title": "Goldener Retriever",
+    "author": "Manuel Bittorf"
+   }
+  ],
+  [
+   "Pernille Radeid, Jannicke Hansen (Ill.): \"Wenn der Nebel flüstert\"",
+   {
+    "title": "Wenn der Nebel flüstert",
+    "author": "Pernille Radeid"
+   }
+  ],
+  [
+   "„Das glückliche Schicksal“: Ach, diese wunderbaren Lücken!",
+   null
+  ],
+  [
+   "Buchkritik - »Der Fluss« v. Eva Ufer",
+   {
+    "title": "Der Fluss",
+    "author": "Eva Ufer"
+   }
+  ],
+  [
+   "BUCHKRITIK – \"Nacht\" von Ann & Bo",
+   {
+    "title": "Nacht",
+    "author": "Ann"
+   }
+  ],
+  [
+   "Autor: „Titel“",
+   {
+    "title": "Titel",
+    "author": "Autor"
+   }
+  ],
+  [
+   "\"Nur Titel\"",
+   null
+  ],
+  [
+   "",
+   null
+  ],
+  [
+   "Anna Autorin: „Leer“ — Unterzeile",
+   {
+    "title": "Leer",
+    "author": "Anna Autorin"
+   }
+  ],
+  [
+   "Kim Ko (Hg.): \"Alles\" von",
+   null
+  ],
+  [
+   "Lea Lux: \"Ein Titel\" von Tom Tal, Uwe Ulm",
+   {
+    "title": "Ein Titel",
+    "author": "Tom Tal"
+   }
+  ]
+ ],
+ "mentions": [
+  [
+   "<a href=\"x\"><img src=\"y\"/></a><b>Dora Kapralovas</b> kleines Juwel \"Die Mariborhypnose\" und\n<b>Jachym Topols</b> barocker Roman \"Die Hölle gibt es nicht\" vertreten den Schwerpunkt. Die <i>FAZ</i> denkt\nüber <b>Schuld und Sühne </b>nach. Und eine Biografie über <b>Rudolf Augstein</b>.",
+   [
+    {
+     "title": "Die Mariborhypnose",
+     "author": "Dora Kapralovas"
+    },
+    {
+     "title": "Die Hölle gibt es nicht",
+     "author": "Jachym Topols"
+    }
+   ]
+  ],
+  [
+   "<b>Anna von Regie</b> dreht „Ein Film“. <b>Bert Berger</b> schreibt. Dann „Ohne Autor“.",
+   [
+    {
+     "title": "Ein Film",
+     "author": "Anna von Regie"
+    }
+   ]
+  ],
+  [
+   "<b>Ca&szlig;ius Kl&ouml;n</b> mit &quot;Das &amp; Mehr&quot; und <b>x y</b> \"Klein\" sowie <b>Eins Zwei Drei Vier Fünf Sechs</b> \"Zu viel\"",
+   [
+    {
+     "title": "Klein",
+     "author": "Caßius Klön"
+    }
+   ]
+  ],
+  [
+   "<b>Lu Li</b> „Eins“ und „Zwei“! <B>Groß Klein</B> «Spitz»",
+   [
+    {
+     "title": "Eins",
+     "author": "Lu Li"
+    }
+   ]
+  ]
+ ],
+ "pt_list": [
+  "<html><body>\n<article title=\"Radio Nacht. Roman - 7 Notizen\" class=\"book teaser-block\"><h2><a href=\"/buch/juri-andruchowytsch/radio-nacht.html\">Juri Andruchowytsch: <span>Radio Nacht. Roman</span> </a></h2>\n<div class=\"paragraph\">Aus dem Ukrainischen.</div><a href=\"/buch/juri-andruchowytsch/radio-nacht.html\" class=\"gold\"><img src=\"x.svg\"><span> 7 Notizen</span></a></article>\n<article title=\"Ein Leben\" class=\"book teaser-block\"><h2><a href=\"/buch/anna-autorin/ein-leben.html\">Anna Autorin: <span>Ein Leben &amp; Sterben. teil zwei. Band 3</span> </a></h2></article>\n<article><h2> <a href=\"/buch/x/y.html\"> Ohne: <span>Notiz</span></a></h2><span>123 Notizen</span></article>\n</body></html>",
+  [
+   {
+    "title": "Radio Nacht",
+    "author": "Juri Andruchowytsch",
+    "link": "https://www.perlentaucher.de/buch/juri-andruchowytsch/radio-nacht.html",
+    "notes": 7
+   },
+   {
+    "title": "Ein Leben & Sterben. teil zwei",
+    "author": "Anna Autorin",
+    "link": "https://www.perlentaucher.de/buch/anna-autorin/ein-leben.html",
+    "notes": 0
+   },
+   {
+    "title": "Notiz",
+    "author": "Ohne",
+    "link": "https://www.perlentaucher.de/buch/x/y.html",
+    "notes": 123
+   }
+  ]
+ ],
+ "dlf_month": [
+  "<script>{&quot;content&quot;:&quot;&lt;a class=\\&quot;download-url-tracking\\&quot; href=\\&quot;x.pdf\\&quot;&gt;Kerstin Preiwu&szlig;: \\&quot;Wir alle\\&quot; (PDF)&lt;/a&gt; (B&uuml;chermarkt, 02.11.2026)&quot;},{&quot;content&quot;:&quot;&lt;a href=\\&quot;y.pdf\\&quot;&gt;Sachbuchbestenliste - Die besten Sachb&uuml;cher (PDF)&lt;/a&gt; (Studio 9, 29.10.2026)&quot;},{&quot;content&quot;:&quot;&lt;a href=\\&quot;z.pdf\\&quot;&gt;Carlos Barrag&aacute;n: &bdquo;Hi Honey. Nigerias Romance-Scam-Industrie&ldquo; (PDF)&lt;/a&gt; (Andruck, 31.10.2026)&quot;},{&quot;content&quot;:&quot;&lt;a href=\\&quot;w.pdf\\&quot;&gt;Ute Typo: \\&quot;Falsch\\&quot; (PDF)&lt;/a&gt; (Lesart 31.11.2026)&quot;},{&quot;teaserHeadline&quot;:&quot;Kerstin Preiwu&szlig;: \\&quot;Wir alle\\&quot;&quot;},{&quot;teaserHeadline&quot;:&quot;Daron Acemoglu: \\&quot;Das liberale Versprechen - Ein Essay\\&quot;&quot;},{&quot;teaserHeadline&quot;:&quot;Rezensionen&quot;}</script>",
+  [
+   {
+    "title": "Wir alle",
+    "author": "Kerstin Preiwuß",
+    "date": "Mon, 02 Nov 2026"
+   },
+   {
+    "title": "Hi Honey",
+    "author": "Carlos Barragán",
+    "date": "Sat, 31 Oct 2026"
+   },
+   {
+    "title": "Falsch",
+    "author": "Ute Typo",
+    "date": ""
+   },
+   {
+    "title": "Das liberale Versprechen",
+    "author": "Daron Acemoglu",
+    "date": ""
+   }
+  ]
+ ],
+ "dlf_lists": [
+  "<script>{&quot;content&quot;:&quot;&lt;a class=\\&quot;download-url-tracking\\&quot; href=\\&quot;x.pdf\\&quot;&gt;Kerstin Preiwu&szlig;: \\&quot;Wir alle\\&quot; (PDF)&lt;/a&gt; (B&uuml;chermarkt, 02.11.2026)&quot;},{&quot;content&quot;:&quot;&lt;a href=\\&quot;y.pdf\\&quot;&gt;Sachbuchbestenliste - Die besten Sachb&uuml;cher (PDF)&lt;/a&gt; (Studio 9, 29.10.2026)&quot;},{&quot;content&quot;:&quot;&lt;a href=\\&quot;z.pdf\\&quot;&gt;Carlos Barrag&aacute;n: &bdquo;Hi Honey. Nigerias Romance-Scam-Industrie&ldquo; (PDF)&lt;/a&gt; (Andruck, 31.10.2026)&quot;},{&quot;content&quot;:&quot;&lt;a href=\\&quot;w.pdf\\&quot;&gt;Ute Typo: \\&quot;Falsch\\&quot; (PDF)&lt;/a&gt; (Lesart 31.11.2026)&quot;},{&quot;teaserHeadline&quot;:&quot;Kerstin Preiwu&szlig;: \\&quot;Wir alle\\&quot;&quot;},{&quot;teaserHeadline&quot;:&quot;Daron Acemoglu: \\&quot;Das liberale Versprechen - Ein Essay\\&quot;&quot;},{&quot;teaserHeadline&quot;:&quot;Rezensionen&quot;}</script><p><a title=\"Datei herunterladen\" class=\"download-url-tracking\" href=\"https://bilder.deutschlandfunk.de/87/07/krimibestenliste-oktober2026-100.pdf\" data-tracking=\"{}\">Krimibestenliste - Die besten Krimis im Oktober 2026 (PDF)</a> (Lesart, 02.10.2026)</p><a href=\"https://bilder.deutschlandfunk.de/1/sachbuch.pdf\">Sachbuchbestenliste: Die besten Sachbücher (PDF)</a> (29.02.2026)<a href=\"https://bilder.deutschlandfunk.de/87/07/krimibestenliste-oktober2026-100.pdf\">Bestenliste nochmal (PDF)</a> (01.10.2026)<a href=\"https://evil.example/x-bestenliste.pdf\">Krimibestenliste (PDF)</a> (L, 02.10.2026)",
+  [
+   {
+    "name": "Die besten Krimis im Oktober 2026",
+    "url": "https://bilder.deutschlandfunk.de/87/07/krimibestenliste-oktober2026-100.pdf",
+    "date": "Fri, 02 Oct 2026"
+   },
+   {
+    "name": "Die besten Sachbücher",
+    "url": "https://bilder.deutschlandfunk.de/1/sachbuch.pdf",
+    "date": ""
+   }
+  ]
+ ],
+ "pdfs": {
+  "list": [
+   "JVBERi0xLjcKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1szIDAgUl0+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL1Jlc291cmNlczw8L0ZvbnQ8PC9GMSA1IDAgUi9GMiA2IDAgUj4+Pj4vQ29udGVudHMgNCAwIFI+PgplbmRvYmoKNCAwIG9iago8PC9MZW5ndGggNTA5L0ZpbHRlci9GbGF0ZURlY29kZT4+c3RyZWFtCniclZTdbtNAEIXv+xRzmUg07G5sx5YQUkPcSkQU1LhCgnKxtSfpYnsdedepyIPwdDwKF4x/CO1KTYuiE/lnfHbm81nPE3h9zoGHkKyBA6MfBxFCMAsgKWG0UAi3aCxqWNaqVAZUCR9zW91iDYKJYAzJd4iTk3lvFLk+QnQ+HG5G/Gb8qFoAF24589ryN4wxThKkKckj+cPxjBSSItIZaT6ci+F8QYpJ5/1zrQ2nPy7eHumUswD8WdSu3V5IspPRJ7Q04kUtld5g3TXO4JT3N88aAxmWEOtNoUx6R3h2lXaK4p2EK9w0hXNdhB6sUBHTxzeeosj+YRSE8dTByF2M7MDx6yjW2bjzH+1pxbWkXpUpGzOBa53RCPX4GyTvj3r5Ee+9lrIcvLZraEpotMEa4TMW1nVxYkBwg+Ah3EtZlQqWBSpNNplL19haQiJ/FJUL/hflzqDd25Y3XE9gjmnuvp4n+piGswNIn0D+fAZkV/8XJG2EYXhYpXcyl4XSR6f2At+N1AeVI1yqtHIT4XP+X4kIqTd2mIOz5xJB9YHo57go5DCH3rfoIS7wRUkgDy8agtBGvfOgAOykVTs8zqLdXlPhPWRxVdGuomUpPmnu4KCvUdzU1YtZsJ7FUm6NlZl9BavfmVzXKpcTeCe3lrYwfJEUqQXeS40Dqz927DWsCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PC9UeXBlL0ZvbnQvU3VidHlwZS9UcnVlVHlwZS9CYXNlRm9udC9BcmlhbC9FbmNvZGluZy9XaW5BbnNpRW5jb2Rpbmc+PgplbmRvYmoKNiAwIG9iago8PC9UeXBlL0ZvbnQvU3VidHlwZS9UeXBlMC9CYXNlRm9udC9YL0VuY29kaW5nL0lkZW50aXR5LUgvVG9Vbmljb2RlIDcgMCBSPj4KZW5kb2JqCjcgMCBvYmoKPDwvTGVuZ3RoIDE5My9GaWx0ZXIvRmxhdGVEZWNvZGU+PnN0cmVhbQp4nF2QTQ6DIBCFrzI3EKyiTYxJqzVx16QnQETLomjQ3r/CY2NJ4PFl/idp+ra3Zqfk6Rb10jtNxo5Ob8vXKU2Dno0lntJo1B4pvOojV+Lxv4x6W6XSTtpZU8WOU1PVHacmbcc/Oy8RNkzqLV1w57WXLA/C0iDiCrqAHqAsSMpACChinDh5FiAIK0ENCKm7SDfYUIjdQRDWnGwtCMkYColYvUMvaJ6jwRztcswn4MLjfFlYTtyCX5Nf6aH+/gAGkWhRCmVuZHN0cmVhbQplbmRvYmoKdHJhaWxlcjw8L1Jvb3QgMSAwIFI+PgolJUVPRg==",
+   [
+    {
+     "rank": 1,
+     "title": "Ein unglücklicher Tod",
+     "author": "Peter Grainger"
+    },
+    {
+     "rank": 2,
+     "title": "Endzeitfaschismus. Und der Kampf um unsere Welt",
+     "author": "Naomi Klein und Astra Taylor"
+    },
+    {
+     "rank": 5,
+     "title": "Die Schakalin",
+     "author": "Mike Nicol"
+    },
+    {
+     "rank": 5,
+     "title": "Glanz und Elend der Konservativen",
+     "author": "Roger de Weck"
+    }
+   ]
+  ],
+  "list_plain": [
+   "JVBERi0xLjcKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1szIDAgUl0+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL1Jlc291cmNlczw8L0ZvbnQ8PC9GMSA1IDAgUi9GMiA2IDAgUj4+Pj4vQ29udGVudHMgNCAwIFI+PgplbmRvYmoKNCAwIG9iago8PC9MZW5ndGggMTI3NT4+c3RyZWFtCkJUIC9GMSAxOCBUZiAxIDAgMCAxIDI4IDY3NiBUbSAoRGllIGJlc3RlbiBLcmltaXMgaW0gT2t0b2JlciAyMDI2KSBUaiBFVApCVCAvRjEgOSBUZiAxIDAgMCAxIDI4IDYyMiBUbSAoMSBcKDFcKSkgVGogRVQKQlQgL0YyIDEyIFRmIDEgMCAwIDEgMjggNjA0IFRtIDwwMDAxMDAwMjAwMDMwMDA0MDAwNTAwMDMwMDA3MDAwODAwMDkwMDBBMDAwQjAwMDgwMDAyMDAwQTAwMEQwMDBFMDAwRjAwMDQwMDEwMDAxMTAwMTI+IFRqIEVUCkJUIC9GMSA5IFRmIDEgMCAwIDEgMTA2IDU3OSBUbSAwIDAgVGQKKFBldGVyIEdyYWluZ2VyKSBUaiAwIC0xMCBUZAooQXVzIGRlbSBFbmdsaXNjaGVuIHZvbikgVGogMCAtMTAgVGQKKEV2YSBSZWd1bCkgVGogMCAtMTAgVGQKKDI4NCBTZWl0ZW4pIFRqIDAgLTEwIFRkCkVUCkJUIC9GMSA5IFRmIDEgMCAwIDEgMjA4IDYyMiBUbSAoMiBcKC1cKSkgVGogRVQKQlQgL0YxIDEyIFRmIDEgMCAwIDEgMjA4IDYwNCBUbSBbKEVuZCkgLTEwICh6ZWl0ZmFzY2hpc211cy4gVW5kIGRlcildIFRKIEVUCkJUIC9GMSAxMiBUZiAxIDAgMCAxIDIwOCA1OTEgVG0gWyhLYW0pIC0xMCAocGYgdW0gdW5zZXJlIFdlbHQpXSBUSiBFVApCVCAvRjEgOSBUZiAxIDAgMCAxIDI4NiA1NjYgVG0gMCAwIFRkCihOYW9taSBLbGVpbiB1bmQpIFRqIDAgLTEwIFRkCihBc3RyYSBUYXlsb3IpIFRqIDAgLTEwIFRkCijcYmVyc2V0enQgdm9uIFUuIEJlY2tlcikgVGogMCAtMTAgVGQKRVQKQlQgL0YxIDkgVGYgMSAwIDAgMSAzODcgNjIyIFRtICg1IFwollwpKSBUaiBFVApCVCAvRjEgMTIgVGYgMSAwIDAgMSAzODcgNjA0IFRtIFsoRGllKSAtMTAgKCBTY2hha2FsaW4pXSBUSiBFVApCVCAvRjEgOSBUZiAxIDAgMCAxIDQ2NSA1NzkgVG0gMCAwIFRkCihNaWtlIE5pY29sKSBUaiAwIC0xMCBUZAooNTExIFNlaXRlbikgVGogMCAtMTAgVGQKRVQKQlQgL0YxIDkgVGYgMSAwIDAgMSAyOCAzODAgVG0gKDUgXCgxMFwpKSBUaiBFVApCVCAvRjEgMTIgVGYgMSAwIDAgMSAyOCAzNjIgVG0gWyhHbGEpIC0xMCAobnogdW5kIEVsZW5kIGRlcildIFRKIEVUCkJUIC9GMSAxMiBUZiAxIDAgMCAxIDI4IDM0OSBUbSBbKEtvbikgLTEwIChzZXJ2YXRpdmVuKV0gVEogRVQKQlQgL0YxIDkgVGYgMSAwIDAgMSAxMDYgMzI0IFRtIDAgMCBUZAooUm9nZXIgZGUgV2VjaykgVGogMCAtMTAgVGQKKDE4IEV1cm8pIFRqIDAgLTEwIFRkCkVUCkJUIC9GMSA5IFRmIDEgMCAwIDEgMjggMzAwIFRtIChLYXBzdGFkdCwgU/xkYWZyaWthLiBDYXB0YWluIFphcmEgRGV3YW5lKSBUaiBFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHJ1ZVR5cGUvQmFzZUZvbnQvQXJpYWwvRW5jb2RpbmcvV2luQW5zaUVuY29kaW5nPj4KZW5kb2JqCjYgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTAvQmFzZUZvbnQvWC9FbmNvZGluZy9JZGVudGl0eS1IL1RvVW5pY29kZSA3IDAgUj4+CmVuZG9iago3IDAgb2JqCjw8L0xlbmd0aCAxOTMvRmlsdGVyL0ZsYXRlRGVjb2RlPj5zdHJlYW0KeJxdkE0OgyAQha8yNxCsok2MSas1cdekJ0BEy6Jo0N6/wmNjSeDxZf4nafq2t2an5OkW9dI7TcaOTm/L1ylNg56NJZ7SaNQeKbzqI1fi8b+Melul0k7aWVPFjlNT1R2nJm3HPzsvETZM6i1dcOe1lywPwtIg4gq6gB6gLEjKQAgoYpw4eRYgCCtBDQipu0g32FCI3UEQ1pxsLQjJGAqJWL1DL2ieo8Ec7XLMJ+DC43xZWE7cgl+TX+mh/v4ABpFoUQplbmRzdHJlYW0KZW5kb2JqCnRyYWlsZXI8PC9Sb290IDEgMCBSPj4KJSVFT0Y=",
+   [
+    {
+     "rank": 1,
+     "title": "Ein unglücklicher Tod",
+     "author": "Peter Grainger"
+    },
+    {
+     "rank": 2,
+     "title": "Endzeitfaschismus. Und der Kampf um unsere Welt",
+     "author": "Naomi Klein und Astra Taylor"
+    },
+    {
+     "rank": 5,
+     "title": "Die Schakalin",
+     "author": "Mike Nicol"
+    },
+    {
+     "rank": 5,
+     "title": "Glanz und Elend der Konservativen",
+     "author": "Roger de Weck"
+    }
+   ]
+  ],
+  "text_only": [
+   "JVBERi0xLjcKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1szIDAgUl0+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL1Jlc291cmNlczw8L0ZvbnQ8PC9GMSA1IDAgUi9GMiA2IDAgUj4+Pj4vQ29udGVudHMgNCAwIFI+PgplbmRvYmoKNCAwIG9iago8PC9MZW5ndGggNTIvRmlsdGVyL0ZsYXRlRGVjb2RlPj5zdHJlYW0KeJxzClHQdzNUsFQISVMwVDAAQkMFIwsFMwMDhZBcBQ2/0iKFkNSKEk2FkCwF1xAA6t4K9QplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHJ1ZVR5cGUvQmFzZUZvbnQvQXJpYWwvRW5jb2RpbmcvV2luQW5zaUVuY29kaW5nPj4KZW5kb2JqCjYgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTAvQmFzZUZvbnQvWC9FbmNvZGluZy9JZGVudGl0eS1IL1RvVW5pY29kZSA3IDAgUj4+CmVuZG9iago3IDAgb2JqCjw8L0xlbmd0aCAxOTMvRmlsdGVyL0ZsYXRlRGVjb2RlPj5zdHJlYW0KeJxdkE0OgyAQha8yNxCsok2MSas1cdekJ0BEy6Jo0N6/wmNjSeDxZf4nafq2t2an5OkW9dI7TcaOTm/L1ylNg56NJZ7SaNQeKbzqI1fi8b+Melul0k7aWVPFjlNT1R2nJm3HPzsvETZM6i1dcOe1lywPwtIg4gq6gB6gLEjKQAgoYpw4eRYgCCtBDQipu0g32FCI3UEQ1pxsLQjJGAqJWL1DL2ieo8Ec7XLMJ+DC43xZWE7cgl+TX+mh/v4ABpFoUQplbmRzdHJlYW0KZW5kb2JqCnRyYWlsZXI8PC9Sb290IDEgMCBSPj4KJSVFT0Y=",
+   []
+  ],
+  "not_pdf": [
+   "PGh0bWw+bm90IGEgcGRmPC9odG1sPg==",
+   {
+    "error": "no PDF"
+   }
+  ],
+  "operators": [
+   "JVBERi0xLjcKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1szIDAgUl0+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL1Jlc291cmNlczw8L0ZvbnQ8PC9GMSA1IDAgUi9GMiA2IDAgUj4+Pj4vQ29udGVudHMgNCAwIFI+PgplbmRvYmoKNCAwIG9iago8PC9MZW5ndGggMjMzL0ZpbHRlci9GbGF0ZURlY29kZT4+c3RyZWFtCnicbY9BawIxEIXv/op3MxG2O8nOWgtSULSI2FsOUtNDoalYMFtWbf35zmYRtiJhIMy8eW++qUP+YvAE9wUDkmdgiFBKuT1UAa/Yaw33jbnrTVu5sUkvGh7J9xOG4VZQs1DDF8z1NtRpxQ2wUW9/YaeRFSJXx6Df4ZYdrzZ6JFYskTOoSYyYnHzvWLUehMykkDHbYYlhsKKV33MzzM/IymaoFvVh+4DfKmJ9c+0/uKIDJ7ZexXC64bNXvs5K4txjTESCTVZK2sTpiE3Tlnvyqvo53MW7OgkiP7bh813E60eMGn2RXwDvM1nZCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iago8PC9UeXBlL0ZvbnQvU3VidHlwZS9UcnVlVHlwZS9CYXNlRm9udC9BcmlhbC9FbmNvZGluZy9XaW5BbnNpRW5jb2Rpbmc+PgplbmRvYmoKNiAwIG9iago8PC9UeXBlL0ZvbnQvU3VidHlwZS9UeXBlMC9CYXNlRm9udC9YL0VuY29kaW5nL0lkZW50aXR5LUgvVG9Vbmljb2RlIDcgMCBSPj4KZW5kb2JqCjcgMCBvYmoKPDwvTGVuZ3RoIDE5My9GaWx0ZXIvRmxhdGVEZWNvZGU+PnN0cmVhbQp4nF2QTQ6DIBCFrzI3EKyiTYxJqzVx16QnQETLomjQ3r/CY2NJ4PFl/idp+ra3Zqfk6Rb10jtNxo5Ob8vXKU2Dno0lntJo1B4pvOojV+Lxv4x6W6XSTtpZU8WOU1PVHacmbcc/Oy8RNkzqLV1w57WXLA/C0iDiCrqAHqAsSMpACChinDh5FiAIK0ENCKm7SDfYUIjdQRDWnGwtCMkYColYvUMvaJ6jwRztcswn4MLjfFlYTtyCX5Nf6aH+/gAGkWhRCmVuZHN0cmVhbQplbmRvYmoKdHJhaWxlcjw8L1Jvb3QgMSAwIFI+PgolJUVPRg==",
+   [
+    {
+     "rank": 3,
+     "title": "Der ärger Zwei te",
+     "author": "Ann Au tor Ben BeHrsg. von X"
+    },
+    {
+     "rank": 12,
+     "title": "Ein",
+     "author": "Ein Mann"
+    }
+   ]
+  ],
+  "objstm": [
+   "JVBERi0xLjUKMSAwIG9iago8PC9UeXBlL0NhdGFsb2c+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL09ialN0bS9OIDQvRmlyc3QgMjEvRmlsdGVyWy9GbGF0ZURlY29kZV0vTGVuZ3RoIDExMj4+c3RyZWFtDQp4nDNWMFCwVDAzUDA0UDA3VzA0VLA0UrCx0Q+pLEjVD0hMT9UPSi3OLy1KTi0GqjNQCNJ3zs8rSc0rKY42AXEVTMEkUCuQirWzA+l1A6oAmQcUgQoYggyGc8FmgxTph+SH5mUm56ekKphBpQFXnyVeCmVuZHN0cmVhbQplbmRvYmoKNCAwIG9iago8PC9MZW5ndGggMT4+c3RyZWFtCkJUIC9GMSA5IFRmIDEgMCAwIDEgNTAgNDAwIFRtICg3IFwoN1wpKSBUaiBFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwvRmlsdGVyL0ZsYXRlRGVjb2RlPj5zdHJlYW0KeJxzClHQdzNUMDRSCElTMFQwAEJDBVMDBWMLoEiugoZ7kL+ipkJIloJriIITRK0lslJLUwVjMwOwUtcwRwXXIL/gEKh6AG7aE9kKZW5kc3RyZWFtCmVuZG9iago2IDAgb2JqCjw8L0ZpbHRlciAvRmxhdGVEZWNvZGU+PnN0cmVhbQp4nEtKTc/MS85NLFAwVEgCsZPSihLz0lMVbEwM7RRsTB2BhIGBGZCdmpcCk4MrTc5ILFKwMTIEK3JxgyoCiwJZIGMByPweoAplbmRzdHJlYW0KZW5kb2JqCjggMCBvYmoKPDwvU3VidHlwZS9JbWFnZS9GaWx0ZXIvRENURGVjb2RlPj5zdHJlYW0KeHgKZW5kc3RyZWFtCmVuZG9iagoxMiAwIG9iago8PC9GaWx0ZXIvTFpXRGVjb2RlPj5zdHJlYW0KeHgKZW5kc3RyZWFtCmVuZG9iagolJUVPRg==",
+   [
+    {
+     "rank": 7,
+     "title": "groß",
+     "author": "eva ernst"
+    }
+   ]
+  ]
+ },
+ "best_list_reviews": [
+  {
+   "title": "Ein unglücklicher Tod",
+   "author": "Peter Grainger",
+   "date": "Fri, 02 Oct 2026",
+   "link": "https://bilder.deutschlandfunk.de/k.pdf",
+   "list": "Die besten Krimis",
+   "rank": 1,
+   "month": true
+  },
+  {
+   "title": "Endzeitfaschismus",
+   "author": "Naomi Klein",
+   "date": "Fri, 02 Oct 2026",
+   "link": "https://bilder.deutschlandfunk.de/k.pdf",
+   "list": "Die besten Krimis",
+   "rank": 2,
+   "month": true
+  },
+  {
+   "title": "Die Schakalin",
+   "author": "Mike Nicol",
+   "date": "Fri, 02 Oct 2026",
+   "link": "https://bilder.deutschlandfunk.de/k.pdf",
+   "list": "Die besten Krimis",
+   "rank": 5,
+   "month": true
+  },
+  {
+   "title": "Glanz und Elend der Konservativen",
+   "author": "Roger de Weck",
+   "date": "Fri, 02 Oct 2026",
+   "link": "https://bilder.deutschlandfunk.de/k.pdf",
+   "list": "Die besten Krimis",
+   "rank": 5,
+   "month": true
+  }
+ ],
+ "best_entry": {
+  "name": "Die besten Krimis",
+  "url": "https://bilder.deutschlandfunk.de/k.pdf",
+  "date": "Fri, 02 Oct 2026"
+ },
+ "rss": [
+  [
+   "Deutschlandfunk Kultur",
+   "rss",
+   "<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"><channel>\n<item><title>Buchkritik: \"Das stille Haus\" von Anna Autorin</title><link>https://www.deutschlandfunkkultur.de/a-100.html</link>\n<pubDate>Fri, 30 Oct 2026 10:00:00 +0100</pubDate></item>\n<item><title>Bert Berger: „Die Geschichte der Wolken“</title><link> http://unsicher.example/b </link></item>\n<item><title>Ein Gespräch über Bücher</title><link>https://www.deutschlandfunkkultur.de/c-100.html</link></item>\n<item><title><![CDATA[Cara C: „Daten & Fakten“]]></title><link>https://x.example/&amp;y</link><pubDate>Sat, 1 Nov 2026</pubDate></item>\n</channel></rss>",
+   [
+    {
+     "title": "Das stille Haus",
+     "author": "Anna Autorin",
+     "source": "Deutschlandfunk Kultur",
+     "link": "https://www.deutschlandfunkkultur.de/a-100.html",
+     "date": "Fri, 30 Oct 2026"
+    },
+    {
+     "title": "Die Geschichte der Wolken",
+     "author": "Bert Berger",
+     "source": "Deutschlandfunk Kultur",
+     "link": "",
+     "date": ""
+    },
+    {
+     "title": "Daten & Fakten",
+     "author": "Cara C",
+     "source": "Deutschlandfunk Kultur",
+     "link": "https://x.example/&y",
+     "date": "Sat, 1 Nov 2026"
+    }
+   ]
+  ],
+  [
+   "Perlentaucher",
+   "rss",
+   "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>\n<item><category>BÜCHERBRIEF</category><title>BÜCHERBRIEF: Oktober</title>\n<link>https://www.perlentaucher.de/buecherbrief/oktober.html</link><pubDate>Mon, 12 Oct 2026 08:53:37 +0000</pubDate>\n<description><![CDATA[<a href=\"x\"><img src=\"y\"/></a><b>Dora Kapralovas</b> kleines Juwel \"Die Mariborhypnose\" und\n<b>Jachym Topols</b> barocker Roman \"Die Hölle gibt es nicht\" vertreten den Schwerpunkt.]]></description></item>\n<item><category>IM KINO</category><title>Film</title><link>https://www.perlentaucher.de/k.html</link>\n<description><![CDATA[<b>Anna Regie</b> dreht \"Ein Film\"]]></description></item>\n<item><category> taschenbücherbrief extra</category><title>T</title>\n<description>&lt;b&gt;Tim Taschen&lt;/b&gt; mit \"Klein und fein\"</description></item>\n</channel></rss>",
+   [
+    {
+     "title": "Die Mariborhypnose",
+     "author": "Dora Kapralovas",
+     "source": "Perlentaucher",
+     "link": "https://www.perlentaucher.de/buecherbrief/oktober.html",
+     "date": "Mon, 12 Oct 2026"
+    },
+    {
+     "title": "Die Hölle gibt es nicht",
+     "author": "Jachym Topols",
+     "source": "Perlentaucher",
+     "link": "https://www.perlentaucher.de/buecherbrief/oktober.html",
+     "date": "Mon, 12 Oct 2026"
+    },
+    {
+     "title": "Klein und fein",
+     "author": "Tim Taschen",
+     "source": "Perlentaucher",
+     "link": "",
+     "date": ""
+    }
+   ]
+  ],
+  [
+   "Perlentaucher",
+   "list",
+   "<html><body>\n<article title=\"Radio Nacht. Roman - 7 Notizen\" class=\"book teaser-block\"><h2><a href=\"/buch/juri-andruchowytsch/radio-nacht.html\">Juri Andruchowytsch: <span>Radio Nacht. Roman</span> </a></h2>\n<div class=\"paragraph\">Aus dem Ukrainischen.</div><a href=\"/buch/juri-andruchowytsch/radio-nacht.html\" class=\"gold\"><img src=\"x.svg\"><span> 7 Notizen</span></a></article>\n<article title=\"Ein Leben\" class=\"book teaser-block\"><h2><a href=\"/buch/anna-autorin/ein-leben.html\">Anna Autorin: <span>Ein Leben &amp; Sterben. teil zwei. Band 3</span> </a></h2></article>\n<article><h2> <a href=\"/buch/x/y.html\"> Ohne: <span>Notiz</span></a></h2><span>123 Notizen</span></article>\n</body></html>",
+   [
+    {
+     "title": "Radio Nacht",
+     "author": "Juri Andruchowytsch",
+     "link": "https://www.perlentaucher.de/buch/juri-andruchowytsch/radio-nacht.html",
+     "notes": 7,
+     "source": "Perlentaucher",
+     "date": ""
+    },
+    {
+     "title": "Ein Leben & Sterben. teil zwei",
+     "author": "Anna Autorin",
+     "link": "https://www.perlentaucher.de/buch/anna-autorin/ein-leben.html",
+     "notes": 0,
+     "source": "Perlentaucher",
+     "date": ""
+    },
+    {
+     "title": "Notiz",
+     "author": "Ohne",
+     "link": "https://www.perlentaucher.de/buch/x/y.html",
+     "notes": 123,
+     "source": "Perlentaucher",
+     "date": ""
+    }
+   ]
+  ]
+ ],
+ "slugs": [
+  [
+   "Rüdiger Maas",
+   "ruediger-maas"
+  ],
+  [
+   "Cathy O'Neil",
+   "cathy-oneil"
+  ],
+  [
+   "Josef M. Gaßner",
+   "josef-m-gassner"
+  ],
+  [
+   "Özden Terli",
+   "oezden-terli"
+  ],
+  [
+   "  ",
+   ""
+  ],
+  [
+   "Ana-María Ñúñez",
+   "ana-maria-nunez"
+  ],
+  [
+   "Jean d’Ormesson",
+   "jean-dormesson"
+  ]
+ ],
+ "has_books": [
+  [
+   "<p>4 Bücher</p>",
+   true
+  ],
+  [
+   "<p>1 Buch</p>",
+   false
+  ],
+  [
+   "1 Buecher",
+   true
+  ],
+  [
+   "<h1>Buchautor-Übersicht</h1> 12 Bücher",
+   false
+  ],
+  [
+   "Bücher",
+   false
+  ],
+  [
+   "x12 Bücherei",
+   false
+  ]
+ ],
+ "surnames": [
+  [
+   "Dora Kapralovas",
+   [
+    "kapralovas",
+    "kapralova"
+   ]
+  ],
+  [
+   "Ann Bus",
+   [
+    "bus"
+   ]
+  ],
+  [
+   "Hans Rosling",
+   [
+    "rosling"
+   ]
+  ],
+  [
+   "",
+   [
+    ""
+   ]
+  ],
+  [
+   "Eva Faulerová.",
+   [
+    "faulerova"
+   ]
+  ]
+ ],
+ "main_titles": [
+  [
+   "Endzeitfaschismus - Und der Kampf",
+   "Endzeitfaschismus"
+  ],
+  [
+   "Hi Honey. Nigerias Scam",
+   "Hi Honey"
+  ],
+  [
+   "U.S.A. heute",
+   "U.S.A. heute"
+  ],
+  [
+   " - nur",
+   " - nur"
+  ],
+  [
+   "Eins – Zwei",
+   "Eins"
+  ]
+ ],
+ "mix": [
+  [
+   {
+    "source": "DLF",
+    "date": "Fri, 23 Oct 2026",
+    "n": 23
+   },
+   {
+    "source": "DLF",
+    "date": "Fri, 30 Oct 2026",
+    "n": 30
+   },
+   {
+    "source": "DLF",
+    "date": "Fri, 16 Oct 2026",
+    "n": 16
+   },
+   {
+    "source": "PT",
+    "date": "",
+    "seen": 1,
+    "n": 1
+   },
+   {
+    "source": "PT",
+    "date": "Kaputt",
+    "seen": 5,
+    "n": 5
+   },
+   {
+    "date": "Sun, 01 Nov 2026",
+    "found": 1893456000,
+    "n": 7
+   },
+   {
+    "source": "DLF",
+    "date": "Mon, 30 Feb 2026",
+    "n": 9
+   }
+  ],
+  [
+   7,
+   30,
+   5,
+   23,
+   1,
+   16,
+   9
+  ]
+ ],
+ "trusted_authors": [
+  "Yuval Noah Harari",
+  "Stefanie Stahl",
+  "Robert Habeck",
+  "Richard David Precht",
+  "Matthias Brandt",
+  "Constantin Schreiber",
+  "Rüdiger Maas",
+  "Mai Thi Nguyen-Kim",
+  "Harald Lesch",
+  "Ranga Yogeshwar",
+  "Florian Freistetter",
+  "Josef M. Gaßner",
+  "Heino Falcke",
+  "Ulrich Walter",
+  "Ernst Peter Fischer",
+  "Stefan Klein",
+  "Bas Kast",
+  "Henning Beck",
+  "Martin Korte",
+  "Volker Busch",
+  "Leon Windscheid",
+  "Lars Jaeger",
+  "Sabine Hossenfelder",
+  "Manuela Lenzen",
+  "Katharina Zweig",
+  "Dirk Steffens",
+  "Frank Schätzing",
+  "Jens Soentgen",
+  "Giulia Enders",
+  "Eckart von Hirschhausen",
+  "Yael Adler",
+  "Andreas Michalsen",
+  "Michael Tsokos",
+  "Christian Drosten",
+  "Siddhartha Mukherjee",
+  "Atul Gawande",
+  "Matthew Walker",
+  "Lisa Sanders",
+  "Bessel van der Kolk",
+  "Tim Spector",
+  "Ed Yong",
+  "Daniel Kahneman",
+  "Robert Sapolsky",
+  "Lisa Feldman Barrett",
+  "Steven Pinker",
+  "Jonathan Haidt",
+  "Adam Grant",
+  "Angela Duckworth",
+  "Brené Brown",
+  "Susan Cain",
+  "Charles Duhigg",
+  "Cal Newport",
+  "James Clear",
+  "Ethan Kross",
+  "Daniel H. Pink",
+  "Esther Perel",
+  "Julia Shaw",
+  "Svenja Flaßpöhler",
+  "Jesper Juul",
+  "Nicola Schmidt",
+  "Herbert Renz-Polster",
+  "Remo Largo",
+  "Stefan Rahmstorf",
+  "Hans Joachim Schellnhuber",
+  "Claudia Kemfert",
+  "Mojib Latif",
+  "Maja Göpel",
+  "Kate Raworth",
+  "Elizabeth Kolbert",
+  "David Wallace-Wells",
+  "Bill Gates",
+  "Merlin Sheldrake",
+  "Sara Schurmann",
+  "Bernhard Pötter",
+  "Christian Stöcker",
+  "Johan Rockström",
+  "Hannah Ritchie",
+  "Hans Rosling",
+  "Anna Rosling Rönnlund",
+  "Christopher Clark",
+  "Heinrich August Winkler",
+  "Herfried Münkler",
+  "Karl Schlögel",
+  "Volker Ullrich",
+  "Andreas Kossert",
+  "Ilko-Sascha Kowalczuk",
+  "Harald Jähner",
+  "Florian Illies",
+  "Philipp Blom",
+  "Götz Aly",
+  "Norbert Frei",
+  "Ulrich Herbert",
+  "Peter Longerich",
+  "Michael Wildt",
+  "Frank Bösch",
+  "Andreas Wirsching",
+  "Johannes Fried",
+  "Mischa Meier",
+  "Tom Holland",
+  "Mary Beard",
+  "Peter Frankopan",
+  "Timothy Snyder",
+  "Anne Applebaum",
+  "Ian Kershaw",
+  "Antony Beevor",
+  "Margaret MacMillan",
+  "Simon Sebag Montefiore",
+  "Serhii Plokhy",
+  "Orlando Figes",
+  "Jared Diamond",
+  "David Graeber",
+  "David Wengrow",
+  "Joseph Henrich",
+  "Rutger Bregman",
+  "Johannes Krause",
+  "Felix Bohr",
+  "Andreas Reckwitz",
+  "Armin Nassehi",
+  "Steffen Mau",
+  "Hartmut Rosa",
+  "Jürgen Habermas",
+  "Navid Kermani",
+  "Carolin Emcke",
+  "Heinz Bude",
+  "Nicole Deitelhoff",
+  "Carlo Masala",
+  "Sönke Neitzel",
+  "Gerd Koenen",
+  "Katja Gloger",
+  "Masha Gessen",
+  "Svetlana Alexievich",
+  "Heribert Prantl",
+  "Sascha Lobo",
+  "Marina Weisband",
+  "Kübra Gümüşay",
+  "Alice Hasters",
+  "Natascha Strobl",
+  "Daniel Ziblatt",
+  "Steven Levitsky",
+  "Francis Fukuyama",
+  "Michael J. Sandel",
+  "Kwame Anthony Appiah",
+  "Martha Nussbaum",
+  "Wolfram Eilenberger",
+  "Markus Gabriel",
+  "Ivan Krastev",
+  "Thomas Ramge",
+  "Jagoda Marinić",
+  "Ferda Ataman",
+  "Aladin El-Mafaalani",
+  "Naika Foroutan",
+  "Mohamed Amjahid",
+  "Michel Friedman",
+  "Ronen Steinke",
+  "Georg Mascolo",
+  "Bastian Berbner",
+  "Thomas Piketty",
+  "Mariana Mazzucato",
+  "Marcel Fratzscher",
+  "Isabella Weber",
+  "Ulrike Herrmann",
+  "Daron Acemoglu",
+  "James A. Robinson",
+  "Esther Duflo",
+  "Abhijit V. Banerjee",
+  "Joseph E. Stiglitz",
+  "Clemens Fuest",
+  "Jens Südekum",
+  "Monika Schnitzer",
+  "Veronika Grimm",
+  "Rüdiger Bachmann",
+  "Philippa Sigl-Glöckner",
+  "Tim Harford",
+  "Shoshana Zuboff",
+  "Max Tegmark",
+  "Stuart Russell",
+  "Kate Crawford",
+  "Mustafa Suleyman",
+  "Melanie Mitchell",
+  "Miriam Meckel",
+  "Carlo Rovelli",
+  "Brian Greene",
+  "Neil deGrasse Tyson",
+  "Sean Carroll",
+  "Lisa Randall",
+  "Marcus Chown",
+  "Kip Thorne",
+  "Lisa Kaltenegger",
+  "Angela Merkel",
+  "Barack Obama",
+  "Michelle Obama",
+  "Joschka Fischer",
+  "Wolfgang Schäuble",
+  "Gregor Gysi",
+  "Hape Kerkeling",
+  "Daniel Schreiber",
+  "Alexander Osang",
+  "Bill Bryson",
+  "Mary Roach",
+  "Randall Munroe",
+  "Hannah Fry",
+  "Adam Rutherford",
+  "Richard Dawkins",
+  "Walter Isaacson",
+  "Michio Kaku",
+  "Stephen Hawking",
+  "Jim Al-Khalili",
+  "Marcus du Sautoy",
+  "Steven Strogatz",
+  "Daniel Lieberman",
+  "Robert Plomin",
+  "David Eagleman",
+  "Anil Seth",
+  "Antonio Damasio",
+  "Oliver Sacks",
+  "Frans de Waal",
+  "Jane Goodall",
+  "Richard Wrangham",
+  "Martin Puntigam",
+  "Werner Gruber",
+  "Heinz Oberhummer",
+  "Florian Aigner",
+  "Martin Moder",
+  "Alexander Gerst",
+  "Suzanna Randall",
+  "Gerhard Roth",
+  "Christina Berndt",
+  "Werner Bartens",
+  "Gert Scobel",
+  "Jürgen Kaube",
+  "Svante Pääbo",
+  "David Reich",
+  "Rebecca Wragg Sykes",
+  "Brian Cox",
+  "Katie Mack",
+  "Janna Levin",
+  "Paul Davies",
+  "Anton Zeilinger",
+  "Gerd Gigerenzer",
+  "Nessa Carey",
+  "Matt Parker",
+  "Adam Kucharski",
+  "Ben Goldacre",
+  "Alok Jha",
+  "Johannes Wimmer",
+  "Karl Lauterbach",
+  "Michael Mosley",
+  "Henry Marsh",
+  "Adam Kay",
+  "Gavin Francis",
+  "Daniel M. Davis",
+  "Dean Burnett",
+  "Suzanne O'Sullivan",
+  "Lisa Mosconi",
+  "Jen Gunter",
+  "Wolfgang Schmidbauer",
+  "Arno Gruen",
+  "Verena Kast",
+  "Reinhard Haller",
+  "Borwin Bandelow",
+  "Jan Kalbitzer",
+  "Nicole Strüber",
+  "Manfred Lütz",
+  "Martin Seligman",
+  "Walter Mischel",
+  "Carol Dweck",
+  "Daniel Goleman",
+  "Kelly McGonigal",
+  "Malcolm Gladwell",
+  "Paul Bloom",
+  "Michael Tomasello",
+  "Robert Waldinger",
+  "Nora Imlau",
+  "Danielle Graf",
+  "Katja Seide",
+  "Susanne Mierau",
+  "Margrit Stamm",
+  "Emily Oster",
+  "Volker Reinhardt",
+  "Bernd Roeck",
+  "Hedwig Richter",
+  "Jörn Leonhard",
+  "Andreas Rödder",
+  "Ewald Frie",
+  "Richard J. Evans",
+  "Christopher Browning",
+  "Yuri Slezkine",
+  "Neil MacGregor",
+  "Nicholas Stargardt",
+  "Frank Trentmann",
+  "Heinz Schilling",
+  "Thomas Kaufmann",
+  "Lyndal Roper",
+  "Eckart Conze",
+  "Florian Huber",
+  "Max Hastings",
+  "Kyle Harper",
+  "Peter Heather",
+  "Jan Assmann",
+  "Aleida Assmann",
+  "Saul Friedländer",
+  "Ulrich Raulff",
+  "Andrea Wulf",
+  "Volker Weiß",
+  "Martin Sabrow",
+  "Tim Weiner",
+  "Robert K. Massie",
+  "Ian Morris",
+  "Simon Schama",
+  "Dan Jones",
+  "Bettany Hughes",
+  "Peter Englund",
+  "Joachim Gauck",
+  "Ahmad Mansour",
+  "Bernd Ulrich",
+  "Teresa Bücker",
+  "Margarete Stokowski",
+  "Hadija Haruna-Oelker",
+  "Emilia Roig",
+  "Tupoka Ogette",
+  "Reni Eddo-Lodge",
+  "Ibram X. Kendi",
+  "Ta-Nehisi Coates",
+  "Rebecca Solnit",
+  "Caroline Criado-Perez",
+  "Chimamanda Ngozi Adichie",
+  "Michelle Alexander",
+  "Isabel Wilkerson",
+  "Bob Woodward",
+  "Rachel Maddow",
+  "Timothy Garton Ash",
+  "Jan-Werner Müller",
+  "Yascha Mounk",
+  "Anne Case",
+  "Angus Deaton",
+  "Michael Lewis",
+  "Naomi Klein",
+  "George Monbiot",
+  "Hans Leyendecker",
+  "Bastian Obermayer",
+  "Frederik Obermaier",
+  "Wolfgang Bauer",
+  "Deniz Yücel",
+  "Can Dündar",
+  "Golineh Atai",
+  "Katrin Eigendorf",
+  "Ulrich Tilgner",
+  "Patrick Radden Keefe",
+  "Jon Krakauer",
+  "John Carreyrou",
+  "Erik Larson",
+  "David Grann",
+  "Rebecca Skloot",
+  "Mark Galeotti",
+  "Catherine Belton",
+  "Fiona Hill",
+  "Christo Grozev",
+  "Bill Browder",
+  "Jürgen Wiebicke",
+  "Ulrich Wickert",
+  "Anatol Stefanowitsch",
+  "Bastian Sick",
+  "Guy Deutscher",
+  "Gaston Dorren",
+  "Karen Armstrong",
+  "Rebekka Reinhard",
+  "Byung-Chul Han",
+  "Peter Sloterdijk",
+  "Julian Nida-Rümelin",
+  "Michael Hampe",
+  "Barbara Bleisch",
+  "Philipp Hübl",
+  "Thea Dorn",
+  "Alain de Botton",
+  "Kurt Bayertz",
+  "Susan Neiman",
+  "Hans-Werner Sinn",
+  "Gabriel Felbermayr",
+  "Moritz Schularick",
+  "Branko Milanovic",
+  "Paul Krugman",
+  "Robert J. Shiller",
+  "Nouriel Roubini",
+  "Thomas Straubhaar",
+  "Michael Hüther",
+  "Adam Tooze",
+  "Mark Blyth",
+  "Raghuram Rajan",
+  "Dani Rodrik",
+  "Gillian Tett",
+  "Jaron Lanier",
+  "Tim Wu",
+  "Cathy O'Neil",
+  "Kai-Fu Lee",
+  "Ashlee Vance",
+  "Brad Stone",
+  "Carl Benedikt Frey",
+  "Meredith Broussard",
+  "Nicholas Carr",
+  "Kevin Kelly",
+  "Ronja von Wurmb-Seibel",
+  "Hartmut Graßl",
+  "Ottmar Edenhofer",
+  "Volker Quaschning",
+  "Sven Plöger",
+  "Özden Terli",
+  "Jonathan Safran Foer",
+  "Michael Pollan",
+  "Robin Wall Kimmerer",
+  "Dave Goulson",
+  "Matthias Glaubrecht",
+  "Josef H. Reichholf",
+  "Greta Thunberg",
+  "Luisa Neubauer",
+  "Al Gore",
+  "Paul Hawken",
+  "Vaclav Smil",
+  "Malala Yousafzai",
+  "Tara Westover",
+  "Trevor Noah",
+  "Bruce Springsteen",
+  "Nelson Mandela",
+  "Ruth Bader Ginsburg",
+  "Jacinda Ardern",
+  "Helmut Schmidt",
+  "Richard von Weizsäcker"
+ ]
+}

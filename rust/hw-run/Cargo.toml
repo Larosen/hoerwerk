@@ -1,0 +1,12 @@
+[package]
+name = "hw-run"
+version = "1.0.0"
+description = "Runs ffmpeg/ffprobe jailed: Landlock (files, TCP, signals), seccomp, resource limits"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+landlock = "0.4.7"
+seccompiler = "0.5.0"
+libc = "0.2.191"

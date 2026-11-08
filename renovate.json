@@ -1,6 +1,122 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "description": "Updates for Hörwerk. Small ones merge themselves once the whole CI (tests, audits, Trivy, click-through tests against the image) is green; major versions wait for a person.",
+  "timezone": "Europe/Berlin",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 5,
+  "packageRules": [
+    {
+      "description": "Patch, minor, pins and digests: merged by Renovate itself after green CI (no GitHub auto-merge needed)",
+      "matchUpdateTypes": [
+        "patch",
+        "minor",
+        "pin",
+        "pinDigest",
+        "digest"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": false
+    },
+    {
+      "description": "Major versions (Python 3.16, FFmpeg 10, TypeScript 8 …): only as a PR to look at",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "dependencyDashboardApproval": false
+    },
+    {
+      "description": "FFmpeg is built from source and runs on untrusted files: every new version is checked by a person",
+      "matchDepNames": [
+        "FFmpeg/FFmpeg"
+      ],
+      "automerge": false
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchManagers": [
+        "npm"
+      ],
+      "groupName": "Bauwerkzeuge (npm)"
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "FFmpeg version and the commit it is pinned to (Dockerfile)",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)Dockerfile$/"
+      ],
+      "matchStrings": [
+        "ARG FFMPEG_VERSION=(?<currentValue>\\S+)\\nARG FFMPEG_COMMIT=(?<currentDigest>[0-9a-f]{40})"
+      ],
+      "depNameTemplate": "FFmpeg/FFmpeg",
+      "packageNameTemplate": "https://github.com/FFmpeg/FFmpeg",
+      "datasourceTemplate": "git-tags",
+      "extractVersionTemplate": "^n(?<version>\\d+\\.\\d+(?:\\.\\d+)?)$",
+      "versioningTemplate": "semver-coerced"
+    },
+    {
+      "description": "The Trivy image used by the CI (pinned by digest)",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "TRIVY: (?<depName>ghcr\\.io/aquasecurity/trivy):(?<currentValue>[\\d.]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "description": "cosign used to sign the image",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "cosign-release: (?<currentValue>v[\\d.]+)"
+      ],
+      "depNameTemplate": "sigstore/cosign",
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "description": "Python version of the CI jobs (same as the image)",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "python-version: \"(?<currentValue>[\\d.]+)\""
+      ],
+      "depNameTemplate": "python",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    },
+    {
+      "description": "Node version of the CI jobs (same as the image's build stage)",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "node-version: \"(?<currentValue>[\\d.]+)\""
+      ],
+      "depNameTemplate": "node",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    }
   ]
 }

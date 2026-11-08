@@ -182,6 +182,16 @@ def diagnostics(req: Req):
                      ago=time.strftime("%d.%m. %H:%M", time.localtime(info["time"]))),
             hint=f"ALLOWED_HOSTS={name}")
 
+    if app.start_workers and not app.library_ready.is_set():
+        add("connection", "error" if app.library_error else "warn",
+            t("Bibliothek wird eingelesen – Bücher werden danach verarbeitet") if not app.library_error
+            else t("Bibliothek nicht lesbar – es wird nichts verarbeitet"), id="library-ready",
+            detail=app.library_error or t("Erst wenn Hörwerk die Bibliothek kennt, prüft es neue Bücher auf Doppelte."))
+
+    if getattr(app, "db_backup_error", ""):
+        add("storage", "error", t("Tägliche Datenbank-Sicherung fehlgeschlagen"), id="db-backup",
+            detail=t("{error} – neuer Versuch jede Stunde.", error=app.db_backup_error))
+
     # -- security --
     users = app.accounts.list()
     no_totp = [u["name"] for u in users if u.get("role") == "admin" and not u.get("totp") and not u.get("disabled")]

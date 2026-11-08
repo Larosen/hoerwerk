@@ -2,20 +2,20 @@
 <Container version="2">
   <Name>hoerwerk</Name>
   <Repository>ghcr.io/larosen/hoerwerk:latest</Repository>
-  <Registry>https://github.com/Larosen/rename_merge/pkgs/container/hoerwerk</Registry>
+  <Registry>https://github.com/Larosen/hoerwerk/pkgs/container/hoerwerk</Registry>
   <Network>bridge</Network>
   <MyIP/>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>
-  <Support>https://github.com/Larosen/rename_merge/issues</Support>
-  <Project>https://github.com/Larosen/rename_merge</Project>
+  <Support>https://github.com/Larosen/hoerwerk/issues</Support>
+  <Project>https://github.com/Larosen/hoerwerk</Project>
   <Overview>Hörwerk – the audiobook workshop: put audiobooks into the inbox and they become one M4B with chapters (MP3, M4A, FLAC, OGG …, also CD1/CD2), are matched on Audible, tagged (title, author, narrator, series, cover, description) and filed as Author/Series/NN - Title for Audiobookshelf or Plex. Downloads via SABnzbd, push notifications via ntfy (you choose which events). UI in English or German (APP_LANGUAGE).&#xD;
 &#xD;
 Hörwerk – die Hörbuch-Werkstatt: Hörbücher in den Eingang legen, sie werden zu einer M4B mit Kapiteln, bei Audible erkannt, getaggt und als Autor/Serie/NN - Titel für Audiobookshelf oder Plex einsortiert. Downloads über SABnzbd, Push-Nachrichten über ntfy (Ereignisse frei wählbar). Oberfläche auf Deutsch oder Englisch (APP_LANGUAGE).</Overview>
   <Category>MediaApp:Books MediaApp:Other Tools:</Category>
   <WebUI>http://[IP]:[PORT:8080]/</WebUI>
-  <TemplateURL>https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/hoerwerk.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/icon.png</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/hoerwerk.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/icon.png</Icon>
   <ExtraParams>--security-opt no-new-privileges:true --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID</ExtraParams>
   <PostArgs/>
   <CPUset/>

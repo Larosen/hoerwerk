@@ -1,0 +1,15 @@
+# Hörwerk in Rust – one workspace: hw-run (the ffmpeg jail) and, step by step, the backend.
+[workspace]
+resolver = "3"
+members = ["hw-run", "hw-tags", "hoerwerk"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+rust-version = "1.90"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

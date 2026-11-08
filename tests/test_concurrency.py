@@ -105,6 +105,25 @@ class DatabaseTest(unittest.TestCase):
         self.assertIsNone(app.maintain_db(now=1_800_000_000 + 3600))           # once a day
         app.db.close()
 
+    def test_failed_snapshot_is_tried_again_within_the_hour(self):
+        """Review 7.13: after a failed snapshot (disk full for a moment) the next try came only a day later."""
+        import services
+        import config
+        cfg_dir = os.path.join(self.dir, "cfg2")
+        app = services.App(config.Config.from_env({"CONFIG_DIR": cfg_dir, "INBOX_DIR": self.dir,
+                                                   "LIBRARY_DIR": self.dir}), start_workers=False)
+        self.addCleanup(app.db.close)
+        real = app.db.backup
+        app.db.backup = lambda target: (_ for _ in ()).throw(OSError(28, "No space left on device"))
+        t0 = 1_800_000_000
+        self.assertIsNone(app.maintain_db(now=t0))
+        self.assertIn("No space", app.db_backup_error)
+        self.assertIsNone(app.maintain_db(now=t0 + 600))                         # not every two minutes …
+        app.db.backup = real
+        self.assertTrue(app.maintain_db(now=t0 + 3600))                         # … but within the hour
+        self.assertEqual(app.db_backup_error, "")
+        self.assertIsNone(app.maintain_db(now=t0 + 3 * 3600))                   # then daily again
+
 
 class EngineTest(unittest.TestCase):
     def test_steps_of_one_job_never_overlap(self):
@@ -258,3 +277,220 @@ class AtomicMoveTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RunnerCancelTest(unittest.TestCase):
+    """Review 7.13: a cancel between starting ffmpeg and noting the process down left it running (up to 6 h)."""
+
+    def test_cancel_while_the_process_starts(self):
+        import encoder
+        import subprocess
+        flag = {"cancel": False}
+        runner = encoder.Runner(lambda: flag["cancel"], timeout=60)
+        real = subprocess.Popen
+
+        def popen_then_cancel(*args, **kw):
+            proc = real(["sleep", "30"], **{k: v for k, v in kw.items() if k != "text"}, text=True)
+            flag["cancel"] = True                     # the user cancels exactly now …
+            runner.kill()                             # … before run() has registered the process
+            return proc
+        encoder.subprocess.Popen = popen_then_cancel
+        self.addCleanup(setattr, encoder.subprocess, "Popen", real)
+        t0 = time.monotonic()
+        with self.assertRaises(encoder.Cancelled):
+            runner.run(["ffmpeg", "-version"])
+        self.assertLess(time.monotonic() - t0, 5)     # killed at once, not after the sleep or the timeout
+
+    def test_nothing_starts_after_a_kill(self):
+        import encoder
+        runner = encoder.Runner(lambda: False)
+        runner.kill()
+        with self.assertRaises(encoder.Cancelled):
+            runner.run(["sleep", "30"])
+
+    def test_kill_reaches_the_whole_process_group(self):
+        import encoder
+        import subprocess
+        runner = encoder.Runner(lambda: False, timeout=60)
+        marker = os.path.join(tempfile.mkdtemp(), "child-alive")
+        # a wrapper that starts a child and waits – like a jail launcher in front of ffmpeg
+        script = f"sleep 30 & echo $! > {marker}; wait"
+        th = threading.Thread(target=lambda: self.assertRaises(encoder.Cancelled, runner.run, ["sh", "-c", script]))
+        th.start()
+        for _ in range(100):
+            if os.path.exists(marker) and open(marker).read().strip():
+                break
+            time.sleep(0.05)
+        child = int(open(marker).read().strip())
+        runner.kill()
+        th.join(5)
+        self.assertFalse(th.is_alive())
+        time.sleep(0.2)
+        try:                                          # the grandchild is gone too (or a zombie waiting for init)
+            with open(f"/proc/{child}/stat") as fh:
+                state = fh.read().rsplit(")", 1)[1].split()[0]
+        except FileNotFoundError:
+            state = "gone"
+        self.assertIn(state, ("gone", "Z", "X"))
+        del subprocess
+
+
+class LibraryScanRaceTest(unittest.TestCase):
+    """Review 7.13: a book filed while a scan walked the disk vanished from the index (and the database)."""
+
+    def setUp(self):
+        import library_index
+        self.li = library_index
+        self.root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.db = dbm.Database(os.path.join(self.root, "t.db"))
+        self.addCleanup(self.db.close)
+        self.lib = os.path.join(self.root, "lib")
+        self.book("Z/Old")
+        self.idx = library_index.LibraryIndex(self.lib, self.db)
+        self.idx.scan()
+
+    def book(self, rel):
+        os.makedirs(os.path.join(self.lib, rel), exist_ok=True)
+        path = os.path.join(self.lib, rel, "book.mp3")
+        with open(path, "wb") as fh:
+            fh.write(b"ID3")
+        return path
+
+    def scan_paused(self, during):
+        """Run a scan whose walk is frozen after reading the disk; ``during`` runs in that gap."""
+        real = self.li.os.walk
+        reached, go = threading.Event(), threading.Event()
+
+        def frozen(top, *a, **kw):
+            seen = list(real(top, *a, **kw))     # the picture of the disk …
+            reached.set()
+            go.wait(10)                           # … is old by the time it is used
+            yield from seen
+        self.li.os.walk = frozen
+        self.addCleanup(setattr, self.li.os, "walk", real)
+        th = threading.Thread(target=self.idx.scan)
+        th.start()
+        reached.wait(10)
+        during()
+        go.set()
+        th.join(10)
+
+    def test_book_filed_during_a_scan_stays(self):
+        def file_new():
+            self.idx.add(self.book("A/New"), {"title": "New", "authors": ["Anna Autorin"]})
+        self.scan_paused(file_new)
+        self.assertEqual(sorted(self.idx.entries), ["A/New", "Z/Old"])
+        stored = {r["path"] for r in self.db.all("SELECT path FROM library")}
+        self.assertEqual(stored, {"A/New", "Z/Old"})
+
+    def test_book_removed_during_a_scan_stays_removed(self):
+        def remove_old():
+            shutil.rmtree(os.path.join(self.lib, "Z"))
+            self.idx.remove(os.path.join(self.lib, "Z/Old", "book.mp3"))
+        self.scan_paused(remove_old)
+        self.assertEqual(sorted(self.idx.entries), [])
+        self.assertEqual(self.db.all("SELECT path FROM library"), [])
+
+
+class StartupOrderTest(unittest.TestCase):
+    """Review 7.13: books were processed before the library was read – the duplicate check could miss copies."""
+
+    def test_processing_waits_for_the_first_library_scan(self):
+        import config
+        import services
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, True)
+        for d in ("cfg", "inbox", "lib"):
+            os.makedirs(os.path.join(root, d))
+        app = services.App(config.Config.from_env({"CONFIG_DIR": os.path.join(root, "cfg"), "INBOX_DIR": os.path.join(root, "inbox"),
+                                                   "LIBRARY_DIR": os.path.join(root, "lib")}), start_workers=False)
+        self.addCleanup(app.db.close)
+        order = []
+        tries = {"n": 0}
+
+        def scan():
+            tries["n"] += 1
+            order.append("scan")
+            if tries["n"] == 1:
+                raise OSError("share not mounted yet")
+            return 0
+        app.library_index.scan = scan
+        app.engine.start = lambda: order.append("engine")
+        app.pipeline.start = lambda: order.append("pipeline")
+        app.wait_for_library(sleep=lambda s: order.append(f"sleep {s}"))
+        # a failed first scan: nothing is processed, it is tried again; only then the queues start
+        self.assertEqual(order, ["scan", "sleep 60", "scan", "engine", "pipeline"])
+        self.assertTrue(app.library_ready.is_set())
+        self.assertEqual(app.library_error, "")
+
+
+class ShutdownTest(unittest.TestCase):
+    """Review 7.13: docker stop ended Hörwerk hard – a running conversion counted as lost, the database stayed open."""
+
+    def test_running_conversion_goes_back_to_the_queue(self):
+        import encoder
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, True)
+        db = dbm.Database(os.path.join(root, "t.db"))
+        self.addCleanup(db.close)
+        engine = Engine({"encode": 1, "io": 1})
+        engine.start()
+        p = pipeline.Pipeline(lambda: {}, db, os.path.join(root, "in"), os.path.join(root, "lib"),
+                              os.path.join(root, "work"), engine=engine)
+        src = os.path.join(root, "in", "Buch")
+        os.makedirs(src)
+        job = pipeline.Job(source=src, stage="convert", match={"title": "Buch"})
+        started = threading.Event()
+
+        def convert(j):
+            j.runner = encoder.Runner(lambda: j.cancel)
+            started.set()
+            j.runner.run(["sleep", "30"])              # a long ffmpeg
+        p._convert = convert
+        with p.lock:
+            p.jobs.append(job)
+        p._schedule(job)
+        self.assertTrue(started.wait(5))
+        t0 = time.monotonic()
+        p.shutdown()
+        self.assertTrue(engine.stop(5))
+        self.assertLess(time.monotonic() - t0, 3)       # ffmpeg ended at once
+        self.assertEqual((job.status, job.stage), ("queued", "convert"))
+        again = pipeline.Pipeline(lambda: {}, db, os.path.join(root, "in"), os.path.join(root, "lib"),
+                                  os.path.join(root, "work"))
+        self.assertEqual(again.get(job.id).status, "queued")   # continues after the next start
+
+    def test_sigterm_stops_the_server_in_order(self):
+        import signal
+        import socket
+        import subprocess
+        import sys
+        import urllib.request
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, True)
+        for d in ("cfg", "in", "lib"):
+            os.makedirs(os.path.join(root, d))
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+        env = {**os.environ, "PORT": str(port), "CONFIG_DIR": os.path.join(root, "cfg"),
+               "INBOX_DIR": os.path.join(root, "in"), "LIBRARY_DIR": os.path.join(root, "lib")}
+        app_dir = os.path.join(os.path.dirname(__file__), "..", "app")
+        proc = subprocess.Popen([sys.executable, os.path.join(app_dir, "main.py")], env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.addCleanup(lambda: proc.poll() is None and proc.kill())
+        for _ in range(100):
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=1).read()
+                break
+            except OSError:
+                time.sleep(0.1)
+        t0 = time.monotonic()
+        proc.send_signal(signal.SIGTERM)
+        out, _ = proc.communicate(timeout=10)
+        self.assertLess(time.monotonic() - t0, 8)        # within Docker's grace time
+        self.assertEqual(proc.returncode, 0, out)
+        self.assertIn("wird beendet", out)
+        wal = os.path.join(root, "cfg", "hoerwerk.db-wal")
+        self.assertTrue(not os.path.exists(wal) or os.path.getsize(wal) == 0)   # everything in the main file

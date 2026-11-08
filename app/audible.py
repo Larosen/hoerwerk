@@ -28,7 +28,7 @@ RESPONSE_GROUPS = ("contributors,product_attrs,product_desc,product_extended_att
                    "series,media,category_ladders,rating")
 AUDNEXUS = "https://api.audnex.us"
 SERIES_MAX = 60           # volumes of one series offered for a request
-USER_AGENT = "Hoerwerk/5 (+https://github.com/Larosen/rename_merge)"
+USER_AGENT = "Hoerwerk/7 (+https://github.com/Larosen/hoerwerk)"
 ASIN_RX = re.compile(r"(?<![A-Z0-9])(B0[0-9A-Z]{8}|\d{9}[\dX])(?![A-Z0-9])")
 AUTHOR_ROLES_SKIP = re.compile(r"(?i)(translator|übersetz|editor|herausgeb|illustrat|foreword|vorwort|"
                                r"introduction|einleitung|adapt|bearbeit|contributor|afterword|nachwort)")

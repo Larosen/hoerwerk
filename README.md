@@ -59,7 +59,7 @@ The interface is available in **English and German**.
 ### Unraid
 
 1. **Docker → Add Container**, enter as *Template*:
-   `https://raw.githubusercontent.com/Larosen/rename_merge/main/unraid/hoerwerk.xml`
+   `https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/hoerwerk.xml`
 2. Set the paths:
    * **Hörbuch-Eingang** (`/inbox`) – where new audiobooks arrive
    * **Hörbuch-Bibliothek** (`/audiobooks`) – the finished library (add it to Audiobookshelf/Plex)
@@ -78,6 +78,12 @@ Image: `ghcr.io/larosen/hoerwerk:latest` (amd64 + arm64, rebuilt weekly for secu
 # adjust the paths, PUID/PGID (see `id`) and APP_LANGUAGE in docker-compose.yml
 docker compose up -d
 ```
+
+### Preview: hoerwerk:next
+
+`ghcr.io/larosen/hoerwerk:next` is the same app with the new backend in Rust. You can try it safely **next to**
+your running Hörwerk – on a copy of its AppData, with the library read-only and without downloads, notifications or
+scans (`COMPARE_MODE=true`). Guide (German) and comparison script: [docs/VERGLEICH.md](docs/VERGLEICH.md).
 
 ---
 

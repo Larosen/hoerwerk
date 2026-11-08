@@ -1299,7 +1299,6 @@
  "Upload-Reste nicht aufgeräumt: {error}": "Upload leftovers not cleaned up: {error}",
  "Zu viele Dateien in einem Upload (höchstens {n})": "Too many files in one upload (at most {n})",
  "Zu viele Daten in deinen offenen Uploads – erst diese abschließen": "Too much data in your open uploads – finish those first",
- "Datenbank-Sicherung fehlgeschlagen: {error}": "Database snapshot failed: {error}",
  "Nach Neustart nicht aufgeräumt ({name}): {error}": "Not tidied up after restart ({name}): {error}",
  "Nach Neustart: alte Fassung wieder an ihren Platz gestellt": "After restart: old version put back in its place",
  "Nach Neustart: war schon abgelegt – {path}": "After restart: was already filed – {path}",
@@ -1347,5 +1346,17 @@
  "Fehlgeschlagen: {name} – {error}": "Failed: {name} – {error}",
  "Fertig abgelegt: {name}": "Filed: {name}",
  "Wieder eingereiht: {name} – startet, sobald ein Platz frei ist": "Queued again: {name} – starts as soon as a slot is free",
- "Wird abgebrochen: {name}": "Cancelling: {name}"
+ "Wird abgebrochen: {name}": "Cancelling: {name}",
+ "Die Antwort von Hörwerk war unvollständig – bitte noch einmal versuchen": "The answer from Hörwerk was incomplete – please try again",
+ "Bibliothek nicht lesbar – es wird nichts verarbeitet": "Library not readable – nothing is processed",
+ "Bibliothek wird eingelesen – Bücher werden danach verarbeitet": "Reading the library – books are processed afterwards",
+ "Erst wenn Hörwerk die Bibliothek kennt, prüft es neue Bücher auf Doppelte.": "Only once Hörwerk knows the library does it check new books for duplicates.",
+ "Wartet, bis die Bibliothek eingelesen ist …": "Waiting until the library has been read …",
+ "Bibliothek konnte nicht eingelesen werden – Verarbeitung wartet: {error}": "Library could not be read – processing waits: {error}",
+ "Datenbank-Sicherung fehlgeschlagen, neuer Versuch in einer Stunde: {error}": "Database snapshot failed, trying again in an hour: {error}",
+ "Tägliche Datenbank-Sicherung fehlgeschlagen": "Daily database snapshot failed",
+ "{error} – neuer Versuch jede Stunde.": "{error} – tried again every hour.",
+ "Beim Beenden unterbrochen – geht nach dem nächsten Start weiter": "Interrupted by shutdown – continues after the next start",
+ "Hörwerk wird beendet …": "Hörwerk is shutting down …",
+ "Nicht alle laufenden Schritte sind rechtzeitig fertig geworden – sie laufen nach dem Start neu": "Not all running steps finished in time – they run again after the start"
 }

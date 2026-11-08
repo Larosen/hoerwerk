@@ -126,7 +126,7 @@ Jeder Push und Pull Request durchläuft: ruff (Fehler, wahrscheinliche Bugs, Sic
 gegen den Server und gegen das fertige Image sowie Trivy auf dem Image – eine kritische oder hohe Schwachstelle, für
 die es eine Korrektur gibt, stoppt die Veröffentlichung (Ausnahmen nur in `.trivyignore`, jede mit Begründung). Erst
 danach wird das Image veröffentlicht: mit cosign signiert (schlüssellos) und mit SBOM und Build-Provenance am Digest.
-Alle GitHub Actions sind auf Commit-SHAs festgelegt; Dependabot schlägt wöchentlich Updates vor. Ein Image prüfen:
+Alle GitHub Actions sind auf Commit-SHAs festgelegt; Renovate prüft wöchentlich auf Updates (auch FFmpeg, Trivy, cosign) und mergt kleine selbst, sobald die ganze CI grün ist – große Versionen und FFmpeg nur nach Freigabe. Ein Image prüfen:
 
 ```sh
 cosign verify ghcr.io/larosen/hoerwerk@sha256:<digest> \

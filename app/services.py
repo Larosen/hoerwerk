@@ -41,6 +41,10 @@ class App:
         os.makedirs(config.config_dir, exist_ok=True)
         self.db = dbm.Database(dbm.db_path(config.config_dir))
         self._db_maintained = 0.0
+        self.db_backup_error = ""                  # last snapshot failed: why (health check)
+        self.db_backup_at: Optional[float] = None
+        self.library_ready = threading.Event()     # set after the first library scan: processing may start
+        self.library_error = ""
         imported = dbm.import_legacy(self.db, config.config_dir)
         if imported:
             applog.info(f"Übernommen in die Datenbank: {', '.join(imported)}")
@@ -162,21 +166,52 @@ class App:
         if self._started or not self.start_workers:
             return self
         self._started = True
-        self.engine.start()
-        self.pipeline.start()
+        # Books are only processed once the library is known: duplicates are checked against it. The rescanner
+        # reads it first (from the database cache at once, from disk now) and then lets the pipeline start.
+        self.pipeline.scan_note = t("Wartet, bis die Bibliothek eingelesen ist …")
         threading.Thread(target=self._library_rescanner, daemon=True, name="library-index").start()
         threading.Thread(target=self.downloads.run, daemon=True, name="download-watch").start()
         threading.Thread(target=self._request_worker, daemon=True, name="requests").start()
         return self
 
-    def _library_rescanner(self) -> None:
+    def stop(self, timeout: float = 6.0) -> None:
+        """Orderly shutdown within Docker's grace time (10 s): no new work, ffmpeg ends, running steps save their
+        state (their jobs continue after the next start), live connections close, the database is closed."""
+        applog.info(t("Hörwerk wird beendet …"), "Start")
+        self.pipeline.shutdown()
+        if not self.engine.stop(timeout):
+            applog.warn(t("Nicht alle laufenden Schritte sind rechtzeitig fertig geworden – sie laufen nach dem Start neu"), "Start")
+        self.pipeline.save()
+        self.events.close()
+        self.db.close()
+
+    def _library_rescanner(self, sleep=time.sleep) -> None:
         """Read the library at start and then every few hours (new books are added right away anyway)."""
+        self.wait_for_library(sleep)
         while True:
+            sleep(max(1, int(self.settings().get("library_rescan_hours") or 6)) * 3600)
             try:
                 self.library_index.scan()
             except Exception as e:  # noqa: BLE001 – keep the thread alive
                 applog.error(t("Bibliothek konnte nicht eingelesen werden: {error}", error=e), "Bibliothek")
-            time.sleep(max(1, int(self.settings().get("library_rescan_hours") or 6)) * 3600)
+
+    def wait_for_library(self, sleep=time.sleep) -> None:
+        """The first scan, then processing starts. If the library cannot be read, nothing is processed (no
+        duplicate check against a half-known library) – the health check says why, and it is tried every minute."""
+        while not self.library_ready.is_set():
+            try:
+                self.library_index.scan()
+            except Exception as e:  # noqa: BLE001
+                self.library_error = str(e) or e.__class__.__name__
+                applog.error(t("Bibliothek konnte nicht eingelesen werden – Verarbeitung wartet: {error}",
+                               error=self.library_error), "Bibliothek")
+                sleep(60)
+                continue
+            self.library_error = ""
+            self.library_ready.set()
+            self.pipeline.scan_note = ""
+            self.engine.start()
+            self.pipeline.start()
 
 
     def _request_worker(self) -> None:
@@ -206,7 +241,9 @@ class App:
         and the WAL moved into the main file. A copy of /config taken while Hörwerk runs (Unraid appdata
         backup) may catch the database between two writes – the snapshot never does."""
         now = time.time() if now is None else now
-        if now - self._db_maintained < 23 * 3600:
+        # after a success the next one in a day; after a failure (disk full for a moment) again in an hour
+        wait = 3600 if self.db_backup_error else 23 * 3600
+        if now - self._db_maintained < wait:
             return None
         self._db_maintained = now
         target = os.path.join(self.config.config_dir, "backups", time.strftime("hoerwerk-%a.db", time.localtime(now)))
@@ -214,10 +251,14 @@ class App:
             os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
             self.db.backup(target)
             self.db.checkpoint()
-            return target
         except Exception as e:  # noqa: BLE001 – a failed snapshot must not stop the worker
-            applog.warn(t("Datenbank-Sicherung fehlgeschlagen: {error}", error=e), "Datenbank")
+            self.db_backup_error = str(e) or e.__class__.__name__
+            applog.warn(t("Datenbank-Sicherung fehlgeschlagen, neuer Versuch in einer Stunde: {error}",
+                          error=self.db_backup_error), "Datenbank")
             return None
+        self.db_backup_error = ""
+        self.db_backup_at = now
+        return target
 
 
 def create_app(config: Optional[Config] = None, start: bool = True) -> App:

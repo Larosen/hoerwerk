@@ -159,3 +159,68 @@ test("Handy und Tastatur: Knopf per Enter, Meldung per Tastatur schließen", asy
   const box = await page.locator("#toast").boundingBox();
   expect((box?.x || 0) >= 0 && (box?.x || 0) + (box?.width || 0) <= 390).toBe(true);   // fits the phone
 });
+
+// -- request lifecycle (review 7.13: timeout ended after the headers, replaced requests never settled) -------
+declare function api<T>(method: string, url: string, body?: unknown, opts?: Record<string, unknown>): Promise<T>;
+declare function trackButton(btn: HTMLElement, work: Promise<unknown>, label?: string): void;
+
+test("Anfrage: der Zeitlimit gilt bis zum Ende der Antwort, auch wenn der Body hängt", async ({ page }) => {
+  await open(page, "/discover");
+  const result = await page.evaluate(async () => {
+    const real = window.fetch;
+    // headers arrive, then the body stalls forever – until the request is aborted
+    window.fetch = (_url: RequestInfo | URL, init?: RequestInit) => {
+      const stream = new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('{"a":'));
+          init?.signal?.addEventListener("abort", () => c.error(new DOMException("aborted", "AbortError")));
+        },
+      });
+      return Promise.resolve(new Response(stream, { status: 200, headers: { "Content-Type": "application/json" } }));
+    };
+    const t0 = performance.now();
+    try {
+      await api("GET", "/api/settings", undefined, { timeout: 400 });
+      return { ok: true, ms: 0, msg: "" };
+    } catch (e) {
+      return { ok: false, ms: performance.now() - t0, msg: (e as Error).message };
+    } finally { window.fetch = real; }
+  });
+  expect(result.ok).toBe(false);
+  expect(result.msg).toContain("antwortet nicht");
+  expect(result.ms).toBeLessThan(3000);
+});
+
+test("Anfrage: ein abgeschnittener Body zählt nicht als Erfolg", async ({ page }) => {
+  await open(page, "/discover");
+  await page.route("**/api/settings", (r) => r.fulfill({ status: 200, contentType: "application/json", body: '{"language":' }));
+  const msg = await page.evaluate(() => api("GET", "/api/settings").then(() => "ok", (e: Error) => e.message));
+  expect(msg).toContain("unvollständig");
+});
+
+test("Anfrage: eine überholte Suche endet sauber, ihr Knopf bleibt nicht hängen", async ({ page }) => {
+  await open(page, "/discover");
+  const slow = hold();
+  let first = true;
+  await page.route("**/api/settings", async (r) => {
+    if (first) { first = false; return slow.route(r); }
+    return r.continue();
+  });
+  const pending = page.evaluate(async () => {
+    const btn = document.querySelector<HTMLElement>("#discoverRefresh") as HTMLElement;
+    const older = api("GET", "/api/settings", undefined, { key: "probe" });
+    trackButton(btn, older, "Sucht …");
+    await new Promise((r) => setTimeout(r, 200));
+    const newer = await api<{ language: string }>("GET", "/api/settings", undefined, { key: "probe" });
+    const settled = await older.then(() => "fulfilled", (e: Error) => e.name);
+    return { settled, newer: newer.language, busy: btn.getAttribute("aria-busy"), failed: btn.classList.contains("did-fail") };
+  });
+  await page.waitForTimeout(600);
+  slow.release();
+  const res = await pending;
+  expect(res.settled).toBe("SupersededError");                   // ends instead of hanging forever
+  expect(res.newer).toBeTruthy();
+  expect(res.busy).toBeNull();                                    // the button is free again …
+  expect(res.failed).toBe(false);                                 // … and does not show a failure
+  await expect(page.locator("#toast .toast-item.error")).toHaveCount(0);
+});

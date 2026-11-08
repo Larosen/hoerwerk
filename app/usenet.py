@@ -196,14 +196,15 @@ def parse_results(xml: bytes, indexer: str) -> List[dict]:
         out.append({
             "title": title,
             "link": link,
-            "guid": item.findtext("guid") or link,
             "size": size,
             "published": ts,
             "grabs": int(attrs["grabs"]) if (attrs.get("grabs") or "").isdigit() else None,
             "category": attrs.get("category") or item.findtext("category"),
             "categories": cats,
             "category_name": (item.findtext("category") or "").strip(),
-            "details": _http_url(item.findtext("comments")) or _http_url(item.findtext("guid")),
+            # the details page only – never the NZB link itself (it carries the indexer's key)
+            "details": next((u for u in (_http_url(item.findtext("comments")), _http_url(item.findtext("guid")))
+                             if u and u != link), None),
             "indexer": indexer,
             **release_info(title),
         })
@@ -293,13 +294,21 @@ class Newznab:
 
     def search(self, query: str, limit: int = 100) -> List[dict]:
         cats = self.audiobook_cats()
-        found = parse_results(self._call(t="search", q=query, cat=",".join(cats), limit=limit, extended=1), self.name)
+        found = self._scrub(parse_results(self._call(t="search", q=query, cat=",".join(cats), limit=limit, extended=1),
+                                          self.name))
         if found:
             return found
         # Nothing in the audiobook categories: many indexers file German audiobooks elsewhere –
         # search all categories and keep what lies in the audio area (the verdict checks the rest)
-        everything = parse_results(self._call(t="search", q=query, limit=limit, extended=1), self.name)
+        everything = self._scrub(parse_results(self._call(t="search", q=query, limit=limit, extended=1), self.name))
         return [r for r in everything if is_audio(r, cats)]
+
+    def _scrub(self, results: List[dict]) -> List[dict]:
+        """Results reach the browser (without "link"): a details address that carries the key goes."""
+        for r in results:
+            if self.apikey and self.apikey in (r.get("details") or ""):
+                r["details"] = None
+        return results
 
 
 # --------------------------------------------------------------------------- #
