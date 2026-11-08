@@ -34,8 +34,11 @@ RUN cargo build --release --locked -p hw-run -p hoerwerk && ./target/release/hw-
 # Stage 4: the app – Debian 13 "trixie" (stable, security updates via the weekly rebuild), one Rust program,
 # our ffmpeg and the web UI. No Python, no interpreter at all.
 FROM debian:trixie-slim
-# tini for clean signal handling, CA certificates for HTTPS (Audible, indexers, ntfy), time zones for TZ
+# Debian's security updates first (the base image is only rebuilt every few weeks; fixes like the one for
+# zlib arrive in between), then tini for clean signal handling, CA certificates for HTTPS (Audible,
+# indexers, ntfy), time zones for TZ
 RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends tini ca-certificates tzdata \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin/
