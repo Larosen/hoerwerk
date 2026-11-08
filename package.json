@@ -1,7 +1,7 @@
 {
   "name": "hoerwerk-frontend",
   "private": true,
-  "description": "TypeScript sources of the web UI (compiled to app/static) and the click-through tests",
+  "description": "TypeScript sources of the web UI (compiled to static/) and the click-through tests",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",

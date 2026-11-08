@@ -1,4 +1,4 @@
-//! Entdecken (discover.py): audiobook suggestions – for your library ("Für dich"), by genre, and from book reviews.
+//! Entdecken: audiobook suggestions – for your library ("Für dich"), by genre, and from book reviews.
 //! Reviews come from Deutschlandfunk (Kultur) feeds, "Die Bücher des Monats" with its best-of list PDFs and
 //! Perlentaucher; only author and title are taken and matched against Audible. Reviews are remembered for 180
 //! days; reviewed books without an audiobook wait two years and are looked up again once a month.

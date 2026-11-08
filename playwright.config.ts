@@ -1,6 +1,6 @@
 import { defineConfig } from "@playwright/test";
 
-// Click-through tests against the real server (Python app + ffmpeg) with throwaway folders.
+// Click-through tests against the real server (rust/target/release/hoerwerk + ffmpeg) with throwaway folders.
 // Run: npm run build && npx playwright test   (CI installs Chromium via `npx playwright install`)
 const PORT = Number(process.env.E2E_PORT || 8099);
 // E2E_URL: test an already running server (e.g. the Docker image, folders prepared with e2e/setup.mjs)
@@ -22,7 +22,7 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   },
   webServer: EXTERNAL ? undefined : {
-    command: "node e2e/setup.mjs && python3 app/main.py",
+    command: "node e2e/setup.mjs && rust/target/release/hoerwerk",
     url: `http://127.0.0.1:${PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 60_000,

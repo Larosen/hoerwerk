@@ -1625,5 +1625,7 @@
   "source": "openlibrary",
   "isbn": "123",
   "id": "openlibrary:/works/OL1W"
- }
+ },
+ "page_html": "<html><head><meta property=\"og:title\" content=\"Nicht das - Shop\"/>\n<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@graph\": [{\"@type\": \"WebPage\"},\n {\"@type\": [\"Book\"], \"name\": \"Das Fr&auml;ulein von Scuderi\", \"author\": [{\"name\": \"E. T. A. Hoffmann\"}, \"Max &amp; Moritz\"],\n  \"isPartOf\": {\"name\": \"Erzählungen\", \"position\": \"3\"}, \"image\": [{\"url\": \"https://img.example/c.jpg\"}],\n  \"genre\": \"Klassiker, Krimi\", \"description\": \"<p>Paris &amp; ein Mord</p>\",\n  \"workExample\": [{\"@type\": \"Book\", \"bookFormat\": \"EBook\", \"isbn\": \"111\"},\n                  {\"@type\": \"Audiobook\", \"readBy\": \"Erika Muster und Max Muster\", \"duration\": \"PT5H31M40S\",\n                   \"datePublished\": \"2020-05-01T00:00\", \"inLanguage\": \"de\", \"isbn\": \"978222\",\n                   \"publisher\": {\"name\": \"Hörverlag\"}}]}]}</script></head></html>",
+ "page_og_html": "<meta property=\"og:title\" content=\"Krimi-Reihe, Band 4: Der vierte Fall - Thalia\">\n<meta property=\"og:image\" content=\"javascript:alert(1)\"><meta property=\"og:description\" content=\"Kurz &amp; gut\">"
 }

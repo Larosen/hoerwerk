@@ -9,10 +9,10 @@ data/
 README.md
 tests/
 unraid/
-# frontend: only package*.json, tsconfig.json and frontend/ are needed; app/static/*.js is built in the image
+# frontend: only package*.json, tsconfig.json and frontend/ are needed; static/*.js is built in the image
 node_modules
 e2e/
 test-results
 playwright-report
-app/static/*.js
+static/*.js
 rust/target/

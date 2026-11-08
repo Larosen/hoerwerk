@@ -1,4 +1,4 @@
-//! Where a finished audiobook goes (library.py): path templates with optional parts, existing folders under
+//! Where a finished audiobook goes: path templates with optional parts, existing folders under
 //! another spelling, atomic moves. Template: `{field}`, `{field:2}` (zero-padded numbers), `[ … ]` optional.
 
 use std::collections::HashMap;
@@ -318,6 +318,40 @@ pub fn free_path(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn moves_whole_files_also_across_disks() {
+        use std::os::unix::fs::MetadataExt;
+        let disk = std::env::temp_dir().join(format!("hw-move-{}", std::process::id()));
+        let ram = Path::new("/dev/shm").join(format!("hw-move-{}", std::process::id()));
+        std::fs::create_dir_all(&disk).unwrap();
+        let data = vec![7u8; 3 << 20];
+        // same disk: a plain rename
+        std::fs::write(disk.join("a.m4b"), &data).unwrap();
+        move_atomic(&disk.join("a.m4b"), &disk.join("b.m4b")).unwrap();
+        assert_eq!(std::fs::read(disk.join("b.m4b")).unwrap(), data);
+        // another file system (EXDEV): copy to a hidden partial, sync, rename, then remove the source
+        if std::fs::create_dir_all(&ram).is_ok()
+            && std::fs::metadata(&ram).unwrap().dev() != std::fs::metadata(&disk).unwrap().dev()
+        {
+            move_atomic(&disk.join("b.m4b"), &ram.join("c.m4b")).unwrap();
+            assert_eq!(std::fs::read(ram.join("c.m4b")).unwrap(), data);
+            assert!(!disk.join("b.m4b").exists());
+            let names: Vec<String> = std::fs::read_dir(&ram)
+                .unwrap()
+                .flatten()
+                .map(|e| e.file_name().to_string_lossy().into())
+                .collect();
+            assert_eq!(names, ["c.m4b"]); // no partial left
+            // a crash in the middle leaves only a hidden partial – the next start removes it
+            std::fs::write(ram.join(format!("{PARTIAL}d.m4b")), b"half").unwrap();
+            assert_eq!(remove_partials(&ram), 1);
+            assert!(move_atomic(&disk.join("missing.m4b"), &ram.join("e.m4b")).is_err());
+            assert!(!ram.join("e.m4b").exists());
+        }
+        let _ = std::fs::remove_dir_all(&disk);
+        let _ = std::fs::remove_dir_all(&ram);
+    }
 
     #[test]
     fn like_python() {

@@ -1,5 +1,5 @@
 //! Invitations by link: an admin creates a link, whoever opens it picks their own name and password.
-//! Accepting is one transaction – account created and use counted together (same rules as app/invites.py).
+//! Accepting is one transaction – account created and use counted together.
 
 use rusqlite::{OptionalExtension, Row, params};
 use serde_json::{Value, json};

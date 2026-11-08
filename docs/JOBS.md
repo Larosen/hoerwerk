@@ -1,7 +1,7 @@
 # Hörbuch-Jobs: Zustände, Übergänge, Neustart
 
-Diese Datei ist die Spezifikation des Job-Lebenslaufs. Sie gilt für jede Implementierung (heute Python in
-`app/pipeline.py`, später Rust). Jeder Übergang, der hier nicht steht, ist ein Fehler.
+Diese Datei ist die Spezifikation des Job-Lebenslaufs (umgesetzt in `rust/hoerwerk/src/pipeline.rs` und
+`engine.rs`). Jeder Übergang, der hier nicht steht, ist ein Fehler.
 
 ## Begriffe
 
@@ -86,11 +86,14 @@ Ist sie nicht lesbar, wartet Hörwerk und versucht es jede Minute neu.
 ## Garantien (getestet)
 
 - Ein Job läuft nie in zwei Workern zugleich, auch wenn er mehrfach eingereiht wird.
-  Tests: `tests/test_concurrency.py`, Klassen `EngineTest` und `PipelineCrashTest`.
-- Eine M4B erscheint in der Bibliothek nur vollständig (atomares Verschieben). Test: `AtomicMoveTest`.
-- Ein Neustart verliert keinen Job und legt keinen doppelt ab. Test: `PipelineCrashTest`.
-- Ein Abbruch erreicht ffmpeg in jedem Moment, auch beim Start, samt Kindprozessen. Test: `RunnerCancelTest`.
-- Herunterfahren stellt laufende Jobs zurück. Test: `ShutdownTest`.
+  Test: `engine.rs` `one_step_per_job_at_a_time`.
+- Eine M4B erscheint in der Bibliothek nur vollständig (atomares Verschieben, auch über Plattengrenzen).
+  Test: `filing.rs` `moves_whole_files_also_across_disks`.
+- Ein Neustart verliert keinen Job und legt keinen doppelt ab; Herunterfahren stellt laufende Jobs zurück.
+  Tests: `contract/test_contract.py` `Lifecycle.test_interrupted_job_is_finished_after_a_restart` und
+  `test_sigterm_ends_in_order`.
+- Ein Abbruch erreicht ffmpeg in jedem Moment, auch beim Start, samt Kindprozessen.
+  Test: `encoder.rs` `runner_kills_a_cancelled_process`.
 
 ## Persistenz
 
@@ -99,7 +102,7 @@ Ein Job ist eine Zeile in der Tabelle `jobs` (siehe `contract/schema.sql`):
 - Spalten `id`, `kind='audiobook'`, `status`, `source`, `created`, `updated`;
 - Spalte `data` mit allen Feldern als JSON.
 
-Bekannte Felder in `data` (Python `Job.KEYS`):
+Bekannte Felder in `data` (`struct Job` in `rust/hoerwerk/src/pipeline.rs`):
 
 | Gruppe | Felder |
 |---|---|

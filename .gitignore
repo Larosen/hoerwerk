@@ -7,11 +7,9 @@ __pycache__/
 .env
 node_modules/
 # compiled from frontend/src (npm run build)
-app/static/*.js
+static/*.js
 test-results/
 playwright-report/
 e2e/.run/
-.coverage
-coverage.xml
 sbom.spdx.json
 rust/target/

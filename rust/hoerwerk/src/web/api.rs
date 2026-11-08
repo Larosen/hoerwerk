@@ -770,11 +770,13 @@ async fn users_delete(app: Arc<App>, req: Req, params: HashMap<String, String>) 
     let Some(uid) = id_param(&params, "uid") else {
         return error(404, t("Nicht gefunden", &[]));
     };
-    let name = app
-        .accounts
-        .get(&app.db, uid)
-        .and_then(|u| u["name"].as_str().map(str::to_string))
-        .unwrap_or_default();
+    let Some(user) = app.accounts.get(&app.db, uid) else {
+        return error(404, t("Nicht gefunden", &[]));
+    };
+    if uid == req.user_id() {
+        return error(400, t("Das eigene Konto kann nicht gelöscht werden", &[]));
+    }
+    let name = user["name"].as_str().unwrap_or("").to_string();
     match app.accounts.delete(&app.db, uid) {
         Ok(true) => {
             authlog::event(

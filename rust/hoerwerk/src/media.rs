@@ -13,7 +13,7 @@ use crate::words::natural_path_cmp;
 pub const AUDIO_EXTS: [&str; 16] = [
     "mp3", "m4a", "m4b", "mp4", "aac", "flac", "ogg", "oga", "opus", "wav", "wma", "aif", "aiff", "mka", "ape", "alac",
 ];
-/// Containers ffprobe/ffmpeg may open: audio only (meta.AUDIO_DEMUXERS).
+/// Containers ffprobe/ffmpeg may open: audio only (docker/build-ffmpeg.sh builds exactly these).
 pub const AUDIO_DEMUXERS: &str = "mp3,mov,aac,flac,ogg,wav,w64,aiff,asf,matroska,ape,wv,caf,mpc,mpc8,tta,au,amr,dsf";
 
 fn ext_of(name: &str) -> String {

@@ -1,4 +1,4 @@
-//! Audiobook pipeline (pipeline.py): watch the inbox, convert to M4B, tag from Audible, file into the library –
+//! Audiobook pipeline: watch the inbox, convert to M4B, tag from Audible, file into the library –
 //! with a review queue for books that cannot be matched with confidence. A job runs in stages
 //! (prepare → convert → finish), each one step in a queue of the job engine; see docs/JOBS.md.
 
@@ -1530,13 +1530,17 @@ impl Pipeline {
             self.note(t("Eingangsordner nicht gefunden", &[]));
             return Vec::new();
         }
-        let mut names: Vec<String> = std::fs::read_dir(&self.inbox)
-            .map(|rd| {
-                rd.flatten()
-                    .map(|e| e.file_name().to_string_lossy().into_owned())
-                    .collect()
-            })
-            .unwrap_or_default();
+        let mut names: Vec<String> = match std::fs::read_dir(&self.inbox) {
+            Ok(rd) => rd
+                .flatten()
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .collect(),
+            Err(e) => {
+                // e.g. no read permission (PUID/PGID): shown on the page instead of an empty inbox
+                self.note(t("Fehler beim Durchsuchen: {error}", &[("error", &e.to_string())]));
+                return Vec::new();
+            }
+        };
         names.sort_by_key(|n| natural_key(n));
         let mut added = Vec::new();
         let mut present: HashSet<PathBuf> = HashSet::new();

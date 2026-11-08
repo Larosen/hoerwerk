@@ -1,9 +1,9 @@
 """The API contract of Hörwerk – black-box: only HTTP and the folders, no import of the application.
 
-Every backend (today Python, later Rust) must pass these unchanged:
+The server (rust/hoerwerk) must pass these unchanged:
 
-    python3 -m unittest discover -s contract                      # against python3 app/main.py
-    HW_SERVER_CMD=target/release/hoerwerk python3 -m unittest discover -s contract
+    (cd rust && cargo build --release) && python3 -m unittest discover -s contract
+    HW_SERVER_CMD=/path/to/hoerwerk python3 -m unittest discover -s contract      # another build
 """
 from __future__ import annotations
 
@@ -207,6 +207,17 @@ class Accounts(ContractTest):
         me = self.admin.get("/api/auth/me")
         status, _ = self.admin.call("DELETE", f'/api/users/{me["id"]}', expect=None)
         self.assertEqual(status, 400)
+
+    def test_own_account_stays(self):
+        """Not even with a second admin: nobody deletes the account they are signed in with."""
+        other = self.admin.call("POST", "/api/users", {"name": "Zweit-Admin", "password": "Lange-Leiter-Mond-47",
+                                                       "role": "admin"})
+        try:
+            me = self.admin.get("/api/auth/me")
+            status, data = self.admin.call("DELETE", f'/api/users/{me["id"]}', expect=None)
+            self.assertEqual((status, data["error"]), (400, "Das eigene Konto kann nicht gelöscht werden"))
+        finally:
+            self.admin.call("DELETE", f'/api/users/{other["id"]}')
 
     def test_invitation(self):
         status, _ = self.admin.call("POST", "/api/invites", {"days": 1}, expect=None)
@@ -676,6 +687,32 @@ class Lifecycle(unittest.TestCase):
         finally:
             s.cleanup()
 
+    def test_interrupted_job_is_finished_after_a_restart(self):
+        """docker stop during the conversion: the job goes back to the queue, and after the next start it is filed –
+        exactly once (docs/JOBS.md)."""
+        s = Server().start()
+        try:
+            folder = os.path.join(s.dir, "lang")
+            tone(os.path.join(folder, "01.mp3"), seconds=1200, tags={"artist": "Anna Autorin", "album": "Lang"})
+            os.rename(folder, os.path.join(s.inbox, "Anna Autorin - Lang"))
+            admin = Client(s, ADMIN["name"], ADMIN["password"])
+            jobs = lambda: admin.get("/api/audiobooks")["jobs"]                 # noqa: E731
+            admin.wait(lambda: [j for j in jobs() if j["status"] == "converting"], 120, step=0.1, what="converting")
+            self.assertEqual(s.stop(signal.SIGTERM), 0, s.output())
+            s.start()
+            admin = Client(s, ADMIN["name"], ADMIN["password"])
+            done = admin.wait(lambda: [j for j in jobs() if j["status"] in ("done", "failed")], 180, what="filed")[0]
+            self.assertEqual(done["status"], "done", done.get("error"))
+            self.assertEqual(len(jobs()), 1)
+            log = admin.get(f'/api/audiobooks/{done["id"]}')["log"]
+            self.assertTrue(any("unterbrochen" in line for line in log), log)
+            m4bs = [f for _, _, files in os.walk(s.library) for f in files if f.endswith(".m4b")]
+            self.assertEqual(m4bs, ["Lang.m4b"])
+            leftovers = [f for _, _, files in os.walk(s.library) for f in files if f.startswith(".")]
+            self.assertEqual(leftovers, [])                                     # no half copy left behind
+        finally:
+            s.cleanup()
+
     def test_schema(self):
         """A fresh database has exactly the schema of contract/schema.sql (tables, indexes, user_version)."""
         s = Server().start()
@@ -725,7 +762,7 @@ class Lifecycle(unittest.TestCase):
             s.cleanup()
 
     def test_takes_over_an_existing_database(self):
-        """A database written by Hörwerk 7.13 (Python): accounts, settings, requests and library survive."""
+        """A database written by Hörwerk 7.13 (the Python version): accounts, settings, requests and library survive."""
         s = Server(env={"AUTH_USER": "", "AUTH_PASS": ""})
         shutil.copy(FIXTURE_DB, os.path.join(s.config, "hoerwerk.db"))
         try:
@@ -788,22 +825,6 @@ class Library(unittest.TestCase):
         finally:
             s.cleanup()
 
-
-def _mark_pending() -> None:
-    """HW_CONTRACT_PENDING=file: tests a server under construction does not pass yet (one "Class.test" per line).
-    They run as expected failures – one that starts passing fails the run, so the list can only shrink."""
-    path = os.environ.get("HW_CONTRACT_PENDING")
-    if not path:
-        return
-    with open(path, encoding="utf-8") as f:
-        names = [line.split("#")[0].strip() for line in f]
-    for name in filter(None, names):
-        cls, _, test = name.partition(".")
-        target = globals()[cls]
-        setattr(target, test, unittest.expectedFailure(getattr(target, test)))
-
-
-_mark_pending()
 
 if __name__ == "__main__":
     unittest.main()

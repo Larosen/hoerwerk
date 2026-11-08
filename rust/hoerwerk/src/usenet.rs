@@ -1,4 +1,4 @@
-//! Search Newznab indexers and send NZBs to SABnzbd – the Readarr part (usenet.py). API keys stay on the server:
+//! Search Newznab indexers and send NZBs to SABnzbd – the Readarr part. API keys stay on the server:
 //! the UI only sees whether one is set, and NZB links (which embed the indexer key) never leave the backend.
 
 use std::collections::HashMap;
@@ -1179,9 +1179,6 @@ impl Usenet {
     }
 
     pub fn send(&self, result_id: &str, hints: &Value) -> Result<Value> {
-        if crate::config::compare_mode() {
-            return fail(t("Vergleichsbetrieb: diese Instanz startet keine Downloads", &[]));
-        }
         let r = self
             .results
             .lock()

@@ -1,23 +1,25 @@
 # API-Vertrag
 
-Was jede Hörwerk-Implementierung (heute Python, später Rust) erfüllen muss. Geprüft wird nur von außen über HTTP
-und die Ordner, ohne einen Import der Anwendung.
+Was der Hörwerk-Server (`rust/hoerwerk`) erfüllen muss. Geprüft wird nur von außen über HTTP und die Ordner, ohne
+einen Import der Anwendung. Entstanden mit Hörwerk 7.13 (damals Python): Was 7.13 tat, ist der Maßstab.
 
 | Datei | Inhalt |
 |---|---|
-| `routes.json` | Alle 96 API-Routen mit Methode, Pfad und Zugriff (`public` / `user` / `admin`) |
+| `routes.json` | Alle 96 API-Routen mit Methode, Pfad und Zugriff (`public` / `user` / `admin`) – der Server liest sie beim Bauen |
+| `settings.json` | Einstellungen: Standardwerte, erlaubte Werte, Umgebungsvariablen, Version – der Server liest sie beim Bauen |
 | `schema.sql` | Das Datenbank-Schema (Tabellen, Indizes, `user_version`) |
 | `fixtures/hoerwerk-7.13.db` | Eine Datenbank aus 7.13, die jede neue Version unverändert übernehmen muss |
-| `golden/` | Ein Buch (`book.json`) und die M4B-Tags, die daraus entstehen müssen (`tags.json`), gelesen mit `read_tags.py`; dazu die Antworten der Python-Regeln, die Rust gleich geben muss: Namen und Titel (`words.json`), Releases und Indexer (`releases.json`), Shop-Daten und Treffer (`audible.json`), Rezensionen, Feeds und Bestenlisten-PDFs (`discover.json`) |
-| `test_contract.py` | Die Tests: Zugriff, Sicherheit, Konten, Einladungen, Einstellungen, Anfragen, Eingang → Bibliothek, Upload, Live-Updates, Herunterfahren, Schema, alte Datenbank |
+| `golden/` | Die Antworten von 7.13 auf knifflige Eingaben – die Rust-Unit-Tests prüfen dagegen: M4B-Tags eines Buchs (`book.json` → `tags.json`, gelesen mit `read_tags.py`; zurückgelesen `read.json`), Namen und Titel (`words.json`), Releases und Indexer (`releases.json`), Shop-Daten und Treffer (`audible.json`), Rezensionen, Feeds und Bestenlisten-PDFs (`discover.json`) |
+| `test_contract.py` | Die Tests: Zugriff, Sicherheit, Konten, Einladungen, Einstellungen, Anfragen, Eingang → Bibliothek, Upload, Live-Updates, Herunterfahren und Neustart, Schema, alte Datenbank |
+| `test_tags.py` | Der Tag-Schreiber `hw-tags` gegen `golden/` |
 | `../docs/JOBS.md` | Job-Zustände, Übergänge und das Verhalten bei einem Neustart |
 
 ```sh
-cd contract && python3 -m unittest discover -s .                                   # gegen python3 app/main.py
-cd contract && HW_SERVER_CMD=../rust/target/release/hoerwerk python3 -m unittest discover -s .
+(cd rust && cargo build --release)
+pip install -r requirements-dev.txt
+cd contract && python3 -m unittest discover -s .          # gegen rust/target/release/hoerwerk
+HW_SERVER_CMD=/pfad/zu/hoerwerk python3 -m unittest discover -s .
 ```
 
-Das Fixture und die Vergleichsdateien werden nur nach einer **bewussten** Änderung neu erzeugt:
-`python3 contract/make_fixture.py`, `python3 contract/make_golden.py`, `make_words.py`, `make_releases.py`,
-`make_audible.py`, `make_discover.py` (schreibt auch `rust/hoerwerk/src/trusted_authors.txt`). `tests/test_golden.py`
-meldet, wenn eine davon nicht mehr zu den Python-Regeln passt.
+Die Golden Files und das Fixture sind eingefroren. Wer eine Regel bewusst ändert, passt die Datei von Hand an und
+schreibt im Commit, warum.

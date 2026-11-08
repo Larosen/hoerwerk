@@ -1,4 +1,4 @@
-//! Indexer search -> SABnzbd with the library cross-check, and the book search in the shops (routes/search.py).
+//! Indexer search -> SABnzbd with the library cross-check, and the book search in the shops.
 
 use std::collections::HashMap;
 use std::sync::Arc;

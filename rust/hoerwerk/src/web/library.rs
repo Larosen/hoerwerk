@@ -1,4 +1,4 @@
-//! The library: stats, browsing, covers, rescan, books that are not one M4B yet, and tidying up (routes/library.py).
+//! The library: stats, browsing, covers, rescan, books that are not one M4B yet, and tidying up.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

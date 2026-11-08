@@ -1,4 +1,4 @@
-//! Audio to one chapterised M4B with ffmpeg – every call jailed through hw-run (encoder.py).
+//! Audio to one chapterised M4B with ffmpeg – every call jailed through hw-run.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Read;

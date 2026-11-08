@@ -14,7 +14,7 @@
 //!   namespaces, kernel modules, BPF, keyrings, io_uring (which bypasses seccomp) …;
 //! * `no_new_privs`, no core dumps, bounded memory and file size, lower CPU priority.
 //!
-//! The same command line as the earlier Python launcher (`app/sandbox.py`), so the app can use either.
+//! The same command line as the launcher of Hörwerk 7.13 (`app/sandbox.py` there).
 //! `FFMPEG_SANDBOX`: `auto` (jail when the kernel supports it), `require` (refuse without it), `off`.
 //! `FFMPEG_MEMORY_MB` (default 4096), `FFMPEG_MAX_FILE_GB` (default 32).
 

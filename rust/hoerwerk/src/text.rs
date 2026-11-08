@@ -1,4 +1,4 @@
-//! Texts: German is the source, app/static/i18n/en.json the English catalog (the same file the browser uses),
+//! Texts: German is the source, static/i18n/en.json the English catalog (the same file the browser uses),
 //! and the in-app log (/api/logs) – a ring buffer of the last entries, also printed to stdout.
 
 use std::collections::{HashMap, VecDeque};

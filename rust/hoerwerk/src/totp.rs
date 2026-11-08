@@ -1,4 +1,4 @@
-//! Second factor with an authenticator app (accounts.py): RFC 6238 codes (SHA-1, 6 digits, 30 s), one step of
+//! Second factor with an authenticator app: RFC 6238 codes (SHA-1, 6 digits, 30 s), one step of
 //! clock drift either way, and no code accepted twice.
 
 use hmac::{Hmac, Mac};

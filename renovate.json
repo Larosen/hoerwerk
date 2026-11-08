@@ -26,7 +26,7 @@
       "platformAutomerge": false
     },
     {
-      "description": "Major versions (Python 3.16, FFmpeg 10, TypeScript 8 …): only as a PR to look at",
+      "description": "Major versions (Debian 14, FFmpeg 10, TypeScript 8, crates …): only as a PR to look at",
       "matchUpdateTypes": [
         "major"
       ],
@@ -51,6 +51,19 @@
         "npm"
       ],
       "groupName": "Bauwerkzeuge (npm)"
+    },
+    {
+      "matchManagers": [
+        "cargo"
+      ],
+      "groupName": "Rust-Crates (cargo)"
+    },
+    {
+      "description": "The Rust toolchain: rust-toolchain.toml and the build image move together",
+      "matchDepNames": [
+        "rust"
+      ],
+      "groupName": "Rust"
     }
   ],
   "customManagers": [
@@ -93,7 +106,7 @@
       "datasourceTemplate": "github-releases"
     },
     {
-      "description": "Python version of the CI jobs (same as the image)",
+      "description": "Python version of the CI jobs (only the test tools: contract tests, i18n check)",
       "customType": "regex",
       "managerFilePatterns": [
         "/^\\.github/workflows/.+\\.ya?ml$/"
@@ -115,6 +128,19 @@
         "node-version: \"(?<currentValue>[\\d.]+)\""
       ],
       "depNameTemplate": "node",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "docker"
+    },
+    {
+      "description": "Rust toolchain (rust/rust-toolchain.toml) – same version as the build image in the Dockerfile",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)rust-toolchain\\.toml$/"
+      ],
+      "matchStrings": [
+        "channel = \"(?<currentValue>[\\d.]+)\""
+      ],
+      "depNameTemplate": "rust",
       "datasourceTemplate": "docker",
       "versioningTemplate": "docker"
     }

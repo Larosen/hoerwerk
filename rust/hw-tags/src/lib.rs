@@ -1,6 +1,6 @@
-//! Audiobook tags for M4B files – atom for atom what Hörwerk's Python tagger (`app/tagger.py`) writes, so
+//! Audiobook tags for M4B files – atom for atom what Hörwerk 7.13 wrote, so
 //! Audiobookshelf, Plex (Audnexus agent), Prologue, BookPlayer & co. read everything.
-//! The yardstick is `contract/golden/tags.json`; `contract/test_tags.py` compares both writers against it.
+//! The yardstick is `contract/golden/tags.json`; `contract/test_tags.py` checks hw-tags against it.
 
 use mp4ameta::ident::FreeformIdentBorrowed;
 use mp4ameta::{Data, DataIdent, Fourcc, Img, ImgFmt, MediaType, Tag};

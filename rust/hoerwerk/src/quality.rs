@@ -1,4 +1,4 @@
-//! How good a book should sound: radio play or reading, and how much bitrate each may keep (quality.py).
+//! How good a book should sound: radio play or reading, and how much bitrate each may keep.
 
 use serde_json::Value;
 

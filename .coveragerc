@@ -1,9 +1,0 @@
-[run]
-source = app
-omit = app/static/*
-
-[report]
-# the unit tests alone; the click-through tests cover the API routes on top
-fail_under = 80
-skip_covered = true
-show_missing = false

@@ -1,18 +1,17 @@
-# Python lint (CI: "ruff check app tests"). Rules: real errors (pyflakes, syntax), likely bugs (bugbear),
-# pylint errors and the security checks (bandit) – no style rules.
+# Lint of the test code (CI: "ruff check contract tests"). Rules: real errors (pyflakes, syntax), likely bugs
+# (bugbear), pylint errors and the security checks (bandit) – no style rules.
 target-version = "py312"
 
 [lint]
 select = ["E4", "E7", "E9", "F", "B", "PLE", "S"]
 ignore = [
-    "B904",   # raise … from: errors are turned into HTTP answers on purpose, the chain adds nothing there
     "B905",   # zip(strict=): all zips pair lists built together
-    "S603", "S606", "S607",   # subprocess without a shell: ffmpeg/ffprobe with argument lists, inside the sandbox
-    "S310",   # urlopen: every fetch goes through audible.http_get with a scheme/host allow-list
-    "S110", "S112",           # try/except/pass: deliberate where a side task must not stop the main one
-    "S105",   # "SECRET" placeholders that hide keys in the UI, not passwords
-    "S104",   # binding 0.0.0.0: a container service
+    "S603", "S606", "S607",   # subprocess without a shell: the server, ffmpeg and hw-tags with argument lists
+    "S310",   # urlopen: only the local test servers
+    "S110", "S112",           # try/except/pass: cleanup that must not hide the real failure
+    "S104",   # binding 0.0.0.0 / 127.0.0.1 in the fake services
 ]
 
 [lint.per-file-ignores]
-"tests/**" = ["S"]          # test fixtures with fake passwords, temp files, asserts
+"tests/**" = ["S"]
+"contract/**" = ["S"]       # test fixtures with fake passwords, temp files, asserts

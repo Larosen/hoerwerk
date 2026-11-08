@@ -1,4 +1,4 @@
-//! Upload from the browser into the inbox (uploads.py): file by file, streamed to disk into a hidden staging
+//! Upload from the browser into the inbox: file by file, streamed to disk into a hidden staging
 //! folder `<inbox>/.upload-<id>/`; only when finished, each top-level folder is moved into the inbox in one step.
 //! Relative paths only, only audio, covers and the text files Hörwerk understands – checked by name *and* first
 //! bytes (a program renamed to .mp3 is refused). Limits per file, upload and account; a size is reserved before
@@ -66,19 +66,16 @@ fn err<T>(m: String) -> Res<T> {
 }
 
 fn what(kind: &str) -> String {
-    t(
-        match kind {
-            "exe" => "ein Windows-Programm (.exe/.dll)",
-            "elf" => "ein Linux-Programm",
-            "pdf" => "ein PDF-Dokument",
-            "zip" => "ein ZIP-Archiv (auch .docx/.jar/.apk)",
-            "archive" => "ein Archiv",
-            "script" => "ein Skript",
-            "mac" => "ein macOS-Programm",
-            _ => "ein Office-Dokument",
-        },
-        &[],
-    )
+    match kind {
+        "exe" => t("ein Windows-Programm (.exe/.dll)", &[]),
+        "elf" => t("ein Linux-Programm", &[]),
+        "pdf" => t("ein PDF-Dokument", &[]),
+        "zip" => t("ein ZIP-Archiv (auch .docx/.jar/.apk)", &[]),
+        "archive" => t("ein Archiv", &[]),
+        "script" => t("ein Skript", &[]),
+        "mac" => t("ein macOS-Programm", &[]),
+        _ => t("ein Office-Dokument", &[]),
+    }
 }
 
 fn is_audio(head: &[u8]) -> bool {

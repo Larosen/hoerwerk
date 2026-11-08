@@ -79,12 +79,6 @@ Image: `ghcr.io/larosen/hoerwerk:latest` (amd64 + arm64, rebuilt weekly for secu
 docker compose up -d
 ```
 
-### Preview: hoerwerk:next
-
-`ghcr.io/larosen/hoerwerk:next` is the same app with the new backend in Rust. You can try it safely **next to**
-your running Hörwerk – on a copy of its AppData, with the library read-only and without downloads, notifications or
-scans (`COMPARE_MODE=true`). Guide (German) and comparison script: [docs/VERGLEICH.md](docs/VERGLEICH.md).
-
 ---
 
 ## Audiobooks
@@ -274,7 +268,7 @@ German only, no erotica. **Always excluded** is what you already have: books in 
 
 **To be honest:** no software can reliably check whether a non-fiction book is accurate – ratings only measure
 popularity. So *For you* only shows non-fiction by established authors: on Hörwerk's fixed list (about 400 authors
-of fact-based non-fiction since 2010, `app/trusted_authors.py`), with a Perlentaucher author page (reviewed in the arts
+of fact-based non-fiction since 2010, `rust/hoerwerk/src/trusted_authors.txt`), with a Perlentaucher author page (reviewed in the arts
 pages), named in the reviews, or on your own list in the settings. That checks reputation, not content. All non-fiction
 can be switched on in the settings. In *By genre* it appears when you pick a non-fiction genre yourself,
 with a note that stars are no fact check. BookBeat is not connected – it
@@ -484,36 +478,44 @@ Short version – details, tests and component versions in [SECURITY.md](SECURIT
 
 ## Development
 
+The server is a single Rust program (`rust/hoerwerk`), plus `hw-run` (the jail for ffmpeg) and `hw-tags` (M4B
+tags). The UI is TypeScript (`frontend/src`), compiled to `static/`.
+
 ```bash
-pip install -r requirements.txt                 # mutagen + PyYAML
-npm ci && npm run build                         # TypeScript (frontend/src) -> app/static/*.js
-python3 -m unittest discover -s tests           # Python tests (need ffmpeg, no network)
+(cd rust && cargo build --release)              # server, hw-run, hw-tags -> rust/target/release/
+npm ci && npm run build                         # TypeScript (frontend/src) -> static/*.js
+(cd rust && cargo test)                         # unit tests, also against the golden files in contract/golden
+pip install -r requirements-dev.txt             # test tools (mutagen, ruff)
+python3 -m unittest discover -s contract        # API contract against the server (needs ffmpeg, no network)
+python3 -m unittest discover -s tests           # every text translated
 npm run check                                   # type check
 npx playwright install chromium && npx playwright test   # click-through tests against a real server
-INBOX_DIR=/tmp/inbox LIBRARY_DIR=/tmp/lib CONFIG_DIR=/tmp/br PORT=8080 python3 app/main.py
+INBOX_DIR=/tmp/inbox LIBRARY_DIR=/tmp/lib CONFIG_DIR=/tmp/br PORT=8080 rust/target/release/hoerwerk
 ```
 
-**Translations:** German is the source language. Every UI text is wrapped in `t("…")` (Python and TypeScript);
-`app/static/i18n/en.json` holds the English text. `python3 tests/test_i18n.py --missing` lists texts that still
-need a translation – the test suite fails until every text has one.
+**Translations:** German is the source language. Every text is wrapped in `t("…")` (Rust and TypeScript);
+`static/i18n/en.json` holds the English text. `python3 tests/test_i18n.py --missing` lists texts that still
+need a translation – the tests fail while one is missing.
 
-CI runs on every pull request: Python tests (with the system ffmpeg and with the own ffmpeg 9 in a mandatory
-sandbox), type check, click-through tests against the source and against the built Docker image.
+CI checks every pull request: format, Clippy and unit tests, licenses and advisories of every crate, the API
+contract (with the system ffmpeg and with the own ffmpeg 9 in the mandatory jail), type check, click-through tests
+against the source and against the finished Docker image.
 
-| Part | Files |
+| Part | Files (`rust/hoerwerk/src/`) |
 |---|---|
-| Start & wiring | `app/main.py`, `app/config.py`, `app/services.py` |
-| Web | `app/web/server.py`, `app/web/router.py`, `app/web/routes/*` |
-| Data | `app/db.py` (SQLite), `app/stores.py` |
-| Jobs | `app/engine.py`, `app/pipeline.py`, `app/converter.py`, `app/events.py` |
-| Audio | `app/encoder.py`, `app/sandbox.py`, `app/meta.py`, `docker/build-ffmpeg.sh` |
-| Metadata | `app/audible.py`, `app/providers.py`, `app/links.py`, `app/tagger.py`, `app/abs.py` |
-| Library & downloads | `app/library.py`, `app/library_index.py`, `app/usenet.py` |
-| Notifications & log | `app/notify.py`, `app/applog.py` |
-| Media servers | `app/abs.py`, `app/plex.py` |
-| Discover | `app/discover.py`, `frontend/src/discover.ts` |
-| Language | `app/i18n.py`, `app/static/i18n/en.json` |
-| Interface | `frontend/src/*.ts`, `app/static/index.html`, `style.css`; E2E tests in `e2e/` |
+| Start & wiring | `main.rs`, `config.rs`, `app.rs`, `settings.rs` |
+| Web | `web/mod.rs` (checks, pages, live updates), `web/api.rs` (routes), `web/*.rs`, `web/hosts.rs` |
+| Data | `db.rs` (SQLite), `migrations/` |
+| Jobs | `engine.rs`, `pipeline.rs`, `uploads.rs` |
+| Audio | `encoder.rs`, `chapters.rs`, `quality.rs`, `media.rs`; `rust/hw-run`, `docker/build-ffmpeg.sh` |
+| Metadata | `audible.rs`, `links.rs`, `tagger.rs`, `rust/hw-tags` |
+| Library & downloads | `filing.rs`, `library.rs`, `usenet.rs`, `releases.rs`, `packs.rs`, `requests.rs` |
+| Accounts & security | `accounts.rs`, `invites.rs`, `totp.rs`, `authlog.rs` |
+| Notifications & log | `notify.rs`, `text.rs` |
+| Media servers & listening | `mediaservers.rs`, `listening.rs`, `stats.rs` |
+| Discover | `discover.rs`, `pdftext.rs`, `trusted_authors.txt`, `frontend/src/discover.ts` |
+| Interface | `frontend/src/*.ts`, `static/index.html`, `static/style.css`, `static/i18n/en.json`; E2E tests in `e2e/` |
+| API contract | `contract/` (routes, schema, settings, golden files, tests) |
 
 Inspired by the open-source projects [auto-m4b](https://github.com/seanap/auto-m4b) and
 [beets-audible](https://github.com/Neurrone/beets-audible); chapter data via [Audnexus](https://github.com/laxamentumtech/audnexus).

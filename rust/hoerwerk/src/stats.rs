@@ -1,4 +1,4 @@
-//! Statistics per family account (stats.py): who asked for how many books, when, how many hours, how much space.
+//! Statistics per family account: who asked for how many books, when, how many hours, how much space.
 //! Admins see every account and the totals; everyone else their own numbers and the family's totals.
 
 use std::collections::{BTreeMap, HashMap};

@@ -47,7 +47,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 |---|---|
 | Shop-Link oder Weiterleitung zu internen Adressen (Router, NAS, `169.254.169.254`) – SSRF | Links werden nur für Audible, BookBeat und Thalia abgerufen; jede Weiterleitung muss wieder dort hinführen. Cover werden nur von öffentlichen Adressen geladen (DNS-Auflösung, private/Loopback/Link-Local-Adressen werden abgelehnt). Nur `http(s)`. |
 | Sehr große Antworten (Speicher) | Antworten max. 8 MB (Shops/Audible) bzw. 20 MB (Indexer). |
-| Indexer-XML mit DTD/Entities (Billion Laughs, XXE) | Antworten mit `<!DOCTYPE`/`<!ENTITY` werden abgelehnt; Pythons XML-Parser lädt ohnehin keine externen Entities. |
+| Indexer-XML mit DTD/Entities (Billion Laughs, XXE) | Antworten mit `<!DOCTYPE`/`<!ENTITY` werden abgelehnt; der XML-Parser (roxmltree) lädt ohnehin keine externen Entities. |
 | `javascript:`-Links aus fremden Daten (Indexer-Details, Shop-Seiten) | Server lässt nur `http(s)`-Links durch, die Oberfläche filtert `href`/`src` zusätzlich zentral. |
 | ntfy-Token/Passwort | Nur auf dem Server, nie an den Browser (die Oberfläche sieht nur „gespeichert“), bei geänderter Server-Adresse nicht mitgenommen. Weiterleitungen werden nicht verfolgt. Adresse nur `http(s)` ohne `benutzer:passwort@`, Topic nur `A–Z a–z 0–9 - _`. Nachrichten gehen als JSON (keine Header-Injection über Buchtitel); der „Öffnen“-Link ist nur die selbst eingetragene `http(s)`-Adresse. |
 | Plex-Token | Wie der Audiobookshelf-Token: nur auf dem Server, nie an den Browser, bei geänderter Adresse nicht mitgenommen, keine Weiterleitungen, kein `benutzer:passwort@` in der Adresse. Hörwerk bittet Plex nur um Neu-Einlesen und (wenn angehakt) ums Leeren des Papierkorbs der einen gewählten Mediathek. |
@@ -56,7 +56,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 | Weitere Metadaten-Quellen | Nur feste Adressen über HTTPS: `api.audnex.us`, `itunes.apple.com`, `openlibrary.org` (dazu wie bisher Audible, BookBeat, Thalia). Treffer daraus werden nie automatisch übernommen. |
 | Abgreifen von API-Keys | Keys liegen nur in der Datenbank `/config/hoerwerk.db` (Rechte 600), werden nie an den Browser geschickt, ebenso wenig NZB-Links (enthalten den Indexer-Key). Ändert sich die Adresse eines Indexers oder von SABnzbd, wird der gespeicherte Key **nicht** mitgenommen – er muss neu eingegeben werden. Fehlermeldungen werden von Keys bereinigt. |
 | Ordnername eines Downloads kollidiert mit internen Ordnern (`.work`) | Der Name, den SABnzbd bekommt, wird bereinigt (keine Pfade, keine versteckten Namen). |
-| TLS | Zertifikate werden immer geprüft (Python-Standard). SABnzbd/Indexer/ntfy im LAN dürfen `http` sein – dann gehen deren Keys unverschlüsselt durchs Heimnetz. |
+| TLS | Zertifikate werden immer gegen die System-Zertifikate geprüft (rustls). SABnzbd/Indexer/ntfy im LAN dürfen `http` sein – dann gehen deren Keys unverschlüsselt durchs Heimnetz. |
 
 ### 3. Weboberfläche / API
 
@@ -76,7 +76,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 | Passwort gestohlen | Optionaler Zweitfaktor (TOTP nach RFC 6238, Standardbibliothek): Code gilt einmal (keine Wiederverwendung), ±30 s Uhrabweichung, Anmelde-Ticket 5 Minuten / 5 Versuche, Fehlversuche zählen für die IP-Bremse und landen in `auth.log`. Für Admins als Pflicht einstellbar. |
 | Unbemerkte Änderungen durch einen Admin-Zugang | Admin-Protokoll in der Datenbank: jede ändernde Admin-Aktion mit Zeit, Konto und IP (Freigaben, Konten, Einstellungen, Quellen …), einsehbar unter *Konten*. |
 | DNS-Rebinding / fremde Host-Namen | Standardmäßig nur IPs, Heimnetz-Namen, die öffentliche Adresse und was ein Proxy aus `TRUSTED_PROXIES` weiterleitet (nie aus Host/X-Forwarded-Host gelernt), sonst 421; `ALLOWED_HOSTS` für weitere Namen; zusätzlich braucht jede Datenanfrage eine Anmeldung. |
-| Pfade außerhalb der Bibliothek | Buch-Pfade aus dem Browser werden aufgelöst (inkl. Symlinks) und müssen in der Bibliothek liegen; statische Dateien nur aus `app/static`. |
+| Pfade außerhalb der Bibliothek | Buch-Pfade aus dem Browser werden aufgelöst (inkl. Symlinks) und müssen in der Bibliothek liegen; statische Dateien nur aus `/app/static`. |
 | Riesige Anfragen | max. 4 MB pro Anfrage; Ausnahme nur der Upload (bis 4 GB je Datei, direkt auf die Platte gestreamt). |
 | Upload | Nur Admins; Anmeldung und Rechte werden geprüft, bevor ein Byte gelesen wird. Nur relative Pfade ohne `..` und ohne versteckte Namen, nur Audio, Cover, Cue-Sheets und Hörwerks Textdateien – und zwar nach dem **Inhalt**: Die ersten Bytes müssen zur Endung passen (Audio-Kennung wie ID3/MPEG/FLAC/Ogg/MP4, Bild-Kennung, Text ohne Binärdaten). Programme (`.exe`, ELF, macOS), PDFs, Office-Dokumente, Archive (ZIP/RAR/7z …) und Skripte werden auch umbenannt erkannt und abgelehnt, bevor etwas auf der Platte landet; freier Platz wird vor jeder Datei geprüft; erst ein versteckter Zwischenordner, dann ein Schritt in den Eingang (nichts wird überschrieben).. Grenzen: 8 Uploads gleichzeitig (3 je Konto), 64 GB und 3000 Dateien je Upload, 128 GB je Konto in offenen Uploads – jede Datei bucht ihre Größe vor dem Schreiben, parallele Uploads kommen also nicht vorbei. Ein Upload gehört dem Konto, das ihn begonnen hat; abgeschlossen wird er genau einmal, nie während noch Dateien ankommen, und nach einem Absturz zu Ende geführt (Markierungsdatei) – unfertige Zwischenordner werden beim nächsten Start entfernt. |
 | Viele offene Live-Verbindungen (`/api/events`) | Höchstens 32 gleichzeitig; sie liefern nur, was die Oberfläche ohnehin abruft, und brauchen dieselbe Anmeldung. |
@@ -87,7 +87,8 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 
 * App läuft als PUID/PGID (Standard 99:100) **ohne Linux-Capabilities**, `no-new-privileges` aktiv (geprüft
   über `/proc/<pid>/status`). Root wird nur im Entrypoint für Benutzeranlage und `chown /config` gebraucht.
-* Abhängigkeiten: nur `mutagen` und `PyYAML` (versionsgepinnt), Rest Python-Standardbibliothek + eigenes ffmpeg
+* Ein einziges Rust-Programm, kein Interpreter im Image. Alle Crates sind in `rust/Cargo.lock` festgelegt
+  (`--locked`), `cargo deny` prüft Lizenzen, Herkunft und Sicherheitsmeldungen. Dazu das eigene ffmpeg
   (Quelltext vom offiziellen FFmpeg-Repository, Release-Tag auf seinen Commit festgenagelt).
 * ffmpeg-Käfig: `FFMPEG_SANDBOX=auto` (Standard) nutzt Landlock, wenn Kernel und Docker es erlauben (Linux ≥ 5.13,
   Netzwerk-Regeln ab 6.7; Docker ≥ 23). Ob er aktiv ist, steht unten in ⚙︎ Einstellungen. `require` verweigert
@@ -98,15 +99,14 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 
 | Komponente | Version | Neueste | Bewertung |
 |---|---|---|---|
-| Python (Docker-Basis) | 3.15.2 (`python:3.15-slim-trixie`) | 3.15.2 | aktuell |
+| Rust (Bau des Servers) | 1.97.0 (`rust:1.97-slim-trixie`) | 1.97 | aktuell, nicht im fertigen Image |
 | Debian | 13 „trixie“ (stable) | 13 | aktuell, Sicherheitsupdates per wöchentlichem Neubau |
 | ffmpeg | 9.0.2 (eigener schlanker Build) | 9.0.2 | aktuell, siehe unten |
 | tini | 0.19.0 (Debian) | 0.19.0 | aktuell |
-| mutagen | 1.48.1 | 1.48.1 | aktuell, keine bekannten Lücken (OSV) |
-| PyYAML | 6.0.3 | 6.0.3 | aktuell, keine bekannten Lücken (OSV); unter Python 3.15 ohne C-Beschleunigung (für kleine `metadata.yml` egal) |
+| Crates (213, u. a. axum 0.8, tokio 1.54, rustls 0.23, ureq 3.5, rusqlite 0.37 mit eingebautem SQLite) | `rust/Cargo.lock` | – | `cargo deny` in jeder CI ohne Meldungen |
 | Node.js (nur Build der Oberfläche) | 26 LTS | 26 | aktuell, nicht im fertigen Image |
 | TypeScript / Playwright | 7.0.2 / 1.64.1 | dieselben | aktuell (nur Entwicklung/CI) |
-| GitHub Actions | checkout v7, setup-python v7, setup-node v7, docker/* v4/v6/v7 | dieselben | aktuell |
+| GitHub Actions | checkout v7, setup-python v7 (nur Tests), setup-node v7, docker/* v4/v6/v7 | dieselben | aktuell |
 
 Geprüfte Schnittstellen: Audiobookshelf 2.37 (`metadata.json`, Bibliotheks-Scan), SABnzbd 5.1 (`addurl`, `queue`, `history`, `get_cats`), ntfy 2.35 (JSON-Publish, Token/Basic-Auth).
 
@@ -121,8 +121,9 @@ Debian-Sicherheitspflege kommt, muss die Version im Dockerfile bei ffmpeg-Sicher
 
 ## Bauen und Lieferkette
 
-Jeder Push und Pull Request durchläuft: ruff (Fehler, wahrscheinliche Bugs, Sicherheitsregeln), pip-audit
-(Python-Abhängigkeiten), npm audit (Bauwerkzeuge), die Unit-Tests mit Mindest-Abdeckung (80 %), die Durchklick-Tests
+Jeder Push und Pull Request durchläuft: Clippy (alle Warnungen sind Fehler), `cargo deny` (Lizenzen, Herkunft und
+Sicherheitsmeldungen aller Crates), npm audit (Bauwerkzeuge), die Unit-Tests, den API-Vertrag (auch mit dem eigenen
+ffmpeg im Pflicht-Käfig), die Durchklick-Tests
 gegen den Server und gegen das fertige Image sowie Trivy auf dem Image – eine kritische oder hohe Schwachstelle, für
 die es eine Korrektur gibt, stoppt die Veröffentlichung (Ausnahmen nur in `.trivyignore`, jede mit Begründung). Erst
 danach wird das Image veröffentlicht: mit cosign signiert (schlüssellos) und mit SBOM und Build-Provenance am Digest.
@@ -137,7 +138,7 @@ gh attestation verify oci://ghcr.io/larosen/hoerwerk@sha256:<digest> --owner Lar
 
 ## Bekannte Restrisiken
 
-* **0-Day in ffmpeg oder mutagen**: durch die Maßnahmen oben stark eingegrenzt (ffmpeg im Käfig), aber nicht auszuschließen –
+* **0-Day in ffmpeg**: durch die Maßnahmen oben stark eingegrenzt (ffmpeg im Käfig), aber nicht auszuschließen –
   der Container hat Schreibzugriff auf die eingebundenen Shares. Darum nur nötige Ordner einbinden.
 * **Kein HTTPS im Container**: Basic-Auth-Passwort geht im LAN im Klartext. Für Zugriff von außen einen
   Reverse-Proxy mit TLS (z. B. Nginx Proxy Manager, SWAG) davorsetzen.
