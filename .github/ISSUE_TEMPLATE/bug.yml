@@ -1,0 +1,30 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown at the bottom of Settings → Health (e.g. "Hörwerk 7.14.0")
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Where does it run?
+      options: [Unraid, docker compose, other Docker host]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Settings → Log, the lines around the problem. Please remove anything private (paths, names).
+      render: text

@@ -1,0 +1,11 @@
+name: Idea or feature request
+description: Something Hörwerk should be able to do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like to do?
+      description: Describe the situation and what you would like Hörwerk to do – not necessarily how.
+    validations:
+      required: true

@@ -1,83 +1,88 @@
 # Hörwerk
 
-*The audiobook workshop for your NAS.*
+**Get, request and discover audiobooks – and end up with one clean, tagged M4B per book in your library.**
 
 **English** · [Deutsch](README.de.md)
 
-A self-hosted audiobook pipeline for your NAS (Unraid or any Docker host): drop audiobooks into an inbox folder;
-they become **one M4B with chapters**, are matched on Audible, **tagged** and **filed** into a clean library for
-Audiobookshelf, Plex & co. Older MP3 books already in the library are converted the same way – tracks and chapters
-get sensible names along the way.
+I built Hörwerk because my audiobook folder was a mess: CD rips split into `CD1`/`CD2`, MP3s named `Track 01`,
+half the books missing covers, and the family asking me for new ones by message. Hörwerk sits on the NAS next to
+Audiobookshelf or Plex and takes care of all of that.
 
-Downloads go through **SABnzbd**, notifications through **ntfy** – you choose which events you hear about.
-The interface is available in **English and German**.
+Drop a folder into the inbox (or let SABnzbd do it): Hörwerk waits until it is complete, merges everything into
+**one M4B with chapters**, finds the book on Audible, writes title, author, narrator, series, cover and description,
+and files it as `Author/Series/03 - Title`. Your family gets their own accounts to **discover** books and **request**
+them – you approve, Hörwerk fetches it.
 
-> Hörwerk is a tool for organising audio files you are entitled to use – your own purchases, your own
-> recordings or public-domain works (e.g. from [LibriVox](https://librivox.org)). It contains no media,
-> does not remove copy protection and is not affiliated with Audible, Amazon, Apple or any other service named here.
+![Library](docs/screenshots/bibliothek.png)
 
-> Formerly *Better Renamer*: up to version 4 the app also had a general batch renamer; since version 5 it is called Hörwerk and does audiobooks only. An existing database (`better-renamer.db`) is taken over automatically.
-
----
-
-## Contents
-
-1. [Features](#features)
-2. [Quick start](#quick-start)
-3. [Audiobooks](#audiobooks)
-4. [Downloads with SABnzbd](#downloads-with-sabnzbd)
-5. [Discover and requests](#discover)
-6. [Notifications (ntfy)](#notifications-ntfy)
-7. [Log](#log)
-8. [Accounts and access from outside](#accounts-and-access-from-outside)
-9. [Configuration](#configuration)
-10. [Security](#security)
-11. [Development](#development)
-
----
-
-## Features
-
-| Area | What you get |
+| Find and fetch | Health check |
 |---|---|
-| Audiobook inbox | Waits until a folder is fully copied, merges MP3/M4A/FLAC/OGG/Opus/WMA (also `CD1`/`CD2` subfolders) into one M4B with sample-exact, cleanly named chapters |
-| Matching | Audible search in 10 stores, rated by title, author **and runtime** (unabridged ≠ abridged ≠ radio play); uncertain matches wait for you |
-| Tags & files | Title, author, narrator, series + volume, genre, publisher, date, description, ASIN, full-size cover; `metadata.json` for Audiobookshelf |
-| Library | Browse and search every book, folder template, reuses existing author/series folders, detects duplicates, converts old MP3 books to M4B and removes the MP3s safely |
-| Downloads | Sends NZBs to SABnzbd, watches the category, the inbox takes over when the download is done; optional Newznab search |
-| Discover | Suggestions matching your library, by genre and from book reviews (Deutschlandfunk, Deutschlandfunk Kultur, Perlentaucher) – well-rated, unabridged, nothing you already have; **requests** like Overseerr: the family asks, Hörwerk gets it (with approval, quota, interactive search) |
-| Media servers | Audiobookshelf and Plex rescan their library after filing; Plex can empty its trash so replaced MP3s vanish |
-| Notifications | ntfy push messages, eleven events, each one on or off |
-| Log | Everything that happened, filterable and downloadable, right in the app |
-| Interface | English / German, light / dark theme, live updates without reloading |
-| Security | Own minimal ffmpeg 9 in a Landlock sandbox, CSRF protection, secrets never reach the browser ([SECURITY.md](SECURITY.md)) |
+| ![Search with free LibriVox results](docs/screenshots/suche.png) | ![Diagnostics page](docs/screenshots/diagnose.png) |
 
----
+> Hörwerk organises audio you are entitled to use – your own purchases, your own recordings or public-domain works.
+> It ships no media, removes no copy protection and is not affiliated with Audible, Amazon, Apple, LibriVox or any
+> other service named here. Free public-domain audiobooks come from [LibriVox](https://librivox.org).
+
+## What it does
+
+- **Inbox → library, hands-off.** MP3, M4A, FLAC, OGG, Opus, WMA, also `CD1`/`CD2` folders → one M4B with
+  sample-exact chapters, cleanly named. Waits until a copy or download is really finished.
+- **Proper matching.** Audible search in 10 stores, scored by title, author **and runtime** (unabridged ≠ abridged ≠
+  radio play). Unsure matches wait for you instead of being filed wrong. Fallbacks: Audnexus, Apple Books, Open
+  Library, BookBeat, or your own `metadata.yml`.
+- **Free audiobooks built in.** Search LibriVox (public domain, read by volunteers) in German or English right in the
+  search – one click loads the book into the inbox, the details come along.
+- **Requests like Overseerr.** Family accounts discover and request books; quotas, approval, interactive search.
+  Requests nobody can fulfil yet stay on a wanted list and are searched again every 12 hours.
+- **Discover.** Suggestions from your library and listening history (Audiobookshelf/Plex), by genre, and from
+  book reviews (Deutschlandfunk, Perlentaucher) – only well-rated, unabridged books you don't own yet.
+- **Usenet when you want it.** SABnzbd + Newznab indexers, with a **preferred indexer** that is asked first – the
+  others only if it has nothing that fits. Releases are judged (right book? right language? abridged?) before
+  anything is downloaded; multi-volume packs are split into single books.
+- **Your library stays tidy.** Reuses existing author/series folders, spots duplicates, converts old MP3 books to M4B
+  and removes the MP3s only after the M4B is verified.
+- **Audiobookshelf & Plex** rescan after filing; `metadata.json` for Audiobookshelf.
+- **ntfy push messages** for eleven events, each one on or off. **English and German** UI, light and dark theme.
+- **Small and locked down.** One Rust program (~160 MB image incl. ffmpeg), its own minimal ffmpeg 9 in a
+  Landlock + seccomp jail, two-factor login, CrowdSec-ready auth log, signed images with SBOM. See [SECURITY.md](SECURITY.md).
 
 ## Quick start
 
 ### Unraid
 
-1. **Docker → Add Container**, enter as *Template*:
+1. **Docker → Add Container**, *Template*:
    `https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/hoerwerk.xml`
-2. Set the paths:
-   * **Hörbuch-Eingang** (`/inbox`) – where new audiobooks arrive
-   * **Hörbuch-Bibliothek** (`/audiobooks`) – the finished library (add it to Audiobookshelf/Plex)
-3. Pick **Language / Sprache** (`APP_LANGUAGE`: `en` or `de`). PUID `99`, PGID `100`, UMASK `000` are already right for Unraid.
-4. Open `http://<unraid-ip>:8080`.
+2. Set **Hörbuch-Eingang** (`/inbox`, where new books arrive) and **Hörbuch-Bibliothek** (`/audiobooks`, the
+   folder Audiobookshelf/Plex read). Pick **Language / Sprache** (`en` or `de`).
+3. Open `http://<unraid-ip>:8080` and create the admin account.
 
-Icon: the template loads it from GitHub. If your copy of the repository is private, Unraid cannot fetch it –
-set **Icon URL** to `http://<unraid-ip>:8080/static/icon.png` instead; the container serves its own logo
-(the only file it answers without a password).
-
-Image: `ghcr.io/larosen/hoerwerk:latest` (amd64 + arm64, rebuilt weekly for security updates).
-
-### Any other Docker host
+### docker compose
 
 ```bash
-# adjust the paths, PUID/PGID (see `id`) and APP_LANGUAGE in docker-compose.yml
+curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.yml
+# set the two folder paths and PUID/PGID (see `id`), then:
 docker compose up -d
 ```
+
+Image: `ghcr.io/larosen/hoerwerk:latest` – amd64, rebuilt every week for security updates, signed with cosign.
+
+Updating from an older version keeps your database; nothing to migrate by hand.
+
+---
+
+## Contents
+
+1. [Audiobooks](#audiobooks)
+2. [Downloads with SABnzbd](#downloads-with-sabnzbd)
+3. [Free audiobooks (LibriVox)](#free-audiobooks-librivox)
+4. [Discover and requests](#discover)
+5. [Notifications (ntfy)](#notifications-ntfy)
+6. [Log](#log)
+7. [Accounts and access from outside](#accounts-and-access-from-outside)
+8. [Configuration](#configuration)
+9. [Security](#security)
+10. [Development](#development)
+11. [Roadmap](docs/ROADMAP.md)
 
 ---
 
@@ -233,8 +238,24 @@ For books that aren't in any shop: **search the indexers directly**.
 Finished SABnzbd downloads from the search are taken over by the inbox after a few seconds; until then they show up
 as "In the inbox – starts in about … s" at the top of the audiobook list and in the log.
 
+**Preferred indexer:** tick **first** next to one indexer under *Settings → Downloads*. Every search (by hand and
+for requests) then asks that indexer alone; the others are only asked if it has nothing that fits the book. The
+search shows "searched at X only" with a button to ask the others as well.
+
 Tip: in SABnzbd set *Config → Switches → Unwanted extensions* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
 to **Abort**.
+
+---
+
+## Free audiobooks (LibriVox)
+
+[LibriVox](https://librivox.org) volunteers read books that are in the public domain – thousands in English, hundreds
+in German, all free and legal to download. Hörwerk searches LibriVox (via the Internet Archive) alongside the shop
+search: type a title or author, pick German or English, and the free recordings appear below the shop results. One
+click loads the MP3s straight into the inbox with a `metadata.json` (title, author, reader, description, cover); the
+inbox turns them into an M4B and files them like any other book. Books you already have are marked.
+
+Only the LibriVox collection is searched and only from archive.org – nothing else can be loaded this way.
 
 ---
 
@@ -519,3 +540,8 @@ against the source and against the finished Docker image.
 
 Inspired by the open-source projects [auto-m4b](https://github.com/seanap/auto-m4b) and
 [beets-audible](https://github.com/Neurrone/beets-audible); chapter data via [Audnexus](https://github.com/laxamentumtech/audnexus).
+
+## License
+
+[MIT](LICENSE). The Docker image also contains FFmpeg, built from its official source without GPL parts and therefore
+under the [LGPL 2.1](https://www.ffmpeg.org/legal.html); the build script is [docker/build-ffmpeg.sh](docker/build-ffmpeg.sh).

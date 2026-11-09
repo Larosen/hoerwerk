@@ -45,6 +45,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 
 | Angriff | Schutz |
 |---|---|
+| Freie Hörbücher (LibriVox) als Weg, beliebiges anderes zu laden | Nur HTTPS zu archive.org, auch nach Weiterleitungen. Geladen wird nur, was das Internet Archive in der LibriVox-Sammlung führt; nur dessen MP3-Dateien (einfache Namen, keine Pfade), einzeln und insgesamt größenbegrenzt und als MP3 geprüft, höchstens zwei Bücher gleichzeitig, nur für Admins. Sie landen wie jeder andere Download im Eingang und durchlaufen dieselben Prüfungen. |
 | Shop-Link oder Weiterleitung zu internen Adressen (Router, NAS, `169.254.169.254`) – SSRF | Links werden nur für Audible, BookBeat und Thalia abgerufen; jede Weiterleitung muss wieder dort hinführen. Cover werden nur von öffentlichen Adressen geladen (DNS-Auflösung, private/Loopback/Link-Local-Adressen werden abgelehnt). Nur `http(s)`. |
 | Sehr große Antworten (Speicher) | Antworten max. 8 MB (Shops/Audible) bzw. 20 MB (Indexer). |
 | Indexer-XML mit DTD/Entities (Billion Laughs, XXE) | Antworten mit `<!DOCTYPE`/`<!ENTITY` werden abgelehnt; der XML-Parser (roxmltree) lädt ohnehin keine externen Entities. |
