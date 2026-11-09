@@ -128,14 +128,17 @@ pub fn chapter_titles<S: AsRef<str>>(names: &[S], book_title: &str) -> Vec<Strin
     let title = book_title.trim();
     if !title.is_empty() {
         let sep = regex_lite::escape(SEP);
-        let rx = Regex::new(&format!(r"[\s{sep}]*{}[\s{sep}]*", caseless(title))).expect("valid regex");
+        // built from the book's title: an absurdly long one may exceed the pattern size – then names stay as they are
+        let rx = Regex::new(&format!(r"[\s{sep}]*{}[\s{sep}]*", caseless(title))).ok();
         out = out
             .iter()
             .map(|n| {
                 if n.to_lowercase() == title.to_lowercase() {
                     String::new()
-                } else {
+                } else if let Some(rx) = &rx {
                     strip_sep(&rx.replace_all(n, " ")).to_string()
+                } else {
+                    n.clone()
                 }
             })
             .collect();
@@ -182,6 +185,12 @@ pub fn chapter_titles<S: AsRef<str>>(names: &[S], book_title: &str) -> Vec<Strin
 mod tests {
     use super::*;
     use serde_json::Value;
+
+    #[test]
+    fn absurd_titles_do_no_harm() {
+        let title = "Ä".repeat(200_000);
+        assert_eq!(chapter_titles(&["01 - Anfang", "02 - Ende"], &title).len(), 2);
+    }
 
     #[test]
     fn like_python() {

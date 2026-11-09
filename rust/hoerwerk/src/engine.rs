@@ -219,9 +219,23 @@ mod tests {
         }
         assert!(e.idle());
         assert_eq!(max.load(Ordering::SeqCst), 1);
+        // a panicking step does not kill the worker: the next step on the same queue still runs
         e.submit("io", "c", Box::new(|| panic!("boom")));
-        std::thread::sleep(Duration::from_millis(200));
-        assert!(e.idle(), "a panicking step does not kill the worker");
+        let after = Arc::new(AtomicUsize::new(0));
+        let a2 = after.clone();
+        e.submit(
+            "io",
+            "d",
+            Box::new(move || {
+                a2.store(1, Ordering::SeqCst);
+            }),
+        );
+        let end = Instant::now() + Duration::from_secs(5);
+        while !(e.idle() && after.load(Ordering::SeqCst) == 1) && Instant::now() < end {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert_eq!(after.load(Ordering::SeqCst), 1, "the worker survived the panic");
+        assert!(e.idle());
         assert!(e.stop(Duration::from_secs(1)));
     }
 }
