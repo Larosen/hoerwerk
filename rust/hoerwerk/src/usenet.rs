@@ -902,9 +902,13 @@ impl Usenet {
                 };
                 let cats: String = cats_raw.chars().filter(|c| c.is_ascii_digit() || *c == ',').collect();
                 let key = text_of(&i[SECRET]).trim().to_string();
+                // at most one preferred indexer: it is asked first, the others only when it has nothing fitting
+                let preferred = truthy(i.get("preferred"), false)
+                    && truthy(i.get("enabled"), true)
+                    && !indexers.iter().any(|x: &Value| x["preferred"] == true);
                 indexers.push(json!({"id": id, "name": name, "url": url,
                                      "categories": if cats.is_empty() { DEFAULT_CATEGORIES.to_string() } else { cats },
-                                     "enabled": truthy(i.get("enabled"), true),
+                                     "enabled": truthy(i.get("enabled"), true), "preferred": preferred,
                                      SECRET: if key.is_empty() { text_of(&prev[SECRET]) } else { key }}));
             }
             let sab_new = &new["sab"];
@@ -941,22 +945,32 @@ impl Usenet {
         self.configured()["sab"].as_bool().unwrap_or(false)
     }
 
-    fn indexers(&self) -> Vec<Newznab<'_>> {
-        self.load()["indexers"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter(|i| truthy(i.get("enabled"), true))
-            .map(|i| {
-                Newznab::new(
-                    &text_of(&i["name"]),
-                    &text_of(&i["url"]),
-                    &text_of(&i[SECRET]),
-                    &text_of(&i["categories"]),
-                    &*self.get,
-                )
-            })
-            .collect()
+    /// The enabled indexers in the order they are asked: the preferred one alone first (if one is marked and
+    /// there are others), then the rest together. Without a preferred one: all at once.
+    fn tiers(&self) -> Vec<Vec<Newznab<'_>>> {
+        let (mut first, mut rest) = (Vec::new(), Vec::new());
+        for i in self.load()["indexers"].as_array().into_iter().flatten() {
+            if !truthy(i.get("enabled"), true) {
+                continue;
+            }
+            let idx = Newznab::new(
+                &text_of(&i["name"]),
+                &text_of(&i["url"]),
+                &text_of(&i[SECRET]),
+                &text_of(&i["categories"]),
+                &*self.get,
+            );
+            if truthy(i.get("preferred"), false) && first.is_empty() {
+                first.push(idx);
+            } else {
+                rest.push(idx);
+            }
+        }
+        if first.is_empty() || rest.is_empty() {
+            first.extend(rest);
+            return if first.is_empty() { Vec::new() } else { vec![first] };
+        }
+        vec![first, rest]
     }
 
     fn sab(&self) -> Result<Sabnzbd<'_>> {
@@ -1003,12 +1017,55 @@ impl Usenet {
         if until > now() { until } else { 0.0 }
     }
 
-    /// Search every indexer for the query (plus `extra`), in all umlaut spellings (`variants` = false: exactly these).
-    pub fn search(&self, query: &str, language: &str, extra: &[String], variants: bool, limit: usize) -> Result<Value> {
-        let indexers = self.indexers();
-        if indexers.is_empty() {
+    /// Search for the query (plus `extra`), in all umlaut spellings (`variants` = false: exactly these). With a
+    /// preferred indexer only that one is asked – the others follow when it found nothing, or at once with
+    /// `everywhere`. The answer names who was asked (`asked`) and who was not needed (`skipped`).
+    pub fn search(
+        &self,
+        query: &str,
+        language: &str,
+        extra: &[String],
+        variants: bool,
+        limit: usize,
+        everywhere: bool,
+    ) -> Result<Value> {
+        let mut tiers = self.tiers();
+        if tiers.is_empty() {
             return fail(t("Noch kein Indexer eingerichtet", &[]));
         }
+        if everywhere {
+            tiers = vec![tiers.into_iter().flatten().collect()];
+        }
+        let names = |t: &[Newznab]| t.iter().map(|i| i.name.clone()).collect::<Vec<_>>();
+        let mut asked: Vec<String> = Vec::new();
+        let mut errors: Vec<Value> = Vec::new();
+        let mut out = json!({});
+        let mut skipped: Vec<String> = Vec::new();
+        let mut it = tiers.into_iter();
+        while let Some(tier) = it.next() {
+            asked.extend(names(&tier));
+            out = self.search_in(&tier, query, language, extra, variants, limit)?;
+            errors.extend(out["errors"].as_array().cloned().unwrap_or_default());
+            if out["results"].as_array().is_some_and(|r| !r.is_empty()) {
+                skipped = it.flat_map(|t| names(&t)).collect();
+                break;
+            }
+        }
+        out["errors"] = json!(errors);
+        out["asked"] = json!(asked);
+        out["skipped"] = json!(skipped);
+        Ok(out)
+    }
+
+    fn search_in(
+        &self,
+        indexers: &[Newznab<'_>],
+        query: &str,
+        language: &str,
+        extra: &[String],
+        variants: bool,
+        limit: usize,
+    ) -> Result<Value> {
         let mut queries: Vec<String> = Vec::new();
         for q in std::iter::once(query.to_string()).chain(extra.iter().filter(|e| !e.trim().is_empty()).cloned()) {
             let vs = if variants {
@@ -1130,14 +1187,65 @@ impl Usenet {
     }
 
     /// Search round by round until `fits` likes the results so far; never more than `budget` queries per indexer.
+    /// With a preferred indexer: all rounds there first – the other indexers only when nothing fitting came up.
     pub fn search_stages(
         &self,
         stages: &[Vec<String>],
         fits: &dyn Fn(&[Value]) -> bool,
         language: &str,
         budget: usize,
+        everywhere: bool,
     ) -> Result<Value> {
+        let mut tiers = self.tiers();
+        if tiers.is_empty() {
+            return fail(t("Noch kein Indexer eingerichtet", &[]));
+        }
+        if everywhere {
+            tiers = vec![tiers.into_iter().flatten().collect()];
+        }
+        let names = |t: &[Newznab]| t.iter().map(|i| i.name.clone()).collect::<Vec<_>>();
         let mut results: Vec<(String, Value)> = Vec::new();
+        let mut errors: Vec<String> = Vec::new();
+        let mut queries: Vec<String> = Vec::new();
+        let (mut who, mut skipped): (Vec<String>, Vec<String>) = (Vec::new(), Vec::new());
+        let mut rounds = 0;
+        let mut it = tiers.into_iter();
+        while let Some(tier) = it.next() {
+            who.extend(names(&tier));
+            let res = self.stages_in(&tier, stages, fits, language, budget, &mut results)?;
+            rounds += res.0;
+            for e in res.1 {
+                if !errors.contains(&e) {
+                    errors.push(e);
+                }
+            }
+            for q in res.2 {
+                if !queries.contains(&q) {
+                    queries.push(q);
+                }
+            }
+            let found: Vec<Value> = results.iter().map(|x| x.1.clone()).collect();
+            if !found.is_empty() && fits(&found) {
+                skipped = it.flat_map(|t| names(&t)).collect();
+                break;
+            }
+        }
+        Ok(
+            json!({"results": results.into_iter().map(|x| x.1).collect::<Vec<_>>(), "errors": errors,
+                  "queries": queries, "rounds": rounds, "asked": who, "skipped": skipped}),
+        )
+    }
+
+    /// The rounds on one group of indexers: (rounds, errors, queries asked); results are added to `results`.
+    fn stages_in(
+        &self,
+        indexers: &[Newznab<'_>],
+        stages: &[Vec<String>],
+        fits: &dyn Fn(&[Value]) -> bool,
+        language: &str,
+        budget: usize,
+        results: &mut Vec<(String, Value)>,
+    ) -> Result<(usize, Vec<String>, Vec<String>)> {
         let mut errors: Vec<String> = Vec::new();
         let mut asked: Vec<String> = Vec::new();
         let mut rounds = 0;
@@ -1152,7 +1260,7 @@ impl Usenet {
             if todo.is_empty() {
                 continue;
             }
-            let res = self.search(&todo[0], language, &todo[1..], false, todo.len())?;
+            let res = self.search_in(indexers, &todo[0], language, &todo[1..], false, todo.len())?;
             rounds += 1;
             asked.extend(todo);
             for e in res["errors"].as_array().into_iter().flatten().filter_map(Value::as_str) {
@@ -1168,14 +1276,12 @@ impl Usenet {
                 }
             }
             let found: Vec<Value> = results.iter().map(|x| x.1.clone()).collect();
-            let all_failed = got.is_empty() && res["errors"].as_array().map_or(0, Vec::len) >= self.indexers().len();
+            let all_failed = got.is_empty() && res["errors"].as_array().map_or(0, Vec::len) >= indexers.len();
             if (!found.is_empty() && fits(&found)) || all_failed || asked.len() >= budget {
                 break;
             }
         }
-        Ok(
-            json!({"results": results.into_iter().map(|x| x.1).collect::<Vec<_>>(), "errors": errors, "queries": asked, "rounds": rounds}),
-        )
+        Ok((rounds, errors, asked))
     }
 
     pub fn send(&self, result_id: &str, hints: &Value) -> Result<Value> {
@@ -1301,4 +1407,104 @@ fn rank_key(r: &Value, query: &str, language: &str) -> RankKey {
         r["grabs"].as_i64().unwrap_or(0),
         r["published"].as_f64().unwrap_or(0.0),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    /// Two indexers "a.example" and "b.example"; `has` says which of them knows the release.
+    fn usenet(has: &'static [&'static str], asked: Arc<Mutex<Vec<String>>>) -> Usenet {
+        let u = Usenet::with_getter(
+            Db::memory(),
+            Box::new(move |url: &str| {
+                let host = if url.contains("a.example") { "a" } else { "b" };
+                if url.contains("t=caps") {
+                    return Ok(br#"<caps><categories><category id="3000" name="Audio"><subcat id="3030" name="Audiobook"/></category></categories></caps>"#.to_vec());
+                }
+                asked.lock().unwrap().push(host.to_string());
+                let item = if has.contains(&host) {
+                    format!(
+                        r#"<item><title>Theodor Storm - Der Schimmelreiter ({host})</title><link>https://{host}.example/nzb/1</link><newznab:attr name="size" value="300000000"/><newznab:attr name="category" value="3030"/></item>"#
+                    )
+                } else {
+                    String::new()
+                };
+                Ok(format!(
+                    r#"<rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/"><channel>{item}</channel></rss>"#
+                )
+                .into_bytes())
+            }),
+        );
+        u.update_config(&json!({"indexers": [
+            {"name": "A", "url": "https://a.example", "apikey": "k1", "preferred": true},
+            {"name": "B", "url": "https://b.example", "apikey": "k2", "preferred": true}], "sab": {}}));
+        u
+    }
+
+    #[test]
+    fn preferred_indexer_first_the_others_only_when_needed() {
+        crate::text::set_language("de");
+        let asked = Arc::new(Mutex::new(Vec::new()));
+        let u = usenet(&["a", "b"], asked.clone());
+        // only one indexer can be the preferred one
+        let cfg = u.public_config();
+        assert_eq!(
+            (
+                cfg["indexers"][0]["preferred"].clone(),
+                cfg["indexers"][1]["preferred"].clone()
+            ),
+            (json!(true), json!(false))
+        );
+        // A has it: B is never asked
+        let res = u.search("Schimmelreiter", "", &[], false, 1, false).unwrap();
+        assert_eq!(
+            (res["asked"].clone(), res["skipped"].clone()),
+            (json!(["A"]), json!(["B"]))
+        );
+        assert_eq!(res["results"].as_array().unwrap().len(), 1);
+        assert!(!asked.lock().unwrap().contains(&"b".to_string()));
+        // "also ask the others"
+        let res = u.search("Schimmelreiter", "", &[], false, 1, true).unwrap();
+        assert_eq!(
+            (res["asked"].clone(), res["skipped"].clone()),
+            (json!(["A", "B"]), json!([]))
+        );
+        assert_eq!(res["results"].as_array().unwrap().len(), 2);
+
+        // A has nothing: B is asked as the fallback
+        let asked = Arc::new(Mutex::new(Vec::new()));
+        let u = usenet(&["b"], asked.clone());
+        let res = u.search("Schimmelreiter", "", &[], false, 1, false).unwrap();
+        assert_eq!(
+            (res["asked"].clone(), res["skipped"].clone()),
+            (json!(["A", "B"]), json!([]))
+        );
+        assert_eq!(res["results"][0]["indexer"], json!("B"));
+        // round by round: A's result does not fit -> B is asked too; it fits -> done
+        let u = usenet(&["a", "b"], Arc::new(Mutex::new(Vec::new())));
+        let stages = vec![vec!["Schimmelreiter".to_string()]];
+        let only_b = |found: &[Value]| found.iter().any(|r| r["indexer"] == "B");
+        let res = u.search_stages(&stages, &only_b, "", 4, false).unwrap();
+        assert_eq!(
+            (res["asked"].clone(), res["results"].as_array().unwrap().len()),
+            (json!(["A", "B"]), 2)
+        );
+        let any = |found: &[Value]| !found.is_empty();
+        let res = u.search_stages(&stages, &any, "", 4, false).unwrap();
+        assert_eq!(
+            (res["asked"].clone(), res["skipped"].clone()),
+            (json!(["A"]), json!(["B"]))
+        );
+        // without a preferred one: all at once, as before
+        u.update_config(&json!({"indexers": [
+            {"name": "A", "url": "https://a.example", "apikey": "k1"},
+            {"name": "B", "url": "https://b.example", "apikey": "k2"}], "sab": {}}));
+        let res = u.search("Schimmelreiter", "", &[], false, 1, false).unwrap();
+        assert_eq!(
+            (res["asked"].clone(), res["skipped"].clone()),
+            (json!(["A", "B"]), json!([]))
+        );
+    }
 }

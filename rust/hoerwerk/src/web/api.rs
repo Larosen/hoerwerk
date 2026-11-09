@@ -122,6 +122,8 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("POST", "/api/search/books") => h!(super::search::books),
         ("POST", "/api/search/series") => h!(super::search::series),
         ("POST", "/api/search/send") => h!(super::search::send),
+        ("POST", "/api/search/free") => h!(super::search::free),
+        ("POST", "/api/search/free/get") => h!(super::search::free_get),
         ("GET", "/api/me/listening") => h!(super::listening::mine),
         ("POST", "/api/me/listening/abs") => h!(super::listening::link_abs),
         ("DELETE", "/api/me/listening/{kind}") => h!(super::listening::unlink),

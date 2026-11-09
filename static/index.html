@@ -125,6 +125,7 @@
         <button class="btn primary" type="submit" id="bookLookupBtn">Suchen</button>
       </form>
       <div id="bookPick" class="book-pick pad-x" hidden></div>
+      <div id="freePick" class="book-pick pad-x admin-only" hidden></div>
       <form id="releaseForm" class="search-row pad release-row admin-only" hidden>
         <label class="release-label">Bei den Indexern als
           <input id="releaseQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false"></label>
@@ -406,6 +407,7 @@
     <fieldset data-section="downloads">
       <legend>Newznab-Indexer</legend>
       <p class="muted small">Optional, nur für die Suche: Newznab-Adresse deines Indexers (z. B. <code>https://indexer.example/api</code>) und dessen API-Key. Kategorie 3030 = Hörbuch.</p>
+      <p class="muted small">Mit „zuerst“ wird ein Indexer immer als Erster gefragt – die anderen nur, wenn er nichts Passendes hat.</p>
       <div id="indexerRows" class="indexer-rows"></div>
       <button type="button" id="addIndexerBtn" class="btn small">+ Indexer</button>
     </fieldset>

@@ -1,83 +1,90 @@
 # Hörwerk
 
-*Die Hörbuch-Werkstatt für dein NAS.*
+**Hörbücher beschaffen, anfragen und entdecken – und am Ende liegt jedes Buch als eine saubere, getaggte M4B in der Bibliothek.**
 
 [English](README.md) · **Deutsch**
 
-Eine selbst gehostete Hörbuch-Automatik für dein NAS (Unraid oder jeder andere Docker-Host): Hörbücher in einen
-Eingangsordner legen; sie werden zu **einer M4B mit Kapiteln**, bei Audible erkannt, **getaggt** und sauber in die
-Bibliothek für Audiobookshelf, Plex & Co. **einsortiert**. Ältere MP3-Bücher in der Bibliothek werden genauso
-umgewandelt – Tracks und Kapitel bekommen dabei sinnvolle Namen.
+Hörwerk ist entstanden, weil mein Hörbuchordner ein Chaos war: CD-Rips in `CD1`/`CD2`, MP3s mit Namen wie
+`Track 01`, fehlende Cover, und die Familie hat neue Bücher per Nachricht bestellt. Hörwerk läuft auf dem NAS neben
+Audiobookshelf oder Plex und kümmert sich um all das.
 
-Downloads laufen über **SABnzbd**, Benachrichtigungen über **ntfy** – du bestimmst, bei welchen Ereignissen.
-Die Oberfläche gibt es auf **Deutsch und Englisch**.
+Einen Ordner in den Eingang legen (oder SABnzbd machen lassen): Hörwerk wartet, bis er vollständig ist, macht daraus
+**eine M4B mit Kapiteln**, findet das Buch bei Audible, schreibt Titel, Autor, Sprecher, Serie, Cover und
+Beschreibung und legt es als `Autor/Serie/03 - Titel` ab. Die Familie bekommt eigene Konten, um Bücher zu
+**entdecken** und **anzufragen** – du gibst frei, Hörwerk besorgt sie.
 
-> Hörwerk ist ein Werkzeug zum Ordnen von Audiodateien, die du nutzen darfst – eigene Käufe, eigene
-> Aufnahmen oder gemeinfreie Werke (z. B. von [LibriVox](https://librivox.org)). Es enthält keine Medien,
-> umgeht keinen Kopierschutz und steht in keiner Verbindung zu Audible, Amazon, Apple oder anderen hier genannten Diensten.
+![Bibliothek](docs/screenshots/bibliothek.png)
 
-> Früher *Better Renamer*: Bis Version 4 hatte die App zusätzlich einen allgemeinen Stapel-Umbenenner; seit Version 5 heißt sie Hörwerk und kümmert sich nur noch um Hörbücher. Eine vorhandene Datenbank (`better-renamer.db`) wird automatisch übernommen.
-
----
-
-## Inhalt
-
-1. [Funktionen](#funktionen)
-2. [Schnellstart](#schnellstart)
-3. [Hörbücher](#hörbücher)
-4. [Downloads mit SABnzbd](#downloads-mit-sabnzbd)
-5. [Entdecken und Anfragen](#entdecken)
-6. [Benachrichtigungen (ntfy)](#benachrichtigungen-ntfy)
-7. [Protokoll](#protokoll)
-8. [Konten und Zugriff von außen](#konten-und-zugriff-von-außen)
-9. [Konfiguration](#konfiguration)
-10. [Sicherheit](#sicherheit)
-11. [Entwicklung](#entwicklung)
-
----
-
-## Funktionen
-
-| Bereich | Was du bekommst |
+| Finden und laden | Diagnose |
 |---|---|
-| Hörbuch-Eingang | Wartet, bis ein Ordner fertig kopiert ist, fügt MP3/M4A/FLAC/OGG/Opus/WMA (auch `CD1`/`CD2`-Unterordner) zu einer M4B mit sample-genauen, sauber benannten Kapiteln zusammen |
-| Erkennung | Audible-Suche in 10 Shops, bewertet nach Titel, Autor **und Laufzeit** (Lesung ≠ gekürzt ≠ Hörspiel); unsichere Treffer warten auf dich |
-| Tags & Dateien | Titel, Autor, Sprecher, Serie + Band, Genre, Verlag, Datum, Beschreibung, ASIN, Cover in voller Größe; `metadata.json` für Audiobookshelf |
-| Bibliothek | Alle Bücher durchsuchen, Ordner-Vorlage, nutzt vorhandene Autoren-/Serienordner, erkennt Doppelte, macht alte MP3-Bücher zu M4B und räumt die MP3s sicher weg |
-| Downloads | Schickt NZBs an SABnzbd, beobachtet die Kategorie, nach dem Download übernimmt der Eingang; Newznab-Suche optional |
-| Entdecken | Vorschläge passend zur Bibliothek, nach Genre und aus der Buchkritik (Deutschlandfunk, Deutschlandfunk Kultur, Perlentaucher) – nur gut bewertet, ungekürzt, nichts, was du schon hast; **Anfragen** wie bei Overseerr: Familie wünscht, Hörwerk besorgt (mit Freigabe, Kontingent, interaktiver Suche) |
-| Medienserver | Audiobookshelf und Plex lesen ihre Bibliothek nach dem Ablegen neu ein; Plex leert auf Wunsch den Papierkorb, damit ersetzte MP3s verschwinden |
-| Benachrichtigungen | ntfy-Push-Nachrichten, elf Ereignisse, jedes einzeln an oder aus |
-| Protokoll | Alles, was passiert ist – filterbar und als Datei herunterladbar, direkt in der App |
-| Oberfläche | Deutsch / Englisch, helles / dunkles Design, Live-Updates ohne Neuladen |
-| Sicherheit | Eigenes schlankes ffmpeg 9 im Landlock-Käfig, CSRF-Schutz, Zugangsdaten erreichen nie den Browser ([SECURITY.de.md](SECURITY.de.md)) |
+| ![Suche mit freien LibriVox-Treffern](docs/screenshots/suche.png) | ![Diagnose-Seite](docs/screenshots/diagnose.png) |
 
----
+> Hörwerk verwaltet Audiodateien, die du nutzen darfst – eigene Käufe, eigene Aufnahmen oder gemeinfreie Werke.
+> Es enthält keine Medien, entfernt keinen Kopierschutz und steht in keiner Verbindung zu Audible, Amazon, Apple,
+> LibriVox oder anderen genannten Diensten. Freie, gemeinfreie Hörbücher kommen von [LibriVox](https://librivox.org).
+
+## Was es kann
+
+- **Vom Eingang in die Bibliothek, ohne Handarbeit.** MP3, M4A, FLAC, OGG, Opus, WMA, auch `CD1`/`CD2`-Ordner → eine
+  M4B mit sample-genauen, sauber benannten Kapiteln. Wartet, bis eine Kopie oder ein Download wirklich fertig ist.
+- **Richtig erkannt.** Audible-Suche in 10 Shops, bewertet nach Titel, Autor **und Laufzeit** (ungekürzt ≠ gekürzt ≠
+  Hörspiel). Unsichere Treffer warten auf dich, statt falsch abgelegt zu werden. Ersatzquellen: Audnexus, Apple
+  Books, Open Library, BookBeat oder eine eigene `metadata.yml`.
+- **Freie Hörbücher eingebaut.** LibriVox (gemeinfrei, von Freiwilligen gelesen) auf Deutsch oder Englisch direkt in
+  der Suche – ein Klick lädt das Buch in den Eingang, die Angaben kommen mit.
+- **Anfragen wie bei Overseerr.** Familienkonten entdecken und fragen an; Kontingent, Freigabe, interaktive Suche.
+  Was noch niemand liefern kann, bleibt auf der Gesucht-Liste und wird alle 12 Stunden neu gesucht.
+- **Entdecken.** Vorschläge aus deiner Bibliothek und dem Hörverlauf (Audiobookshelf/Plex), nach Genre und aus
+  Buchkritiken (Deutschlandfunk, Perlentaucher) – nur gut bewertete, ungekürzte Bücher, die du noch nicht hast.
+- **Usenet, wenn du willst.** SABnzbd + Newznab-Indexer, mit **bevorzugtem Indexer**, der zuerst gefragt wird – die
+  anderen nur, wenn er nichts Passendes hat. Releases werden vor dem Download geprüft (richtiges Buch? Sprache?
+  gekürzt?), Pakete mit mehreren Bänden in einzelne Bücher aufgeteilt.
+- **Die Bibliothek bleibt ordentlich.** Nutzt vorhandene Autor-/Serienordner, erkennt Doppelte, wandelt alte
+  MP3-Bücher in M4B und löscht die MP3s erst, wenn die M4B geprüft ist.
+- **Audiobookshelf & Plex** lesen nach dem Ablegen neu ein; `metadata.json` für Audiobookshelf.
+- **ntfy-Push-Nachrichten** für elf Ereignisse, jedes einzeln schaltbar. Oberfläche **Deutsch und Englisch**, hell
+  und dunkel.
+- **Klein und abgeschottet.** Ein Rust-Programm (Image ~160 MB inkl. ffmpeg), eigenes schlankes ffmpeg 9 im
+  Landlock- und seccomp-Käfig, Anmeldung mit Zweitfaktor, Anmeldeprotokoll für CrowdSec, signierte Images mit
+  SBOM. Siehe [SECURITY.de.md](SECURITY.de.md).
 
 ## Schnellstart
 
 ### Unraid
 
-1. **Docker → Add Container**, bei *Template* eintragen:
+1. **Docker → Add Container**, als *Template*:
    `https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/hoerwerk.xml`
-2. Pfade setzen:
-   * **Hörbuch-Eingang** (`/inbox`) – hier kommen neue Hörbücher an
-   * **Hörbuch-Bibliothek** (`/audiobooks`) – die fertige Bibliothek (in Audiobookshelf/Plex einbinden)
-3. **Language / Sprache** wählen (`APP_LANGUAGE`: `de` oder `en`). PUID `99`, PGID `100`, UMASK `000` passen für Unraid schon.
-4. `http://<unraid-ip>:8080` öffnen.
+2. **Hörbuch-Eingang** (`/inbox`, hier kommen neue Bücher an) und **Hörbuch-Bibliothek** (`/audiobooks`, der
+   Ordner für Audiobookshelf/Plex) eintragen. **Language / Sprache** wählen (`de` oder `en`).
+3. `http://<unraid-ip>:8080` öffnen und das Admin-Konto anlegen.
 
-Icon: Das Template lädt es von GitHub. Ist dein Repository privat, kommt Unraid nicht daran – dann als
-**Icon URL** `http://<unraid-ip>:8080/static/icon.png` eintragen; der Container liefert sein Logo selbst aus
-(die einzige Datei, die er ohne Passwort herausgibt).
-
-Image: `ghcr.io/larosen/hoerwerk:latest` (amd64 + arm64, wöchentlich für Sicherheitsupdates neu gebaut).
-
-### Andere Docker-Hosts
+### docker compose
 
 ```bash
-# in docker-compose.yml Pfade, PUID/PGID (siehe `id`) und APP_LANGUAGE anpassen
+curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.yml
+# die beiden Ordnerpfade und PUID/PGID (siehe `id`) eintragen, dann:
 docker compose up -d
 ```
+
+Image: `ghcr.io/larosen/hoerwerk:latest` – amd64, jede Woche für Sicherheitsupdates neu gebaut, mit cosign signiert.
+
+Ein Update von einer älteren Version übernimmt die Datenbank; nichts von Hand zu migrieren.
+
+---
+
+## Inhalt
+
+1. [Hörbücher](#hörbücher)
+2. [Downloads mit SABnzbd](#downloads-mit-sabnzbd)
+3. [Freie Hörbücher (LibriVox)](#freie-hörbücher-librivox)
+4. [Entdecken und Anfragen](#entdecken)
+5. [Benachrichtigungen (ntfy)](#benachrichtigungen-ntfy)
+6. [Protokoll](#protokoll)
+7. [Konten und Zugriff von außen](#konten-und-zugriff-von-außen)
+8. [Konfiguration](#konfiguration)
+9. [Sicherheit](#sicherheit)
+10. [Entwicklung](#entwicklung)
+11. [Pläne](docs/ROADMAP.md)
 
 ---
 
@@ -239,8 +246,24 @@ Für Bücher, die es in keinem Shop gibt: **Direkt bei den Indexern suchen**.
 Fertige SABnzbd-Downloads aus der Suche übernimmt der Eingang nach wenigen Sekunden; bis dahin stehen sie als
 „Im Eingang – startet in ca. … s“ oben in der Hörbuch-Liste und im Protokoll.
 
+**Bevorzugter Indexer:** unter *Einstellungen → Downloads* bei einem Indexer **zuerst** anhaken. Jede Suche (von
+Hand und für Anfragen) fragt dann nur diesen; die anderen erst, wenn er nichts Passendes zum Buch hat. Die Suche zeigt
+„nur bei X gesucht“ mit einem Knopf, um auch die anderen zu fragen.
+
 Tipp: In SABnzbd unter *Config → Switches → Unerwünschte Endungen* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
 auf **Abbrechen** stellen.
+
+---
+
+## Freie Hörbücher (LibriVox)
+
+Bei [LibriVox](https://librivox.org) lesen Freiwillige gemeinfreie Bücher – tausende auf Englisch, hunderte auf
+Deutsch, alle kostenlos und legal. Hörwerk sucht LibriVox (über das Internet Archive) gleich mit: Titel oder Autor
+eingeben, Deutsch oder Englisch wählen, und die freien Aufnahmen erscheinen unter den Shop-Treffern. Ein Klick lädt
+die MP3s direkt in den Eingang, samt `metadata.json` (Titel, Autor, Sprecher, Beschreibung, Cover); der Eingang macht
+daraus eine M4B und legt sie wie jedes andere Buch ab. Was du schon hast, ist markiert.
+
+Gesucht und geladen wird nur die LibriVox-Sammlung und nur von archive.org – sonst lässt sich darüber nichts laden.
 
 ---
 
@@ -533,3 +556,8 @@ den Quelltext und gegen das fertig gebaute Docker-Image.
 
 Inspiriert von den Open-Source-Projekten [auto-m4b](https://github.com/seanap/auto-m4b) und
 [beets-audible](https://github.com/Neurrone/beets-audible); Kapiteldaten über [Audnexus](https://github.com/laxamentumtech/audnexus).
+
+## Lizenz
+
+[MIT](LICENSE). Das Docker-Image enthält außerdem FFmpeg, aus dem offiziellen Quelltext ohne GPL-Teile gebaut und
+damit unter der [LGPL 2.1](https://www.ffmpeg.org/legal.html); das Bauskript ist [docker/build-ffmpeg.sh](docker/build-ffmpeg.sh).

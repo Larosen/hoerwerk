@@ -471,6 +471,18 @@
   },
   {
    "method": "POST",
+   "path": "/api/search/free",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/search/free/get",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
    "path": "/api/search/send",
    "access": "admin",
    "raw_body": false

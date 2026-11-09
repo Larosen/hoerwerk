@@ -44,6 +44,7 @@ This page explains what the program protects against, what was tested and what y
 
 | Attack | Protection |
 |---|---|
+| Free audiobooks (LibriVox) as a way to load anything else | Only HTTPS to archive.org hosts, also after redirects. An item is loaded only if the Internet Archive lists it in the LibriVox collection; only its MP3 files (plain names, no paths), each and in total size-capped and checked to be MP3, at most two books at a time, admins only. They land in the inbox like any other download and go through the same checks. |
 | Store link or redirect to internal addresses (router, NAS, `169.254.169.254`) – SSRF | Links are fetched only for Audible, BookBeat and Thalia; every redirect must lead back there. Covers are loaded only from public addresses (DNS resolution, private/loopback/link-local addresses are refused). Only `http(s)`. |
 | Very large responses (memory) | Responses max. 8 MB (stores/Audible) or 20 MB (indexer). |
 | Indexer XML with DTD/entities (billion laughs, XXE) | Responses containing `<!DOCTYPE`/`<!ENTITY` are refused; the XML parser (roxmltree) does not load external entities anyway. |

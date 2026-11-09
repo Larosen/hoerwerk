@@ -1,32 +1,29 @@
 services:
   hoerwerk:
-    build: .
     image: ghcr.io/larosen/hoerwerk:latest
     container_name: hoerwerk
     restart: unless-stopped
     security_opt:
-      - no-new-privileges:true     # nothing in the container can gain privileges
+      - no-new-privileges:true       # nothing in the container can gain privileges
     cap_drop: [ALL]
-    cap_add: [CHOWN, SETUID, SETGID] # only for switching to PUID/PGID at start
+    cap_add: [CHOWN, SETUID, SETGID] # only to switch to PUID/PGID at start
     ports:
       - "8080:8080"
     volumes:
-      - /pfad/zu/hoerbuch-eingang:/inbox   # <- neue Hörbücher hier hineinlegen
-      - /pfad/zu/hoerbuecher:/audiobooks   # <- fertige Bibliothek (Audiobookshelf/Plex)
-      - ./config:/config
+      - /path/to/audiobook-inbox:/inbox   # new audiobooks go here (also SABnzbd's category folder)
+      - /path/to/audiobooks:/audiobooks   # the finished library (point Audiobookshelf/Plex here)
+      - ./config:/config                  # database and settings
     environment:
-      PUID: "1000"                   # Besitzer deiner Dateien (`id` zeigt sie), Unraid: 99
+      PUID: "1000"                   # owner of your files (`id` shows it); Unraid: 99
       PGID: "1000"                   # Unraid: 100
       UMASK: "002"                   # Unraid: 000
-      APP_LANGUAGE: "de"             # de | en – UI and notifications (also under ⚙︎ Settings)
-      AUDIBLE_REGION: "de"           # de, us, uk, fr, it, es, ca, au, in, jp
+      APP_LANGUAGE: "en"             # en | de – UI and notifications (also under Settings)
+      AUDIBLE_REGION: "us"           # us, uk, de, fr, it, es, ca, au, in, jp
       MATCH_MODE: "auto"             # auto | review | off
-      INBOX_ORIGINALS: "archive"     # archive (nach _fertig) | delete
-      # CPU_CORES: "2"               # parallele ffmpeg-Prozesse (Standard: halbe Kernzahl)
-      # ENCODE_WORKERS: "1"          # Bücher gleichzeitig kodieren
-      # METADATA_FALLBACK: "true"    # Audnexus / Apple Books / Open Library, wenn Audible nichts findet
-      # WRITE_ABS_METADATA: "true"   # metadata.json für Audiobookshelf
-      # FFMPEG_SANDBOX: "auto"       # ffmpeg im Landlock-Käfig: auto | require | off
-      # Konten legst du beim ersten Aufruf im Browser an (Admin), Familienkonten dann unter "Konten".
-      # TRUSTED_PROXIES: "172.18.0.0/16"   # hinter Pangolin/Traefik: deren Netz, damit die echte IP geloggt wird
-      # ALLOWED_HOSTS: "hoerbuecher.example.de"   # weitere Namen; IPs, tower/*.local und die öffentliche Adresse gehen immer
+      INBOX_ORIGINALS: "archive"     # archive (to _fertig) | delete
+      # TZ: "Europe/Berlin"          # local time in the log
+      # CPU_CORES: "2"               # parallel ffmpeg processes (default: half the cores)
+      # METADATA_FALLBACK: "true"    # Audnexus / Apple Books / Open Library when Audible has nothing
+      # TRUSTED_PROXIES: "172.18.0.0/16"        # behind a reverse proxy: its network, so the real IP is logged
+      # ALLOWED_HOSTS: "audiobooks.example.com" # extra host names; IPs, *.local and the public address always work
+      # The admin account is created in the browser on first start; family accounts under Settings → Accounts.

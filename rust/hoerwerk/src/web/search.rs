@@ -101,6 +101,8 @@ pub async fn indexers(app: Arc<App>, req: Req, _: Params) -> Reply {
         .take(3)
         .collect();
     let language = req.str("language");
+    // "also ask the other indexers": skip the preferred-first order for this one search
+    let everywhere = req.get("everywhere") == &Value::Bool(true);
     let book = if req.get("book").is_object() {
         requests::clean(req.get("book")).ok()
     } else {
@@ -118,7 +120,13 @@ pub async fn indexers(app: Arc<App>, req: Req, _: Params) -> Reply {
                     .any(|r| releases::evaluate(r, b, &lang, true, &[], true)["ok"] == true)
             };
             a.usenet
-                .search_stages(&releases::search_stages(b), &fits, &language, releases::SEARCH_BUDGET)
+                .search_stages(
+                    &releases::search_stages(b),
+                    &fits,
+                    &language,
+                    releases::SEARCH_BUDGET,
+                    everywhere,
+                )
                 .map(|mut res| {
                     let mut list = res["results"].as_array().cloned().unwrap_or_default();
                     let ranked = a.usenet.rank_results(&mut list, &q, &language);
@@ -126,7 +134,7 @@ pub async fn indexers(app: Arc<App>, req: Req, _: Params) -> Reply {
                     res
                 })
         }
-        None => a.usenet.search(&q, &language, &extra, true, 6),
+        None => a.usenet.search(&q, &language, &extra, true, 6, everywhere),
     })
     .await;
     let mut res = match result {
@@ -342,5 +350,45 @@ pub async fn send(app: Arc<App>, req: Req, _: Params) -> Reply {
             json_reply(res)
         }
         Err(e) => error(400, e.to_string()),
+    }
+}
+
+/// Free, legal audiobooks (LibriVox): what matches the text, with what is in the library already.
+pub async fn free(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let query = req.str("query").trim().to_string();
+    if query.chars().count() < 2 {
+        return error(400, t("Suchbegriff fehlt", &[]));
+    }
+    let language = match req.str("language").as_str() {
+        "de" => "de",
+        "en" => "en",
+        _ => "",
+    };
+    let a = app.clone();
+    let found = match blocking(move || a.free.search(&query, language)).await {
+        Ok(f) => f,
+        Err(e) => return error(502, e),
+    };
+    let books: Vec<Value> = found
+        .into_iter()
+        .map(|mut b| {
+            b["owned"] = owned(&app.library.find(&b));
+            b
+        })
+        .collect();
+    json_reply(json!({"books": books, "loading": app.free.jobs()}))
+}
+
+/// Load one LibriVox recording into the inbox – from there it is processed like every other book.
+pub async fn free_get(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let id = req.str("id");
+    let a = app.clone();
+    let id2 = id.clone();
+    match blocking(move || a.free.fetch(&a, &id2)).await {
+        Ok(res) => {
+            app.audit(&req.user_name(), &req.ip, "librivox_download", &id);
+            json_reply(res)
+        }
+        Err(e) => error(400, e),
     }
 }

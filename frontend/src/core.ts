@@ -99,7 +99,7 @@ interface UnconvertedBook {
 }
 interface Track { file: string; duration: number; auto: string; filename: string; tag: string }
 
-interface Indexer { id?: string; name?: string; url?: string; categories?: string; enabled?: boolean; apikey_set?: boolean }
+interface Indexer { id?: string; name?: string; url?: string; categories?: string; enabled?: boolean; preferred?: boolean; apikey_set?: boolean }
 interface AbsConfig { url: string; library: string; library_name: string; token_set: boolean; configured: boolean; last: string | null }
 interface PlexConfig {
   url: string; section: string; section_name: string; empty_trash: boolean; token_set: boolean; configured: boolean; last: string | null;
