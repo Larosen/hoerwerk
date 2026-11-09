@@ -5,7 +5,7 @@ einen Import der Anwendung. Entstanden mit Hörwerk 7.13 (damals Python): Was 7.
 
 | Datei | Inhalt |
 |---|---|
-| `routes.json` | Alle 96 API-Routen mit Methode, Pfad und Zugriff (`public` / `user` / `admin`) – der Server liest sie beim Bauen |
+| `routes.json` | Alle 98 API-Routen mit Methode, Pfad und Zugriff (`public` / `user` / `admin`) – der Server liest sie beim Bauen |
 | `settings.json` | Einstellungen: Standardwerte, erlaubte Werte, Umgebungsvariablen, Version – der Server liest sie beim Bauen |
 | `schema.sql` | Das Datenbank-Schema (Tabellen, Indizes, `user_version`) |
 | `fixtures/hoerwerk-7.13.db` | Eine Datenbank aus 7.13, die jede neue Version unverändert übernehmen muss |

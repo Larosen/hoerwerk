@@ -43,6 +43,7 @@ pub struct App {
     pub abs: Abs,
     pub plex: Plex,
     pub listening: Listening,
+    pub free: crate::free::Free,
     pub discover: crate::discover::Discover,
     /// the daily database snapshot: when it last worked, why it last failed ("" = fine), when it last ran
     pub db_backup: Mutex<(Option<f64>, String, f64)>,
@@ -99,6 +100,7 @@ impl App {
             abs: Abs::new(db.clone()),
             plex: Plex::new(db.clone()),
             listening: Listening::default(),
+            free: crate::free::Free::default(),
             discover: crate::discover::Discover::new(true),
             db_backup: Mutex::new((None, String::new(), 0.0)),
             requests: Requests::new(),

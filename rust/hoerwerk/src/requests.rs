@@ -701,7 +701,7 @@ impl Requests {
     /// otherwise round by round – broader only while nothing fits.
     fn find(app: &App, req: &Value, query: Option<&str>) -> Result<Found, UsenetError> {
         let res = match query {
-            Some(q) => app.usenet.search(q, "", &[], true, 6)?,
+            Some(q) => app.usenet.search(q, "", &[], true, 6, false)?,
             None => {
                 let fits = |found: &[Value]| Self::judge(app, req, found).iter().any(|r| r["verdict"]["ok"] == true);
                 app.usenet.search_stages(
@@ -709,6 +709,7 @@ impl Requests {
                     &fits,
                     "",
                     releases::SEARCH_BUDGET,
+                    false,
                 )?
             }
         };

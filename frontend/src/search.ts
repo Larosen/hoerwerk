@@ -35,7 +35,7 @@ async function loadSources(): Promise<void> {
   if (!s.indexers.length) box.append(el("div", { class: "muted" }, t("Noch kein Indexer eingerichtet.")));
   for (const i of s.indexers) {
     box.append(el("div", { class: "kv" }, el("span", {}, t("Indexer")),
-      el("span", { title: i.url }, (i.name || "") + (i.enabled ? "" : " " + t("(aus)"))),
+      el("span", { title: i.url }, (i.name || "") + (i.enabled ? "" : " " + t("(aus)")) + (i.preferred ? " · " + t("wird zuerst gefragt") : "")),
       el("span", { class: i.apikey_set ? "ok" : "err", title: i.apikey_set ? t("API-Key gespeichert") : t("API-Key fehlt") }, icon(i.apikey_set ? "check" : "alert"))));
   }
   box.append(el("div", { class: "kv" }, el("span", {}, "SABnzbd"),
@@ -62,6 +62,14 @@ function indexerRow(i: Indexer = {}): HTMLDivElement {
     el("input", { name: "apikey", type: "password", autocomplete: "off", placeholder: i.apikey_set ? t("gespeichert – leer lassen") : "API-Key" }),
     el("input", { name: "categories", type: "text", value: i.categories || "3030", title: t("Newznab-Kategorien, kommagetrennt"), class: "cat" }),
     el("label", { class: "check", title: t("aktiv") }, el("input", { name: "enabled", type: "checkbox", checked: i.enabled !== false })),
+    el("label", { class: "check first", title: t("Diesen Indexer zuerst fragen – die anderen nur, wenn er nichts Passendes hat") },
+      el("input", { name: "preferred", type: "checkbox", checked: !!i.preferred, onchange: (e: Event) => {
+        // only one can be first
+        if (!(e.target as HTMLInputElement).checked) return;
+        for (const other of document.querySelectorAll<HTMLInputElement>("#indexerRows [name=preferred]")) {
+          if (other !== e.target) other.checked = false;
+        }
+      } }), " ", t("zuerst")),
     el("button", { type: "button", class: "icon-btn", title: t("Entfernen"), onclick: () => row.remove() }, icon("x")));
   row.dataset.id = i.id || "";
   return row;
@@ -106,6 +114,7 @@ async function saveSources(): Promise<void> {
     apikey: value(r, "apikey").value,
     categories: value(r, "categories").value,
     enabled: value(r, "enabled").checked,
+    preferred: value(r, "preferred").checked,
   }));
   const sab = { url: field(f, "sab_url").value, apikey: field(f, "sab_apikey").value, category: field(f, "sab_category").value };
   const abs = { url: field(f, "abs_url").value, token: field(f, "abs_token").value, library: field(f, "abs_library").value };
@@ -189,6 +198,48 @@ async function lookupBooks(e?: Event): Promise<void> {
             b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : ""].filter(Boolean).join(" · ")),
           b.owned ? el("span", { class: "owned", title: b.owned.path }, t("✓ schon in der Bibliothek")) : null)))));
   } catch (err) { if (!isSuperseded(err)) toast(errMsg(err), true); }
+  void lookupFree(q);
+}
+
+interface FreeBook { id: string; title: string; authors?: string[]; language?: string; runtime_min?: number | null;
+  url: string; cover_url?: string; state?: string; owned?: { path: string } | null }
+
+/** Free and legal: LibriVox recordings (public domain) that match the same text – loaded straight into the inbox. */
+async function lookupFree(q: string): Promise<void> {
+  const box = $("#freePick");
+  box.hidden = true;
+  if (!IS_ADMIN) return;
+  const language = document.querySelector<HTMLInputElement>("#bookLang input:checked")?.value || "de";
+  let books: FreeBook[];
+  try {
+    books = (await api<{ books: FreeBook[] }>("POST", "/api/search/free", { query: q, language }, { key: "freesearch" })).books;
+  } catch { return; }                                // LibriVox away: the shop search is what matters
+  if (!books.length) return;
+  box.hidden = false;
+  box.replaceChildren(
+    el("div", { class: "muted small" }, t("Frei und legal bei LibriVox (gemeinfrei, von Freiwilligen gelesen) – ein Klick lädt das Hörbuch in den Eingang:")),
+    el("div", { class: "pick-list" }, books.map((b) => {
+      const state = el("span", { class: b.owned ? "owned" : "muted" },
+        b.owned ? t("✓ schon in der Bibliothek") : b.state === "loading" ? t("wird geladen …") : b.state === "done" ? t("✓ geladen") : t("In den Eingang laden"));
+      const card = el("button", { type: "button", class: "pick", title: b.url, onclick: async () => {
+        if (card.disabled) return;
+        card.disabled = true;
+        try {
+          const res = await api<{ title: string; files: number }>("POST", "/api/search/free/get", { id: b.id });
+          state.textContent = t("wird geladen …");
+          toast(t("„{title}“ wird geladen ({n} Dateien) und erscheint dann unter Hörbücher.", { title: res.title, n: res.files }));
+        } catch (err) { card.disabled = false; toast(errMsg(err), true); }
+      } },
+        b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : coverArt(b.title, (b.authors || [])[0]),
+        el("span", { class: "pick-text" },
+          el("b", {}, b.title),
+          el("span", {}, (b.authors || []).join(", ")),
+          el("span", { class: "muted" }, [b.language === "german" ? t("Deutsch") : b.language === "english" ? t("Englisch") : b.language || "",
+            b.runtime_min ? fmtDuration(b.runtime_min * 60) : "", "LibriVox"].filter(Boolean).join(" · ")),
+          state));
+      card.disabled = !!b.owned || b.state === "loading";
+      return card;
+    })));
 }
 
 /** The series among the hits (once each): "Ganze Reihe anfragen" without picking a single volume first. */
@@ -233,10 +284,10 @@ function clearBook(): void {
 }
 
 interface LibraryHit { path: string; title: string; authors: string[]; format: string }
-interface SearchAnswer { results: Release[]; errors: string[]; queries?: string[]; library?: LibraryHit[] }
+interface SearchAnswer { results: Release[]; errors: string[]; queries?: string[]; library?: LibraryHit[]; asked?: string[]; skipped?: string[] }
 
 /** Releases at the indexers: for the picked book (term changeable), or – without a book – for the typed text. */
-async function runSearch(e?: Event, free = false): Promise<void> {
+async function runSearch(e?: Event, free = false, everywhere = false): Promise<void> {
   e?.preventDefault();
   const q = (free ? $<HTMLInputElement>("#searchQuery") : $<HTMLInputElement>("#releaseQuery")).value.trim();
   if (!q) return;
@@ -247,7 +298,7 @@ async function runSearch(e?: Event, free = false): Promise<void> {
   try {
     // while the term is still the suggested one, the server tries more spellings and broader terms if nothing fits
     const book = search.book && q === bookQueries(search.book).query ? search.book : null;
-    const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, book },
+    const res = await api<SearchAnswer>("POST", "/api/search", { query: q, language: lang, book, everywhere },
       { key: "releasesearch", busy: t("Sucht …"), timeout: 120_000, button: go });
     search.results = res.results;
     renderResults();
@@ -256,6 +307,13 @@ async function runSearch(e?: Event, free = false): Promise<void> {
       : t("Keine Releases gefunden – oben den Suchbegriff ändern (z. B. nur Titel oder nur Nachname) und erneut suchen.")) +
       (queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: queries.map((x) => `„${x}“`).join(", ") }) : "") +
       (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "");
+    const skipped = res.skipped || [];
+    if (skipped.length) {
+      // the preferred indexer had something: the others were not needed – but can be asked with one click
+      $("#searchNote").append(" · " + t("nur bei {name} gesucht", { name: (res.asked || []).join(", ") }) + " ",
+        el("button", { type: "button", class: "btn small", onclick: () => { void runSearch(undefined, free, true); } },
+          t("auch bei {names} suchen", { names: skipped.join(", ") })));
+    }
     renderOwnedNote(res.library || []);
   } catch (err) {
     if (isSuperseded(err)) return;                 // a newer search shows its own result

@@ -14,6 +14,7 @@ mod discover;
 mod encoder;
 mod engine;
 mod filing;
+mod free;
 mod htmlent;
 mod http;
 mod invites;
@@ -252,6 +253,7 @@ async fn main() {
     App::wire(&app);
     discover::cleanup(&app.db);
     app.pipeline.load(&app);
+    free::cleanup(&app.cfg.inbox);
     let recovered = app.uploads.recover(); // uploads cannot continue after a restart; half-finished ones are completed
     if !recovered.is_empty() {
         app.pipeline.arrived(&recovered);
