@@ -234,14 +234,21 @@ fn parse(text: &str) -> Result<roxmltree::Document<'_>> {
     roxmltree::Document::parse(text).map_err(|_| UsenetError::Failed(t("Antwort ist kein Newznab-XML", &[])))
 }
 
+/// Newznab's own "you asked too often": code 500 "Request limit reached" (the daily API limit of most
+/// indexers), 501 the download limit. Asking on only burns more of it – the indexer pauses instead.
+const LIMIT_PAUSE: f64 = 2.0 * 3600.0;
+
 fn check_error(root: roxmltree::Node) -> Result<()> {
     if root.tag_name().name() == "error" {
         let code = root.attribute("code").unwrap_or("");
-        return fail(
-            root.attribute("description")
-                .map(str::to_string)
-                .unwrap_or_else(|| t("Fehler {code}", &[("code", code)])),
-        );
+        let text = root
+            .attribute("description")
+            .map(str::to_string)
+            .unwrap_or_else(|| t("Fehler {code}", &[("code", code)]));
+        if matches!(code, "429" | "500" | "501") || is_match(rx!(r"(?i)limit reached|too many requests"), &text) {
+            return Err(UsenetError::RateLimited(text, LIMIT_PAUSE));
+        }
+        return fail(text);
     }
     Ok(())
 }
@@ -1453,6 +1460,36 @@ mod tests {
             {"name": "A", "url": "https://a.example", "apikey": "k1", "preferred": true},
             {"name": "B", "url": "https://b.example", "apikey": "k2", "preferred": true}], "sab": {}}));
         u
+    }
+
+    #[test]
+    fn request_limit_pauses_the_indexer() {
+        crate::text::set_language("de");
+        let limit = br#"<error code="500" description="Request limit reached (26/25)"/>"#;
+        assert!(
+            matches!(parse_results(limit, "A"), Err(UsenetError::RateLimited(m, w)) if m.contains("26/25") && w == LIMIT_PAUSE)
+        );
+        let wrong_key = br#"<error code="100" description="Incorrect user credentials"/>"#;
+        assert!(matches!(parse_results(wrong_key, "A"), Err(UsenetError::Failed(_))));
+        // in a search: asked once, then paused – the next searches do not ask it at all
+        let asked = Arc::new(Mutex::new(0));
+        let count = asked.clone();
+        let u = Usenet::with_getter(
+            Db::memory(),
+            Box::new(move |url: &str| {
+                if url.contains("t=caps") {
+                    return Ok(br#"<caps><categories><category id="3000" name="Audio"><subcat id="3030" name="Audiobook"/></category></categories></caps>"#.to_vec());
+                }
+                *count.lock().unwrap() += 1;
+                Ok(br#"<error code="500" description="Request limit reached (26/25)"/>"#.to_vec())
+            }),
+        );
+        u.update_config(&json!({"indexers": [{"name": "A", "url": "https://a.example", "apikey": "k1"}], "sab": {}}));
+        let res = u.search("Schimmelreiter", "", &[], true, 6, false).unwrap();
+        assert!(u.paused("A") > now() + LIMIT_PAUSE - 60.0);
+        assert!(res["errors"][0].as_str().unwrap().contains("Pause bis"), "{res}");
+        u.search("Schimmelreiter", "", &[], true, 6, false).unwrap();
+        assert_eq!(*asked.lock().unwrap(), 1);
     }
 
     #[test]

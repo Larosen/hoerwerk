@@ -70,6 +70,7 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> 
 /// SABnzbd's queue, asked at most every few seconds however many browsers poll the request list.
 static SAB_SEEN: std::sync::Mutex<Option<(std::time::Instant, Value)>> = std::sync::Mutex::new(None);
 const SAB_FRESH: std::time::Duration = std::time::Duration::from_secs(4);
+const SAB_WAIT: std::time::Duration = std::time::Duration::from_secs(3);
 
 async fn sab_activity(app: &Arc<App>) -> Option<Value> {
     if let Some((when, seen)) = SAB_SEEN.lock().unwrap_or_else(|p| p.into_inner()).as_ref()
@@ -78,7 +79,11 @@ async fn sab_activity(app: &Arc<App>) -> Option<Value> {
         return Some(seen.clone());
     }
     let a = app.clone();
-    let fresh = blocking(move || a.usenet.activity(15)).await.ok()?;
+    // a slow SABnzbd must not hold up the list: without an answer in time the cards just show no progress
+    let fresh = tokio::time::timeout(SAB_WAIT, blocking(move || a.usenet.activity(15)))
+        .await
+        .ok()?
+        .ok()?;
     *SAB_SEEN.lock().unwrap_or_else(|p| p.into_inner()) = Some((std::time::Instant::now(), fresh.clone()));
     Some(fresh)
 }
@@ -114,15 +119,15 @@ async fn live(app: &Arc<App>, reqs: &[Value]) -> HashMap<i64, Value> {
                 );
             }
             Some("processing") => {
-                let Some(j) = app.job_for_request(id) else { continue };
+                // no job yet: SABnzbd is done, the folder is not (yet) picked up from the inbox
+                let (state, progress) = app.job_for_request(id).map_or((json!("inbox"), json!(0)), |j| {
+                    (j["status"].clone(), j["progress"].clone())
+                });
                 if matches!(
-                    j["status"].as_str(),
-                    Some("queued" | "matching" | "converting" | "tagging")
+                    state.as_str(),
+                    Some("inbox" | "queued" | "matching" | "converting" | "tagging" | "review")
                 ) {
-                    out.insert(
-                        id,
-                        json!({"kind": "import", "state": j["status"], "progress": j["progress"]}),
-                    );
+                    out.insert(id, json!({"kind": "import", "state": state, "progress": progress}));
                 }
             }
             _ => {}

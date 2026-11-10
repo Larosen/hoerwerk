@@ -51,6 +51,8 @@ const SAB_STATE: Record<string, () => string> = {
   Failed: () => t("fehlgeschlagen"),
 };
 const IMPORT_STATE: Record<string, () => string> = {
+  inbox: () => t("Download fertig – wartet auf den Eingang"),
+  review: () => IS_ADMIN ? t("wartet auf deine Prüfung unter „Hörbücher“") : t("wartet auf Prüfung durch einen Admin"),
   queued: () => t("wartet auf die Umwandlung"),
   matching: () => t("erkennt das Buch"),
   converting: () => t("wandelt in M4B um"),
@@ -326,7 +328,9 @@ function groupCard(members: BookRequest[]): HTMLLIElement {
 /** One volume inside a series card: number, title, state – and what can be done with it alone. */
 function volumeRow(r: BookRequest): HTMLLIElement {
   const b = r.book;
-  const detail = r.status === "declined" && r.reason ? r.reason : r.status === "downloading" && r.release ? r.release : r.error || "";
+  const last = (r.history || [])[(r.history || []).length - 1];
+  const detail = r.status === "declined" && r.reason ? r.reason : r.status === "downloading" && r.release ? r.release
+    : r.error || (!r.live && ["processing", "searching"].includes(r.status) && last ? last.text : "");
   return el("li", { class: "group-vol" },
     el("span", { class: "group-vol-text" },
       el("span", { title: b.title }, [volumeLabel(b), b.title].filter(Boolean).join(" · ")),
