@@ -25,11 +25,12 @@ pub const COVER_FILES: [&str; 7] = [
 ];
 const AUDIO_EXTS: [&str; 9] = [".m4b", ".m4a", ".mp3", ".mp4", ".aac", ".flac", ".ogg", ".opus", ".wma"];
 /// bump when the way entries are read changes: cached folders are read again
-const ENTRY_VERSION: i64 = 5;
-const PUBLIC_KEYS: [&str; 11] = [
+const ENTRY_VERSION: i64 = 6;
+const PUBLIC_KEYS: [&str; 12] = [
     "path",
     "title",
     "authors",
+    "narrators",
     "names",
     "series",
     "series_position",
@@ -334,7 +335,7 @@ impl LibraryIndex {
             "path": rel, "files": 1, "mtime": media::mtime(dest_file).unwrap_or(0.0),
             "title": s(book, "title"), "authors": authors, "asin": if asin.is_empty() { Value::Null } else { json!(asin) },
             "series": book["series"].clone(), "series_position": book["series_position"].clone(), "format": "m4b",
-            "v": ENTRY_VERSION, "names": names_of(&author_refs),
+            "v": ENTRY_VERSION, "names": names_of(&author_refs), "narrators": strs(&book["narrators"]),
             "cover": has_cover_file(folder) || media::read_book(dest_file)["_cover"].as_bool().unwrap_or(false),
         });
         {
@@ -381,8 +382,25 @@ impl LibraryIndex {
         surnames(&all)
     }
 
-    /// Library entries that are this book: same ASIN, same author and title, or same series and volume.
+    /// Library entries that are this book: same ASIN, same author and title, or same series and volume – but
+    /// not another edition of it (read by someone else, see `other_editions`).
     pub fn find(&self, book: &Value) -> Vec<Value> {
+        self.matches(book)
+            .into_iter()
+            .filter(|e| s(e, "why") != "edition")
+            .collect()
+    }
+
+    /// Other editions of the book in the library: same author and title, but read by other narrators – e.g. the
+    /// classic reading next to a new full-cast production. Not a duplicate, only worth a hint.
+    pub fn other_editions(&self, book: &Value) -> Vec<Value> {
+        self.matches(book)
+            .into_iter()
+            .filter(|e| s(e, "why") == "edition")
+            .collect()
+    }
+
+    fn matches(&self, book: &Value) -> Vec<Value> {
         let asin = s(book, "asin").to_uppercase();
         let authors = strs(&book["authors"]);
         let want = surnames(&names_of(&authors.iter().map(String::as_str).collect::<Vec<_>>()));
@@ -397,16 +415,22 @@ impl LibraryIndex {
             }
             let names = Self::names(&e);
             let shared = !want.is_disjoint(&names);
-            if !words.is_empty() && shared && title_words(s(&e, "title")) == words {
-                out.push(with_why(e, "title"));
+            let why = if !words.is_empty() && shared && title_words(s(&e, "title")) == words {
+                "title"
             } else if !series.is_empty()
                 && !pos.is_empty()
                 && shared
                 && s(&e, "series").trim().to_lowercase() == series
                 && py_str(&e["series_position"]) == pos
             {
-                out.push(with_why(e, "series"));
-            }
+                "series"
+            } else {
+                continue;
+            };
+            out.push(with_why(
+                e.clone(),
+                if other_edition(book, &e) { "edition" } else { why },
+            ));
         }
         out
     }
@@ -537,6 +561,42 @@ pub fn rel_of(root: &Path, folder: &Path) -> String {
     }
 }
 
+/// Same book, different recording: both sides name their narrators and not one of them is the same person.
+/// Unknown narrators on either side count as the same edition – better ask once too often than download twice.
+fn other_edition(book: &Value, entry: &Value) -> bool {
+    // a special production ("mit voller Besetzung", "Full Cast", "Hörspiel") on one side only: another edition,
+    // whatever the tags say about narrators (many MP3 books name only the author)
+    let marked = |v: &Value, keys: &[&str]| {
+        let text = keys
+            .iter()
+            .map(|k| s(v, k))
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase();
+        crate::rx::is_match(
+            crate::rx!(r"voller besetzung|full[- ]cast|h(ö|oe)rspiel|dramati[sz]|radio drama|szenische lesung"),
+            &text,
+        )
+    };
+    if marked(book, &["title", "subtitle", "series"]) != marked(entry, &["title", "series", "path"]) {
+        return true;
+    }
+    let (a, b) = (strs(&book["narrators"]), strs(&entry["narrators"]));
+    let keys = |n: &[String]| {
+        surnames(&names_of(&n.iter().map(String::as_str).collect::<Vec<_>>()))
+            .into_iter()
+            .filter(|k| {
+                !matches!(
+                    k.as_str(),
+                    "cast" | "besetzung" | "diverse" | "various" | "sprecher" | "div"
+                )
+            })
+            .collect::<BTreeSet<String>>()
+    };
+    let (ka, kb) = (keys(&a), keys(&b));
+    !ka.is_empty() && !kb.is_empty() && ka.is_disjoint(&kb)
+}
+
 /// The library entry of one book folder: tags of the M4B (or of the first audio file), folder names as fallback.
 fn entry(folder: &Path, rel: &str, audio: &[String], mtime: f64) -> Value {
     let mut cover = has_cover_file(folder);
@@ -616,6 +676,27 @@ fn entry(folder: &Path, rel: &str, audio: &[String], mtime: f64) -> Value {
             .unwrap_or(Value::Null),
         other => other.clone(),
     };
+    // narrators: from our own M4B tags; for MP3 & co. the names in the tags that are not the author
+    let narrators: Vec<String> = if m4b.is_some() {
+        strs(&book["narrators"])
+    } else {
+        let author_keys = surnames(&names_of(&authors.iter().map(String::as_str).collect::<Vec<_>>()));
+        let tags = &media::probe_cached(&folder.join(&audio[0]))["tags"];
+        let mut out: Vec<String> = Vec::new();
+        for n in names_of(&[
+            s(tags, "narrator"),
+            s(tags, "performer"),
+            s(tags, "artist"),
+            s(tags, "album_artist"),
+            s(tags, "composer"),
+        ]) {
+            if !surnames(&[&n]).is_disjoint(&author_keys) || out.contains(&n) || n.contains(',') {
+                continue;
+            }
+            out.push(n);
+        }
+        out
+    };
     let format = if m4b.is_some() {
         "m4b".to_string()
     } else {
@@ -627,7 +708,46 @@ fn entry(folder: &Path, rel: &str, audio: &[String], mtime: f64) -> Value {
     json!({
         "v": ENTRY_VERSION, "path": rel, "files": audio.len(), "mtime": mtime, "names": names,
         "cover": cover || book["_cover"].as_bool().unwrap_or(false),
-        "title": title, "authors": authors, "asin": if asin.is_empty() { Value::Null } else { json!(asin) },
+        "title": title, "authors": authors, "narrators": narrators,
+        "asin": if asin.is_empty() { Value::Null } else { json!(asin) },
         "series": series, "series_position": position, "format": format,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn other_recordings_are_other_editions() {
+        let entry = json!({"narrators": ["Rufus Beck"]});
+        let book = |n: Value| json!({"title": "Der Stein", "narrators": n});
+        // a new production with a whole cast: another edition
+        assert!(other_edition(
+            &book(json!(["Felix von Manteuffel", "Anna Muster", "Full Cast"])),
+            &entry
+        ));
+        // the same reader, written differently or among others: the same edition
+        assert!(!other_edition(&book(json!(["R. Beck"])), &entry));
+        assert!(!other_edition(&book(json!(["Anna Muster", "Rufus Beck"])), &entry));
+        // unknown on either side: treated as the same edition (asked rather than downloaded twice)
+        assert!(!other_edition(&book(json!([])), &entry));
+        assert!(!other_edition(&book(Value::Null), &json!({"narrators": []})));
+        // "Full cast" / "Diverse" alone say nothing about who reads
+        assert!(!other_edition(&book(json!(["Full Cast"])), &entry));
+        // the production itself says so – even when the old MP3s name no narrator at all
+        let mp3 = json!({"title": "Der Stein", "series": "Die Reihe", "path": "Anna Autorin/Die Reihe/01 - Der Stein", "narrators": []});
+        let cast =
+            json!({"title": "Der Stein", "series": "Die Reihe (Hörbücher mit voller Besetzung)", "narrators": []});
+        assert!(other_edition(&cast, &mp3));
+        assert!(!other_edition(
+            &json!({"title": "Der Stein", "series": "Die Reihe"}),
+            &mp3
+        ));
+        let both = json!({"title": "Der Stein", "path": "Anna Autorin/Hörspiel/Der Stein", "narrators": []});
+        assert!(!other_edition(
+            &json!({"title": "Der Stein", "subtitle": "Das Hörspiel"}),
+            &both
+        ));
+    }
 }

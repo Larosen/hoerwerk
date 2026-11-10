@@ -822,6 +822,17 @@ class Library(unittest.TestCase):
             self.assertEqual([t["file"] for t in tracks["tracks"]], ["CD1/01.mp3", "CD2/01.mp3"])
             self.assertEqual(admin.get("/api/library/unconverted")["books"][0]["path"],
                              "Anna Autorin/Die Reihe/03 - Dritter Band")
+            self.assertEqual(admin.get("/api/library/books?q=westphal")["books"][0]["narrators"], ["Gert Westphal"])
+
+            # another edition of a book you have (a new recording, other narrators) can be requested – the same
+            # recording, or one whose narrators are unknown, is refused as before
+            book = {"title": "Der Schimmelreiter", "authors": ["Theodor Storm"], "language": "german"}
+            for extra, want in (({"narrators": ["Gert Westphal"]}, 409), ({"narrators": []}, 409),
+                                ({"narrators": ["Erika Muster", "Max Muster"], "asin": "B0EDITION1"}, 200),
+                                ({"series": "Novellen (Hörbücher mit voller Besetzung)", "series_position": "1",
+                                  "asin": "B0EDITION2"}, 200)):
+                status, data = admin.call("POST", "/api/requests", {"book": {**book, **extra}}, expect=None)
+                self.assertEqual(status, want, (extra, data))
         finally:
             s.cleanup()
 

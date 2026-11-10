@@ -121,7 +121,7 @@ async function openSeries(b: Book): Promise<void> {
         el("b", {}, [volumeLabel(v), v.title].filter(Boolean).join(" · ")),
         el("span", { class: "muted small" }, [v.runtime_min ? fmtDuration(v.runtime_min * 60) : "", v.format_type === "abridged" ? t("gekürzt") : "",
           v.release_date ? v.release_date.slice(0, 4) : ""].filter(Boolean).join(" · ")),
-        taken ? el("span", { class: v.owned ? "rtag ok" : `rtag req-${state}` }, taken) : null));
+        taken ? el("span", { class: v.owned ? "rtag ok" : `rtag req-${state}` }, taken) : editionNote(v)));
     return { v, cb, taken, row };
   });
   const free = rows.filter((r) => !r.taken).length;

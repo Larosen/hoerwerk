@@ -67,10 +67,20 @@ interface Book {
   series?: string | null; series_asin?: string | null; series_position?: string | null; runtime_min?: number; release_date?: string | null;
   cover_url?: string | null; match?: { score: number }; region?: string | null; url?: string | null;
   format_type?: string | null; publisher?: string | null; language?: string | null; genres?: string[];
-  description?: string; source?: string; isbn?: string | null; owned?: Owned | null;
+  description?: string; source?: string; isbn?: string | null; owned?: Owned | null; other_edition?: OtherEdition | null;
   request_id?: number; request_user?: string; mismatch?: string;
 }
 interface Owned { path: string; title: string; authors: string[]; why: string; count: number }
+/** The same book in the library, but read by someone else – shown as a hint, it does not block a request. */
+interface OtherEdition { title: string; narrators?: string[]; path?: string }
+
+function editionNote(b: { other_edition?: OtherEdition | null; owned?: unknown }): HTMLElement | null {
+  const e = b.other_edition;
+  if (!e || b.owned) return null;
+  const who = (e.narrators || []).slice(0, 2).join(", ");
+  return el("span", { class: "muted small edition-note", title: e.path || "" },
+    who ? t("Andere Fassung in der Bibliothek (gelesen von {names})", { names: who }) : t("Andere Fassung in der Bibliothek"));
+}
 interface Hints { query?: string; title?: string; author?: string; narrator?: string; folder?: string }
 interface Quality { kbps: number; duration: number; size: number; files: number }
 interface Duplicate {

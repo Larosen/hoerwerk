@@ -194,6 +194,15 @@ fn for_browser(app: &App, req: &Req, books: &[Value]) -> Vec<Value> {
                     json!({"title": o["title"]})
                 },
             );
+            // another recording of the same book (other narrators) – a hint, not a reason to refuse
+            let edition = app.library.other_editions(b).into_iter().next().map(|e| {
+                let mut x = json!({"title": e["title"], "narrators": e["narrators"]});
+                if admin {
+                    x["path"] = e["path"].clone();
+                }
+                x
+            });
+            item.insert("other_edition".into(), edition.unwrap_or(Value::Null));
             item.insert(
                 "requested".into(),
                 requested.get(&requests::book_key(b)).cloned().unwrap_or(Value::Null),

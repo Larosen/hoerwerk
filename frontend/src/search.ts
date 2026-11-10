@@ -196,7 +196,7 @@ async function lookupBooks(e?: Event): Promise<void> {
           el("span", { class: "muted" }, [b.series ? `${b.series} ${b.series_position || ""}`.trim() : "",
             b.runtime_min ? fmtDuration(b.runtime_min * 60) : "", b.format_type === "abridged" ? t("gekürzt") : "",
             b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : ""].filter(Boolean).join(" · ")),
-          b.owned ? el("span", { class: "owned", title: b.owned.path }, t("✓ schon in der Bibliothek")) : null)))));
+          b.owned ? el("span", { class: "owned", title: b.owned.path }, t("✓ schon in der Bibliothek")) : editionNote(b))))));
   } catch (err) { if (!isSuperseded(err)) toast(errMsg(err), true); }
   void lookupFree(q);
 }

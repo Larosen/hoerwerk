@@ -1375,5 +1375,7 @@
  "{title} geladen – der Eingang übernimmt": "{title} loaded – the inbox takes over",
  "{title}: {error}": "{title}: {error}",
  "{file} ist keine MP3-Datei": "{file} is not an MP3 file",
- "Beim Beenden unterbrochen": "Interrupted while shutting down"
+ "Beim Beenden unterbrochen": "Interrupted while shutting down",
+ "Andere Fassung in der Bibliothek (gelesen von {names})": "Another edition is in the library (read by {names})",
+ "Andere Fassung in der Bibliothek": "Another edition is in the library"
 }
