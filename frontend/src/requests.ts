@@ -8,7 +8,7 @@ interface BookRequest {
   id: number; book: Book; status: RequestStatus; created: number; updated: number; user?: string; mine: boolean;
   reason?: string; release?: string; error?: string | null; last_search?: number | null; found?: number; seen?: number;
   history?: { time: number; text: string }[]; blocked?: string[]; attempts?: number; group?: RequestGroup | null;
-  live?: RequestLive | null;
+  live?: RequestLive | null; resting?: string[] | null;
 }
 /** What a running request is doing right now: SABnzbd's download, then the conversion to M4B. */
 interface RequestLive {
@@ -254,7 +254,7 @@ function requestCard(r: BookRequest): HTMLLIElement {
   }
   const detail = r.status === "declined" && r.reason ? t("Grund: {reason}", { reason: r.reason })
     : r.status === "searching" && r.last_search ? t("Zuletzt gesucht {when} – nichts Passendes ({checked})", { when: fmtAgo(r.last_search),
-      checked: plural(r.seen || 0, t("1 Release geprüft"), t("{n} Releases geprüft", { n: r.seen || 0 })) })
+      checked: plural(r.seen || 0, t("1 Release geprüft"), t("{n} Releases geprüft", { n: r.seen || 0 })) }) + (r.resting?.length ? " · " + restingText(r.resting) : "")
       : r.status === "downloading" && r.release ? r.release
         : r.error || (last ? last.text : "");
   return el("li", { class: `request req-${r.status}` },
@@ -330,7 +330,8 @@ function volumeRow(r: BookRequest): HTMLLIElement {
   const b = r.book;
   const last = (r.history || [])[(r.history || []).length - 1];
   const detail = r.status === "declined" && r.reason ? r.reason : r.status === "downloading" && r.release ? r.release
-    : r.error || (!r.live && ["processing", "searching"].includes(r.status) && last ? last.text : "");
+    : r.error || (r.status === "searching" && r.resting?.length ? restingText(r.resting)
+      : !r.live && ["processing", "searching"].includes(r.status) && last ? last.text : "");
   return el("li", { class: "group-vol" },
     el("span", { class: "group-vol-text" },
       el("span", { title: b.title }, [volumeLabel(b), b.title].filter(Boolean).join(" · ")),
@@ -406,13 +407,14 @@ async function openReleases(r: BookRequest, query = ""): Promise<void> {
   requests.releases = [];
   rows.replaceChildren(el("tr", {}, el("td", { colspan: "6", class: "empty-row" }, t("Suche …"))));
   try {
-    const res = await api<{ query: string; queries: string[]; errors: string[]; results: JudgedRelease[] }>(
+    const res = await api<{ query: string; queries: string[]; errors: string[]; resting?: string[]; results: JudgedRelease[] }>(
       "POST", `/api/requests/${r.id}/releases`, { query });
     $<HTMLInputElement>("#releasesQuery").value = res.query;
     const ok = res.results.filter((x) => x.verdict.ok).length;
     $("#releasesNote").textContent = t("{n} Releases, davon {ok} passend", { n: res.results.length, ok }) +
       (res.queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: res.queries.map((x) => `„${x}“`).join(", ") }) : "") +
-      (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "");
+      (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "") +
+      (res.resting?.length ? " · " + restingText(res.resting) : "");
     requests.releases = res.results;
     renderReleases();
   } catch (e) {

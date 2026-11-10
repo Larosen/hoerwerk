@@ -157,7 +157,8 @@ pub fn clean(book: &Value) -> Res<Value> {
 }
 
 /// (judged releases, queries asked, errors)
-type Found = (Vec<Value>, Vec<String>, Vec<String>);
+/// (judged releases, queries asked, errors, indexers resting until midnight)
+type Found = (Vec<Value>, Vec<String>, Vec<String>, Vec<String>);
 
 pub struct Requests {
     lock: Mutex<()>,
@@ -715,7 +716,12 @@ impl Requests {
         };
         let results = res["results"].as_array().cloned().unwrap_or_default();
         let strs = |k: &str| res[k].as_array().into_iter().flatten().map(text_of).collect::<Vec<_>>();
-        Ok((Self::judge(app, req, &results), strs("queries"), strs("errors")))
+        Ok((
+            Self::judge(app, req, &results),
+            strs("queries"),
+            strs("errors"),
+            strs("resting"),
+        ))
     }
 
     /// All releases for a request with the verdict on each (interactive search). Blocking.
@@ -726,7 +732,7 @@ impl Requests {
         }
         let typed = cut(query.trim(), 200);
         let typed = (!typed.is_empty()).then_some(typed);
-        let (ranked, queries, errors) = Self::find(app, &req, typed.as_deref()).map_err(|e| RequestError {
+        let (ranked, queries, errors, resting) = Self::find(app, &req, typed.as_deref()).map_err(|e| RequestError {
             message: e.to_string(),
             status: 502,
         })?;
@@ -738,7 +744,10 @@ impl Requests {
                 .unwrap_or_default()
         });
         let queries = if queries.is_empty() { vec![q.clone()] } else { queries };
-        Ok(json!({"request": req, "query": q, "queries": queries, "errors": errors, "results": ranked}))
+        Ok(
+            json!({"request": req, "query": q, "queries": queries, "errors": errors, "resting": resting,
+                  "results": ranked}),
+        )
     }
 
     /// Another volume of the same series is loading a pack that holds this volume too.
@@ -794,7 +803,7 @@ impl Requests {
             req["pack_noted"] = json!(release);
             return Some(self.save(app, &req, None, &note));
         }
-        let (ranked, queries, errors) = match Self::find(app, &req, None) {
+        let (ranked, queries, errors, resting) = match Self::find(app, &req, None) {
             Ok(x) => x,
             Err(e) => {
                 req["last_search"] = json!(now());
@@ -808,6 +817,11 @@ impl Requests {
             Value::Null
         } else {
             json!(errors.join("; "))
+        };
+        req["resting"] = if resting.is_empty() {
+            Value::Null
+        } else {
+            json!(resting)
         };
         req["found"] = json!(good.len());
         req["seen"] = json!(ranked.len());
@@ -1049,7 +1063,11 @@ impl Requests {
             }
             match req["status"].as_str() {
                 Some("searching") => {
-                    if req["last_search"].as_f64().unwrap_or(0.0) < now() - interval_hours(app) as f64 * 3600.0 {
+                    let last = req["last_search"].as_f64().unwrap_or(0.0);
+                    // an indexer rested (daily limit): search again right after midnight, not hours later
+                    let rested = req["resting"].as_array().is_some_and(|r| !r.is_empty())
+                        && crate::text::next_local_midnight(last) + 120.0 <= now();
+                    if rested || last < now() - interval_hours(app) as f64 * 3600.0 {
                         self.search(app, rid);
                     }
                 }
@@ -1301,6 +1319,7 @@ pub fn summary(req: &Value, user: &Value, sees_all: bool) -> Value {
         "path",
         "attempts",
         "group",
+        "resting",
     ];
     let mut out: BTreeMap<String, Value> = keys
         .iter()

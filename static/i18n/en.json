@@ -1402,5 +1402,6 @@
  "Reihe zurückziehen": "Withdraw series",
  "Download fertig – wartet auf den Eingang": "download done – waiting for the inbox",
  "wartet auf deine Prüfung unter „Hörbücher“": "waiting for your review under “Audiobooks”",
- "wartet auf Prüfung durch einen Admin": "waiting for an admin to review it"
+ "wartet auf Prüfung durch einen Admin": "waiting for an admin to review it",
+ "{names}: Tageslimit erreicht – sucht ab Mitternacht weiter": "{names}: daily limit reached – searching again after midnight"
 }

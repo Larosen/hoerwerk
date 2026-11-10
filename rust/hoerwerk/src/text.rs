@@ -197,6 +197,12 @@ pub fn local_month_start(ts: f64) -> f64 {
 }
 
 /// "HH:MM" in local time.
+/// The next local midnight after `ts` (when indexers reset their daily limit).
+pub fn next_local_midnight(ts: f64) -> f64 {
+    let tm = local(ts);
+    ts.floor() - (tm.tm_hour as f64 * 3600.0 + tm.tm_min as f64 * 60.0 + tm.tm_sec as f64) + 86400.0
+}
+
 pub fn local_hm(ts: f64) -> String {
     let tm = local(ts);
     format!("{:02}:{:02}", tm.tm_hour, tm.tm_min)

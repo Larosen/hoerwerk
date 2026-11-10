@@ -274,7 +274,10 @@ pub async fn releases(app: Arc<App>, req: Req, p: Params) -> Reply {
             r
         })
         .collect();
-    json_reply(json!({"query": res["query"], "queries": res["queries"], "errors": res["errors"], "results": results}))
+    json_reply(
+        json!({"query": res["query"], "queries": res["queries"], "errors": res["errors"], "resting": res["resting"],
+               "results": results}),
+    )
 }
 
 pub async fn grab(app: Arc<App>, req: Req, p: Params) -> Reply {
