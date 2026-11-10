@@ -525,9 +525,18 @@ class Processing(ContractTest):
         self.assertTrue(any("Fehler" in line for line in detail["log"]))
         again = self.admin.call("POST", f'/api/audiobooks/{job["id"]}/retry')
         self.assertEqual(again["status"], "queued")
-        self.assertTrue(os.path.isdir(os.path.join(self.server.inbox, "Kaputt - Buch")))
-        self.assertFalse(os.path.exists(os.path.join(self.server.inbox, "Kaputt - Buch", "FEHLER.txt")))
-        self.assertEqual(self.job("Kaputt - Buch")["status"], "failed")
+        # back in the inbox – checked on the answer, not on disk: the broken file fails again within
+        # milliseconds and its folder moves straight back to _failed
+        self.assertEqual(again["source"], os.path.join(self.server.inbox, "Kaputt - Buch"))
+        self.assertIsNone(again["dest"])
+        redo = self.admin.wait(lambda: next((j for j in self.admin.get("/api/audiobooks")["jobs"]
+                                             if j["id"] == job["id"] and j["dest"]), None), 90, what="failed again")
+        self.assertEqual(redo["status"], "failed")
+        self.assertEqual(redo["dest"], failed)
+        self.assertFalse(os.path.exists(os.path.join(self.server.inbox, "Kaputt - Buch")))
+        self.assertTrue(os.path.isfile(os.path.join(failed, "FEHLER.txt")))
+        detail = self.admin.get(f'/api/audiobooks/{job["id"]}')
+        self.assertTrue(any("Erneut eingereiht" in line for line in detail["log"]))
         self.admin.call("DELETE", f'/api/audiobooks/{job["id"]}')
         self.assertNotIn(job["id"], [j["id"] for j in self.admin.get("/api/audiobooks")["jobs"]])
 
@@ -822,6 +831,17 @@ class Library(unittest.TestCase):
             self.assertEqual([t["file"] for t in tracks["tracks"]], ["CD1/01.mp3", "CD2/01.mp3"])
             self.assertEqual(admin.get("/api/library/unconverted")["books"][0]["path"],
                              "Anna Autorin/Die Reihe/03 - Dritter Band")
+            self.assertEqual(admin.get("/api/library/books?q=westphal")["books"][0]["narrators"], ["Gert Westphal"])
+
+            # another edition of a book you have (a new recording, other narrators) can be requested – the same
+            # recording, or one whose narrators are unknown, is refused as before
+            book = {"title": "Der Schimmelreiter", "authors": ["Theodor Storm"], "language": "german"}
+            for extra, want in (({"narrators": ["Gert Westphal"]}, 409), ({"narrators": []}, 409),
+                                ({"narrators": ["Erika Muster", "Max Muster"], "asin": "B0EDITION1"}, 200),
+                                ({"series": "Novellen (Hörbücher mit voller Besetzung)", "series_position": "1",
+                                  "asin": "B0EDITION2"}, 200)):
+                status, data = admin.call("POST", "/api/requests", {"book": {**book, **extra}}, expect=None)
+                self.assertEqual(status, want, (extra, data))
         finally:
             s.cleanup()
 
