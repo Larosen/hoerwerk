@@ -736,7 +736,8 @@ impl<'a> Sabnzbd<'a> {
                 .unwrap_or(0.0);
             items.push(
                 json!({"id": s["nzo_id"], "name": s["filename"], "status": s["status"], "progress": pct / 100.0,
-                              "size": s["size"], "left": s["timeleft"], "done": false}),
+                              "size": s["size"], "left": s["timeleft"], "mb": number(&s["mb"]),
+                              "mbleft": number(&s["mbleft"]), "done": false}),
             );
         }
         for s in hist["slots"].as_array().cloned().unwrap_or_default() {
@@ -749,8 +750,19 @@ impl<'a> Sabnzbd<'a> {
                               "progress": if s["status"] == "Completed" { 1.0 } else { 0.0 }, "size": s["size"], "error": error,
                               "path": s["storage"], "done": true, "finished": s["completed"]}));
         }
-        Ok(json!({"paused": queue["paused"].as_bool().unwrap_or(false), "speed": queue["speed"], "items": items}))
+        Ok(
+            json!({"paused": queue["paused"].as_bool().unwrap_or(false), "speed": queue["speed"],
+                  "kbpersec": number(&queue["kbpersec"]), "items": items}),
+        )
     }
+}
+
+/// SABnzbd sends most numbers as text ("850.21"); missing or odd ones are null.
+fn number(v: &Value) -> Value {
+    v.as_f64()
+        .or_else(|| v.as_str().and_then(|s| s.trim().parse::<f64>().ok()))
+        .filter(|n| n.is_finite() && *n >= 0.0)
+        .map_or(Value::Null, |n| json!(n))
 }
 
 // -- configuration + search service ------------------------------------------------------------------

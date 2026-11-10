@@ -8,6 +8,12 @@ interface BookRequest {
   id: number; book: Book; status: RequestStatus; created: number; updated: number; user?: string; mine: boolean;
   reason?: string; release?: string; error?: string | null; last_search?: number | null; found?: number; seen?: number;
   history?: { time: number; text: string }[]; blocked?: string[]; attempts?: number; group?: RequestGroup | null;
+  live?: RequestLive | null;
+}
+/** What a running request is doing right now: SABnzbd's download, then the conversion to M4B. */
+interface RequestLive {
+  kind: "download" | "import"; state: string; progress: number; done?: boolean; paused?: boolean;
+  mb?: number | null; mbleft?: number | null; left?: string | null; speed?: number | null;
 }
 /** The volumes of a series asked for at once share a group (one request against the quota, decided together). */
 interface RequestGroup { id: string; title: string; asin?: string | null; count: number }
@@ -26,6 +32,74 @@ const REQ_STATUS: Record<RequestStatus, () => string> = {
   declined: () => t("Abgelehnt"),
   failed: () => t("Fehlgeschlagen"),
 };
+/** SABnzbd's states (queue and post-processing) in plain words. */
+const SAB_STATE: Record<string, () => string> = {
+  Queued: () => t("wartet in SABnzbd"),
+  Paused: () => t("pausiert"),
+  Downloading: () => t("lädt"),
+  Grabbing: () => t("holt die NZB"),
+  Fetching: () => t("holt fehlende Teile"),
+  Propagating: () => t("wartet, bis alles beim Anbieter ist"),
+  QuickCheck: () => t("prüft"),
+  Verifying: () => t("prüft"),
+  Checking: () => t("prüft"),
+  Repairing: () => t("repariert"),
+  Extracting: () => t("entpackt"),
+  Moving: () => t("verschiebt in den Eingang"),
+  Running: () => t("Nachbearbeitung"),
+  Completed: () => t("fertig – geht in den Eingang"),
+  Failed: () => t("fehlgeschlagen"),
+};
+const IMPORT_STATE: Record<string, () => string> = {
+  queued: () => t("wartet auf die Umwandlung"),
+  matching: () => t("erkennt das Buch"),
+  converting: () => t("wandelt in M4B um"),
+  tagging: () => t("schreibt Tags und Kapitel"),
+};
+
+/** SABnzbd's "1:02:03" in words: "1 Std. 2 Min.". */
+function fmtLeft(s: string): string {
+  const parts = s.split(":").map(Number);
+  if (!parts.length || parts.some((n) => !Number.isFinite(n))) return s;
+  const secs = parts.reduce((a, n) => a * 60 + n, 0);
+  if (secs < 60) return t("unter 1 Min.");
+  const h = Math.floor(secs / 3600), m = Math.round((secs % 3600) / 60);
+  return h ? t("{h} Std. {m} Min.", { h, m }) : t("{m} Min.", { m });
+}
+
+function fmtMB(mb: number): string {
+  const num = (n: number): string => n.toLocaleString(LOCALE, { maximumFractionDigits: 1 });
+  return mb >= 1024 ? `${num(mb / 1024)} GB` : `${Math.round(mb)} MB`;
+}
+
+/** Progress, size, time left and speed while it loads; the step while it becomes an M4B. */
+function liveInfo(r: BookRequest, prefix = ""): HTMLElement | null {
+  const l = r.live;
+  if (!l || !["downloading", "processing"].includes(r.status)) return null;
+  const pct = Math.round(Math.min(1, Math.max(0, l.progress || 0)) * 100);
+  const parts: string[] = prefix ? [prefix] : [];
+  let bar = false;
+  if (l.kind === "download") {
+    parts.push(l.paused && !l.done ? t("SABnzbd ist pausiert") : SAB_STATE[l.state]?.() || l.state);
+    if (!l.done) {
+      const started = pct > 0 || l.state === "Downloading";
+      bar = started;
+      if (started) parts.push(`${pct} %`);
+      if (l.mb && started) parts.push(t("{done} von {total}", { done: fmtMB(Math.max(0, l.mb - (l.mbleft ?? 0))), total: fmtMB(l.mb) }));
+      else if (l.mb) parts.push(fmtMB(l.mb));
+      if (l.left && !l.paused) parts.push(t("noch {time}", { time: fmtLeft(l.left) }));
+      if (l.speed && !l.paused) parts.push(`${(l.speed / 1024).toLocaleString(LOCALE, { maximumFractionDigits: 1 })} MB/s`);
+    }
+  } else {
+    parts.push(IMPORT_STATE[l.state]?.() || l.state);
+    if (l.state === "converting") { bar = true; parts.push(`${pct} %`); }
+  }
+  return el("span", { class: "req-live" },
+    el("span", { class: "small" }, parts.join(" · ")),
+    bar ? el("span", { class: "bar", role: "progressbar", "aria-valuenow": String(pct), "aria-valuemin": "0", "aria-valuemax": "100" },
+      el("i", { style: `width:${pct}%` })) : null);
+}
+
 const REQ_FILTERS: Record<string, [() => string, RequestStatus[]]> = {
   open: [() => t("Offen"), ["pending", "searching", "downloading", "processing"]],
   available: [() => t("Verfügbar"), ["available"]],
@@ -190,6 +264,7 @@ function requestCard(r: BookRequest): HTMLLIElement {
       el("span", { class: "req-line" }, el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
         r.user && !r.mine ? el("span", { class: "muted small" }, t("von {name}", { name: r.user })) : null,
         el("span", { class: "muted small" }, fmtAgo(r.created))),
+      liveInfo(r),
       detail ? el("span", { class: "muted small req-detail", title: detail }, detail) : null),
     actions.length ? el("div", { class: "s-actions" }, ...actions) : null);
 }
@@ -221,12 +296,12 @@ function groupCard(members: BookRequest[]): HTMLLIElement {
   }
   const removable = IS_ADMIN || members.some((m) => m.mine && ["pending", "searching", "failed", "declined"].includes(m.status));
   if (removable) {
-    actions.push(el("button", { type: "button", class: "icon-btn", title: t("Reihen-Anfrage zurückziehen / löschen"), onclick: async () => {
+    actions.push(el("button", { type: "button", class: "btn small ghost", title: t("Reihen-Anfrage zurückziehen / löschen"), onclick: async () => {
       const q = IS_ADMIN ? t("Reihe „{title}“ löschen – alle {n} Bände?", { title: g.title, n: members.length })
         : t("Reihe „{title}“ zurückziehen? Bände, die schon laden, bleiben.", { title: g.title });
       if (!(await confirmBox(q, t("Löschen")))) return;
       try { await api("DELETE", `/api/requests/${first.id}?group=1`); loadRequests(); } catch (e) { toast(errMsg(e), true); }
-    } }, icon("x")));
+    } }, icon("x"), IS_ADMIN ? t("Reihe löschen") : t("Reihe zurückziehen")));
   }
   const vols = el("details", { class: "group-vols" },
     el("summary", {}, plural(members.length, t("1 Band anzeigen"), t("{n} Bände anzeigen", { n: members.length }))),
@@ -242,7 +317,8 @@ function groupCard(members: BookRequest[]): HTMLLIElement {
       el("span", { class: "req-line" }, ...order.filter((s) => counts.get(s)).map((s) =>
         el("span", { class: `rtag req-${s}` }, `${REQ_STATUS[s]()}: ${counts.get(s)}`)),
         first.user && !first.mine ? el("span", { class: "muted small" }, t("von {name}", { name: first.user })) : null,
-        el("span", { class: "muted small" }, fmtAgo(first.created)))),
+        el("span", { class: "muted small" }, fmtAgo(first.created))),
+      ...members.filter((m) => m.live).slice(0, 3).map((m) => liveInfo(m, volumeLabel(m.book) || m.book.title))),
     vols,
     actions.length ? el("div", { class: "s-actions" }, ...actions) : null);
 }
@@ -254,7 +330,8 @@ function volumeRow(r: BookRequest): HTMLLIElement {
   return el("li", { class: "group-vol" },
     el("span", { class: "group-vol-text" },
       el("span", { title: b.title }, [volumeLabel(b), b.title].filter(Boolean).join(" · ")),
-      detail ? el("span", { class: "muted small", title: detail }, detail) : null),
+      detail ? el("span", { class: "muted small", title: detail }, detail) : null,
+      liveInfo(r)),
     el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
     requests.data?.may_search && ["searching", "failed", "downloading", "processing"].includes(r.status)
       ? el("button", { type: "button", class: "icon-btn", title: t("Releases"), onclick: () => openReleases(r) }, icon("search")) : null,
@@ -311,7 +388,8 @@ async function loadRequests(): Promise<void> {
     renderRequests();
   }, { count: 4, quiet: true });                    // polled: a failed round keeps the last state
   const busy = requests.data?.items.some((r) => ["searching", "downloading", "processing"].includes(r.status));
-  if (!$("#viewRequests").hidden) requests.timer = setTimeout(loadRequests, busy ? 8000 : 30000);
+  const live = requests.data?.items.some((r) => r.live);
+  if (!$("#viewRequests").hidden) requests.timer = setTimeout(loadRequests, live ? 5000 : busy ? 8000 : 30000);
 }
 
 // -- interactive search -------------------------------------------------------

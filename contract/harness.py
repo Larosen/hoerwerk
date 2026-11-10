@@ -214,9 +214,10 @@ class FakeUsenet:
             self.added.append(q)
             out = {"status": True, "nzo_ids": [f"SABnzbd_nzo_{len(self.added)}"]}
         elif mode == "queue":
-            out = {"queue": {"paused": False, "speed": "0", "slots": [
+            out = {"queue": {"paused": False, "speed": "5.0 M", "kbpersec": "5120.00", "slots": [
                 {"nzo_id": f"SABnzbd_nzo_{n + 1}", "filename": a["nzbname"], "status": "Downloading",
-                 "percentage": "42", "cat": "hoerbuecher"} for n, a in enumerate(self.added)]}}
+                 "percentage": "42", "mb": "500.00", "mbleft": "290.00", "timeleft": "0:12:30",
+                 "cat": "hoerbuecher"} for n, a in enumerate(self.added)]}}
         elif mode == "history":
             out = {"history": {"slots": []}}
         else:
