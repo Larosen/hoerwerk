@@ -5,6 +5,9 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
 
 ## Recently done
 
+- **7.15** – requests show download progress, time left and speed, then the conversion step; another edition of a
+  book (e.g. a full-cast production next to a single-narrator reading) no longer counts as "already in the library";
+  an indexer's daily search limit is no error any more – it rests until midnight, and searches use fewer API calls.
 - **7.14** – the server is a single Rust program (smaller image, faster, no interpreter); same database as before.
 - **Free audiobooks from LibriVox** in the search (German and English), one click into the inbox.
 - **Preferred indexer**: asked first, the others only when it has nothing that fits.
@@ -16,7 +19,7 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
 | 1 | **Follow authors and series** | "Tell me / request automatically when a new volume of this series or a new book by this author appears on Audible." Today you have to look yourself. |
 | 2 | **Prowlarr sync** | Take indexers (and their categories) from Prowlarr instead of entering them twice. |
 | 3 | **More free and legal sources** | ARD Audiothek (public-broadcaster audio dramas and readings, downloadable while online), Vorleser.net (classics read by professional speakers, free for private use), more public-domain collections of the Internet Archive with a clear licence. Each source only if its terms allow downloading. |
-| 4 | **Versioned releases** | `v7.14.0`-style tags with release notes, so you can pin a version instead of `latest`. |
+| 4 | **Versioned releases** | `v7.15.0`-style tags with release notes, so you can pin a version instead of `latest`. |
 | 5 | **arm64 image** | Built on a native arm64 runner (Raspberry Pi, Apple-silicon NAS). |
 
 ## Later
