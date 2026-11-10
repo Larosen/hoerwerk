@@ -525,9 +525,18 @@ class Processing(ContractTest):
         self.assertTrue(any("Fehler" in line for line in detail["log"]))
         again = self.admin.call("POST", f'/api/audiobooks/{job["id"]}/retry')
         self.assertEqual(again["status"], "queued")
-        self.assertTrue(os.path.isdir(os.path.join(self.server.inbox, "Kaputt - Buch")))
-        self.assertFalse(os.path.exists(os.path.join(self.server.inbox, "Kaputt - Buch", "FEHLER.txt")))
-        self.assertEqual(self.job("Kaputt - Buch")["status"], "failed")
+        # back in the inbox – checked on the answer, not on disk: the broken file fails again within
+        # milliseconds and its folder moves straight back to _failed
+        self.assertEqual(again["source"], os.path.join(self.server.inbox, "Kaputt - Buch"))
+        self.assertIsNone(again["dest"])
+        redo = self.admin.wait(lambda: next((j for j in self.admin.get("/api/audiobooks")["jobs"]
+                                             if j["id"] == job["id"] and j["dest"]), None), 90, what="failed again")
+        self.assertEqual(redo["status"], "failed")
+        self.assertEqual(redo["dest"], failed)
+        self.assertFalse(os.path.exists(os.path.join(self.server.inbox, "Kaputt - Buch")))
+        self.assertTrue(os.path.isfile(os.path.join(failed, "FEHLER.txt")))
+        detail = self.admin.get(f'/api/audiobooks/{job["id"]}')
+        self.assertTrue(any("Erneut eingereiht" in line for line in detail["log"]))
         self.admin.call("DELETE", f'/api/audiobooks/{job["id"]}')
         self.assertNotIn(job["id"], [j["id"] for j in self.admin.get("/api/audiobooks")["jobs"]])
 
