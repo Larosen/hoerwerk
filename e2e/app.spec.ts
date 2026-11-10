@@ -330,7 +330,7 @@ test("Suchen: ganze Reihe anfragen – Bände wählen, eine Karte unter Anfragen
   await expect(card).toHaveCount(1);                                                  // one card, not two
   await card.locator("summary").click();
   await expect(card.locator(".group-vol")).toHaveText([/Band 1 · Glaswald 1/, /Band 2 · Glaswald 2/]);
-  await card.locator(".s-actions .icon-btn").click();
+  await card.locator(".s-actions").getByRole("button", { name: "Reihe löschen" }).click();
   await page.locator("#confirmDialog button[value=ok]").click();
   await expect(card).toHaveCount(0);
   expect(errors).toEqual([]);

@@ -579,6 +579,10 @@ table.users select { height: 28px; }
 .request .cover, .request .thumb.gen { width: 84px; height: 84px; flex: none; border-radius: 6px; object-fit: cover; box-shadow: inset 0 0 0 1px var(--border); }
 .req-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
 .req-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.req-live { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; min-width: 0; }
+.req-live > .small { white-space: normal; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.req-live > .bar { height: 6px; max-width: 360px; border-radius: 99px; }
+.group-vol-text > .req-live, .group-vol-text > .req-live > .small { white-space: normal; overflow: visible; }
 .rtag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 550; padding: 2px 8px; border-radius: 99px;
   background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); white-space: nowrap; }
 .rtag .ico { width: 13px; height: 13px; }

@@ -625,6 +625,11 @@ function fmtDuration(sec: number | null | undefined): string {
   return h ? `${h} h ${String(m).padStart(2, "0")} min` : `${m} min`;
 }
 
+/** Indexers whose daily search limit is used up – normal for small accounts, they are back at midnight. */
+function restingText(names: string[]): string {
+  return t("{names}: Tageslimit erreicht – sucht ab Mitternacht weiter", { names: names.join(", ") });
+}
+
 function fmtAgo(ts: number | null | undefined): string {
   if (!ts) return t("nie");
   const s = Math.round(Date.now() / 1000 - ts);

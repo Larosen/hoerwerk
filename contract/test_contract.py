@@ -391,6 +391,10 @@ class Requests(ContractTest):
             self.assertEqual(len(fake.added), 1)
             self.assertTrue(fake.added[0]["name"].endswith("/getnzb/1?r=secretkey123"))
             self.assertEqual((fake.added[0]["cat"], fake.added[0]["apikey"]), ("hoerbuecher", "sabkey123456"))
+            mine = next(x for x in self.admin.get("/api/requests")["items"] if x["id"] == item["id"])
+            self.assertEqual(mine["live"], {"kind": "download", "state": "Downloading", "done": False, "progress": 0.42,
+                                            "mb": 500.0, "mbleft": 290.0, "left": "0:12:30", "speed": 5120.0,
+                                            "paused": False})
             downloads = self.admin.get("/api/downloads")
             self.assertEqual([d["name"] for d in downloads["items"]], ["Anna.Autorin-Der.Vertrag.German.M4B"])
             found = self.admin.call("POST", f'/api/requests/{item["id"]}/releases', {})

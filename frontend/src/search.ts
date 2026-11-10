@@ -284,7 +284,7 @@ function clearBook(): void {
 }
 
 interface LibraryHit { path: string; title: string; authors: string[]; format: string }
-interface SearchAnswer { results: Release[]; errors: string[]; queries?: string[]; library?: LibraryHit[]; asked?: string[]; skipped?: string[] }
+interface SearchAnswer { results: Release[]; errors: string[]; resting?: string[]; queries?: string[]; library?: LibraryHit[]; asked?: string[]; skipped?: string[] }
 
 /** Releases at the indexers: for the picked book (term changeable), or – without a book – for the typed text. */
 async function runSearch(e?: Event, free = false, everywhere = false): Promise<void> {
@@ -306,7 +306,8 @@ async function runSearch(e?: Event, free = false, everywhere = false): Promise<v
     $("#searchNote").textContent = (res.results.length ? t("{n} Treffer", { n: res.results.length })
       : t("Keine Releases gefunden – oben den Suchbegriff ändern (z. B. nur Titel oder nur Nachname) und erneut suchen.")) +
       (queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: queries.map((x) => `„${x}“`).join(", ") }) : "") +
-      (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "");
+      (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "") +
+      (res.resting?.length ? " · " + restingText(res.resting) : "");
     const skipped = res.skipped || [];
     if (skipped.length) {
       // the preferred indexer had something: the others were not needed – but can be asked with one click

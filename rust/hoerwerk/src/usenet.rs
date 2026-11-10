@@ -234,16 +234,39 @@ fn parse(text: &str) -> Result<roxmltree::Document<'_>> {
     roxmltree::Document::parse(text).map_err(|_| UsenetError::Failed(t("Antwort ist kein Newznab-XML", &[])))
 }
 
+/// Newznab's own "you asked too often": code 500 "Request limit reached" (the daily API limit of most
+/// indexers – 20 to 25 searches on small accounts), 501 the download limit. Not an error: the indexer
+/// simply rests until its limit resets at midnight.
+pub const UNTIL_MIDNIGHT: f64 = f64::INFINITY;
+
 fn check_error(root: roxmltree::Node) -> Result<()> {
     if root.tag_name().name() == "error" {
         let code = root.attribute("code").unwrap_or("");
-        return fail(
-            root.attribute("description")
-                .map(str::to_string)
-                .unwrap_or_else(|| t("Fehler {code}", &[("code", code)])),
-        );
+        let text = root
+            .attribute("description")
+            .map(str::to_string)
+            .unwrap_or_else(|| t("Fehler {code}", &[("code", code)]));
+        if matches!(code, "429" | "500" | "501") || is_match(rx!(r"(?i)limit reached|too many requests"), &text) {
+            return Err(UsenetError::RateLimited(text, UNTIL_MIDNIGHT));
+        }
+        return fail(text);
     }
     Ok(())
+}
+
+/// `<newznab:apilimits apicurrent="25" apimax="25"/>`: the search just made was the last one of today.
+fn limit_used_up(xml: &[u8]) -> bool {
+    let Ok(text) = xml_doc(xml) else { return false };
+    let Ok(doc) = roxmltree::Document::parse(&text) else {
+        return false;
+    };
+    doc.descendants()
+        .find(|n| n.is_element() && n.tag_name().name() == "apilimits")
+        .and_then(|n| {
+            let num = |k: &str| n.attribute(k).and_then(|v| v.trim().parse::<u64>().ok());
+            Some(num("apicurrent")? >= num("apimax")?.max(1))
+        })
+        .unwrap_or(false)
 }
 
 fn child_text<'a>(node: roxmltree::Node<'a, 'a>, name: &str) -> Option<&'a str> {
@@ -461,12 +484,17 @@ fn form(v: &str) -> String {
         .replace(' ', "+")
 }
 
+/// What the rounds on one group of indexers did: (rounds, errors, queries asked, resting indexers).
+type Rounds = (usize, Vec<String>, Vec<String>, Vec<String>);
+
 pub struct Newznab<'a> {
     pub name: String,
     url: String,
     apikey: String,
     categories: String,
     get: &'a Getter,
+    /// the indexer said this was today's last search (newznab:apilimits)
+    used_up: std::sync::atomic::AtomicBool,
 }
 
 impl<'a> Newznab<'a> {
@@ -482,6 +510,18 @@ impl<'a> Newznab<'a> {
                 cats
             },
             get,
+            used_up: std::sync::atomic::AtomicBool::new(false),
+        }
+    }
+
+    /// The last search used up today's limit – no more searches until midnight.
+    pub fn used_up(&self) -> bool {
+        self.used_up.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    fn note_limit(&self, xml: &[u8]) {
+        if limit_used_up(xml) {
+            self.used_up.store(true, std::sync::atomic::Ordering::Relaxed);
         }
     }
 
@@ -571,30 +611,34 @@ impl<'a> Newznab<'a> {
     }
 
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<Value>> {
+        self.search_with(query, limit, true)
+    }
+
+    /// `fallback`: when the audiobook categories have nothing, ask once more in all categories (many
+    /// indexers file German audiobooks elsewhere). That is a second search off the daily limit, so a
+    /// search of several queries does it only for its first one.
+    pub fn search_with(&self, query: &str, limit: usize, fallback: bool) -> Result<Vec<Value>> {
         let cats = self.audiobook_cats();
-        let found = self.scrub(parse_results(
-            &self.call(&[
-                ("t", "search".into()),
-                ("q", query.into()),
-                ("cat", cats.join(",")),
-                ("limit", limit.to_string()),
-                ("extended", "1".into()),
-            ])?,
-            &self.name,
-        )?);
-        if !found.is_empty() {
+        let xml = self.call(&[
+            ("t", "search".into()),
+            ("q", query.into()),
+            ("cat", cats.join(",")),
+            ("limit", limit.to_string()),
+            ("extended", "1".into()),
+        ])?;
+        self.note_limit(&xml);
+        let found = self.scrub(parse_results(&xml, &self.name)?);
+        if !found.is_empty() || !fallback || self.used_up() {
             return Ok(found);
         }
-        // nothing in the audiobook categories: many indexers file German audiobooks elsewhere
-        let everything = self.scrub(parse_results(
-            &self.call(&[
-                ("t", "search".into()),
-                ("q", query.into()),
-                ("limit", limit.to_string()),
-                ("extended", "1".into()),
-            ])?,
-            &self.name,
-        )?);
+        let xml = self.call(&[
+            ("t", "search".into()),
+            ("q", query.into()),
+            ("limit", limit.to_string()),
+            ("extended", "1".into()),
+        ])?;
+        self.note_limit(&xml);
+        let everything = self.scrub(parse_results(&xml, &self.name)?);
         Ok(everything.into_iter().filter(|r| is_audio(r, &cats)).collect())
     }
 }
@@ -736,7 +780,8 @@ impl<'a> Sabnzbd<'a> {
                 .unwrap_or(0.0);
             items.push(
                 json!({"id": s["nzo_id"], "name": s["filename"], "status": s["status"], "progress": pct / 100.0,
-                              "size": s["size"], "left": s["timeleft"], "done": false}),
+                              "size": s["size"], "left": s["timeleft"], "mb": number(&s["mb"]),
+                              "mbleft": number(&s["mbleft"]), "done": false}),
             );
         }
         for s in hist["slots"].as_array().cloned().unwrap_or_default() {
@@ -749,8 +794,19 @@ impl<'a> Sabnzbd<'a> {
                               "progress": if s["status"] == "Completed" { 1.0 } else { 0.0 }, "size": s["size"], "error": error,
                               "path": s["storage"], "done": true, "finished": s["completed"]}));
         }
-        Ok(json!({"paused": queue["paused"].as_bool().unwrap_or(false), "speed": queue["speed"], "items": items}))
+        Ok(
+            json!({"paused": queue["paused"].as_bool().unwrap_or(false), "speed": queue["speed"],
+                  "kbpersec": number(&queue["kbpersec"]), "items": items}),
+        )
     }
+}
+
+/// SABnzbd sends most numbers as text ("850.21"); missing or odd ones are null.
+fn number(v: &Value) -> Value {
+    v.as_f64()
+        .or_else(|| v.as_str().and_then(|s| s.trim().parse::<f64>().ok()))
+        .filter(|n| n.is_finite() && *n >= 0.0)
+        .map_or(Value::Null, |n| json!(n))
 }
 
 // -- configuration + search service ------------------------------------------------------------------
@@ -803,7 +859,8 @@ pub struct Usenet {
     db: Db,
     get: Box<Getter>,
     lock: Mutex<()>,
-    pauses: Mutex<HashMap<String, f64>>,
+    /// indexer → (until, it is the daily limit)
+    pauses: Mutex<HashMap<String, (f64, bool)>>,
     results: Mutex<HashMap<String, Value>>,
 }
 
@@ -1005,16 +1062,41 @@ impl Usenet {
         fail(t("Indexer nicht gefunden", &[]))
     }
 
-    /// Until when an indexer gets no searches (it answered 429) – 0 when it may be asked.
+    /// Until when an indexer gets no searches (it answered 429 or its daily limit is used up) – 0 when it
+    /// may be asked.
     pub fn paused(&self, name: &str) -> f64 {
-        let until = self
+        let (until, _) = self
             .pauses
             .lock()
             .unwrap_or_else(|p| p.into_inner())
             .get(name)
             .copied()
-            .unwrap_or(0.0);
+            .unwrap_or((0.0, false));
         if until > now() { until } else { 0.0 }
+    }
+
+    /// Its daily limit is used up: it rests until midnight (not an error).
+    pub fn resting(&self, name: &str) -> bool {
+        self.paused(name) > 0.0
+            && self
+                .pauses
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .get(name)
+                .is_some_and(|p| p.1)
+    }
+
+    fn pause(&self, name: &str, wait: f64) {
+        let daily = wait.is_infinite();
+        let until = if daily {
+            crate::text::next_local_midnight(now()) + 60.0
+        } else {
+            now() + wait
+        };
+        self.pauses
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .insert(name.to_string(), (until, daily));
     }
 
     /// Search for the query (plus `extra`), in all umlaut spellings (`variants` = false: exactly these). With a
@@ -1039,6 +1121,7 @@ impl Usenet {
         let names = |t: &[Newznab]| t.iter().map(|i| i.name.clone()).collect::<Vec<_>>();
         let mut asked: Vec<String> = Vec::new();
         let mut errors: Vec<Value> = Vec::new();
+        let mut resting: Vec<Value> = Vec::new();
         let mut out = json!({});
         let mut skipped: Vec<String> = Vec::new();
         let mut it = tiers.into_iter();
@@ -1046,12 +1129,14 @@ impl Usenet {
             asked.extend(names(&tier));
             out = self.search_in(&tier, query, language, extra, variants, limit)?;
             errors.extend(out["errors"].as_array().cloned().unwrap_or_default());
+            resting.extend(out["resting"].as_array().cloned().unwrap_or_default());
             if out["results"].as_array().is_some_and(|r| !r.is_empty()) {
                 skipped = it.flat_map(|t| names(&t)).collect();
                 break;
             }
         }
         out["errors"] = json!(errors);
+        out["resting"] = json!(resting);
         out["asked"] = json!(asked);
         out["skipped"] = json!(skipped);
         Ok(out)
@@ -1081,26 +1166,29 @@ impl Usenet {
         }
         queries.truncate(limit.max(1));
         let errors: Mutex<Vec<(usize, String)>> = Mutex::new(Vec::new());
+        let resting: Mutex<Vec<(usize, String)>> = Mutex::new(Vec::new());
         // one query after the other per indexer – a burst of parallel queries is what makes indexers answer 429
         let found: Vec<Vec<Value>> = std::thread::scope(|scope| {
             let handles: Vec<_> = indexers
                 .iter()
                 .enumerate()
                 .map(|(n, idx)| {
-                    let (queries, errors) = (&queries, &errors);
+                    let (queries, errors, resting) = (&queries, &errors, &resting);
                     scope.spawn(move || {
                         let mut found = Vec::new();
-                        for q in queries {
+                        for (i, q) in queries.iter().enumerate() {
                             if self.paused(&idx.name) > 0.0 {
                                 break;
                             }
-                            match idx.search(q, 100) {
-                                Ok(r) => found.extend(r),
+                            match idx.search_with(q, 100, i == 0) {
+                                Ok(r) => {
+                                    found.extend(r);
+                                    if idx.used_up() {
+                                        self.pause(&idx.name, UNTIL_MIDNIGHT);
+                                    }
+                                }
                                 Err(UsenetError::RateLimited(_, wait)) => {
-                                    self.pauses
-                                        .lock()
-                                        .unwrap_or_else(|p| p.into_inner())
-                                        .insert(idx.name.clone(), now() + wait);
+                                    self.pause(&idx.name, wait);
                                     break;
                                 }
                                 Err(UsenetError::Failed(e)) => {
@@ -1115,8 +1203,13 @@ impl Usenet {
                                 }
                             }
                         }
-                        let paused = self.paused(&idx.name);
-                        if paused > 0.0 {
+                        if self.resting(&idx.name) {
+                            resting
+                                .lock()
+                                .unwrap_or_else(|p| p.into_inner())
+                                .push((n, idx.name.clone()));
+                        } else if self.paused(&idx.name) > 0.0 {
+                            let paused = self.paused(&idx.name);
                             let mut errs = errors.lock().unwrap_or_else(|p| p.into_inner());
                             errs.retain(|(i, _)| *i != n);
                             errs.push((
@@ -1133,6 +1226,9 @@ impl Usenet {
                 .collect();
             handles.into_iter().map(|h| h.join().unwrap_or_default()).collect()
         });
+        let mut rest = resting.into_inner().unwrap_or_else(|p| p.into_inner());
+        rest.sort_by_key(|(i, _)| *i);
+        let rest: Vec<String> = rest.into_iter().map(|r| r.1).collect();
         let mut errs = errors.into_inner().unwrap_or_else(|p| p.into_inner());
         errs.sort_by_key(|(i, _)| *i);
         // one entry per release (several indexers often carry the same one)
@@ -1183,7 +1279,10 @@ impl Usenet {
                 out.push(shown);
             }
         }
-        Ok(json!({"results": out, "errors": errs.into_iter().map(|e| e.1).collect::<Vec<_>>(), "queries": queries}))
+        Ok(
+            json!({"results": out, "errors": errs.into_iter().map(|e| e.1).collect::<Vec<_>>(), "resting": rest,
+                  "queries": queries}),
+        )
     }
 
     /// Search round by round until `fits` likes the results so far; never more than `budget` queries per indexer.
@@ -1206,6 +1305,7 @@ impl Usenet {
         let names = |t: &[Newznab]| t.iter().map(|i| i.name.clone()).collect::<Vec<_>>();
         let mut results: Vec<(String, Value)> = Vec::new();
         let mut errors: Vec<String> = Vec::new();
+        let mut resting: Vec<String> = Vec::new();
         let mut queries: Vec<String> = Vec::new();
         let (mut who, mut skipped): (Vec<String>, Vec<String>) = (Vec::new(), Vec::new());
         let mut rounds = 0;
@@ -1224,6 +1324,11 @@ impl Usenet {
                     queries.push(q);
                 }
             }
+            for r in res.3 {
+                if !resting.contains(&r) {
+                    resting.push(r);
+                }
+            }
             let found: Vec<Value> = results.iter().map(|x| x.1.clone()).collect();
             if !found.is_empty() && fits(&found) {
                 skipped = it.flat_map(|t| names(&t)).collect();
@@ -1232,11 +1337,11 @@ impl Usenet {
         }
         Ok(
             json!({"results": results.into_iter().map(|x| x.1).collect::<Vec<_>>(), "errors": errors,
-                  "queries": queries, "rounds": rounds, "asked": who, "skipped": skipped}),
+                  "resting": resting, "queries": queries, "rounds": rounds, "asked": who, "skipped": skipped}),
         )
     }
 
-    /// The rounds on one group of indexers: (rounds, errors, queries asked); results are added to `results`.
+    /// The rounds on one group of indexers; results are added to `results`.
     fn stages_in(
         &self,
         indexers: &[Newznab<'_>],
@@ -1245,8 +1350,9 @@ impl Usenet {
         language: &str,
         budget: usize,
         results: &mut Vec<(String, Value)>,
-    ) -> Result<(usize, Vec<String>, Vec<String>)> {
+    ) -> Result<Rounds> {
         let mut errors: Vec<String> = Vec::new();
+        let mut resting: Vec<String> = Vec::new();
         let mut asked: Vec<String> = Vec::new();
         let mut rounds = 0;
         for stage in stages {
@@ -1268,6 +1374,16 @@ impl Usenet {
                     errors.push(e.to_string());
                 }
             }
+            for r in res["resting"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+            {
+                if !resting.iter().any(|x| x == r) {
+                    resting.push(r.to_string());
+                }
+            }
             let got = res["results"].as_array().cloned().unwrap_or_default();
             for r in &got {
                 let k = dedupe_key(r);
@@ -1276,12 +1392,13 @@ impl Usenet {
                 }
             }
             let found: Vec<Value> = results.iter().map(|x| x.1.clone()).collect();
-            let all_failed = got.is_empty() && res["errors"].as_array().map_or(0, Vec::len) >= indexers.len();
+            let silent = res["errors"].as_array().map_or(0, Vec::len) + res["resting"].as_array().map_or(0, Vec::len);
+            let all_failed = got.is_empty() && silent >= indexers.len();
             if (!found.is_empty() && fits(&found)) || all_failed || asked.len() >= budget {
                 break;
             }
         }
-        Ok((rounds, errors, asked))
+        Ok((rounds, errors, asked, resting))
     }
 
     pub fn send(&self, result_id: &str, hints: &Value) -> Result<Value> {
@@ -1441,6 +1558,82 @@ mod tests {
             {"name": "A", "url": "https://a.example", "apikey": "k1", "preferred": true},
             {"name": "B", "url": "https://b.example", "apikey": "k2", "preferred": true}], "sab": {}}));
         u
+    }
+
+    /// One indexer "A" that answers every search with `body`; counts the searches.
+    fn one_indexer(body: &'static str, asked: Arc<Mutex<usize>>) -> Usenet {
+        let u = Usenet::with_getter(
+            Db::memory(),
+            Box::new(move |url: &str| {
+                if url.contains("t=caps") {
+                    return Ok(br#"<caps><categories><category id="3000" name="Audio"><subcat id="3030" name="Audiobook"/></category></categories></caps>"#.to_vec());
+                }
+                *asked.lock().unwrap() += 1;
+                Ok(body.as_bytes().to_vec())
+            }),
+        );
+        u.update_config(&json!({"indexers": [{"name": "A", "url": "https://a.example", "apikey": "k1"}], "sab": {}}));
+        u
+    }
+
+    #[test]
+    fn daily_limit_rests_the_indexer_until_midnight() {
+        crate::text::set_language("de");
+        let limit = br#"<error code="500" description="Request limit reached (26/25)"/>"#;
+        assert!(
+            matches!(parse_results(limit, "A"), Err(UsenetError::RateLimited(m, w)) if m.contains("26/25") && w.is_infinite())
+        );
+        let wrong_key = br#"<error code="100" description="Incorrect user credentials"/>"#;
+        assert!(matches!(parse_results(wrong_key, "A"), Err(UsenetError::Failed(_))));
+        let midnight = crate::text::next_local_midnight(now());
+
+        // the indexer says "limit reached": asked once, then it rests until midnight – not an error
+        let asked = Arc::new(Mutex::new(0));
+        let u = one_indexer(
+            r#"<error code="500" description="Request limit reached (26/25)"/>"#,
+            asked.clone(),
+        );
+        let res = u.search("Schimmelreiter", "", &[], true, 6, false).unwrap();
+        assert!(u.resting("A") && (u.paused("A") - midnight - 60.0).abs() < 1.0);
+        assert_eq!(
+            (res["errors"].clone(), res["resting"].clone()),
+            (json!([]), json!(["A"]))
+        );
+        u.search("Schimmelreiter", "", &[], true, 6, false).unwrap();
+        assert_eq!(*asked.lock().unwrap(), 1);
+
+        // it tells with its answer that this was the last search of today (newznab:apilimits): the
+        // results count, and nothing more is asked – not even the search in all categories
+        let asked = Arc::new(Mutex::new(0));
+        let u = one_indexer(
+            r#"<rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/"><channel><newznab:apilimits apicurrent="25" apimax="25" grabcurrent="1" grabmax="20"/></channel></rss>"#,
+            asked.clone(),
+        );
+        let res = u.search("Schimmelreiter", "", &[], true, 6, false).unwrap();
+        assert_eq!(*asked.lock().unwrap(), 1);
+        assert_eq!(res["resting"], json!(["A"]));
+
+        // with limit left: the search in all categories only for the first of several queries
+        let asked = Arc::new(Mutex::new(0));
+        let u = one_indexer(
+            r#"<rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/"><channel><newznab:apilimits apicurrent="3" apimax="25"/></channel></rss>"#,
+            asked.clone(),
+        );
+        let res = u
+            .search(
+                "Der Schimmelreiter",
+                "",
+                &["Storm Schimmelreiter".to_string()],
+                false,
+                6,
+                false,
+            )
+            .unwrap();
+        assert_eq!(
+            (res["queries"].as_array().unwrap().len(), *asked.lock().unwrap()),
+            (2, 3)
+        );
+        assert!(!u.resting("A"));
     }
 
     #[test]

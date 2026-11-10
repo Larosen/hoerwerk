@@ -67,10 +67,92 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> 
     .expect("worker thread")
 }
 
+/// SABnzbd's queue, asked at most every few seconds however many browsers poll the request list.
+static SAB_SEEN: std::sync::Mutex<Option<(std::time::Instant, Value)>> = std::sync::Mutex::new(None);
+const SAB_FRESH: std::time::Duration = std::time::Duration::from_secs(4);
+const SAB_WAIT: std::time::Duration = std::time::Duration::from_secs(3);
+
+async fn sab_activity(app: &Arc<App>) -> Option<Value> {
+    if let Some((when, seen)) = SAB_SEEN.lock().unwrap_or_else(|p| p.into_inner()).as_ref()
+        && when.elapsed() < SAB_FRESH
+    {
+        return Some(seen.clone());
+    }
+    let a = app.clone();
+    // a slow SABnzbd must not hold up the list: without an answer in time the cards just show no progress
+    let fresh = tokio::time::timeout(SAB_WAIT, blocking(move || a.usenet.activity(15)))
+        .await
+        .ok()?
+        .ok()?;
+    *SAB_SEEN.lock().unwrap_or_else(|p| p.into_inner()) = Some((std::time::Instant::now(), fresh.clone()));
+    Some(fresh)
+}
+
+/// What a running request is doing right now: SABnzbd's progress while it loads, the pipeline's while it
+/// is turned into an M4B. Only for requests in these states; nothing when SABnzbd does not answer.
+async fn live(app: &Arc<App>, reqs: &[Value]) -> HashMap<i64, Value> {
+    let mut out = HashMap::new();
+    let sab = if reqs.iter().any(|r| r["status"] == "downloading") && app.usenet.has_sab() {
+        sab_activity(app).await
+    } else {
+        None
+    };
+    for r in reqs {
+        let Some(id) = r["id"].as_i64() else { continue };
+        match r["status"].as_str() {
+            Some("downloading") => {
+                let Some(a) = &sab else { continue };
+                let Some(i) = a["items"].as_array().and_then(|items| {
+                    items
+                        .iter()
+                        .find(|i| i["id"].as_str().is_some_and(|x| !x.is_empty()) && i["id"] == r["nzo_id"])
+                }) else {
+                    continue;
+                };
+                let loading = i["done"] == false && i["status"] == "Downloading";
+                out.insert(
+                    id,
+                    json!({"kind": "download", "state": i["status"], "done": i["done"], "progress": i["progress"],
+                           "mb": i["mb"], "mbleft": i["mbleft"], "left": if loading { i["left"].clone() } else { Value::Null },
+                           "speed": if loading { a["kbpersec"].clone() } else { Value::Null },
+                           "paused": a["paused"]}),
+                );
+            }
+            Some("processing") => {
+                // no job yet: SABnzbd is done, the folder is not (yet) picked up from the inbox
+                let (state, progress) = app.job_for_request(id).map_or((json!("inbox"), json!(0)), |j| {
+                    (j["status"].clone(), j["progress"].clone())
+                });
+                if matches!(
+                    state.as_str(),
+                    Some("inbox" | "queued" | "matching" | "converting" | "tagging" | "review")
+                ) {
+                    out.insert(id, json!({"kind": "import", "state": state, "progress": progress}));
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
 pub async fn list(app: Arc<App>, req: Req, _: Params) -> Reply {
     let u = user(&req);
     let all = sees_all(&u);
-    let items: Vec<Value> = app.requests.list(&app, &u, all).iter().map(|r| out(&req, r)).collect();
+    let raw = app.requests.list(&app, &u, all);
+    let now = live(&app, &raw).await;
+    let items: Vec<Value> = raw
+        .iter()
+        .map(|r| {
+            let mut o = out(&req, r);
+            o["live"] = r["id"]
+                .as_i64()
+                .and_then(|id| now.get(&id))
+                .cloned()
+                .unwrap_or(Value::Null);
+            o
+        })
+        .collect();
     json_reply(
         json!({"items": items, "quota": app.requests.quota(&app, &u), "sees_all": all, "may_search": may_search(&u),
                       "pending": if is_admin(&req) { json!(app.requests.pending_count(&app)) } else { Value::Null },
@@ -192,7 +274,10 @@ pub async fn releases(app: Arc<App>, req: Req, p: Params) -> Reply {
             r
         })
         .collect();
-    json_reply(json!({"query": res["query"], "queries": res["queries"], "errors": res["errors"], "results": results}))
+    json_reply(
+        json!({"query": res["query"], "queries": res["queries"], "errors": res["errors"], "resting": res["resting"],
+               "results": results}),
+    )
 }
 
 pub async fn grab(app: Arc<App>, req: Req, p: Params) -> Reply {
