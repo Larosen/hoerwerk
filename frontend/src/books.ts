@@ -521,7 +521,7 @@ function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
     better === "new" ? t("Durch die bessere ersetzen") : t("Altes ersetzen"));
   return el("div", { class: "dup-box" },
     el("div", {}, el("b", {}, t("Schon in der Bibliothek:"), " "), el("code", {}, d.path),
-      el("span", { class: "muted" }, ` – ${DUP_WHY[d.why] || t("Ähnlich")}${d.format && d.format !== "m4b" ? ", " + t("dort als {format}", { format: d.format.toUpperCase() }) : ""}`)),
+      el("span", { class: "muted" }, ` – ${DUP_WHY[d.why] || t("ähnlich")}${d.format && d.format !== "m4b" ? ", " + t("dort als {format}", { format: d.format.toUpperCase() }) : ""}`)),
     d.quality ? el("div", { class: "dup-compare" },
       qualityCard(t("In der Bibliothek"), d.quality.old, better === "old"),
       qualityCard(t("Neu"), d.quality.new, better === "new")) : null,

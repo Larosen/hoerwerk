@@ -1173,7 +1173,6 @@
  "Pausiert": "Paused",
  "Sucht": "Matching",
  "Wartet": "Waiting",
- "Ähnlich": "Similar",
  "Besser": "Better",
  "Benutzt": "Used",
  "Abgelaufen": "Expired",
@@ -1219,7 +1218,6 @@
  "Nur als Notiz für dich, z. B. „Mama“": "Just a note for you, e.g. “Mum”",
  "Selbst anlegen, ohne Einladung": "Create yourself, without an invitation",
  "Wer hat wann was geändert": "Who changed what, when",
- "Nur anfragen, mit Freigabe": "Request only, with approval",
  "Wartet in SABnzbd": "Queued in SABnzbd",
  "Holt die NZB": "Fetching the NZB",
  "Holt fehlende Teile": "Fetching missing parts",
@@ -1377,5 +1375,10 @@
  "{author} {series} {series_position:2} {title} {year} {narrator} {asin} – [ … ] entfällt, wenn leer": "{author} {series} {series_position:2} {title} {year} {narrator} {asin} – [ … ] is dropped if empty",
  "Überflüssige desc.txt und reader.txt löschen": "Delete unneeded desc.txt and reader.txt",
  "– jede Datei wird ein Kapitel. Namen anpassen, dann zu M4B. Danach ersetzt die neue Fassung die alte.": "– each file becomes a chapter. Adjust the names, then convert to M4B. The new version then replaces the old one.",
- "„Passwort erzeugen“ macht ein sicheres": "“Generate password” creates a strong one"
+ "„Passwort erzeugen“ macht ein sicheres": "“Generate password” creates a strong one",
+ "alle Anfragen sehen": "see all requests",
+ "interaktive Suche": "interactive search",
+ "nur anfragen, mit Freigabe": "request only, with approval",
+ "ohne Freigabe": "no approval",
+ "ähnlich": "similar"
 }

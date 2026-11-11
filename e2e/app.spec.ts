@@ -446,7 +446,7 @@ test("Anmeldung: falsches Passwort, dann richtig; ohne Anmeldung keine Daten", a
   await page.locator("#accountBtn").click();
   await expect(page).toHaveURL(/\/account$/);
   await expect(page.locator("#whoami")).toContainText("127.0.0.1");
-  await expect(page.locator("#sessionList")).toContainText("dieses Gerät");
+  await expect(page.locator("#sessionList")).toContainText("Dieses Gerät");
   await page.locator("#logoutBtn").click();
   await expect(page).toHaveURL(/\/login$/);
   expect(errors.filter((e) => !e.includes("401"))).toEqual([]);      // the failed login itself answers 401
@@ -586,7 +586,7 @@ test("Einladung per Link: Admin erstellt, Eingeladene wählt Name und Passwort",
   await page.locator("#invitePerms input[data-perm=auto_approve]").check();       // Oma's wishes go straight off
   await page.locator("#inviteCreate").click();
   const row = page.locator("#inviteList li", { hasText: "Oma" });
-  await expect(row).toContainText("offen");
+  await expect(row).toContainText("Offen");
   await expect(row).toContainText("Startrechte: ohne Freigabe");
   const link = await row.locator("input").inputValue();
   expect(link).toMatch(/\/invite\/[A-Za-z0-9_-]{30,}$/);
@@ -621,12 +621,12 @@ test("Einladung per Link: Admin erstellt, Eingeladene wählt Name und Passwort",
   await expect(again.locator("#inviteForm")).toBeHidden();
   await ctx.close();
   await page.reload();
-  await expect(row).toContainText("benutzt");
+  await expect(row).toContainText("Benutzt");
   await expect(row).toContainText("von Oma");
   // the members list says where Oma came from, and that she was here just now – not "never"
   const member = page.locator("#userRows tr", { hasText: "Oma" });
   await expect(member).toContainText("über Einladung „Oma“");
-  await expect(member).not.toContainText("noch nie");
+  await expect(member).not.toContainText("Noch nie");
   // the second-factor rule sits with the accounts now, not under Entdecken
   await expect(page.locator("#adminTotpRequired")).toBeVisible();
   await expect(page.locator("#settingsForm [name=admin_totp_required]")).toHaveCount(0);

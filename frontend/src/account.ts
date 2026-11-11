@@ -227,13 +227,13 @@ function inviteRow(inv: Invite): HTMLLIElement {
 }
 
 const PERM_NAMES: Record<string, () => string> = {
-  auto_approve: () => t("Ohne Freigabe"), see_all_requests: () => t("Alle Anfragen sehen"),
-  interactive_search: () => t("Interaktive Suche"),
+  auto_approve: () => t("ohne Freigabe"), see_all_requests: () => t("alle Anfragen sehen"),
+  interactive_search: () => t("interaktive Suche"),
 };
 
 function inviteRights(inv: Invite): string {
   const on = Object.keys(PERM_NAMES).filter((p) => inv.perms?.[p]).map((p) => PERM_NAMES[p]());
-  return on.length ? on.join(", ") : t("Nur anfragen, mit Freigabe");
+  return on.length ? on.join(", ") : t("nur anfragen, mit Freigabe");
 }
 
 async function loadInvites(): Promise<void> {
