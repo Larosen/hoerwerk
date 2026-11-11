@@ -295,10 +295,7 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
                 "Keine öffentliche Adresse eingetragen – Einladungslinks gehen erst danach",
                 &[],
             ),
-            t(
-                "Einstellungen → Allgemein.",
-                &[],
-            ),
+            t("Einstellungen → Allgemein.", &[]),
             "https://hoerwerk.example.de".into(),
             "public_url",
         );
@@ -630,10 +627,7 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
             "system",
             "warn",
             t("ffmpeg ohne Abschottung", &[]),
-            t(
-                "Landlock ist nicht verfügbar. Kein Fehler, aber weniger Schutz.",
-                &[],
-            ),
+            t("Landlock ist nicht verfügbar. Kein Fehler, aber weniger Schutz.", &[]),
             none(),
             "sandbox",
         );

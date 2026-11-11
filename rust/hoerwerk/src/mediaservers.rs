@@ -708,8 +708,12 @@ pub fn request_scans(app: &Arc<crate::app::App>) {
         let a = app.clone();
         app.abs.debounce.later(Duration::from_secs(30), move || {
             if let Some(e) = a.abs.scan_now() {
-                a.notifier
-                    .send("abs_error", &t("Audiobookshelf: Einlesen fehlgeschlagen", &[]), &e, None);
+                a.notifier.send(
+                    "abs_error",
+                    &t("Audiobookshelf: Einlesen fehlgeschlagen", &[]),
+                    &e,
+                    None,
+                );
             }
         });
     }

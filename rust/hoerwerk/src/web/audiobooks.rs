@@ -147,7 +147,10 @@ pub async fn duplicate(app: Arc<App>, req: Req, p: Params) -> Reply {
         Ok(slot) => out(&slot),
         Err(PipeError::Failed(e)) => error(
             500,
-            t("Die alte Fassung ließ sich nicht verschieben: {error}", &[("error", &e)]),
+            t(
+                "Die alte Fassung ließ sich nicht verschieben: {error}",
+                &[("error", &e)],
+            ),
         ),
         Err(e) => pipe_error(e, 400, 500),
     }
