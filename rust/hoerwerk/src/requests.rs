@@ -379,10 +379,7 @@ impl Requests {
             && q["left"].as_i64().unwrap_or(0) <= 0
         {
             return err(
-                t(
-                    "Kontingent für diesen Monat aufgebraucht ({n} Anfragen)",
-                    &[("n", &limit.to_string())],
-                ),
+                t("Monatslimit erreicht ({n} Anfragen)", &[("n", &limit.to_string())]),
                 429,
             );
         }

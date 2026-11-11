@@ -99,7 +99,7 @@ function renderDiscover(res: DiscoverAnswer): void {
     return;
   }
   let text = discover.section === "genre"
-    ? t("In diesem Bereich gibt es bei Audible gerade keine gut bewerteten deutschen Hörbücher, die du noch nicht hast.")
+    ? t("Hier gibt es gerade keine passenden Hörbücher, die du noch nicht hast.")
     : t("Keine Vorschläge, die alle Qualitätsregeln erfüllen.");
   if (res.running) text = t("Vorschläge werden zusammengestellt – das dauert beim ersten Mal etwas.");
   else if (discover.section === "genre" && !discover.genre) text = t("Genre wählen.");

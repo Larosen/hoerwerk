@@ -438,7 +438,7 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
         let name: String = hosts::host_name(&host).chars().take(100).collect();
         app.note_refused_host(&name);
         let text = t(
-            "Hörwerk antwortet nicht unter dem Namen „{host}“ (Schutz gegen DNS-Rebinding). Ist das deine Adresse, trage sie unter Einstellungen → Allgemein als öffentliche Adresse ein (dafür Hörwerk einmal über die IP-Adresse öffnen) oder setze ALLOWED_HOSTS={host}.",
+            "Kein Zugriff unter „{host}“ (DNS-Rebinding-Schutz). Adresse unter Einstellungen → Allgemein eintragen (Hörwerk dafür einmal per IP öffnen) oder ALLOWED_HOSTS={host} setzen.",
             &[("host", &name)],
         );
         return respond(

@@ -1,7 +1,7 @@
 "use strict";
 // ------------------------------------------------------------------------- //
 // Einstellungen (/settings): an overview of all areas, one area per page (/settings/<area>),
-// and the health check (/settings/health) that shows whether everything is set up right.
+// and the system check (/settings/health) that shows whether everything is set up right.
 // ------------------------------------------------------------------------- //
 interface HealthCheck {
   id: string; group: string; status: "ok" | "warn" | "error" | "info"; title: string; detail?: string; hint?: string;
@@ -29,7 +29,7 @@ function renderSettingsHub(): void {
     const small = a.querySelector("small")?.textContent || "";
     const name = (a.firstChild?.textContent || "").trim();
     return el("a", { class: "hub-tile", href: a.getAttribute("href") || "", "data-section": a.dataset.section || "" },
-      el("b", {}, name), el("span", { class: "muted small" }, small));
+      el("b", {}, name), el("span", { class: a.dataset.section === "health" ? "muted small hub-status" : "muted small" }, small));
   }));
 }
 
@@ -74,6 +74,7 @@ function showSettingsPage(section: string, entering: boolean): void {
   if (section === "logs") showLogs();
   if (section === "transfers") pollDownloads(true);
   if (section === "health") runHealth();
+  if (!section) refreshHealthTile();
 }
 
 // -- health check ------------------------------------------------------------
@@ -92,19 +93,19 @@ function browserChecks(res: HealthAnswer): HealthCheck[] {
   const drift = Math.round(Date.now() / 1000 - res.server_time);
   out.push(Math.abs(drift) > 30
     ? { id: "clock", group: "system", status: "warn", title: t("Uhrzeit weicht {n} s vom Browser ab", { n: drift }),
-      detail: t("Codes der Authenticator-App funktionieren nur mit richtiger Uhrzeit – NTP auf dem Server prüfen.") }
+      detail: t("Codes der Authenticator-App brauchen die richtige Uhrzeit. NTP prüfen.") }
     : { id: "clock", group: "system", status: "ok", title: t("Uhrzeit stimmt (Abweichung {n} s)", { n: drift }) });
   out.push(live.ok
-    ? { id: "live", group: "connection", status: "ok", title: t("Live-Updates kommen an") }
-    : { id: "live", group: "connection", status: "warn", title: t("Live-Updates kommen nicht an"),
-      detail: t("Der Proxy puffert vermutlich Server-Sent Events (/api/events). Die Seiten fragen dann alle paar Sekunden selbst nach – das geht, ist aber träger.") });
+    ? { id: "live", group: "connection", status: "ok", title: t("Live-Aktualisierung funktioniert") }
+    : { id: "live", group: "connection", status: "warn", title: t("Live-Aktualisierung funktioniert nicht"),
+      detail: t("Der Proxy puffert vermutlich /api/events. Die Seiten aktualisieren sich dadurch langsamer.") });
   if (res.app_url) {
     let same = false;
     try { same = new URL(res.app_url).origin === location.origin; } catch { /* invalid address */ }
     out.push(same
       ? { id: "app_url", group: "connection", status: "ok", title: t("Adresse in Benachrichtigungen passt: {url}", { url: res.app_url }) }
       : { id: "app_url", group: "connection", status: "info", title: t("Benachrichtigungen verlinken auf {url}", { url: res.app_url }),
-        detail: t("Du bist gerade über {here} hier. Passt das nicht, unter Benachrichtigungen die Adresse ändern.", { here: location.origin }) });
+        detail: t("Aufgerufen über {here}. Passt das nicht, unter Benachrichtigungen ändern.", { here: location.origin }) });
   }
   return out;
 }
@@ -116,10 +117,28 @@ function renderHealth(checks: HealthCheck[]): void {
     const rows = checks.filter((c) => c.group === g).sort((a, b) => order[a.status] - order[b.status]);
     return rows.length ? [el("section", { class: "health-group" }, el("h3", {}, name), ...rows.map(healthRow))] : [];
   }));
+  $("#healthSummary").textContent = healthSummary(checks).text;
+}
+
+/** One line for the result: used on the check page and on its tile in the overview. */
+function healthSummary(checks: HealthCheck[]): { text: string; level: "ok" | "warn" | "error" } {
   const bad = checks.filter((c) => c.status === "error").length, warn = checks.filter((c) => c.status === "warn").length;
   const notes = warn === 1 ? t("1 Hinweis") : t("{w} Hinweise", { w: warn });
-  $("#healthSummary").textContent = bad ? `${t("{n} Fehler", { n: bad })}, ${notes}`
-    : warn ? t("Alles läuft – {notes}", { notes }) : t("Alles in Ordnung");
+  if (bad) return { text: `${t("{n} Fehler", { n: bad })}, ${notes}`, level: "error" };
+  return warn ? { text: t("Alles läuft – {notes}", { notes }), level: "warn" } : { text: t("Alles in Ordnung"), level: "ok" };
+}
+
+/** The tile of the health check shows the result of the quick checks (not the connection tests to the services). */
+async function refreshHealthTile(): Promise<void> {
+  const tile = document.querySelector<HTMLElement>('#settingsHub .hub-tile[data-section="health"]');
+  const line = tile?.querySelector<HTMLElement>(".hub-status");
+  if (!tile || !line) return;
+  try {
+    const res = await api<HealthAnswer>("GET", "/api/diagnostics");
+    const { text, level } = healthSummary([...res.checks, ...browserChecks(res)]);
+    line.textContent = text;
+    tile.dataset.level = level;
+  } catch { /* the tile keeps its question */ }
 }
 
 type TestResult = { ok: boolean; message: string };

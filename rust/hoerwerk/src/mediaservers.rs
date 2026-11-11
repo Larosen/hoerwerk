@@ -277,8 +277,8 @@ impl Abs {
             quote(&text_of(&c["library"]))
         );
         let (last, error) = match abs_call("POST", &url, &text_of(&c["token"]), 10) {
-            Ok(_) => (t("Scan abgeschlossen", &[]), None),
-            Err(e) if e.timeout => (t("Scan läuft", &[]), None),
+            Ok(_) => (t("Einlesen abgeschlossen", &[]), None),
+            Err(e) if e.timeout => (t("Einlesen läuft", &[]), None),
             Err(e) => {
                 text::warn("Audiobookshelf", &e.message);
                 (e.message.clone(), Some(e.message))
@@ -581,7 +581,7 @@ impl Plex {
             set(e.message.clone());
             return Some(e.message);
         }
-        set(t("Scan angestoßen", &[]));
+        set(t("Einlesen gestartet", &[]));
         text::info("Plex", &t("Plex-Mediathek wird neu eingelesen", &[]));
         if truthy(c.get("empty_trash")) {
             let end = now() + 900.0;
@@ -597,7 +597,7 @@ impl Plex {
                         set(e.message.clone());
                         return Some(e.message);
                     }
-                    set(t("Scan abgeschlossen, Papierkorb geleert", &[]));
+                    set(t("Einlesen abgeschlossen, Papierkorb geleert", &[]));
                     text::info(
                         "Plex",
                         &t(
@@ -609,7 +609,7 @@ impl Plex {
                 }
                 std::thread::sleep(Duration::from_secs(10));
             }
-            set(t("Scan läuft noch – Papierkorb nicht geleert", &[]));
+            set(t("Einlesen läuft noch – Papierkorb nicht geleert", &[]));
         }
         None
     }
@@ -708,8 +708,12 @@ pub fn request_scans(app: &Arc<crate::app::App>) {
         let a = app.clone();
         app.abs.debounce.later(Duration::from_secs(30), move || {
             if let Some(e) = a.abs.scan_now() {
-                a.notifier
-                    .send("abs_error", &t("Audiobookshelf-Scan fehlgeschlagen", &[]), &e, None);
+                a.notifier.send(
+                    "abs_error",
+                    &t("Audiobookshelf: Einlesen fehlgeschlagen", &[]),
+                    &e,
+                    None,
+                );
             }
         });
     }
@@ -718,7 +722,7 @@ pub fn request_scans(app: &Arc<crate::app::App>) {
         app.plex.debounce.later(Duration::from_secs(30), move || {
             if let Some(e) = a.plex.scan_now() {
                 a.notifier
-                    .send("plex_error", &t("Plex-Scan fehlgeschlagen", &[]), &e, None);
+                    .send("plex_error", &t("Plex: Einlesen fehlgeschlagen", &[]), &e, None);
             }
         });
     }

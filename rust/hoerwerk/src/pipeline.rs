@@ -2039,7 +2039,7 @@ impl Pipeline {
                     .unwrap_or_default();
                 let score = releases::py_round(b["match"]["score"].as_f64().unwrap_or(0.0) * 100.0).to_string();
                 j.info(&t(
-                    "Erkannt: {title} – {authors} (Sicherheit {score} %)",
+                    "Erkannt: {title} – {authors} (Trefferquote {score} %)",
                     &[("title", s(&b, "title")), ("authors", &authors), ("score", &score)],
                 ));
             }
@@ -2970,7 +2970,7 @@ impl Pipeline {
                     }
                 }
                 Err(e) => slot.say(&t(
-                    "Konnte nicht nach _failed verschieben: {error}",
+                    "Verschieben nach _failed fehlgeschlagen: {error}",
                     &[("error", &e.to_string())],
                 )),
             }

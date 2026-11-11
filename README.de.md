@@ -32,7 +32,7 @@ Beschreibung und legt es als `Autor/Serie/03 - Titel` ab. Die Familie bekommt ei
   Books, Open Library, BookBeat oder eine eigene `metadata.yml`.
 - **Freie Hörbücher eingebaut.** LibriVox (gemeinfrei, von Freiwilligen gelesen) auf Deutsch oder Englisch direkt in
   der Suche – ein Klick lädt das Buch in den Eingang, die Angaben kommen mit.
-- **Anfragen wie bei Overseerr.** Familienkonten entdecken und fragen an; Kontingent, Freigabe, interaktive Suche.
+- **Anfragen wie bei Overseerr.** Familienkonten entdecken und fragen an; Monatslimit, Freigabe, interaktive Suche.
   Was noch niemand liefern kann, bleibt auf der Gesucht-Liste und wird alle 12 Stunden neu gesucht.
 - **Entdecken.** Vorschläge aus deiner Bibliothek und dem Hörverlauf (Audiobookshelf/Plex), nach Genre und aus
   Buchkritiken (Deutschlandfunk, Perlentaucher) – nur gut bewertete, ungekürzte Bücher, die du noch nicht hast.
@@ -122,7 +122,7 @@ Ein Update von einer älteren Version übernimmt die Datenbank; nichts von Hand 
    * oder alles selbst eintragen.
 
    Bücher, die es nirgends gibt: eine `metadata.yml` (Format von beets-audible) in den Ordner legen.
-4. **Taggen & ablegen.** Kapitelnamen kommen von Audible, wenn die eigenen nur „Track 01“ heißen und die Laufzeit
+4. **Tags schreiben & ablegen.** Kapitelnamen kommen von Audible, wenn die eigenen nur „Track 01“ heißen und die Laufzeit
    passt. Der Pfad in der Bibliothek folgt `FOLDER_TEMPLATE`, Standard `{author}/[{series}/][{series_position:2} - ]{title}` –
    `[ … ]` entfällt, wenn leer, `:2` macht aus Band 3 „03“. Vorhandene Ordner werden auch bei anderer Schreibweise
    wiederverwendet (`E. T. A. Hoffmann` = `E.T.A. Hoffmann`, `Storm, Theodor` = `Theodor Storm`, `Mueller` = `Müller`).
@@ -292,7 +292,7 @@ Der Reiter **Entdecken** schlägt neue Hörbücher vor:
   bzw. „erscheint <Datum>“. Das läuft täglich im Hintergrund, auch wenn niemand die Seite öffnet.
 
 **Suchen** auf einer Karte springt in den Reiter *Suchen*, mit dem Buch schon ausgewählt (Titel, Autor und ASIN helfen
-später beim Taggen).
+später beim Schreiben der Tags).
 
 **Qualitätsregeln** (unter *Einstellungen → Entdecken*): Mindestbewertung (Standard 4,3 Sterne) und Mindestanzahl
 Bewertungen (50), nur ungekürzt, nur deutschsprachig, keine Erotik. **Immer ausgeschlossen** ist, was du schon hast:
@@ -321,7 +321,7 @@ Familienmitglieder wünschen sich ein **Buch**, kein Release: in *Suchen* (Audib
 
 * **Freigabe:** Anfragen von Familienkonten warten, bis ein Admin sie freigibt (ntfy „Neue Buchanfrage“, Zahl am
   Reiter). Admins und Konten mit dem Recht *Ohne Freigabe* starten sofort.
-* **Kontingent:** Anfragen pro Kalendermonat (Standard 5, je Konto änderbar; abgelehnte zählen nicht).
+* **Monatslimit:** Anfragen pro Kalendermonat (Standard 5, je Konto änderbar; abgelehnte zählen nicht).
 * **Sichtbarkeit:** Jeder sieht seine eigenen Anfragen; mit dem Recht *Alle Anfragen sehen* auch die der anderen.
 * **Automatisch besorgen (wie Radarr):** Hörwerk sucht bei allen Indexern und bewertet jedes Release – passt der
   Autor, passt der Titel, ist es ungekürzt, in der richtigen Sprache, passt die Größe zur Laufzeit (kbit/s), ist es
@@ -337,7 +337,7 @@ Familienmitglieder wünschen sich ein **Buch**, kein Release: in *Suchen* (Audib
 
 **Bücher, die anders in den Eingang kommen** (hochgeladen, von JDownloader o. Ä.): Die Erkennung vergleicht jedes Buch
 auch mit den offenen Anfragen. Ist es zweifelsfrei ein angefragtes Buch (mindestens die eingestellte
-*Mindest-Sicherheit*, Standard 80 %), wird es automatisch zugeordnet, abgelegt und die Anfrage auf *Verfügbar*
+*Mindest-Trefferquote*, Standard 80 %), wird es automatisch zugeordnet, abgelegt und die Anfrage auf *Verfügbar*
 gesetzt; die Suche dafür hört auf. Darunter wartet es unter *Hörbücher → Zu prüfen* auf einen Admin – das
 angefragte Buch steht dort mit „Anfrage von …“ oben, **Übernehmen** erfüllt die Anfrage, **Bearbeiten** korrigiert
 die Erkennung vorher.
@@ -366,8 +366,8 @@ Push-Nachrichten aufs Handy über [ntfy](https://ntfy.sh) – ntfy.sh oder ein e
 | Download an SABnzbd geschickt | aus |
 | Download in SABnzbd fertig | aus |
 | Download in SABnzbd fehlgeschlagen | an |
-| Audiobookshelf-Scan fehlgeschlagen | an |
-| Plex-Scan fehlgeschlagen | an |
+| Audiobookshelf: Einlesen fehlgeschlagen | an |
+| Plex: Einlesen fehlgeschlagen | an |
 
 Token und Passwort bleiben auf dem Server und werden bei geänderter Adresse nicht an einen anderen Server geschickt.
 Nachrichten kommen in der Sprache der Oberfläche.
@@ -378,7 +378,7 @@ Nachrichten kommen in der Sprache der Oberfläche.
 
 **Einstellungen → Protokoll** (`/settings/logs`) zeigt, was passiert ist: gefundene, konvertierte, erkannte und abgelegte Bücher,
 Scans der Medienserver, Warnungen und Fehler. Nach Stufe oder Text filtern, live mitlesen, als Datei herunterladen.
-Dieselben Zeilen stehen im Container-Log (`docker logs hoerwerk`).
+Dieselben Zeilen stehen im Container-Protokoll (`docker logs hoerwerk`).
 
 ---
 
@@ -389,14 +389,14 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
 `AUTH_USER`/`AUTH_PASS` gesetzt hatte, bekommt daraus automatisch das Admin-Konto.
 
 * **Konten** (*Einstellungen → Konten*, `/settings/users`, nur für Admins): Familienkonten anlegen (Startpasswort erzeugen und weitergeben),
-  Rolle, Rechte (*Alle Anfragen sehen*, *Ohne Freigabe*, *Interaktive Suche*), Kontingent pro Monat, sperren,
+  Rolle, Rechte (*Alle Anfragen sehen*, *Ohne Freigabe*, *Interaktive Suche*), Monatslimit pro Monat, sperren,
   Passwort neu setzen, Zweitfaktor zurücksetzen, löschen. Alle starten auf *Entdecken*; Familienkonten sehen nur *Entdecken*, *Suchen* und *Anfragen* (beim ersten Mal mit einer
   kurzen Anleitung in drei Schritten)
   – Eingang, Bibliothek, Einstellungen und Protokoll bleiben Admins vorbehalten. Darunter: das
   **Admin-Protokoll** (wer hat wann was geändert, mit IP).
 * **Einladungen** (*Einstellungen → Konten*, wie bei Wizarr): einen Link erzeugen und z. B. per WhatsApp verschicken.
   Wer ihn öffnet, wählt selbst Name und Passwort, bekommt ein Familienkonto und ist sofort angemeldet. Je Link:
-  Notiz („Mama“), Gültigkeit (1, 7, 30 Tage oder unbegrenzt), wie oft nutzbar, Kontingent. Die Liste zeigt offen,
+  Notiz („Mama“), Gültigkeit (1, 7, 30 Tage oder unbegrenzt), wie oft nutzbar, Monatslimit. Die Liste zeigt offen,
   benutzt (von wem), abgelaufen oder widerrufen; Widerrufen geht jederzeit. Über einen Link entsteht nie ein Admin.
   Die Links zeigen immer auf die öffentliche Adresse (*Einstellungen → Allgemein*), auch wenn du sie zu Hause
   erstellst; fehlt sie noch, sagt der Bereich Einladungen, wo man sie einträgt.
@@ -426,12 +426,12 @@ Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs ho
 ## Konfiguration
 
 Fast alles lässt sich unter **⚙︎ Einstellungen** (`/settings`) ändern; die Umgebungsvariablen liefern nur die
-Startwerte. Die Einstellungen sind eine eigene Seite mit Übersicht: Healthcheck, Allgemein, Eingang & Bibliothek,
+Startwerte. Die Einstellungen sind eine eigene Seite mit Übersicht: Systemprüfung, Allgemein, Eingang & Bibliothek,
 M4B-Konvertierung, Indexer & SABnzbd, Audiobookshelf & Plex, Entdecken & Anfragen, Benachrichtigungen, Konten und
 Protokoll – jeder Bereich mit eigener Adresse (z. B. `/settings/health`), Lesezeichen und Vor/Zurück im Browser
 funktionieren. Das gilt auch für die Reiter: `/books`, `/search`, `/discover`, `/requests`.
 
-**Healthcheck** (`/settings/health`, ähnlich der Diagnose von Vaultwarden) prüft auf einen Blick:
+**Systemprüfung** (`/settings/health`, ähnlich der Diagnose von Vaultwarden) prüft auf einen Blick:
 * **Verbindung & Proxy:** als welche Adresse Hörwerk dich sieht, ob der Reverse-Proxy in `TRUSTED_PROXIES` steht
   (sonst Fehler mit der fertigen Zeile zum Eintragen), ob HTTPS ankommt, `ALLOWED_HOSTS`, ob Live-Updates durch den
   Proxy kommen, ob die Adresse in Benachrichtigungen passt. Proxys im eigenen Netz, die `X-Forwarded-For` schicken,
@@ -457,7 +457,7 @@ Kopie als `hoerwerk.db` einsetzen.
 | `INBOX_DIR` / `LIBRARY_DIR` | `/inbox` / `/audiobooks` | Hörbuch-Eingang und -Bibliothek |
 | `AUDIBLE_REGION` | `de` | Audible-Shop: `de us uk fr it es ca au in jp` |
 | `MATCH_MODE` | `auto` | `auto` (eindeutige automatisch), `review` (immer prüfen), `off` (nur konvertieren) |
-| `MATCH_THRESHOLD` | `0.8` | Mindest-Sicherheit für automatisches Ablegen |
+| `MATCH_THRESHOLD` | `0.8` | Mindest-Trefferquote für automatisches Ablegen |
 | `FOLDER_TEMPLATE` | `{author}/[{series}/][{series_position:2} - ]{title}` | Ordner in der Bibliothek |
 | `FILE_TEMPLATE` | `{title}` | Dateiname der M4B |
 | `CHAPTERS` | `auto` | Kapitelnamen von Audible: `auto`, `audible`, `files` |

@@ -374,7 +374,7 @@ async fn setup(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
             ],
         );
         tokio::time::sleep(Duration::from_secs(1)).await;
-        return error(403, t("Einrichtungs-Code falsch (steht im Container-Log)", &[]));
+        return error(403, t("Einrichtungs-Code falsch (steht im Container-Protokoll)", &[]));
     }
     match app.accounts.create(
         &app.db,
@@ -853,7 +853,7 @@ async fn invites_create(app: Arc<App>, req: Req, _: HashMap<String, String>) -> 
         return error(
             400,
             t(
-                "Erst die öffentliche Adresse eintragen (Einstellungen → Allgemein), z. B. https://hoerwerk.example.de – Einladungslinks zeigen immer dorthin.",
+                "Zuerst die öffentliche Adresse eintragen (Einstellungen → Allgemein), z. B. https://hoerwerk.example.de",
                 &[],
             ),
         );

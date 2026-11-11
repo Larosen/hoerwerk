@@ -184,7 +184,7 @@ function heardItem(h: StatsHeard): HTMLElement {
       el("b", { title: h.title }, h.title || "–"),
       el("span", { class: "muted small" }, [h.author, h.source === "plex" ? "Plex" : "Audiobookshelf"].filter(Boolean).join(" · "))),
     el("div", { class: "stats-item-side" },
-      h.finished ? el("span", { class: "tag ok" }, t("fertig")) : el("span", { class: "progress-mini", title: `${pct} %` },
+      h.finished ? el("span", { class: "tag ok" }, t("Fertig")) : el("span", { class: "progress-mini", title: `${pct} %` },
         el("span", { style: `width:${pct}%` })),
       el("span", { class: "muted small" }, fmtDay(h.finished ? h.finished_at || h.last : h.last))));
 }
@@ -274,7 +274,7 @@ async function loadStats(): Promise<void> {
       const retry = el("button", { type: "button", class: "btn small" }, icon("refresh"), t("Erneut versuchen"));
       retry.addEventListener("click", () => { tiles.replaceChildren(); void loadStats(); });
       tiles.replaceChildren(el("div", { class: "load-error", role: "alert" },
-        el("span", {}, t("Konnte nicht geladen werden: {error}", { error: errMsg(e) })), retry));
+        el("span", {}, t("Laden fehlgeschlagen: {error}", { error: errMsg(e) })), retry));
     } else toast(errMsg(e), true);
   }
 }

@@ -194,11 +194,11 @@ fn quota(value: &Value) -> Result<Option<i64>, String> {
                 Value::String(s) => s.trim().parse().ok(),
                 _ => None,
             }
-            .ok_or_else(|| t("Ungültiges Kontingent", &[]))?;
+            .ok_or_else(|| t("Ungültiges Monatslimit", &[]))?;
             if (0..=1000).contains(&n) {
                 Ok(Some(n))
             } else {
-                Err(t("Ungültiges Kontingent", &[]))
+                Err(t("Ungültiges Monatslimit", &[]))
             }
         }
     }

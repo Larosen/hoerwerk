@@ -18,7 +18,7 @@
     const btn = document.getElementById("themeBtn");
     if (btn) {
       btn.querySelector("use")?.setAttribute("href", "#i-" + MODES[mode][0]);
-      btn.title = t("Design: {mode} – klicken zum Wechseln").replace("{mode}", MODES[mode][1]);
+      btn.title = t("Darstellung: {mode} – zum Wechseln klicken").replace("{mode}", MODES[mode][1]);
       btn.setAttribute("aria-label", btn.title);
     }
   };

@@ -534,7 +534,7 @@ async function loadList(container: HTMLElement, load: () => Promise<void>, opts:
       const retry = el("button", { type: "button", class: "btn small" }, icon("refresh"), t("Erneut versuchen"));
       retry.addEventListener("click", () => { void loadList(container, load, opts); });
       container.replaceChildren(slot(container, { class: "load-error", role: "alert" },
-        el("span", {}, t("Konnte nicht geladen werden: {error}", { error: errMsg(e) })), retry));
+        el("span", {}, t("Laden fehlgeschlagen: {error}", { error: errMsg(e) })), retry));
     } else if (!opts.quiet) {
       toast(t("Aktualisieren fehlgeschlagen: {error}", { error: errMsg(e) }), "warning");
     }
@@ -746,7 +746,7 @@ function passwordRules(pw: string, name = ""): { text: string; ok: boolean }[] {
 function attachPasswordRules(input: HTMLInputElement, name: () => string = () => ""): void {
   const list = el("ul", { class: "pw-rules", "aria-live": "polite" });
   const hint = el("p", { class: "pw-hint muted small" },
-    t("Tipp: Am einfachsten lässt du ein Passwort erzeugen und merken – vom Passwort-Manager (z. B. Bitwarden, Vaultwarden, KeePassXC) oder am iPhone/Mac von Safari („Starkes Passwort“). Oder nimm einen Satz aus vier Wörtern, z. B. „Kaffee Garten Hund Fahrrad“."));
+    t("Tipp: Ein Passwort-Manager erzeugt sichere Passwörter. Oder ein Satz aus vier Wörtern, z. B. „Kaffee Garten Hund Fahrrad“."));
   const render = (): void => {
     list.replaceChildren(...passwordRules(input.value, name()).map((r) =>
       el("li", { class: r.ok ? "ok" : "" }, icon(r.ok ? "check" : "x"), r.text)));

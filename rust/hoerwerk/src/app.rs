@@ -160,7 +160,7 @@ impl App {
             text::warn(
                 "Anmeldung",
                 &text::t(
-                    "Aufruf unter dem Namen „{host}“ abgelehnt (Schutz gegen DNS-Rebinding). Wenn das deine Adresse ist: unter Einstellungen → Allgemein als öffentliche Adresse eintragen oder ALLOWED_HOSTS={host} setzen.",
+                    "Aufruf unter „{host}“ abgelehnt (DNS-Rebinding-Schutz). Als öffentliche Adresse eintragen (Einstellungen → Allgemein) oder ALLOWED_HOSTS={host} setzen.",
                     &[("host", name)],
                 ),
             );
