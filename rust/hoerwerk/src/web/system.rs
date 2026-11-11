@@ -170,7 +170,7 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
                     &[("peer", &peer)],
                 ),
                 t(
-                    "Die echte Adresse der Besucher geht verloren: Anmelde-Sperre und CrowdSec treffen alle, die über diesen Proxy kommen.",
+                    "Alle Besucher erscheinen mit der Adresse des Proxys (Anmelde-Sperre, CrowdSec).",
                     &[],
                 ),
                 format!("TRUSTED_PROXIES={peer}"),
@@ -296,7 +296,7 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
                 &[],
             ),
             t(
-                "Einstellungen → Allgemein, oder Hörwerk einmal über den Reverse-Proxy öffnen.",
+                "Einstellungen → Allgemein.",
                 &[],
             ),
             "https://hoerwerk.example.de".into(),
@@ -629,9 +629,9 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
         add(
             "system",
             "warn",
-            t("ffmpeg ohne Sandbox", &[]),
+            t("ffmpeg ohne Abschottung", &[]),
             t(
-                "Kernel oder Docker erlauben kein Landlock – kein Fehler, aber weniger Schutz bei kaputten Dateien.",
+                "Landlock ist nicht verfügbar. Kein Fehler, aber weniger Schutz.",
                 &[],
             ),
             none(),

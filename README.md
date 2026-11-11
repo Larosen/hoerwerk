@@ -15,7 +15,7 @@ them – you approve, Hörwerk fetches it.
 
 ![Library](docs/screenshots/bibliothek.png)
 
-| Find and fetch | Health check |
+| Find and fetch | System check |
 |---|---|
 | ![Search with free LibriVox results](docs/screenshots/suche.png) | ![Diagnostics page](docs/screenshots/diagnose.png) |
 
@@ -351,7 +351,7 @@ Push messages to your phone via [ntfy](https://ntfy.sh) – ntfy.sh or your own 
 | Download sent to SABnzbd | off |
 | Download finished in SABnzbd | off |
 | Download failed in SABnzbd | on |
-| Audiobookshelf scan failed | on |
+| Audiobookshelf: scan failed | on |
 | Plex scan failed | on |
 
 Token and password stay on the server; they are not sent to another server if you change the address.
@@ -409,12 +409,12 @@ from the home network; from outside the setup code from `docker logs hoerwerk` i
 ## Configuration
 
 Almost everything can be changed in **⚙︎ Settings** (`/settings`); the environment only provides the starting values.
-Settings are a page of their own with an overview: health check, general, inbox & library, M4B conversion, indexers &
+Settings are a page of their own with an overview: system check, general, inbox & library, M4B conversion, indexers &
 SABnzbd, Audiobookshelf & Plex, discover & requests, notifications, accounts and log – each area with its own address
 (e.g. `/settings/health`), so bookmarks and the browser's back/forward work. The same goes for the tabs: `/books`,
 `/search`, `/discover`, `/requests`.
 
-**Health check** (`/settings/health`, similar to Vaultwarden's diagnostics) shows at a glance:
+**System check** (`/settings/health`, similar to Vaultwarden's diagnostics) shows at a glance:
 * **Connection & proxy:** which address Hörwerk sees you as, whether the reverse proxy is in `TRUSTED_PROXIES` (else an
   error with the line to add), whether HTTPS arrives, `ALLOWED_HOSTS`, whether live updates get through the proxy,
   whether the address in notifications fits. Proxies in the own network that send `X-Forwarded-For` but are not

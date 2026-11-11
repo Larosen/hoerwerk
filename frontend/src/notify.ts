@@ -19,8 +19,8 @@ const NOTIFY_EVENTS: Record<string, string> = {
   download_sent: t("Download an SABnzbd geschickt"),
   download_done: t("Download in SABnzbd fertig"),
   download_failed: t("Download in SABnzbd fehlgeschlagen"),
-  abs_error: t("Audiobookshelf-Scan fehlgeschlagen"),
-  plex_error: t("Plex-Scan fehlgeschlagen"),
+  abs_error: t("Audiobookshelf: Einlesen fehlgeschlagen"),
+  plex_error: t("Plex: Einlesen fehlgeschlagen"),
 };
 
 let notifyLoaded = false;       // saved only after the form showed the stored values (else empty fields would overwrite them)
@@ -36,13 +36,13 @@ function renderNotify(c: NotifyConfig): void {
   for (const [name, isSet] of [["ntfy_token", c.token_set], ["ntfy_password", c.password_set]] as const) {
     const input = field(f, name);
     input.value = "";
-    input.placeholder = isSet ? t("gespeichert – leer lassen") : "";
+    input.placeholder = isSet ? t("Gespeichert – leer lassen") : "";
   }
   $("#notifyEvents").replaceChildren(...c.available.map((name) => el("label", { class: "check" },
     el("input", { type: "checkbox", "data-event": name, checked: !!c.events[name] }),
     NOTIFY_EVENTS[name] || name)));
   $("#notifyState").textContent = c.last_error ? "✗ " + c.last_error
-    : c.configured ? t("eingerichtet") : t("nicht eingerichtet");
+    : c.configured ? t("Eingerichtet") : t("Nicht eingerichtet");
 }
 
 async function loadNotify(): Promise<void> {

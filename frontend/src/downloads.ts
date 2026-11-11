@@ -11,7 +11,7 @@ function downloadsVisible(): boolean {
 }
 
 async function clearDownloads(ids: string[] = []): Promise<void> {
-  if (!ids.length && !(await confirmBox(t("Alle fertigen und fehlgeschlagenen Downloads aus dem SABnzbd-Verlauf nehmen? Die Dateien bleiben liegen."), t("Aufräumen")))) return;
+  if (!ids.length && !(await confirmBox(t("Alle fertigen und fehlgeschlagenen Downloads aus dem SABnzbd-Verlauf entfernen? Die Dateien bleiben."), t("Aufräumen")))) return;
   try {
     const out = await api<{ removed: number; kept: number }>("POST", "/api/downloads/clear", { ids });
     toast(plural(out.removed, t("1 Eintrag aufgeräumt"), t("{n} Einträge aufgeräumt", { n: out.removed })) +
@@ -26,7 +26,7 @@ function renderDownloads(): void {
   const hide = $<HTMLInputElement>("#dlHideDone").checked;
   const list = $("#dlList");
   list.replaceChildren();
-  $("#dlSpeed").textContent = data.speed && data.speed !== "0 " ? `${data.speed}B/s${data.paused ? " · " + t("pausiert") : ""}` : data.paused ? t("pausiert") : "";
+  $("#dlSpeed").textContent = data.speed && data.speed !== "0 " ? `${data.speed}B/s${data.paused ? " · " + t("Pausiert") : ""}` : data.paused ? t("Pausiert") : "";
   const items = (data.items || []).filter((d) => !(hide && d.done));
   const finished = (data.items || []).filter((d) => d.done).length;
   $<HTMLButtonElement>("#dlClear").disabled = !data.configured || !finished;
@@ -43,10 +43,10 @@ function renderDownloads(): void {
         el("span", { class: "job-name", title: d.name }, d.name),
         el("span", { class: "row gap" },
           el("span", { class: "badge " + (failed ? "error" : d.done ? "done" : "running") },
-            d.done ? (failed ? t("fehlgeschlagen") : t("fertig → Eingang")) : `${d.status} ${pct}%`),
+            d.done ? (failed ? t("Fehlgeschlagen") : t("Fertig → Eingang")) : `${d.status} ${pct}%`),
           remove)),
       d.error ? el("div", { class: "job-msg" }, d.error)
-        : el("div", { class: "job-msg" }, [d.size, d.left && !d.done ? t("noch {time}", { time: d.left }) : "", d.finished ? fmtAgo(d.finished) : ""].filter(Boolean).join(" · ")),
+        : el("div", { class: "job-msg" }, [d.size, d.left && !d.done ? t("Noch {time}", { time: d.left }) : "", d.finished ? fmtAgo(d.finished) : ""].filter(Boolean).join(" · ")),
       !d.done ? el("div", { class: "bar" }, el("i", { style: `width:${pct}%` })) : null));
   }
 }

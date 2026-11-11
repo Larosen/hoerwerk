@@ -633,7 +633,11 @@ a.plain { color: inherit; text-decoration: none; }
 .settings-hub { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; padding: 16px; }
 .hub-tile { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-2); color: var(--text); text-decoration: none; }
 .hub-tile:hover { border-color: var(--accent); background: var(--hover); }
-.hub-tile[data-section="health"] { box-shadow: inset 3px 0 0 var(--accent); }
+.hub-status::before { content: ""; display: none; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: currentColor; }
+.hub-tile[data-level] .hub-status::before { display: inline-block; }
+.hub-tile[data-level="ok"] .hub-status::before { color: var(--ok, #2ea043); }
+.hub-tile[data-level="warn"] .hub-status::before { color: #c58a12; }
+.hub-tile[data-level="error"] .hub-status::before { color: var(--err); }
 .health-list { display: flex; flex-direction: column; gap: 18px; }
 .health-group h3 { font-size: 13px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; }
 .health-row { color: var(--text); display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; }

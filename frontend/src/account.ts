@@ -27,8 +27,8 @@ async function openAccount(): Promise<void> {
       $("#whoami").replaceChildren(
         ...fact(t("Deine Adresse"), c.ip),
         ...fact(t("Verbindung"), c.proxied ? (c.trusted ? t("über Reverse-Proxy {peer} (vertrauenswürdig)", { peer: c.peer })
-          : t("über {peer} – nicht in TRUSTED_PROXIES, die echte Adresse fehlt", { peer: c.peer })) : t("direkt"), c.proxied && !c.trusted),
-        ...fact("HTTPS", c.https ? t("ja") : t("nein")));
+          : t("über {peer} – nicht in TRUSTED_PROXIES, die echte Adresse fehlt", { peer: c.peer })) : t("Direkt"), c.proxied && !c.trusted),
+        ...fact("HTTPS", c.https ? t("Ja") : t("Nein")));
     }
     $("#accountTitle").textContent = `${me.name} · ${me.role === "admin" ? t("Admin") : t("Nutzer")}`;
     renderTotp(!!(me as { totp?: boolean }).totp);
@@ -39,7 +39,7 @@ async function openAccount(): Promise<void> {
     }).catch(() => { /* optional */ });
     $("#sessionList").replaceChildren(...me.sessions.map((s) => el("li", {},
       el("span", {}, el("b", {}, deviceName(s.agent)), " ", el("span", { class: "muted small" }, `${s.ip} · ${fmtAgo(s.last_seen)}`)),
-      s.id === me.session ? el("span", { class: "pill" }, t("dieses Gerät"))
+      s.id === me.session ? el("span", { class: "pill" }, t("Dieses Gerät"))
         : el("button", { type: "button", class: "btn small ghost", onclick: async () => {
           await api("POST", "/api/auth/sessions/end", { id: s.id }); openAccount();
         } }, t("Abmelden")))));
@@ -75,7 +75,7 @@ function renderTotp(active: boolean): void {
       } }, t("Ausschalten"))));
     return;
   }
-  box.replaceChildren(el("p", { class: "muted small" }, t("Schützt dein Konto, auch wenn jemand dein Passwort kennt: beim Anmelden zusätzlich ein Code aus einer Authenticator-App (z. B. Aegis, 2FAS, Google oder Microsoft Authenticator).")),
+  box.replaceChildren(el("p", { class: "muted small" }, t("Beim Anmelden zusätzlich ein Code aus einer Authenticator-App (z. B. Aegis, 2FAS oder Google Authenticator).")),
     el("button", { type: "button", class: "btn small", onclick: async () => {
       try {
         const s = await api<{ secret: string; uri: string }>("POST", "/api/auth/totp/setup");
@@ -129,7 +129,7 @@ function userRow(u: UserInfo): HTMLTableRowElement {
     box.addEventListener("change", () => saveUser(u.id, { perms: { [key]: box.checked } }));
     return el("td", { class: "c-check" }, box);
   };
-  const quota = el("input", { type: "number", min: "0", max: "1000", class: "quota", placeholder: "–", "aria-label": t("Kontingent") });
+  const quota = el("input", { type: "number", min: "0", max: "1000", class: "quota", placeholder: "–", "aria-label": t("Monatslimit") });
   quota.value = u.quota === null ? "" : String(u.quota);
   quota.disabled = u.role === "admin";
   quota.addEventListener("change", () => saveUser(u.id, { quota: quota.value === "" ? null : Number(quota.value) }));
@@ -144,14 +144,14 @@ function userRow(u: UserInfo): HTMLTableRowElement {
     } }, icon("check"))
     : el("span", { class: "muted small" }, "–");
   return el("tr", {},
-    el("td", {}, el("b", {}, u.name), isMe ? el("span", { class: "muted small" }, " · " + t("du")) : null,
-      u.origin ? el("div", { class: "muted small" }, t("über Einladung „{note}“", { note: u.origin })) : null),
+    el("td", {}, el("b", {}, u.name), isMe ? el("span", { class: "muted small" }, " · " + t("Du")) : null,
+      u.origin ? el("div", { class: "muted small" }, t("Über Einladung „{note}“", { note: u.origin })) : null),
     el("td", {}, role),
     ...PERM_KEYS.map(perm),
     el("td", {}, quota),
     el("td", { class: "c-check" }, off),
     el("td", { class: "c-check" }, twoFa),
-    el("td", { class: "muted small" }, (u.last_seen ?? u.last_login) ? fmtAgo(u.last_seen ?? u.last_login) : t("noch nie")),
+    el("td", { class: "muted small" }, (u.last_seen ?? u.last_login) ? fmtAgo(u.last_seen ?? u.last_login) : t("Noch nie")),
     el("td", { class: "c-act" },
       el("button", { type: "button", class: "btn small ghost", title: t("Neues Passwort setzen"), onclick: async () => {
         const pw = randomPassword();
@@ -173,7 +173,7 @@ interface Invite {
   status: "open" | "used" | "expired" | "revoked";
 }
 const INVITE_STATUS: Record<Invite["status"], () => string> = {
-  open: () => t("offen"), used: () => t("benutzt"), expired: () => t("abgelaufen"), revoked: () => t("widerrufen"),
+  open: () => t("Offen"), used: () => t("Benutzt"), expired: () => t("Abgelaufen"), revoked: () => t("Widerrufen"),
 };
 interface InviteWithLink extends Invite { link: string }
 
@@ -207,9 +207,9 @@ function inviteRow(inv: Invite): HTMLLIElement {
       el("b", {}, inv.note || t("Einladung")),
       el("span", { class: `rtag ${active ? "ok" : ""}` }, INVITE_STATUS[inv.status]()),
       el("span", { class: "muted small" }, [
-        inv.expires ? t("gültig bis {date}", { date: date(inv.expires) }) : t("ohne Ablauf"),
-        inv.max_uses === 0 ? t("für beliebig viele Personen") : plural(inv.max_uses, t("für 1 Person"), t("für {n} Personen", { n: inv.max_uses })),
-        inv.uses === 0 ? t("noch niemand angemeldet") : plural(inv.uses, t("1 angemeldet"), t("{n} angemeldet", { n: inv.uses })),
+        inv.expires ? t("Gültig bis {date}", { date: date(inv.expires) }) : t("Ohne Ablauf"),
+        inv.max_uses === 0 ? t("Für beliebig viele Personen") : plural(inv.max_uses, t("Für 1 Person"), t("Für {n} Personen", { n: inv.max_uses })),
+        inv.uses === 0 ? t("Noch niemand angemeldet") : plural(inv.uses, t("1 angemeldet"), t("{n} angemeldet", { n: inv.uses })),
         inv.used_by.length ? t("von {names}", { names: inv.used_by.map((u) => u.name).join(", ") }) : "",
       ].filter(Boolean).join(" · "))),
     el("span", { class: "muted small" }, t("Startrechte: {rights}", { rights: inviteRights(inv) })),
@@ -227,13 +227,13 @@ function inviteRow(inv: Invite): HTMLLIElement {
 }
 
 const PERM_NAMES: Record<string, () => string> = {
-  auto_approve: () => t("ohne Freigabe"), see_all_requests: () => t("alle Anfragen sehen"),
-  interactive_search: () => t("interaktive Suche"),
+  auto_approve: () => t("Ohne Freigabe"), see_all_requests: () => t("Alle Anfragen sehen"),
+  interactive_search: () => t("Interaktive Suche"),
 };
 
 function inviteRights(inv: Invite): string {
   const on = Object.keys(PERM_NAMES).filter((p) => inv.perms?.[p]).map((p) => PERM_NAMES[p]());
-  return on.length ? on.join(", ") : t("nur anfragen, mit Freigabe");
+  return on.length ? on.join(", ") : t("Nur anfragen, mit Freigabe");
 }
 
 async function loadInvites(): Promise<void> {
@@ -317,7 +317,7 @@ function initAccount(): void {
   $("#inviteUses").replaceChildren(
     ...[...Array.from({ length: 20 }, (_, i) => i + 1), 30].map((n) =>
       el("option", { value: String(n) }, n === 1 ? t("1 Person") : t("{n} Personen", { n }))),
-    el("option", { value: "0" }, t("unbegrenzt")));
+    el("option", { value: "0" }, t("Unbegrenzt")));
   // security: admins without a second factor only reach their own account (saved at once)
   const totpRequired = $<HTMLInputElement>("#adminTotpRequired");
   api<Settings>("GET", "/api/settings").then((s) => { totpRequired.checked = !!s.admin_totp_required; }).catch(() => { /* stays off */ });

@@ -34,29 +34,29 @@ const REQ_STATUS: Record<RequestStatus, () => string> = {
 };
 /** SABnzbd's states (queue and post-processing) in plain words. */
 const SAB_STATE: Record<string, () => string> = {
-  Queued: () => t("wartet in SABnzbd"),
-  Paused: () => t("pausiert"),
-  Downloading: () => t("lädt"),
-  Grabbing: () => t("holt die NZB"),
-  Fetching: () => t("holt fehlende Teile"),
-  Propagating: () => t("wartet, bis alles beim Anbieter ist"),
-  QuickCheck: () => t("prüft"),
-  Verifying: () => t("prüft"),
-  Checking: () => t("prüft"),
-  Repairing: () => t("repariert"),
-  Extracting: () => t("entpackt"),
-  Moving: () => t("verschiebt in den Eingang"),
+  Queued: () => t("Wartet in SABnzbd"),
+  Paused: () => t("Pausiert"),
+  Downloading: () => t("Lädt"),
+  Grabbing: () => t("Holt die NZB"),
+  Fetching: () => t("Holt fehlende Teile"),
+  Propagating: () => t("Wartet, bis alles beim Anbieter ist"),
+  QuickCheck: () => t("Prüft"),
+  Verifying: () => t("Prüft"),
+  Checking: () => t("Prüft"),
+  Repairing: () => t("Repariert"),
+  Extracting: () => t("Entpackt"),
+  Moving: () => t("Verschiebt in den Eingang"),
   Running: () => t("Nachbearbeitung"),
-  Completed: () => t("fertig – geht in den Eingang"),
-  Failed: () => t("fehlgeschlagen"),
+  Completed: () => t("Fertig – geht in den Eingang"),
+  Failed: () => t("Fehlgeschlagen"),
 };
 const IMPORT_STATE: Record<string, () => string> = {
   inbox: () => t("Download fertig – wartet auf den Eingang"),
-  review: () => IS_ADMIN ? t("wartet auf deine Prüfung unter „Hörbücher“") : t("wartet auf Prüfung durch einen Admin"),
-  queued: () => t("wartet auf die Umwandlung"),
-  matching: () => t("erkennt das Buch"),
-  converting: () => t("wandelt in M4B um"),
-  tagging: () => t("schreibt Tags und Kapitel"),
+  review: () => IS_ADMIN ? t("Wartet auf deine Prüfung unter „Hörbücher“") : t("Wartet auf Prüfung durch einen Admin"),
+  queued: () => t("Wartet auf die Umwandlung"),
+  matching: () => t("Erkennt das Buch"),
+  converting: () => t("Wandelt in M4B um"),
+  tagging: () => t("Schreibt Tags und Kapitel"),
 };
 
 /** SABnzbd's "1:02:03" in words: "1 Std. 2 Min.". */
@@ -89,7 +89,7 @@ function liveInfo(r: BookRequest, prefix = ""): HTMLElement | null {
       if (started) parts.push(`${pct} %`);
       if (l.mb && started) parts.push(t("{done} von {total}", { done: fmtMB(Math.max(0, l.mb - (l.mbleft ?? 0))), total: fmtMB(l.mb) }));
       else if (l.mb) parts.push(fmtMB(l.mb));
-      if (l.left && !l.paused) parts.push(t("noch {time}", { time: fmtLeft(l.left) }));
+      if (l.left && !l.paused) parts.push(t("Noch {time}", { time: fmtLeft(l.left) }));
       if (l.speed && !l.paused) parts.push(`${(l.speed / 1024).toLocaleString(LOCALE, { maximumFractionDigits: 1 })} MB/s`);
     }
   } else {
@@ -195,7 +195,7 @@ async function openSeries(b: Book): Promise<void> {
       v.cover_url ? el("img", { class: "thumb", src: v.cover_url, alt: "", loading: "lazy" }) : coverArt(v.title, (v.authors || [])[0]),
       el("span", { class: "series-vol-text" },
         el("b", {}, [volumeLabel(v), v.title].filter(Boolean).join(" · ")),
-        el("span", { class: "muted small" }, [v.runtime_min ? fmtDuration(v.runtime_min * 60) : "", v.format_type === "abridged" ? t("gekürzt") : "",
+        el("span", { class: "muted small" }, [v.runtime_min ? fmtDuration(v.runtime_min * 60) : "", v.format_type === "abridged" ? t("Gekürzt") : "",
           v.release_date ? v.release_date.slice(0, 4) : ""].filter(Boolean).join(" · ")),
         taken ? el("span", { class: v.owned ? "rtag ok" : `rtag req-${state}` }, taken) : editionNote(v)));
     return { v, cb, taken, row };
@@ -382,7 +382,7 @@ function renderRequests(): void {
   const items = cards;
   $("#requestList").replaceChildren(...(items.length ? items
     : [el("li", { class: "empty" }, d.items.length ? t("Nichts in dieser Ansicht.")
-      : t("Noch keine Anfragen. Such ein Hörbuch unter „Suchen“ oder stöbere in „Entdecken“ und klick auf „Anfragen“."))]));
+      : t("Noch keine Anfragen. Such ein Hörbuch unter „Suchen“ oder stöbere in „Entdecken“."))]));
 }
 
 async function loadRequests(): Promise<void> {
@@ -433,7 +433,7 @@ function renderReleases(): void {
 function releaseRow(r: BookRequest, x: JudgedRelease): HTMLTableRowElement {
   const v = x.verdict;
   const grab = el("button", { type: "button", class: "btn small" + (v.ok ? " primary" : "") }, t("Laden"));
-  grab.title = v.ok ? t("Dieses Release laden") : t("Trotz Bedenken laden");
+  grab.title = v.ok ? t("Dieses Release herunterladen") : t("Trotz Bedenken herunterladen");
   grab.addEventListener("click", async () => {
     grab.disabled = true;
     try {
@@ -454,7 +454,7 @@ function releaseRow(r: BookRequest, x: JudgedRelease): HTMLTableRowElement {
     el("td", { class: "c-num" }, fmtSize(x.size)),
     el("td", { class: "c-num", "data-label": t("Alter"), title: x.published ? new Date(x.published * 1000).toLocaleString(LOCALE) : "" }, fmtAge(x.published)),
     el("td", { class: "c-num", "data-label": "kbit/s" }, v.kbps === null ? "–" : String(v.kbps)),
-    el("td", { class: "c-verdict" }, v.ok ? el("span", { class: "verdict ok" }, icon("check"), v.notes.join(" · ") || t("passt"))
+    el("td", { class: "c-verdict" }, v.ok ? el("span", { class: "verdict ok" }, icon("check"), v.notes.join(" · ") || t("Passt"))
       : el("span", { class: "verdict no" }, v.reason || "")),
     el("td", { class: "c-act" }, grab, block));
 }

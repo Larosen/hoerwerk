@@ -380,7 +380,7 @@ impl Requests {
         {
             return err(
                 t(
-                    "Kontingent für diesen Monat aufgebraucht ({n} Anfragen)",
+                    "Monatslimit erreicht ({n} Anfragen)",
                     &[("n", &limit.to_string())],
                 ),
                 429,

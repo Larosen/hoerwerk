@@ -147,7 +147,7 @@ pub async fn duplicate(app: Arc<App>, req: Req, p: Params) -> Reply {
         Ok(slot) => out(&slot),
         Err(PipeError::Failed(e)) => error(
             500,
-            t("Konnte die alte Fassung nicht verschieben: {error}", &[("error", &e)]),
+            t("Die alte Fassung ließ sich nicht verschieben: {error}", &[("error", &e)]),
         ),
         Err(e) => pipe_error(e, 400, 500),
     }
@@ -162,7 +162,7 @@ pub async fn reopen(app: Arc<App>, _: Req, p: Params) -> Reply {
         Ok(slot) => out(&slot),
         Err(PipeError::Failed(e)) => error(
             500,
-            t("Konnte nicht aus der Bibliothek holen: {error}", &[("error", &e)]),
+            t("Holen aus der Bibliothek fehlgeschlagen: {error}", &[("error", &e)]),
         ),
         Err(e) => pipe_error(e, 409, 500),
     }
@@ -226,7 +226,7 @@ pub async fn retry(app: Arc<App>, _: Req, p: Params) -> Reply {
         Err(PipeError::Failed(e)) => error(
             500,
             t(
-                "Konnte nicht zurück in den Eingang verschieben: {error}",
+                "Verschieben zurück in den Eingang fehlgeschlagen: {error}",
                 &[("error", &e)],
             ),
         ),

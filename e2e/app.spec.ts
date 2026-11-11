@@ -107,16 +107,16 @@ test("Altes MP3-Buch mit eigenen Kapitelnamen zu M4B", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("Einstellungen: Übersicht, Healthcheck mit ffmpeg und Proxy, Design bleibt nach Neuladen", async ({ page }) => {
+test("Einstellungen: Übersicht, Systemprüfung mit ffmpeg und Proxy, Design bleibt nach Neuladen", async ({ page }) => {
   const errors = await open(page);
   await page.locator("#settingsBtn").click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.locator("#settingsHub .hub-tile")).toHaveCount(12);
-  await page.locator("#settingsHub").getByRole("link", { name: /Healthcheck/ }).click();
+  await page.locator("#settingsHub").getByRole("link", { name: /Systemprüfung/ }).click();
   await expect(page).toHaveURL(/\/settings\/health$/);
   await expect(page.locator("#healthList")).toContainText("ffmpeg");
   await expect(page.locator("#healthList")).toContainText("Hörwerk sieht dich als 127.0.0.1");
-  await expect(page.locator("#healthList")).toContainText("Live-Updates kommen an");
+  await expect(page.locator("#healthList")).toContainText("Live-Aktualisierung funktioniert");
   await page.locator("#settingsNav").getByRole("link", { name: /M4B-Konvertierung/ }).click();
   await expect(page.locator("#settingsForm fieldset:not([hidden]) legend")).toHaveText(["M4B-Konvertierung"]);
   await page.goBack();

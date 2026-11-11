@@ -4,8 +4,8 @@
 // Audiobook pipeline view (Eingang -> M4B -> Audible -> Bibliothek)
 // ------------------------------------------------------------------------- //
 const BOOK_STATUS: Record<BookStatus, string> = {
-  queued: t("wartet"), matching: t("sucht"), converting: t("konvertiert"), review: t("zu prüfen"),
-  tagging: t("taggt"), done: t("fertig"), failed: t("Fehler"), cancelled: t("abgebrochen"),
+  queued: t("Wartet"), matching: t("Sucht"), converting: t("Konvertiert"), review: t("Zu prüfen"),
+  tagging: t("Schreibt Tags"), done: t("Fertig"), failed: t("Fehler"), cancelled: t("Abgebrochen"),
 };
 type BookFilter = "library" | "all" | "review" | "active" | "done" | "failed" | "unconverted";
 const BOOK_FILTERS: [BookFilter, string][] = [["library", t("Bibliothek")], ["all", t("Aufträge")], ["review", t("Zu prüfen")], ["active", t("Laufend")],
@@ -125,7 +125,7 @@ function renderBooks(): void {
   }
   if (!jobs.length && !(d.waiting.length && ["all", "active"].includes(books.filter))) {
     list.append(el("li", { class: "empty" }, d.jobs.length ? t("Nichts in dieser Ansicht.")
-      : d.inbox_ok ? t("Noch keine Hörbücher. Lege einen Ordner in den Eingang – er wird automatisch erkannt.")
+      : d.inbox_ok ? t("Noch keine Hörbücher. Lege einen Ordner in den Eingang.")
         : t("Der Eingangsordner ist nicht eingebunden. In Docker/Unraid einen Pfad auf /inbox mappen.")));
   }
   for (const j of jobs) list.append(bookCard(j));
@@ -219,14 +219,14 @@ function renderUnconverted(list: HTMLElement): void {
   const bar = el("li", { class: "uc-bar" },
     el("label", { class: "check" }, all, t("Alle ({n})", { n: free.length })),
     el("span", { class: "muted small" }, items.length
-      ? t("Ausgewählte werden zu M4B mit Kapiteln, bei Audible erkannt und getaggt. Die alten Dateien werden erst weggeräumt, wenn die neue M4B fertig in der Bibliothek liegt.")
+      ? t("Die Auswahl wird zu M4B mit Kapiteln. Alte Dateien werden erst entfernt, wenn die neue M4B in der Bibliothek liegt.")
       : t("Alle Bücher der Bibliothek liegen schon als M4B vor.")),
     settingSelect("ab_library_originals", t("Alte Dateien danach:"), [
-      ["archive", t("nach _ersetzt im Eingang verschieben")], ["delete", t("löschen")]]),
+      ["archive", t("Nach _ersetzt im Eingang verschieben")], ["delete", t("Löschen")]]),
     el("button", {
       class: "btn small primary", disabled: !books.picked.size,
       onclick: () => convertLibrary([...books.picked].map((path) => ({ path }))),
-    }, books.picked.size ? t("{n} zu M4B", { n: books.picked.size }) : t("zu M4B")));
+    }, books.picked.size ? t("{n} zu M4B", { n: books.picked.size }) : t("Zu M4B")));
   list.append(bar);
   for (const b of items) {
     const cb = el("input", { type: "checkbox", checked: books.picked.has(b.path), disabled: !!b.job });
@@ -318,7 +318,7 @@ function renderLibraryStats(st: LibraryStats): void {
   }
   $("#libraryInfo").replaceChildren(
     el("div", { class: "kv" }, el("span", {}, t("Bücher")),
-      el("span", {}, st.scanning ? t("wird eingelesen …") : `${st.books}` + (st.other ? " " + t("(davon {n} als MP3 & Co.)", { n: st.other }) : "")), el("span", {})),
+      el("span", {}, st.scanning ? t("Wird eingelesen …") : `${st.books}` + (st.other ? " " + t("(davon {n} als MP3 & Co.)", { n: st.other }) : "")), el("span", {})),
     el("div", { class: "kv" }, el("span", {}, t("Eingelesen")), el("span", {}, fmtAgo(st.last_scan)), el("span", {})),
     el("div", { class: "muted small" }, t("Neue Funde werden mit der Bibliothek abgeglichen – in der Suche und vor dem Ablegen.")));
 }
@@ -327,8 +327,8 @@ function renderLibraryStats(st: LibraryStats): void {
 async function cleanLibrary(): Promise<void> {
   try {
     const pre = await api<{ count: number; folders: number; examples: string[] }>("GET", "/api/library/cleanup");
-    if (!pre.count) { toast(t("Nichts aufzuräumen – keine überflüssigen desc.txt/reader.txt.")); return; }
-    const ok = await confirmBox(t("{n} überflüssige Dateien (desc.txt, reader.txt) in {folders} Buchordnern löschen? Alles darin steht auch in metadata.json und in der M4B. Neue werden danach nicht mehr geschrieben; Hörbücher und Cover bleiben unberührt.",
+    if (!pre.count) { toast(t("Nichts aufzuräumen.")); return; }
+    const ok = await confirmBox(t("{n} überflüssige Dateien (desc.txt, reader.txt) in {folders} Buchordnern löschen? Hörbücher und Cover bleiben.",
       { n: pre.count, folders: pre.folders }), t("Löschen"));
     if (!ok) return;
     const res = await api<{ removed: number; errors: string[] }>("POST", "/api/library/cleanup");
@@ -343,13 +343,13 @@ function renderInbox(d: AudiobooksStatus): void {
     el("div", { class: "kv" }, el("span", {}, t("Eingang")), el("code", { title: d.inbox }, d.inbox || "–"), ok(d.inbox_ok)),
     el("div", { class: "kv" }, el("span", {}, t("Bibliothek")), el("code", { title: d.library }, d.library || "–"), ok(d.library_ok)),
     el("div", { class: "kv" }, el("span", {}, t("Überwachung")),
-      el("span", {}, d.enabled ? t("an · zuletzt geprüft {when}", { when: fmtAgo(d.last_scan) }) : t("aus (Einstellungen)"))),
+      el("span", {}, d.enabled ? t("An · zuletzt geprüft {when}", { when: fmtAgo(d.last_scan) }) : t("Aus (Einstellungen)"))),
   );
   if (d.queues) {
     const waiting = (n: number): string => plural(n, t("1 wartet"), t("{n} warten", { n }));
     const q = (x: QueueStat): string => x.running
       ? plural(x.running, t("1 läuft"), t("{n} laufen", { n: x.running })) + (x.waiting ? ", " + waiting(x.waiting) : "")
-      : x.waiting ? waiting(x.waiting) : t("frei");
+      : x.waiting ? waiting(x.waiting) : t("Frei");
     box.append(el("div", { class: "kv" }, el("span", {}, t("Kodieren")), el("span", {}, q(d.queues.encode))),
       el("div", { class: "kv" }, el("span", {}, t("Ablegen")), el("span", {}, q(d.queues.io))));
   }
@@ -464,7 +464,7 @@ function bookDetails(j: AudiobookJob): HTMLDivElement {
     if (j.candidates?.length) {
       box.append(el("ul", { class: "cands" }, j.candidates.map((c, i) => candidate(j, c, i === 0))));
     } else {
-      box.append(el("p", { class: "muted" }, t("Keine Treffer. Anders suchen, einen Link von Audible, BookBeat oder Thalia einfügen – oder die Angaben selbst eintragen.")));
+      box.append(el("p", { class: "muted" }, t("Keine Treffer. Anders suchen, einen Link einfügen oder selbst eintragen.")));
     }
     box.append(el("div", { class: "row gap wrap" },
       el("button", { class: "btn small", onclick: () => manualBook(j) }, t("Selbst eintragen …"))));
@@ -496,7 +496,7 @@ function betterVersion(q: Duplicate["quality"]): "old" | "new" | null {
 
 function qualityCard(label: string, q: Quality | null, best: boolean): HTMLElement {
   return el("div", { class: "dup-version" + (best ? " best" : "") },
-    el("span", { class: "dup-label" }, label, best ? el("span", { class: "rtag ok" }, icon("check"), t("besser")) : null),
+    el("span", { class: "dup-label" }, label, best ? el("span", { class: "rtag ok" }, icon("check"), t("Besser")) : null),
     q ? el("b", {}, `${q.kbps} kbit/s`) : el("b", { class: "muted" }, "–"),
     q ? el("span", { class: "muted small" }, [fmtDuration(q.duration), fmtSize(q.size),
       plural(q.files, t("1 Datei"), t("{n} Dateien", { n: q.files }))].join(" · ")) : null);
@@ -508,7 +508,7 @@ function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
     if (action === "replace") {
       const worse = better === "old" ? " " + t("Achtung: Die neue Fassung klingt deutlich schlechter ({new} statt {old} kbit/s).",
         { new: d.quality?.new?.kbps ?? "?", old: d.quality?.old?.kbps ?? "?" }) : "";
-      if (!(await confirmBox(t("Die vorhandene Fassung „{path}“ aus der Bibliothek nehmen (sie wird nach _ersetzt im Eingang verschoben, nicht gelöscht) und durch die neue ersetzen?", { path: d.path }) + worse,
+      if (!(await confirmBox(t("Vorhandene Fassung „{path}“ durch die neue ersetzen? Sie wird nach _ersetzt im Eingang verschoben.", { path: d.path }) + worse,
         t("Ersetzen")))) return;
     }
     try { await api("POST", `/api/audiobooks/${j.id}/duplicate`, { action }); toast(label); pollBooks(true); }
@@ -521,7 +521,7 @@ function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
     better === "new" ? t("Durch die bessere ersetzen") : t("Altes ersetzen"));
   return el("div", { class: "dup-box" },
     el("div", {}, el("b", {}, t("Schon in der Bibliothek:"), " "), el("code", {}, d.path),
-      el("span", { class: "muted" }, ` – ${DUP_WHY[d.why] || t("ähnlich")}${d.format && d.format !== "m4b" ? ", " + t("dort als {format}", { format: d.format.toUpperCase() }) : ""}`)),
+      el("span", { class: "muted" }, ` – ${DUP_WHY[d.why] || t("Ähnlich")}${d.format && d.format !== "m4b" ? ", " + t("dort als {format}", { format: d.format.toUpperCase() }) : ""}`)),
     d.quality ? el("div", { class: "dup-compare" },
       qualityCard(t("In der Bibliothek"), d.quality.old, better === "old"),
       qualityCard(t("Neu"), d.quality.new, better === "new")) : null,
@@ -571,7 +571,7 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
         langTag(c),
         c.request_id ? el("span", { class: "rtag req-pending", title: t("Dieses Buch wurde angefragt – Übernehmen erfüllt die Anfrage") }, t("Anfrage von {name}", { name: c.request_user || "–" })) : null,
         c.series ? el("span", { class: "tag" }, `${c.series}${c.series_position ? " #" + c.series_position : ""}`) : null,
-        c.format_type && c.format_type !== "unabridged" ? el("span", { class: "tag soft" }, c.format_type === "abridged" ? t("gekürzt") : c.format_type) : null,
+        c.format_type && c.format_type !== "unabridged" ? el("span", { class: "tag soft" }, c.format_type === "abridged" ? t("Gekürzt") : c.format_type) : null,
         el("span", { class: diff === null ? "" : diff <= 0.03 ? "ok" : diff > 0.15 ? "err" : "" },
           `${fmtDuration(runtime)}${diff === null ? "" : diff <= 0.03 ? " ✓" : " " + t("(Dateien: {duration})", { duration: fmtDuration(j.duration) })}`),
         c.release_date ? el("span", {}, c.release_date.slice(0, 4)) : null,
@@ -591,7 +591,7 @@ async function chooseBook(j: AudiobookJob, c: Book): Promise<void> {
   try {
     await api("POST", `/api/audiobooks/${j.id}/choose`, { id: c.id || c.asin, asin: c.asin, region: c.region });
     follow(j.id, c.title);
-    toast(t("„{title}“ wird getaggt und abgelegt", { title: c.title }), "info");
+    toast(t("„{title}“ wird abgelegt", { title: c.title }), "info");
     pollBooks(true);
   } catch (e) { toast(errMsg(e), true); }
 }
@@ -655,13 +655,13 @@ async function saveManual(): Promise<void> {
   try {
     await api("POST", `/api/audiobooks/${d.dataset.jobId}/manual`, data);
     follow(d.dataset.jobId, String(data.title || ""));
-    toast(t("Wird mit deinen Angaben getaggt und abgelegt"), "info");
+    toast(t("Wird mit deinen Angaben abgelegt"), "info");
     pollBooks(true);
   } catch (e) { toast(errMsg(e), true); }
 }
 
 async function reopenBook(j: AudiobookJob): Promise<void> {
-  if (!(await confirmBox(t("Buch aus der Bibliothek zurückholen und neu zuordnen? Die M4B wandert zurück in die Prüf-Liste, desc.txt/reader.txt/cover.jpg werden entfernt."), t("Korrigieren")))) return;
+  if (!(await confirmBox(t("Buch aus der Bibliothek zurückholen und neu zuordnen? Die M4B kommt zurück unter „Zu prüfen“, desc.txt, reader.txt und cover.jpg werden entfernt."), t("Korrigieren")))) return;
   try {
     await api("POST", `/api/audiobooks/${j.id}/reopen`);
     books.filter = "review"; store.set("bookFilter", "review");

@@ -43,7 +43,7 @@
     <a class="tab admin-only" href="/books" data-view="books" title="Eingang, Verarbeitung und Bibliothek – nur für Admins">Hörbücher <span id="reviewBadge" class="pill" hidden></span></a>
   </nav>
   <div class="topbar-actions">
-    <button id="themeBtn" class="btn ghost" title="Design"><svg class="ico" aria-hidden="true"><use href="#i-contrast"/></svg><span class="lbl">Design</span></button>
+    <button id="themeBtn" class="btn ghost" title="Darstellung"><svg class="ico" aria-hidden="true"><use href="#i-contrast"/></svg><span class="lbl">Darstellung</span></button>
     <a id="settingsBtn" class="btn ghost admin-only" href="/settings" data-view="settings" title="Einstellungen"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><span class="lbl">Einstellungen</span></a>
     <a id="statsBtn" class="btn ghost" href="/stats" data-view="stats" title="Statistik"><svg class="ico" aria-hidden="true"><use href="#i-chart"/></svg><span class="lbl">Statistik</span></a>
     <a id="accountBtn" class="btn ghost" href="/account" data-view="account" title="Konto"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg><span class="lbl" id="accountName">Konto</span></a>
@@ -55,7 +55,7 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Eingang</h2>
-        <button id="uploadBtn" class="btn small" title="Hörbuch vom Computer hochladen, z. B. von CD eingelesen"><svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg>Hochladen</button>
+        <button id="uploadBtn" class="btn small" title="Hörbuch vom Computer hochladen"><svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg>Hochladen</button>
         <button id="scanBtn" class="btn small ghost" title="Eingangsordner jetzt prüfen"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Prüfen</button>
       </div>
       <div class="inbox-info" id="inboxInfo"></div>
@@ -63,20 +63,20 @@
     <section class="panel">
       <div class="panel-head">
         <h2>Bibliothek</h2>
-        <button id="libraryScanBtn" class="btn small ghost" title="Bibliothek neu einlesen (passiert sonst automatisch alle paar Stunden)"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Einlesen</button>
-        <button id="libraryCleanBtn" class="btn small ghost" title="Überflüssige desc.txt und reader.txt aus den Buchordnern löschen">Aufräumen</button>
+        <button id="libraryScanBtn" class="btn small ghost" title="Bibliothek neu einlesen"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Einlesen</button>
+        <button id="libraryCleanBtn" class="btn small ghost" title="Überflüssige desc.txt und reader.txt löschen">Aufräumen</button>
       </div>
       <div class="inbox-info" id="libraryInfo"></div>
     </section>
     <details class="panel how">
       <summary class="panel-head"><h2>So funktioniert's</h2><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
       <ol class="steps">
-        <li>Hörbuch-Ordner oder einzelne Dateien in den <b>Eingang</b> legen (MP3, M4A, M4B, FLAC, OGG …, auch mit CD1/CD2-Unterordnern).</li>
-        <li>Sobald nichts mehr kopiert wird, entsteht daraus <b>eine M4B mit Kapiteln</b>.</li>
-        <li>Das Buch wird bei <b>Audible</b> gesucht. Eindeutige Treffer werden getaggt (Titel, Autor, Sprecher, Serie, Cover, Beschreibung) und in die <b>Bibliothek</b> einsortiert.</li>
-        <li>Unsichere Fälle landen unter <b>Zu prüfen</b> – Treffer wählen oder bearbeiten, neu suchen, einen Link von <b>Audible, BookBeat oder Thalia</b> einfügen oder alles selbst eintragen. Falsch einsortiert? <b>Korrigieren</b> holt ein fertiges Buch zurück.</li>
+        <li>Hörbuch-Ordner oder einzelne Dateien in den <b>Eingang</b> legen (MP3, M4A, M4B, FLAC, OGG …).</li>
+        <li>Hörwerk macht daraus <b>eine M4B mit Kapiteln</b>, erkennt das Buch bei <b>Audible</b>, schreibt die Tags und legt es in die <b>Bibliothek</b>.</li>
+        <li>Unsichere Fälle landen unter <b>Zu prüfen</b>. Dort einen Treffer wählen, einen Link einfügen oder alles selbst eintragen.</li>
+        <li>Falsch einsortiert? <b>Korrigieren</b> holt ein fertiges Buch zurück.</li>
       </ol>
-      <p class="muted small">Eigene Kapitel: <code>chapters.txt</code> in den Buchordner legen. Bücher, die es nicht bei Audible gibt: <code>metadata.yml</code> (wie bei beets-audible).</p>
+      <p class="muted small">Eigene Kapitel: <code>chapters.txt</code> im Buchordner. Bücher ohne Audible-Eintrag: <code>metadata.yml</code> (wie bei beets-audible).</p>
     </details>
   </aside>
   <section class="panel books-panel">
@@ -103,10 +103,10 @@
     <details class="panel how">
       <summary class="panel-head"><h2>So funktioniert's</h2><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
       <ol class="steps">
-        <li>SABnzbd unter <b>Einrichten</b> eintragen. Für die Suche hier zusätzlich einen Newznab-Indexer – ohne Indexer kümmert sich der Eingang trotzdem um alles, was SABnzbd lädt.</li>
+        <li>SABnzbd unter <b>Einrichten</b> eintragen, für die Suche zusätzlich einen Newznab-Indexer.</li>
         <li>In SABnzbd eine Kategorie (z. B. <code>audiobooks</code>) anlegen, deren Ordner der <b>Hörbuch-Eingang</b> ist.</li>
-        <li>Hörbuch suchen (Audible und BookBeat) und auswählen – dann sucht Hörwerk die Releases dazu. Findet sich nichts, den Suchbegriff für die Indexer ändern (z. B. nur Titel).</li>
-        <li><b>Download</b> klicken – nach dem Download übernimmt der Eingang: M4B, Tags, Bibliothek. Das gewählte Buch (ASIN bzw. Titel und Autor) sorgt für die richtige Erkennung.</li>
+        <li>Hörbuch suchen und auswählen. Hörwerk sucht dann die passenden Releases.</li>
+        <li><b>Download</b> klicken. Danach übernimmt der Eingang.</li>
       </ol>
     </details>
   </aside>
@@ -136,7 +136,7 @@
         </select>
         <button class="btn" type="submit" id="searchGo">Releases suchen</button>
       </form>
-      <p class="pad-x muted small admin-only" id="freeSearchRow"><button type="button" class="linkish" id="freeSearchBtn">Buch gibt es in keinem Shop? Direkt bei den Indexern suchen</button></p>
+      <p class="pad-x muted small admin-only" id="freeSearchRow"><button type="button" class="linkish" id="freeSearchBtn">Nicht im Shop? Direkt bei den Indexern suchen</button></p>
       <div id="searchOwned" class="owned-note admin-only" hidden></div>
       <div class="row gap pad-x admin-only result-tools"><div id="searchNote" class="muted small grow"></div>
         <select id="searchSort" class="sort-pick" aria-label="Releases sortieren">
@@ -148,8 +148,8 @@
         </select></div>
       <div class="table-wrap admin-only">
         <table class="results">
-          <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">Grabs</th><th class="c-act"></th></tr></thead>
-          <tbody id="searchResults"><tr><td colspan="5" class="empty-row">Erst ein Hörbuch suchen und auswählen – dann zeigt Hörwerk die passenden Releases.</td></tr></tbody>
+          <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">Abrufe</th><th class="c-act"></th></tr></thead>
+          <tbody id="searchResults"><tr><td colspan="5" class="empty-row">Erst ein Hörbuch suchen und auswählen.</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -161,7 +161,7 @@
     <section class="panel">
       <div class="panel-head"><h2>Vorschläge</h2></div>
       <nav id="discoverSections" class="side-nav" aria-label="Vorschläge">
-        <button type="button" data-section="foryou">Für dich <small>passend zur Bibliothek</small></button>
+        <button type="button" data-section="foryou">Für dich <small>Passend zur Bibliothek</small></button>
         <button type="button" data-section="genre">Nach Genre <small>Bestseller &amp; Neuheiten</small></button>
         <button type="button" data-section="critics">Aus der Kritik <small>Deutschlandfunk Kultur, Perlentaucher</small></button>
       </nav>
@@ -169,12 +169,11 @@
     <details class="panel how">
       <summary class="panel-head"><h2>Was gezeigt wird</h2><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
       <ul class="steps">
-        <li><b>Für dich</b>: Titel, die Audible-Hörer mit Büchern aus deiner Bibliothek verbinden – je öfter, desto weiter oben.</li>
-        <li><b>Nach Genre</b>: alle Genres und Unterkategorien wie bei Audible – Bestseller, Bestbewertete und Neuheiten. Kleine Bereiche werden mit Titeln aufgefüllt, die genauso gut, aber von weniger Hörern bewertet sind.</li>
-        <li><b>Aus der Kritik</b>: Bücher, die Deutschlandfunk, Deutschlandfunk Kultur (auch „Die Bücher des Monats“ mit den Bestenlisten für Sachbuch und Krimi) oder die Presse (laut Perlentaucher) besprochen hat und die es als Hörbuch gibt – die neuesten rund 40. Gibt es noch kein Hörbuch, merkt sich Hörwerk das Buch zwei Jahre lang und schaut einmal im Monat nach; erscheint es oder ist es angekündigt, taucht es hier wieder oben auf.</li>
-        <li>Nur gut bewertete, ungekürzte deutsche Hörbücher, die du noch nicht hast – nicht in der Bibliothek, nicht im Download, nicht in Arbeit (einstellbar unter <b>Einstellungen</b>).</li>
-        <li><b>Anfragen</b>: Gefällt dir ein Buch, frag es an – Hörwerk besorgt es und meldet sich, wenn es da ist.</li>
-        <li>Ob ein Sachbuch inhaltlich stimmt, kann keine Software prüfen. Deshalb zeigt „Für dich“ nur Sachbücher von anerkannten Autoren – deren Bücher im Feuilleton besprochen wurden oder die auf Hörwerks Liste seriöser Sachbuch-Autoren stehen. In „Nach Genre“ erscheinen alle Sachbücher, wenn du ein Sachbuch-Genre wählst – mit Hinweis.</li>
+        <li><b>Für dich</b>: Titel, die Hörer deiner Bibliothek auch gehört haben.</li>
+        <li><b>Nach Genre</b>: Bestseller, Bestbewertete und Neuheiten je Genre.</li>
+        <li><b>Aus der Kritik</b>: Bücher, die Deutschlandfunk, Deutschlandfunk Kultur oder die Presse (laut Perlentaucher) besprochen haben und die es als Hörbuch gibt.</li>
+        <li>Gezeigt werden nur gut bewertete, ungekürzte deutsche Hörbücher, die du noch nicht hast (einstellbar unter <b>Einstellungen</b>).</li>
+        <li>Sachbücher zeigt „Für dich“ nur von anerkannten Autoren. Sterne sagen nichts über den Inhalt.</li>
       </ul>
     </details>
   </aside>
@@ -188,17 +187,17 @@
       </div>
     </div>
     <div id="welcome" class="welcome" hidden>
-      <b>Willkommen bei Hörwerk!</b> So einfach geht es:
+      <b>Willkommen bei Hörwerk!</b>
       <ol>
-        <li><b>Stöbern:</b> Hier stehen gute Hörbücher. Links bzw. oben kannst du wählen: passend zu unserer Sammlung, nach Genre oder von Kritikern empfohlen.</li>
-        <li><b>Wünschen:</b> Gefällt dir eins, tippe auf <b>Anfragen</b>. Mehr musst du nicht tun.</li>
-        <li><b>Hören:</b> Sobald das Buch da ist, steht es in der Hörbuch-App. Unter <b>Anfragen</b> siehst du, wie weit es ist.</li>
+        <li><b>Stöbern:</b> Gute Hörbücher nach Bibliothek, Genre oder Kritik.</li>
+        <li><b>Wünschen:</b> Auf <b>Anfragen</b> tippen, mehr nicht.</li>
+        <li><b>Hören:</b> Sobald das Buch da ist, steht es in der Hörbuch-App. Den Stand siehst du unter <b>Anfragen</b>.</li>
       </ol>
-      <p>Du suchst ein bestimmtes Buch? Oben auf <b>Suchen</b> tippen und Titel oder Autor eingeben.</p>
+      <p>Ein bestimmtes Buch? Oben auf <b>Suchen</b> tippen.</p>
       <button type="button" class="btn small primary" id="welcomeOk">Verstanden</button>
     </div>
     <p id="discoverPersonal" class="discover-note personal" hidden></p>
-    <p id="discoverNote" class="discover-note" hidden>Sachbuch: Sterne sagen, wie gut ein Buch ankommt – nicht, ob es inhaltlich stimmt. Im Zweifel lieber „Aus der Kritik“.</p>
+    <p id="discoverNote" class="discover-note" hidden>Sachbuch: Sterne zeigen, wie gut ein Buch ankommt, nicht ob es stimmt. Im Zweifel „Aus der Kritik“.</p>
     <ul id="discoverList" class="discover-grid"></ul>
   </section>
 </main>
@@ -221,18 +220,18 @@
     <section class="panel">
       <div class="panel-head"><h2><a href="/settings" class="plain">Einstellungen</a></h2></div>
       <nav id="settingsNav" class="side-nav" aria-label="Einstellungen">
-        <a href="/settings/health" data-section="health">Healthcheck <small>Ist alles richtig eingerichtet?</small></a>
+        <a href="/settings/health" data-section="health">Systemprüfung <small>Ist alles richtig eingerichtet?</small></a>
         <a href="/settings/general" data-section="general">Allgemein <small>Adresse, Sprache</small></a>
         <a href="/settings/library" data-section="library">Eingang &amp; Bibliothek <small>Erkennung, Ordner, Dateien</small></a>
         <a href="/settings/convert" data-section="convert">M4B-Konvertierung <small>Bitrate, Kapitel</small></a>
-        <a href="/settings/downloads" data-section="downloads">Indexer &amp; SABnzbd <small>Release-Suche und Download</small></a>
-        <a href="/settings/transfers" data-section="transfers">Downloads <small>was SABnzbd lädt, Verlauf aufräumen</small></a>
-        <a href="/settings/services" data-section="services">Audiobookshelf &amp; Plex <small>nach dem Ablegen neu einlesen</small></a>
-        <a href="/settings/discover" data-section="discover">Entdecken &amp; Anfragen <small>Qualität, Kontingent</small></a>
-        <a href="/settings/notify" data-section="notify">Benachrichtigungen <small>ntfy aufs Handy</small></a>
+        <a href="/settings/downloads" data-section="downloads">Indexer &amp; SABnzbd <small>Suche und Download</small></a>
+        <a href="/settings/transfers" data-section="transfers">Downloads <small>Laufende Downloads, Verlauf aufräumen</small></a>
+        <a href="/settings/services" data-section="services">Audiobookshelf &amp; Plex <small>Bibliothek nach dem Ablegen neu einlesen</small></a>
+        <a href="/settings/discover" data-section="discover">Entdecken &amp; Anfragen <small>Qualität, Monatslimit</small></a>
+        <a href="/settings/notify" data-section="notify">Benachrichtigungen <small>Push-Nachrichten über ntfy</small></a>
         <a href="/settings/users" data-section="users">Konten <small>Familie, Rechte, Admin-Protokoll</small></a>
-        <a href="/stats">Statistik <small>wer wie viel angefragt und gehört hat</small></a>
-        <a href="/settings/logs" data-section="logs">Protokoll <small>was gerade passiert</small></a>
+        <a href="/stats">Statistik <small>Wer wie viel angefragt und gehört hat</small></a>
+        <a href="/settings/logs" data-section="logs">Protokoll <small>Was gerade passiert</small></a>
       </nav>
     </section>
   </aside>
@@ -243,8 +242,7 @@
     <form id="settingsForm" class="dialog-body page-body" novalidate>
     <fieldset data-section="general">
       <legend>Allgemein</legend>
-      <label>Öffentliche Adresse <small>so erreicht man Hörwerk aus dem Internet (z. B. über Pangolin) – Einladungslinks zeigen
-        immer dorthin. Leer: wird übernommen, sobald du Hörwerk einmal darüber öffnest.</small>
+      <label>Öffentliche Adresse <small>Für Einladungslinks. Leer: wird beim ersten Aufruf übernommen.</small>
         <input name="public_url" type="url" placeholder="https://hoerwerk.example.de" spellcheck="false" autocomplete="off"></label>
       <label class="lang-pick">Oberfläche und Benachrichtigungen
         <select name="language">
@@ -256,24 +254,24 @@
     <fieldset data-section="convert">
       <legend>M4B-Konvertierung</legend>
       <div class="grid2">
-        <label>Qualität <small>Hörwerk erkennt Hörspiele (Musik, Effekte, mehrere Sprecher) und gibt ihnen mehr Bitrate als Lesungen. Nie mehr als die Quelle hat – eine 64k-Lesung bleibt 64k. Dolby Atmos wird immer unverändert übernommen, nie zu Stereo heruntergerechnet.</small>
+        <label>Qualität <small>Hörspiele bekommen mehr Bitrate als Lesungen, nie mehr als die Quelle. Dolby Atmos bleibt unverändert.</small>
           <select name="audio_quality">
             <option value="standard">Standard – Lesung bis 128k, Hörspiel bis 192k</option>
             <option value="high">Hoch – Lesung bis 160k, Hörspiel bis 256k</option>
             <option value="original">Original – möglichst nichts umwandeln (auch verlustfrei), sonst bis 320k</option>
           </select>
         </label>
-        <label>AAC-Bitrate <small>beim Umwandeln</small>
+        <label>AAC-Bitrate <small>Beim Umwandeln</small>
           <select name="bitrate">
-            <option value="auto">automatisch (nach Qualität)</option>
+            <option value="auto">Automatisch (nach Qualität)</option>
             <option>48k</option><option>64k</option><option>96k</option><option>128k</option><option>160k</option><option>192k</option><option>256k</option><option>320k</option>
           </select>
         </label>
         <label>Kapitelnamen
           <select name="chapter_titles">
-            <option value="auto">automatisch (Tag, sonst Dateiname)</option>
-            <option value="filename">aus Dateinamen</option>
-            <option value="tag">aus ID3-Titel</option>
+            <option value="auto">Automatisch (Tag, sonst Dateiname)</option>
+            <option value="filename">Aus Dateinamen</option>
+            <option value="tag">Aus ID3-Titel</option>
           </select>
         </label>
       </div>
@@ -295,51 +293,51 @@
         </label>
         <label>Erkennung
           <select name="ab_match">
-            <option value="auto">automatisch, unsichere prüfen</option>
-            <option value="review">immer selbst prüfen</option>
-            <option value="off">aus (nur konvertieren &amp; ablegen)</option>
+            <option value="auto">Automatisch, unsichere prüfen</option>
+            <option value="review">Immer selbst prüfen</option>
+            <option value="off">Aus (nur konvertieren &amp; ablegen)</option>
           </select>
         </label>
-        <label>Mindest-Sicherheit <small>0.5 – 1.0</small>
+        <label>Mindest-Trefferquote <small>0,5 – 1,0</small>
           <input name="ab_threshold" type="number" min="0.5" max="1" step="0.01">
         </label>
         <label>Kapitel
           <select name="ab_chapters">
             <option value="auto">Audible, wenn eigene nur „Track 1, 2 …“</option>
             <option value="audible">Audible, wenn Laufzeit passt</option>
-            <option value="files">immer aus den Dateien</option>
+            <option value="files">Immer aus den Dateien</option>
           </select>
         </label>
         <label>Cover
           <select name="ab_cover_source">
-            <option value="audible">aus dem Shop (Audible/BookBeat, volle Auflösung)</option>
-            <option value="local">aus dem Ordner / der Datei</option>
+            <option value="audible">Aus dem Shop (Audible/BookBeat, volle Auflösung)</option>
+            <option value="local">Aus dem Ordner / der Datei</option>
           </select>
         </label>
         <label>Schon in der Bibliothek
           <select name="ab_duplicates">
-            <option value="ask">nachfragen</option>
-            <option value="skip">überspringen (nicht ablegen)</option>
-            <option value="keep">trotzdem zusätzlich ablegen</option>
+            <option value="ask">Nachfragen</option>
+            <option value="skip">Überspringen (nicht ablegen)</option>
+            <option value="keep">Trotzdem zusätzlich ablegen</option>
           </select>
         </label>
         <label>Alte Fassung beim Umwandeln der Bibliothek
           <select name="ab_library_originals">
-            <option value="archive">nach _ersetzt im Eingang verschieben</option>
-            <option value="delete">löschen</option>
+            <option value="archive">Nach _ersetzt im Eingang verschieben</option>
+            <option value="delete">Löschen</option>
           </select>
         </label>
         <label>Originale im Eingang danach
           <select name="ab_originals">
-            <option value="archive">nach _fertig verschieben</option>
-            <option value="delete">löschen</option>
+            <option value="archive">Nach _fertig verschieben</option>
+            <option value="delete">Löschen</option>
           </select>
         </label>
       </div>
-      <label>Ordner in der Bibliothek <small>{author} {series} {series_position:2} {title} {year} {narrator} {asin} – [ … ] entfällt, wenn leer. Vorhandene Ordner werden auch bei anderer Schreibweise wiederverwendet.</small>
+      <label>Ordner in der Bibliothek <small>{author} {series} {series_position:2} {title} {year} {narrator} {asin} – [ … ] entfällt, wenn leer</small>
         <input name="ab_folder_template" type="text" spellcheck="false">
       </label>
-      <label>Dateiname <small>ohne .m4b</small>
+      <label>Dateiname <small>Ohne .m4b</small>
         <input name="ab_file_template" type="text" spellcheck="false">
       </label>
       <div class="path-preview" id="pathPreview"></div>
@@ -366,13 +364,13 @@
         <label>Mindestanzahl Bewertungen
           <input name="discover_min_count" type="number" min="0" step="1">
         </label>
-        <label class="check"><input type="checkbox" name="discover_unabridged"> nur ungekürzte Hörbücher</label>
-        <label class="check"><input type="checkbox" name="discover_german"> nur deutschsprachige</label>
-        <label class="check"><input type="checkbox" name="discover_nonfiction_store"> Alle Sachbücher in „Für dich“ (sonst nur von anerkannten Autoren)</label>
-        <label>Weitere anerkannte Sachbuch-Autoren <small>Ihre Sachbücher erscheinen in „Für dich“. Schon dabei: alle, deren Bücher im Feuilleton besprochen wurden (Perlentaucher – FAZ, SZ, Zeit, Deutschlandfunk …) oder in den Kritiken unter „Aus der Kritik“ vorkommen, dazu eine feste Liste von rund 400 Autoren faktenbasierter Sachbücher seit 2010 (z. B. Yuval Noah Harari, Stefanie Stahl, Mai Thi Nguyen-Kim, Harald Lesch, Christopher Clark, Giulia Enders). Ein Name pro Zeile oder mit Komma getrennt. Das ist eine Prüfung des Rufs, keine Prüfung der Inhalte.</small>
+        <label class="check"><input type="checkbox" name="discover_unabridged"> Nur ungekürzte Hörbücher</label>
+        <label class="check"><input type="checkbox" name="discover_german"> Nur deutschsprachige</label>
+        <label class="check"><input type="checkbox" name="discover_nonfiction_store"> Alle Sachbücher in „Für dich“ zeigen</label>
+        <label>Weitere anerkannte Sachbuch-Autoren <small>Ihre Sachbücher erscheinen in „Für dich“. Ein Name pro Zeile oder durch Komma getrennt.</small>
           <textarea name="discover_trusted_authors" rows="3" spellcheck="false" placeholder="z. B. Mai Thi Nguyen-Kim, Harald Lesch"></textarea>
         </label>
-        <label>Anfragen pro Monat <small>Standard je Familienkonto</small>
+        <label>Monatslimit <small>Anfragen pro Familienkonto</small>
           <input name="request_quota" type="number" min="0" max="1000" step="1">
         </label>
         <label>Anfragen ohne Fund erneut suchen alle <small>Stunden</small>
@@ -382,11 +380,11 @@
     </fieldset>
     <fieldset id="notifyBox" data-section="notify">
       <legend>Benachrichtigungen (ntfy)</legend>
-      <p class="muted small">Push-Nachrichten aufs Handy über <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a> – ntfy.sh oder ein eigener Server. Token bzw. Passwort bleiben auf dem Server.</p>
+      <p class="muted small">Push-Nachrichten über <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy</a>, auf ntfy.sh oder einem eigenen Server.</p>
       <div class="grid2">
         <label>Server <input name="ntfy_url" type="text" placeholder="https://ntfy.sh" spellcheck="false"></label>
         <label>Topic <input name="ntfy_topic" type="text" placeholder="hoerbuecher-1234" spellcheck="false"></label>
-        <label>Access-Token <small>oder Benutzer + Passwort</small><input name="ntfy_token" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>Access-Token <small>Oder Benutzer + Passwort</small><input name="ntfy_token" type="password" autocomplete="off" spellcheck="false"></label>
         <label>Priorität
           <select name="ntfy_priority">
             <option value="1">1 – minimal</option><option value="2">2 – niedrig</option><option value="3">3 – normal</option>
@@ -395,7 +393,7 @@
         </label>
         <label>Benutzer <input name="ntfy_user" type="text" autocomplete="off" spellcheck="false"></label>
         <label>Passwort <input name="ntfy_password" type="password" autocomplete="off" spellcheck="false"></label>
-        <label>Adresse für Links in Nachrichten <small>Tippen auf eine Nachricht öffnet die passende Seite – leer = die öffentliche Adresse aus „Allgemein“</small><input name="ntfy_app_url" type="text" placeholder="https://hoerwerk.example.de" spellcheck="false"></label>
+        <label>Adresse für Links in Nachrichten <small>Leer: öffentliche Adresse aus „Allgemein“</small><input name="ntfy_app_url" type="text" placeholder="https://hoerwerk.example.de" spellcheck="false"></label>
       </div>
       <div class="small">Benachrichtigen bei:</div>
       <div class="grid2" id="notifyEvents"></div>
@@ -406,8 +404,8 @@
     <form id="sourcesForm" class="dialog-body page-body">
     <fieldset data-section="downloads">
       <legend>Newznab-Indexer</legend>
-      <p class="muted small">Optional, nur für die Suche: Newznab-Adresse deines Indexers (z. B. <code>https://indexer.example/api</code>) und dessen API-Key. Kategorie 3030 = Hörbuch.</p>
-      <p class="muted small">Mit „zuerst“ wird ein Indexer immer als Erster gefragt – die anderen nur, wenn er nichts Passendes hat.</p>
+      <p class="muted small">Optional, nur für die Suche: Newznab-Adresse des Indexers (z. B. <code>https://indexer.example/api</code>) und API-Key. Kategorie 3030 = Hörbuch.</p>
+      <p class="muted small">Mit „Zuerst“ wird ein Indexer zuerst gefragt, die anderen nur ohne Treffer.</p>
       <div id="indexerRows" class="indexer-rows"></div>
       <button type="button" id="addIndexerBtn" class="btn small">+ Indexer</button>
     </fieldset>
@@ -416,50 +414,49 @@
       <div class="grid2">
         <label>Adresse <input name="sab_url" type="text" placeholder="http://192.168.1.10:8080" spellcheck="false"></label>
         <label>API-Key <input name="sab_apikey" type="password" autocomplete="off" spellcheck="false"></label>
-        <label>Kategorie <small>deren Ordner = Hörbuch-Eingang</small><input name="sab_category" type="text" placeholder="audiobooks"></label>
+        <label>Kategorie <small>Ordner = Hörbuch-Eingang</small><input name="sab_category" type="text" placeholder="audiobooks"></label>
       </div>
     </fieldset>
     <fieldset data-section="services">
-      <legend>Audiobookshelf <small class="muted">optional</small></legend>
-      <p class="muted small">Nach dem Ablegen neuer Bücher wird die Bibliothek in Audiobookshelf neu eingelesen – nötig, wenn dessen
-        Ordnerüberwachung auf Netzwerk-Shares nichts mitbekommt. API-Token: Audiobookshelf → Einstellungen → Benutzer → Admin → API-Token.</p>
+      <legend>Audiobookshelf <small class="muted">Optional</small></legend>
+      <p class="muted small">Liest die Bibliothek nach dem Ablegen neu ein, falls die Ordnerüberwachung auf Netzwerkfreigaben nichts mitbekommt.
+        API-Token: Audiobookshelf → Einstellungen → Benutzer → Admin → API-Token.</p>
       <div class="grid2">
         <label>Adresse <input name="abs_url" type="text" placeholder="http://192.168.1.10:13378" spellcheck="false"></label>
         <label>API-Token <input name="abs_token" type="password" autocomplete="off" spellcheck="false"></label>
-        <label>Bibliothek <small>leer = wird beim Testen gewählt</small><input name="abs_library" type="text" list="absLibraries" spellcheck="false"></label>
+        <label>Bibliothek <small>Leer = wird beim Testen gewählt</small><input name="abs_library" type="text" list="absLibraries" spellcheck="false"></label>
       </div>
       <datalist id="absLibraries"></datalist>
     </fieldset>
     <fieldset data-section="services">
-      <legend>Plex <small class="muted">optional</small></legend>
-      <p class="muted small">Nach dem Ablegen neuer Bücher wird die Hörbuch-Mediathek in Plex neu eingelesen. Mit „Papierkorb leeren“
-        verschwinden danach auch ersetzte MP3-Fassungen, die es auf der Platte nicht mehr gibt. Token: in Plex Web bei einem Titel
-        „…“ → „Informationen abrufen“ → „XML anzeigen“ – der Wert hinter <code>X-Plex-Token=</code> in der Adresse.</p>
+      <legend>Plex <small class="muted">Optional</small></legend>
+      <p class="muted small">Liest die Hörbuch-Mediathek nach dem Ablegen neu ein. Token: In Plex Web bei einem Titel „…“ → „Informationen abrufen“ →
+        „XML anzeigen“, der Wert hinter <code>X-Plex-Token=</code> in der Adresse.</p>
       <div class="grid2">
         <label>Adresse <input name="plex_url" type="text" placeholder="http://192.168.1.10:32400" spellcheck="false"></label>
         <label>Token <input name="plex_token" type="password" autocomplete="off" spellcheck="false"></label>
-        <label>Mediathek <small>leer = wird beim Testen gewählt</small><input name="plex_section" type="text" spellcheck="false"></label>
+        <label>Mediathek <small>Leer = wird beim Testen gewählt</small><input name="plex_section" type="text" spellcheck="false"></label>
         <label class="check"><input type="checkbox" name="plex_empty_trash"> Danach Papierkorb der Mediathek leeren</label>
       </div>
     </fieldset>
-    <p class="muted small">API-Keys und Token werden nur auf dem Server gespeichert (Datenbank in <code>/config</code>) und nie wieder angezeigt. Feld leer lassen = gespeicherten Key behalten.</p>
+    <p class="muted small">API-Keys und Token liegen nur auf dem Server (<code>/config</code>) und werden nicht mehr angezeigt. Leer lassen behält den gespeicherten Wert.</p>
     <div class="save-bar"><button type="submit" class="btn primary">Speichern &amp; testen</button></div>
     </form>
     <div class="dialog-body page-body" data-page="users">
-    <p class="muted small">Admins dürfen alles. Nutzer sehen <b>Entdecken</b>, <b>Suchen</b> und ihre <b>Anfragen</b> – mit den
-      Rechten unten auch fremde Anfragen oder die Release-Suche. Kontingent: Buchanfragen pro Monat (leer = Standard <span id="defaultQuota"></span>, 0 = keine).</p>
+    <p class="muted small">Admins dürfen alles. Nutzer sehen <b>Entdecken</b>, <b>Suchen</b> und ihre <b>Anfragen</b>, mit den
+      Rechten unten auch fremde Anfragen und die Release-Suche. Monatslimit: Anfragen pro Monat (leer = Standard <span id="defaultQuota"></span>, 0 = keine).</p>
     <div class="table-wrap">
       <table class="users">
         <thead><tr><th>Name</th><th>Rolle</th><th title="Sieht die Anfragen aller Nutzer">Alle Anfragen sehen</th>
-          <th title="Anfragen gehen ohne Freigabe los">Ohne Freigabe</th><th title="Darf Releases selbst ansehen und wählen">Interaktive Suche</th>
-          <th>Kontingent</th><th>Gesperrt</th><th title="Zweitfaktor (Authenticator-App)">2FA</th><th>Zuletzt da</th><th></th></tr></thead>
+          <th title="Anfragen gehen ohne Freigabe los">Ohne Freigabe</th><th title="Darf Releases selbst wählen">Interaktive Suche</th>
+          <th>Monatslimit</th><th>Gesperrt</th><th title="Zweitfaktor (Authenticator-App)">2FA</th><th>Zuletzt da</th><th></th></tr></thead>
         <tbody id="userRows"></tbody>
       </table>
     </div>
     <fieldset id="listenMapFieldset" hidden>
       <legend>Hörverlauf zuordnen</legend>
-      <p class="muted small">Welches Audiobookshelf-Konto und welches Plex-Profil gehört zu wem? Daraus entstehen der persönliche Bereich
-        <b>Für dich</b> und die Hörzeit in der <b>Statistik</b>. Audiobookshelf-Konten kann jede Person auch selbst unter <b>Konto</b> verbinden.</p>
+      <p class="muted small">Welches Audiobookshelf-Konto und welches Plex-Profil gehört zu wem? Daraus entstehen <b>Für dich</b> und die Hörzeit
+        in der <b>Statistik</b>. Audiobookshelf kann jede Person auch selbst unter <b>Konto</b> verbinden.</p>
       <p id="listenMapErrors" class="err small" hidden></p>
       <div class="table-wrap">
         <table class="users listen-map">
@@ -471,47 +468,46 @@
     <fieldset>
       <legend>Sicherheit</legend>
       <label class="check"><input type="checkbox" id="adminTotpRequired"><span>Admins brauchen einen Zweitfaktor
-        <small class="muted">Ohne kommen sie nur noch an ihr eigenes Konto, bis sie dort eine Authenticator-App eingerichtet haben.</small></span></label>
+        <small class="muted">Ohne Authenticator-App kommen sie nur an ihr eigenes Konto.</small></span></label>
     </fieldset>
     <fieldset>
       <legend>Einladungen</legend>
-      <p class="muted small">Ein Link zum Weitergeben, z. B. per WhatsApp oder Mail: Wer ihn öffnet, wählt selbst Name und
-        Passwort und bekommt ein Familienkonto. Der Link läuft ab und lässt sich jederzeit widerrufen.</p>
+      <p class="muted small">Link zum Weitergeben: Wer ihn öffnet, wählt Name und Passwort und bekommt ein Familienkonto.
+        Der Link läuft ab und lässt sich widerrufen.</p>
       <div class="grid2">
-        <label>Für wen <small>nur als Notiz für dich, z. B. „Mama“</small><input id="inviteNote" type="text" maxlength="60" autocomplete="off"></label>
+        <label>Für wen <small>Nur als Notiz für dich, z. B. „Mama“</small><input id="inviteNote" type="text" maxlength="60" autocomplete="off"></label>
         <label>Gültig
           <select id="inviteDays"><option value="1">1 Tag</option><option value="7" selected>7 Tage</option>
-            <option value="30">30 Tage</option><option value="0">unbegrenzt</option></select></label>
-        <label>Wie viele Personen <small>können sich über diesen Link anmelden</small>
+            <option value="30">30 Tage</option><option value="0">Unbegrenzt</option></select></label>
+        <label>Wie viele Personen <small>Wie viele sich über den Link anmelden können</small>
           <select id="inviteUses"></select></label>
-        <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="inviteQuota" type="number" min="0" max="1000"></label>
+        <label>Monatslimit <small>Anfragen pro Monat, leer = Standard</small><input id="inviteQuota" type="number" min="0" max="1000"></label>
       </div>
       <div class="invite-perms" id="invitePerms">
         <span class="small">Rechte des neuen Kontos <small class="muted">(später unter Konten änderbar)</small></span>
-        <label class="check"><input type="checkbox" data-perm="auto_approve"> Ohne Freigabe – Anfragen gehen sofort los</label>
-        <label class="check"><input type="checkbox" data-perm="see_all_requests"> Alle Anfragen sehen – auch die der anderen</label>
-        <label class="check"><input type="checkbox" data-perm="interactive_search"> Interaktive Suche – Releases selbst ansehen und wählen</label>
+        <label class="check"><input type="checkbox" data-perm="auto_approve"> Ohne Freigabe: Anfragen gehen sofort los</label>
+        <label class="check"><input type="checkbox" data-perm="see_all_requests"> Alle Anfragen sehen</label>
+        <label class="check"><input type="checkbox" data-perm="interactive_search"> Interaktive Suche: Releases selbst wählen</label>
       </div>
-      <p id="invitePublic" class="discover-note" hidden>Einladungslinks zeigen immer auf die Adresse aus dem Internet. Bitte erst
-        unter <a href="/settings/general">Einstellungen → Allgemein</a> die öffentliche Adresse eintragen (z. B.
-        <code>https://hoerwerk.example.de</code>) – oder Hörwerk einmal über diese Adresse öffnen, dann übernimmt es sie selbst.</p>
+      <p id="invitePublic" class="discover-note" hidden>Zuerst unter <a href="/settings/general">Einstellungen → Allgemein</a> die öffentliche Adresse eintragen
+        (z. B. <code>https://hoerwerk.example.de</code>).</p>
       <div class="row gap"><button type="button" class="btn primary" id="inviteCreate">Einladung erstellen</button></div>
       <ul id="inviteList" class="invite-list"></ul>
     </fieldset>
     <fieldset>
-      <legend>Neues Konto <small class="muted">selbst anlegen, ohne Einladung</small></legend>
+      <legend>Neues Konto <small class="muted">Selbst anlegen, ohne Einladung</small></legend>
       <div class="grid2">
         <label>Name <input id="newUserName" type="text" maxlength="40" autocomplete="off" spellcheck="false"></label>
-        <label>Startpasswort <small>„Passwort erzeugen“ macht ein sicheres – bitte selbst ändern lassen</small>
+        <label>Startpasswort <small>„Passwort erzeugen“ macht ein sicheres</small>
           <input id="newUserPw" type="text" maxlength="256" autocomplete="off" spellcheck="false"></label>
         <label>Rolle <select id="newUserRole"><option value="user">Nutzer</option><option value="admin">Admin</option></select></label>
-        <label>Kontingent <small>Anfragen pro Monat, leer = Standard</small><input id="newUserQuota" type="number" min="0" max="1000"></label>
+        <label>Monatslimit <small>Anfragen pro Monat, leer = Standard</small><input id="newUserQuota" type="number" min="0" max="1000"></label>
       </div>
       <div class="row gap"><button type="button" class="btn" id="newUserPwGen">Passwort erzeugen</button>
         <button type="button" class="btn primary" id="newUserSave">Konto anlegen</button></div>
     </fieldset>
     <details class="audit-box">
-      <summary>Admin-Protokoll <small class="muted">wer hat wann was geändert</small></summary>
+      <summary>Admin-Protokoll <small class="muted">Wer hat wann was geändert</small></summary>
       <ul id="auditList" class="audit-list"></ul>
     </details>
     </div>
@@ -519,11 +515,10 @@
     <div class="dl-tools">
       <span id="dlSpeed" class="muted small"></span>
       <label class="check"><input type="checkbox" id="dlHideDone"> Fertige ausblenden</label>
-      <button id="dlClear" class="btn small" type="button" title="Fertige und fehlgeschlagene Downloads aus dem SABnzbd-Verlauf nehmen – die Dateien bleiben">Fertige aufräumen</button>
+      <button id="dlClear" class="btn small" type="button" title="Fertige und fehlgeschlagene Downloads aus dem Verlauf entfernen">Fertige aufräumen</button>
     </div>
     <ul id="dlList" class="job-list dl-list"><li class="empty">–</li></ul>
-    <p class="muted small">Nur die Hörbuch-Kategorie von SABnzbd. Aufräumen nimmt die Einträge aus dem SABnzbd-Verlauf, die Dateien bleiben liegen.
-      Downloads, auf die eine Anfrage noch wartet, bleiben stehen, bis Hörwerk sie übernommen hat.</p>
+    <p class="muted small">Nur die Hörbuch-Kategorie. Aufräumen entfernt Einträge aus dem SABnzbd-Verlauf, die Dateien bleiben.</p>
     </div>
     <div class="dialog-body page-body" data-page="logs">
     <div class="log-tools">
@@ -537,10 +532,10 @@
       <button id="logDownload" class="btn small" type="button">Herunterladen</button>
     </div>
     <div id="logView" class="log-view" role="log" aria-live="polite"></div>
-    <p class="muted small">Die letzten 3000 Einträge seit dem Start. Alles steht zusätzlich im Container-Log (<code>docker logs hoerwerk</code>).</p>
+    <p class="muted small">Die letzten 3000 Einträge seit dem Start. Alles steht zusätzlich im Container-Protokoll (<code>docker logs hoerwerk</code>).</p>
     </div>
     <div class="dialog-body page-body" data-page="health">
-      <div class="row gap wrap"><button type="button" class="btn small" id="healthRun"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Neu prüfen</button>
+      <div class="row gap wrap"><button type="button" class="btn small" id="healthRun"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Erneut prüfen</button>
         <span id="healthSummary" class="muted small"></span></div>
       <div id="healthList" class="health-list"></div>
     </div>
@@ -569,20 +564,19 @@
     </fieldset>
     <fieldset>
       <legend>Benachrichtigungen an mich</legend>
-      <label>Eigenes ntfy-Topic <small>dorthin meldet Hörwerk, wenn deine Anfragen da sind oder abgelehnt wurden (leer = keine)</small>
+      <label>Eigenes ntfy-Topic <small>Dorthin meldet Hörwerk erfüllte und abgelehnte Anfragen (leer = keine)</small>
         <input id="myTopic" type="text" maxlength="64" spellcheck="false" autocomplete="off" placeholder="z. B. eva-hoerbuecher"></label>
       <div class="row gap"><button type="button" class="btn small" id="myTopicSave">Speichern</button>
         <button type="button" class="btn small ghost" id="myTopicTest">Testnachricht senden</button></div>
     </fieldset>
     <fieldset id="listenFieldset" hidden>
       <legend>Was du hörst</legend>
-      <p class="muted small">Verbunden sieht Hörwerk, welche Hörbücher du in Audiobookshelf oder Plex gehört hast – und schlägt dir unter
-        <b>Entdecken → Für dich</b> passende neue vor. Nur du und die Admins sehen deine Hörzeit.</p>
+      <p class="muted small">Verbunden schlägt Hörwerk dir unter <b>Entdecken → Für dich</b> passende neue Bücher vor, passend zu dem, was du in
+        Audiobookshelf oder Plex gehört hast. Nur du und die Admins sehen deine Hörzeit.</p>
       <div id="listenBox"></div>
     </fieldset>
     <fieldset>
       <legend>So sieht dich Hörwerk</legend>
-      <p class="muted small">Hilft beim Einrichten eines Reverse-Proxys (z. B. Pangolin): Hier sollte deine echte Adresse stehen, nicht die des Proxys.</p>
       <dl id="whoami" class="facts"></dl>
     </fieldset>
     <fieldset>
@@ -636,9 +630,9 @@
     </details>
     <details id="statsMore" class="stats-more" hidden><summary>Mehr Zahlen</summary><dl id="statsFacts" class="stats-facts"></dl></details>
     <details class="stats-more"><summary>So wird gezählt</summary>
-      <p class="muted small">Angefragt: alle Bücher, die jemand angefragt hat, mit der Spielzeit laut Shop (abgelehnte zählen nicht). Eine Reihe zählt als eine Anfrage.
-        Gehört: die Hörzeit aus Audiobookshelf (jede Minute) und Plex (nur bis zum Ende gehörte Titel) – sichtbar, sobald ein Konto unter Einstellungen → Konten verknüpft ist.
-        Wartezeit: wie lange es typischerweise von der Anfrage bis zum fertigen Buch dauert.</p>
+      <p class="muted small">Angefragt: alle angefragten Bücher mit Spielzeit laut Shop, ohne abgelehnte. Eine Reihe zählt als eine Anfrage.
+        Gehört: Hörzeit aus Audiobookshelf und Plex (nur bis zum Ende gehörte Titel), sobald ein Konto unter Einstellungen → Konten verknüpft ist.
+        Wartezeit: typische Dauer von der Anfrage bis zum fertigen Buch.</p>
     </details>
     </div>
   </section>
@@ -673,9 +667,7 @@
 <dialog id="uploadDialog" class="wide">
   <form method="dialog" class="dialog-body">
     <h2>Hörbuch hochladen</h2>
-    <p class="muted small">Z. B. von CD eingelesen: <b>ein Ordner pro Hörbuch</b>, am besten „Autor – Titel“, gern mit
-      Unterordnern <code>CD1</code>, <code>CD2</code> … Hörwerk erkennt das Buch an Ordnername und Tags, macht daraus eine
-      M4B mit Kapiteln, holt die Daten von Audible und legt es in die Bibliothek.</p>
+    <p class="muted small"><b>Ein Ordner pro Hörbuch</b>, am besten „Autor – Titel“, gern mit Unterordnern <code>CD1</code>, <code>CD2</code> …</p>
     <div id="uploadDrop" class="drop-zone" tabindex="0">
       <svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg>
       <span>Ordner hierher ziehen</span>
@@ -685,7 +677,7 @@
         <label class="btn small ghost">Einzelne Dateien<input id="uploadFiles" type="file" multiple accept="audio/*,.m4b,.cue,image/*" hidden></label>
       </div>
     </div>
-    <label id="uploadNameRow" hidden>Name des Hörbuchs <small>für einzeln gewählte Dateien, z. B. „Theodor Storm – Der Schimmelreiter“</small>
+    <label id="uploadNameRow" hidden>Name des Hörbuchs <small>Für einzeln gewählte Dateien, z. B. „Theodor Storm – Der Schimmelreiter“</small>
       <input id="uploadName" maxlength="150" spellcheck="false"></label>
     <ul id="uploadList" class="upload-list"></ul>
     <div class="progress" id="uploadProgress" hidden><span></span></div>
@@ -701,14 +693,13 @@
 <dialog id="tracksDialog">
   <div class="dialog-body">
     <h2>Kapitel &amp; Namen: <span id="tracksTitle"></span></h2>
-    <p class="muted small"><code id="tracksPath"></code> – jede Datei wird ein Kapitel. Namen anpassen, dann zu M4B.
-      Danach wird das Buch bei Audible erkannt (oder kommt zur Prüfung), getaggt und ersetzt die alte Fassung.</p>
+    <p class="muted small"><code id="tracksPath"></code> – jede Datei wird ein Kapitel. Namen anpassen, dann zu M4B. Danach ersetzt die neue Fassung die alte.</p>
     <div class="row gap wrap">
       <span class="muted small">Vorlage:</span>
-      <button type="button" class="btn small" data-preset="auto">automatisch</button>
-      <button type="button" class="btn small" data-preset="tag">aus Tags</button>
+      <button type="button" class="btn small" data-preset="auto">Automatisch</button>
+      <button type="button" class="btn small" data-preset="tag">Aus Tags</button>
       <button type="button" class="btn small" data-preset="filename">Dateinamen</button>
-      <button type="button" class="btn small" data-preset="strip">ohne Nummer</button>
+      <button type="button" class="btn small" data-preset="strip">Ohne Nummer</button>
       <button type="button" class="btn small" data-preset="numbered">Kapitel 1, 2, 3 …</button>
     </div>
     <div class="table-wrap tracks-wrap">
@@ -728,7 +719,7 @@
 <dialog id="manualDialog">
   <form method="dialog" class="dialog-body" id="manualForm">
     <h2 id="manualTitle">Selbst eintragen</h2>
-    <label>Link von Audible, BookBeat oder Thalia <small>füllt die Felder automatisch</small>
+    <label>Link von Audible, BookBeat oder Thalia <small>Füllt die Felder automatisch</small>
       <span class="row gap">
         <input id="manualLink" name="link" type="text" placeholder="https://www.bookbeat.com/de/book/…" spellcheck="false">
         <button type="button" id="manualLinkBtn" class="btn small">Daten holen</button>
@@ -738,19 +729,19 @@
     <div class="grid2">
       <label>Titel <input name="title" type="text"></label>
       <label>Untertitel <input name="subtitle" type="text"></label>
-      <label>Autor(en) <small>kommagetrennt</small><input name="authors" type="text"></label>
-      <label>Sprecher <small>kommagetrennt</small><input name="narrators" type="text"></label>
+      <label>Autor(en) <small>Kommagetrennt</small><input name="authors" type="text"></label>
+      <label>Sprecher <small>Kommagetrennt</small><input name="narrators" type="text"></label>
       <label>Serie <input name="series" type="text"></label>
       <label>Band / Folge <input name="series_position" type="text"></label>
       <label>Erscheinungsdatum <small>JJJJ-MM-TT</small><input name="release_date" type="text"></label>
       <label>Verlag <input name="publisher" type="text"></label>
     </div>
-    <label>Genres <small>kommagetrennt</small><input name="genres" type="text"></label>
+    <label>Genres <small>Kommagetrennt</small><input name="genres" type="text"></label>
     <label>Beschreibung <textarea name="description" rows="4"></textarea></label>
     <p class="muted small">Ohne Vorlage werden leere Felder aus den Tags der Dateien übernommen.</p>
     <div class="dialog-actions">
       <button value="cancel" class="btn ghost" formnovalidate>Abbrechen</button>
-      <button value="save" class="btn primary">Taggen &amp; ablegen</button>
+      <button value="save" class="btn primary">Tags schreiben &amp; ablegen</button>
     </div>
   </form>
 </dialog>
