@@ -98,6 +98,12 @@
    "raw_body": false
   },
   {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/wrong-edition",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/audit",
    "access": "admin",
@@ -308,6 +314,12 @@
    "raw_body": false
   },
   {
+   "method": "POST",
+   "path": "/api/library/correct",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/library/cover",
    "access": "user",
@@ -328,6 +340,12 @@
   {
    "method": "GET",
    "path": "/api/library/unconverted",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/library/upgrade",
    "access": "admin",
    "raw_body": false
   },

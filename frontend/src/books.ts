@@ -189,7 +189,12 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
       el("code", { class: "lib-path" }, b.path)),
     el("div", { class: "lib-side" },
       b.format === "m4b" ? el("span", { class: "tag" }, "M4B") : el("span", { class: "tag soft" }, plural(b.files, t("1 Datei"), t("{n} Dateien", { n: b.files }))),
-      b.asin ? el("span", { class: "muted small" }, b.asin) : null));
+      b.asin ? el("span", { class: "muted small" }, b.asin) : null),
+    IS_ADMIN ? el("div", { class: "lib-actions" },
+      el("button", { type: "button", class: "btn small ghost", title: t("Erneut nach Releases suchen: ein besseres ersetzt dieses Buch"),
+        onclick: () => upgradeLibraryBook(b) }, icon("refresh"), t("Besseres Release")),
+      el("button", { type: "button", class: "btn small ghost", title: t("Falsch erkannt oder falsche Fassung? Neu zuordnen"),
+        onclick: () => correctLibraryBook(b) }, t("Korrigieren"))) : null);
 }
 
 // ------------------------------------------------------------------------- //
@@ -427,7 +432,11 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
     tools.append(el("button", {
       class: "btn small", title: t("Falsch erkannt? Buch aus der Bibliothek zurückholen und neu zuordnen"),
       onclick: () => reopenBook(j),
-    }, t("Korrigieren")));
+    }, t("Korrigieren")),
+    el("button", {
+      class: "btn small ghost", title: t("Eine andere Aufnahme als gewünscht (anderer Sprecher, Lesung statt Hörspiel …): neu zuordnen, die Anfrage sucht weiter"),
+      onclick: () => wrongEdition(j),
+    }, t("Falsche Fassung")));
   }
   if (!isActive(j.status)) {
     if (j.origin === "inbox" && j.status !== "done") {
@@ -664,6 +673,35 @@ async function reopenBook(j: AudiobookJob): Promise<void> {
   if (!(await confirmBox(t("Buch aus der Bibliothek zurückholen und neu zuordnen? Die M4B kommt zurück unter „Zu prüfen“, desc.txt, reader.txt und cover.jpg werden entfernt."), t("Korrigieren")))) return;
   try {
     await api("POST", `/api/audiobooks/${j.id}/reopen`);
+    books.filter = "review"; store.set("bookFilter", "review");
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+async function wrongEdition(j: AudiobookJob): Promise<void> {
+  if (!(await confirmBox(t("„{name}“ ist eine andere Fassung als gewünscht? Das Buch kommt zurück unter „Zu prüfen“ und wird dort richtig zugeordnet. Gehört es zu einer Anfrage, wird dieses Release gesperrt und die Anfrage sucht weiter.", { name: j.match?.title || j.name }), t("Falsche Fassung")))) return;
+  try {
+    await api("POST", `/api/audiobooks/${j.id}/wrong-edition`);
+    books.filter = "review"; store.set("bookFilter", "review");
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+/** Look again for releases of a book that is there: a better one (or the one picked by hand) replaces it. */
+async function upgradeLibraryBook(b: LibraryBook): Promise<void> {
+  if (!(await confirmBox(t("Für „{title}“ erneut nach Releases suchen? Automatisch wird nur ein klar besseres Release geladen (besseres Format oder deutlich mehr Bitrate); unter „Anfragen“ kannst du auch selbst eins wählen. Das neue ersetzt dann dieses Buch, die alte Datei wird archiviert.", { title: b.title || b.path }), t("Suchen")))) return;
+  try {
+    await api("POST", "/api/library/upgrade", { path: b.path });
+    toast(t("Sucht nach einem besseren Release – zu sehen unter „Anfragen“"));
+    loadRequests();
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+/** Any book of the library back for a correction – also when its import is long gone from the list. */
+async function correctLibraryBook(b: LibraryBook): Promise<void> {
+  if (!(await confirmBox(t("„{title}“ neu zuordnen? Das Buch wird neu erkannt und wartet unter „Zu prüfen“ auf deine Wahl. Die alte Ablage bleibt, bis das korrigierte Buch abgelegt ist.", { title: b.title || b.path }), t("Korrigieren")))) return;
+  try {
+    await api("POST", "/api/library/correct", { path: b.path });
     books.filter = "review"; store.set("bookFilter", "review");
     pollBooks(true);
   } catch (e) { toast(errMsg(e), true); }

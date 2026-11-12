@@ -171,6 +171,42 @@ pub async fn reopen(app: Arc<App>, _: Req, p: Params) -> Reply {
     }
 }
 
+pub async fn wrong_edition(app: Arc<App>, req: Req, p: Params) -> Reply {
+    if let Err(r) = job_or_404(&app, &p) {
+        return r;
+    }
+    let (a, id) = (app.clone(), p["job_id"].clone());
+    match blocking(move || a.pipeline.wrong_edition(&a, &id)).await {
+        Ok(slot) => {
+            app.audit(&req.user_name(), &req.ip, "wrong_edition", &slot.lock().name.clone());
+            out(&slot)
+        }
+        Err(PipeError::Failed(e)) => error(
+            500,
+            t("Holen aus der Bibliothek fehlgeschlagen: {error}", &[("error", &e)]),
+        ),
+        Err(e) => pipe_error(e, 409, 500),
+    }
+}
+
+/// Any book of the library back for a correction (also without the job that filed it).
+pub async fn correct(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let rel = match &req.get("path") {
+        Value::String(s) => s.clone(),
+        _ => return error(400, t("Kein Buch angegeben", &[])),
+    };
+    let folder = match super::library::library_path(&app, &rel) {
+        Ok(f) => f,
+        Err(r) => return r,
+    };
+    if !folder.is_dir() || crate::media::collect_audio(&folder).is_empty() {
+        return error(404, t("In diesem Ordner liegt kein Hörbuch mehr", &[]));
+    }
+    let slot = app.pipeline.correct(&app, &folder);
+    app.audit(&req.user_name(), &req.ip, "library_correct", &rel);
+    out(&slot)
+}
+
 pub async fn choose(app: Arc<App>, req: Req, p: Params) -> Reply {
     if let Err(r) = job_or_404(&app, &p) {
         return r;

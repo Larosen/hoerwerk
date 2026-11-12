@@ -160,6 +160,20 @@ pub async fn list(app: Arc<App>, req: Req, _: Params) -> Reply {
     )
 }
 
+/// A better release for a book of the library (admins): replaces it once it is there.
+pub async fn upgrade(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let rel = match &req.get("path") {
+        Value::String(s) => s.clone(),
+        _ => return error(400, t("Kein Buch angegeben", &[])),
+    };
+    if let Err(r) = super::library::library_path(&app, &rel) {
+        return r;
+    }
+    let (a, u) = (app.clone(), user(&req));
+    let item = call!(blocking(move || a.requests.create_upgrade(&a, &u, &rel)).await);
+    json_reply(out(&req, &item))
+}
+
 pub async fn keys(app: Arc<App>, _: Req, _: Params) -> Reply {
     json_reply(json!({"keys": app.requests.status_by_key(&app)}))
 }

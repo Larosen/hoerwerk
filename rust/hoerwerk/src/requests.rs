@@ -117,6 +117,16 @@ fn auto_approve(user: &Value) -> bool {
 }
 
 /// Only what the shops tell about a book, cut to size; title and author are required.
+/// "M4B · 64 kbit/s" of the book that is there.
+fn quality_label(have: &Value) -> String {
+    let format = text_of(&have["format"]).to_uppercase();
+    match have["kbps"].as_i64() {
+        Some(k) if !format.is_empty() => format!("{format} · {k} kbit/s"),
+        Some(k) => format!("{k} kbit/s"),
+        None => format,
+    }
+}
+
 pub fn clean(book: &Value) -> Res<Value> {
     let Some(obj) = book.as_object() else {
         return err(t("Ungültige Daten", &[]), 400);
@@ -442,6 +452,78 @@ impl Requests {
         Ok(req)
     }
 
+    /// Look again for a book that is there: a better release replaces it. The search runs like a request –
+    /// automatically it takes only a clearly better release, in the release window any pick counts.
+    pub fn create_upgrade(&self, app: &Arc<App>, user: &Value, rel: &str) -> Res<Value> {
+        let Some(entry) = app
+            .library
+            .entries()
+            .into_iter()
+            .find(|e| e["path"].as_str() == Some(rel))
+        else {
+            return err(t("Nicht in der Bibliothek", &[]), 404);
+        };
+        let mut book = json!({});
+        for k in ["title", "authors", "narrators", "series", "series_position", "asin"] {
+            book[k] = entry[k].clone();
+        }
+        let asin = text_of(&entry["asin"]);
+        let region = app
+            .settings()
+            .get("ab_region")
+            .and_then(Value::as_str)
+            .unwrap_or("de")
+            .to_string();
+        if !asin.is_empty()
+            && let Ok(full) = app.providers.client.product(&asin, &region)
+        {
+            book = full; // runtime, narrators and release date: for the bitrate and the right edition
+        }
+        let clean = clean(&book)?;
+        let key = format!("upgrade:{}", book_key(&clean));
+        let mut have = crate::pipeline::Pipeline::quality_of(&app.pipeline.library.join(rel));
+        if have.is_object() {
+            have["format"] = entry["format"].clone();
+        }
+        let ts = now();
+        let name = text_of(&user["name"]);
+        let rid = {
+            let _g = self.lock.lock().unwrap_or_else(|p| p.into_inner());
+            if Self::is_open(&app.db.lock(), &key) {
+                return err(t("Für dieses Buch wird schon ein besseres Release gesucht", &[]), 409);
+            }
+            let data = json!({"history": [{"time": ts, "text": t("Besseres Release gesucht von {name}", &[("name", &name)])}],
+                              "blocked": [], "attempts": 0, "upgrade": {"path": rel, "have": have}});
+            let c = app.db.lock();
+            c.execute(
+                "INSERT INTO requests(user_id, book_key, book, status, created, updated, data) VALUES(?,?,?,?,?,?,?)",
+                rusqlite::params![
+                    user["id"].as_i64(),
+                    key,
+                    compact(&clean),
+                    "searching",
+                    ts,
+                    ts,
+                    compact(&data)
+                ],
+            )
+            .map_err(|e| RequestError {
+                message: e.to_string(),
+                status: 500,
+            })?;
+            c.last_insert_rowid()
+        };
+        text::info(
+            "Anfragen",
+            &t(
+                "Besseres Release gesucht: „{title}“ ({path})",
+                &[("title", clean["title"].as_str().unwrap_or("")), ("path", rel)],
+            ),
+        );
+        search_soon(app, vec![rid]);
+        Ok(self.get(app, rid).unwrap_or(Value::Null))
+    }
+
     /// Several volumes of one series as one request: one group, counted once, decided together.
     pub fn create_series(&self, app: &Arc<App>, user: &Value, series: &Value, books: &Value) -> Res<Value> {
         let (Some(_), Some(list)) = (series.as_object(), books.as_array().filter(|b| !b.is_empty())) else {
@@ -729,10 +811,11 @@ impl Requests {
         }
         let typed = cut(query.trim(), 200);
         let typed = (!typed.is_empty()).then_some(typed);
-        let (ranked, queries, errors, resting) = Self::find(app, &req, typed.as_deref()).map_err(|e| RequestError {
-            message: e.to_string(),
-            status: 502,
-        })?;
+        let (mut ranked, queries, errors, resting) =
+            Self::find(app, &req, typed.as_deref()).map_err(|e| RequestError {
+                message: e.to_string(),
+                status: 502,
+            })?;
         let q = typed.unwrap_or_else(|| {
             releases::search_stages(&req["book"])
                 .first()
@@ -741,6 +824,17 @@ impl Requests {
                 .unwrap_or_default()
         });
         let queries = if queries.is_empty() { vec![q.clone()] } else { queries };
+        let have = &req["upgrade"]["have"];
+        if !have.is_null() {
+            // a better release for a book that is there: say which ones would be an improvement
+            let (yes, no) = (t("besser als vorhanden", &[]), t("nicht besser als vorhanden", &[]));
+            for r in ranked.iter_mut().filter(|r| r["verdict"]["ok"] == true) {
+                let note = if releases::better_than(r, have) { &yes } else { &no };
+                if let Some(n) = r["verdict"]["notes"].as_array_mut() {
+                    n.insert(0, json!(note));
+                }
+            }
+        }
         Ok(
             json!({"request": req, "query": q, "queries": queries, "errors": errors, "resting": resting,
                   "results": ranked}),
@@ -780,7 +874,7 @@ impl Requests {
         if req["status"] != "searching" {
             return Some(req);
         }
-        if Self::owned(app, &req["book"]) {
+        if req["upgrade"].is_null() && Self::owned(app, &req["book"]) {
             return Some(self.save(app, &req, Some("available"), &t("Schon in der Bibliothek", &[])));
         }
         if !app.usenet.has_indexers() {
@@ -808,7 +902,13 @@ impl Requests {
                 return Some(self.save(app, &req, None, ""));
             }
         };
-        let good: Vec<&Value> = ranked.iter().filter(|r| r["verdict"]["ok"] == true).collect();
+        let fits = ranked.iter().filter(|r| r["verdict"]["ok"] == true).count();
+        let have = req["upgrade"]["have"].clone();
+        // a better release for a book that is there: automatically only what is clearly better
+        let good: Vec<&Value> = ranked
+            .iter()
+            .filter(|r| r["verdict"]["ok"] == true && (have.is_null() || releases::better_than(r, &have)))
+            .collect();
         req["last_search"] = json!(now());
         req["error"] = if errors.is_empty() {
             Value::Null
@@ -823,6 +923,17 @@ impl Requests {
         req["found"] = json!(good.len());
         req["seen"] = json!(ranked.len());
         req["queries"] = json!(queries);
+        if good.is_empty() && fits > 0 && !have.is_null() {
+            let note = t(
+                "{n} passende Releases, keins besser als das vorhandene ({have}) – neuer Versuch in {h} h",
+                &[
+                    ("n", &fits.to_string()),
+                    ("have", &quality_label(&have)),
+                    ("h", &interval_hours(app).to_string()),
+                ],
+            );
+            return Some(self.save(app, &req, None, &note));
+        }
         if good.is_empty() {
             let note = t(
                 "Nichts Passendes gefunden ({n} Releases geprüft, {q} Suchbegriffe) – neuer Versuch in {h} h",
@@ -1037,6 +1148,20 @@ impl Requests {
         self.failed_release(app, req, &why);
     }
 
+    /// A filed book was the wrong recording (marked by hand): also an available request blocks the release
+    /// and searches again.
+    pub fn wrong_edition(&self, app: &Arc<App>, rid: i64, release_name: &str, why: &str) {
+        let Some(mut req) = self.get(app, rid) else { return };
+        if !OPEN.contains(&req["status"].as_str().unwrap_or("")) && req["status"] != "available" {
+            return;
+        }
+        if text_of(&req["release"]).is_empty() {
+            req["release"] = json!(cut(release_name, 300));
+        }
+        req["path"] = Value::Null;
+        self.failed_release(app, req, why);
+    }
+
     // -- following the download -------------------------------------------------------------------
     /// Every few minutes: search again when due, follow downloads and imports, notice arrivals. Blocking.
     pub fn tick(&self, app: &Arc<App>) {
@@ -1054,7 +1179,7 @@ impl Requests {
         let mut activity: Option<Vec<Value>> = None;
         for rid in ids {
             let Some(req) = self.get(app, rid) else { continue };
-            if req["status"] != "pending" && Self::owned(app, &req["book"]) {
+            if req["status"] != "pending" && req["upgrade"].is_null() && Self::owned(app, &req["book"]) {
                 self.arrived(app, req, "");
                 continue;
             }
@@ -1317,6 +1442,7 @@ pub fn summary(req: &Value, user: &Value, sees_all: bool) -> Value {
         "attempts",
         "group",
         "resting",
+        "upgrade",
     ];
     let mut out: BTreeMap<String, Value> = keys
         .iter()

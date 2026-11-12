@@ -11,6 +11,7 @@ mod config;
 mod db;
 mod difflib;
 mod discover;
+mod edition;
 mod encoder;
 mod engine;
 mod filing;

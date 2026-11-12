@@ -250,6 +250,17 @@ Fertige SABnzbd-Downloads aus der Suche übernimmt der Eingang nach wenigen Seku
 Hand und für Anfragen) fragt dann nur diesen; die anderen erst, wenn er nichts Passendes zum Buch hat. Die Suche zeigt
 „nur bei X gesucht“ mit einem Knopf, um auch die anderen zu fragen.
 
+**Die richtige Fassung:** Ein Release, das klar eine andere Aufnahme als das angefragte Buch ist, wird nicht geladen –
+eine Lesung („gesprochen von …“), wenn die Fassung mit voller Besetzung gesucht ist, ein anderer Sprecher oder (bei
+einer neuen Produktion) ein Release, das älter ist als die Produktion. Releases ohne solche Angaben werden wie bisher
+geladen. Nach dem Download entscheidet die Laufzeit: bis 8 % Abweichung wird abgelegt, bis 25 % zur Prüfung
+vorgelegt, darüber gilt es als andere Fassung.
+
+**Besseres Release / Korrigieren:** Jedes Buch in der Bibliothek hat **Besseres Release** – Hörwerk sucht erneut und
+lädt automatisch nur ein klar besseres Release (besseres Format oder deutlich mehr Bitrate); unter *Anfragen* kannst du
+auch selbst eins wählen. Der neue Download ersetzt das Buch, die alte Datei wird archiviert. **Korrigieren** holt ein
+Buch zur Neuzuordnung zurück, **Falsche Fassung** an einem abgelegten Buch lässt außerdem seine Anfrage weitersuchen.
+
 Tipp: In SABnzbd unter *Config → Switches → Unerwünschte Endungen* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
 auf **Abbrechen** stellen.
 

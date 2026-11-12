@@ -455,7 +455,8 @@ table.tracks input { width: 100%; }
 .lib-search { display: flex; align-items: center; gap: 8px; color: var(--faint); }
 .lib-search input { flex: 1; }
 .lib-rows { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
-.lib-row { display: flex; gap: 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); }
+.lib-row { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--panel); }
+.lib-actions { flex-basis: 100%; display: flex; justify-content: flex-end; gap: 4px; }
 .lib-row:last-child { border-bottom: 0; }
 .lib-row:hover { background: var(--panel-2); }
 .lib-row .thumb { width: 44px; height: 44px; }

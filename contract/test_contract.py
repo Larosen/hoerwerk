@@ -412,6 +412,69 @@ class Requests(ContractTest):
             fake.close()
 
 
+    def test_better_release_replaces_a_book_that_is_there(self):
+        """A book that is there can be searched again: automatically only a clearly better release is taken,
+        in the release window any pick counts; the download replaces the book (the old copy is archived)."""
+        tags = {"artist": "Ulla Umbau", "album_artist": "Ulla Umbau", "album": "Altes Hoerbuch", "title": "Teil 1"}
+        deliver(self.server.inbox, "Ulla Umbau - Altes Hoerbuch", {"01.mp3": tags})
+
+        def filed(name):
+            def check():
+                j = next((j for j in self.admin.get("/api/audiobooks")["jobs"] if j["name"] == name), None)
+                return j if j and j["status"] in ("done", "failed", "review") else None
+            return self.admin.wait(check, 90, what=f"{name} filed")
+        old = filed("Ulla Umbau - Altes Hoerbuch")
+        self.assertEqual(old["status"], "done", old)
+        rel = os.path.relpath(os.path.dirname(old["dest"]), self.server.library)
+        release = "Ulla.Umbau-Altes.Hoerbuch.German.M4B"
+        fake = FakeUsenet([{"title": release, "size": 300 * 60 * 128000 // 8}])
+        try:
+            self.admin.call("PUT", "/api/sources", {
+                "indexers": [{"name": "Fake", "url": fake.url, "apikey": "indexerkey123"}],
+                "sab": {"url": fake.url, "apikey": "sabkey123456", "category": "hoerbuecher"}})
+            item = self.admin.call("POST", "/api/library/upgrade", {"path": rel})
+            self.assertEqual(item["upgrade"]["path"], rel)
+            self.assertGreater(item["upgrade"]["have"]["kbps"], 0)
+            status, _ = self.admin.call("POST", "/api/library/upgrade", {"path": rel}, expect=None)
+            self.assertEqual(status, 409)                                    # one search per book at a time
+            status, _ = self.family().call("POST", "/api/library/upgrade", {"path": rel}, expect=None)
+            self.assertEqual(status, 403)
+
+            # automatically: the release fits, but without a runtime nobody can tell it is better – not taken
+            def searched():
+                r = self.admin.get(f'/api/requests/{item["id"]}')
+                return r if r.get("last_search") else None
+            r = self.admin.wait(searched, 30, what="first search")
+            self.assertEqual(r["status"], "searching")
+            self.assertIn("keins besser als das vorhandene", r["history"][-1]["text"])
+            self.assertEqual(fake.added, [])
+            # by hand: the release window says how it compares, and the pick is taken
+            found = self.admin.call("POST", f'/api/requests/{item["id"]}/releases', {})
+            self.assertEqual(found["results"][0]["verdict"]["notes"][0], "nicht besser als vorhanden")
+            got = self.admin.call("POST", f'/api/requests/{item["id"]}/grab',
+                                  {"release_id": found["results"][0]["id"], "title": release})
+            self.assertEqual(got["status"], "downloading")
+            self.assertEqual(len(fake.added), 1)
+            # the download arrives: it replaces the book, the old copy steps aside
+            deliver(self.server.inbox, release, {"01.mp3": tags, "02.mp3": {**tags, "title": "Teil 2"}})
+            new = filed(release)
+            self.assertEqual(new["status"], "done", new)
+            self.assertEqual(new["duplicate"]["why"], "upgrade")
+            self.assertTrue(os.path.isfile(new["dest"]))
+            archived = os.path.join(self.server.inbox, "_ersetzt", rel, os.path.basename(old["dest"]))
+            self.assertTrue(os.path.isfile(archived), "the old copy is archived")
+            books = self.admin.get("/api/library/books?q=umbau")["books"]
+            self.assertEqual(len(books), 1)
+
+            def done():
+                r = self.admin.get(f'/api/requests/{item["id"]}')
+                return r if r["status"] == "available" else None
+            self.admin.wait(done, 30, what="request available")
+        finally:
+            self.admin.call("PUT", "/api/sources", {"indexers": [], "sab": {}})
+            fake.close()
+
+
 class Pipeline(ContractTest):
     """The core promise: a download in the inbox becomes a tagged M4B with chapters in the library."""
 
@@ -588,6 +651,51 @@ class Processing(ContractTest):
                                                      "02 - Neuer Titel", "Neuer Titel.m4b"))
         books = self.admin.get("/api/library/books?q=richtig")["books"]
         self.assertEqual([b["title"] for b in books], ["Neuer Titel"])
+
+    def test_any_library_book_can_be_corrected(self):
+        """Correcting works without the job that filed the book; a missing file says where it was looked for;
+        "wrong edition" brings a filed book back for a new assignment."""
+        self.book("Klara Klang - Erste Fassung", "Erste Fassung")
+        job = self.job("Klara Klang - Erste Fassung")
+        self.assertEqual(job["status"], "done", job)
+        old = job["dest"]
+        # "wrong edition" on the filed book: back under review, the file leaves the library
+        back = self.admin.call("POST", f'/api/audiobooks/{job["id"]}/wrong-edition')
+        self.assertEqual(back["status"], "review")
+        self.assertFalse(os.path.exists(old))
+        self.admin.call("POST", f'/api/audiobooks/{job["id"]}/manual', {"title": "Erste Fassung"})
+        job = self.job("Klara Klang - Erste Fassung", until=("done", "failed"))
+        self.assertEqual(job["status"], "done", job)
+        old = job["dest"]
+        # the job is gone from the list – the book can still be corrected from the library
+        self.admin.call("DELETE", f'/api/audiobooks/{job["id"]}')
+        rel = os.path.relpath(os.path.dirname(old), self.server.library)
+        fix = self.admin.call("POST", "/api/library/correct", {"path": rel})
+
+        def waiting():
+            j = next((j for j in self.admin.get("/api/audiobooks")["jobs"] if j["id"] == fix["id"]), None)
+            return j if j and j["status"] in ("review", "done", "failed") else None
+        self.assertEqual(self.admin.wait(waiting, 60, what="correction in review")["status"], "review")
+        self.assertTrue(os.path.isfile(old), "the old files stay until the corrected book is filed")
+        self.admin.call("POST", f'/api/audiobooks/{fix["id"]}/manual', {"title": "Zweite Fassung"})
+
+        def filed():
+            j = next((j for j in self.admin.get("/api/audiobooks")["jobs"] if j["id"] == fix["id"]), None)
+            return j if j and j["status"] in ("done", "failed") else None
+        done = self.admin.wait(filed, 90, what="corrected book filed")
+        self.assertEqual(done["status"], "done", done)
+        self.assertTrue(done["dest"].endswith(os.path.join("Zweite Fassung", "Zweite Fassung.m4b")), done["dest"])
+        self.assertFalse(os.path.exists(old))
+        self.assertEqual([b["title"] for b in self.admin.get("/api/library/books?q=fassung")["books"]], ["Zweite Fassung"])
+        status, _ = self.admin.call("POST", "/api/library/correct", {"path": rel}, expect=None)
+        self.assertEqual(status, 404)                                          # nothing left in the old folder
+        status, _ = self.admin.call("POST", "/api/library/correct", {"path": "../etc"}, expect=None)
+        self.assertIn(status, (400, 403, 404))
+        # the file was moved away by hand: the answer says where it was looked for
+        os.remove(done["dest"])
+        status, body = self.admin.call("POST", f'/api/audiobooks/{fix["id"]}/reopen', expect=None)
+        self.assertEqual(status, 409)
+        self.assertIn("liegt nicht mehr unter", body["error"])
 
     def test_media_servers_are_asked_to_scan_after_filing(self):
         """Audiobookshelf and Plex (a local fake): connection test picks the library, tokens stay on the server,

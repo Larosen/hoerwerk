@@ -357,6 +357,10 @@ pub fn evaluate(
             }
         }
     }
+    // the same book, but another recording (another narrator, reading vs. radio play, older than this one)
+    if let Some(why) = crate::edition::release_conflict(name, release["published"].as_f64().unwrap_or(0.0), book) {
+        return no(why, &notes);
+    }
     if unabridged && release["abridged"].as_bool().unwrap_or(false) {
         return no(t("gekürzte Fassung", &[]), &notes);
     }
@@ -456,7 +460,57 @@ pub fn evaluate(
     json!({"ok": true, "score": (score * 100.0).round_ties_even() / 100.0, "reason": null, "notes": notes, "kbps": kbps})
 }
 
-/// Why a downloaded folder can't be this book – another volume, another language, a far other runtime – or None.
+fn format_rank(format: &str) -> i64 {
+    match format.to_uppercase().as_str() {
+        "FLAC" | "LOSSLESS" | "WAV" => 4,
+        "M4B" => 3,
+        "M4A" | "AAC" => 2,
+        "MP3" => 1,
+        _ => 0,
+    }
+}
+
+/// More bitrate counts only from this share and step on (a few kbit/s more are no audible gain).
+const UPGRADE_SHARE: f64 = 1.25;
+const UPGRADE_STEP: i64 = 24;
+
+/// Is this (judged) release worth replacing the book that is there (`have`: {format, kbps})? A better
+/// format that keeps at least 80 % of the bitrate, or the same format with clearly more bitrate
+/// (+25 % and at least +24 kbit/s). An unknown format counts as the same.
+pub fn better_than(release: &Value, have: &Value) -> bool {
+    let hf = format_rank(s(have, "format"));
+    let rf = match format_rank(s(release, "format")) {
+        0 => hf,
+        x => x,
+    };
+    let rk = release["verdict"]["kbps"].as_i64().or_else(|| release["kbps"].as_i64());
+    match (rk, have["kbps"].as_i64().filter(|k| *k > 0)) {
+        (Some(r), Some(h)) => {
+            (rf > hf && r as f64 >= h as f64 * 0.8)
+                || (rf >= hf && r as f64 >= h as f64 * UPGRADE_SHARE && r - h >= UPGRADE_STEP)
+        }
+        (None, _) => false,
+        (Some(_), None) => rf > hf,
+    }
+}
+
+/// Runtime off by more than this share: clearly another recording (or abridged / incomplete).
+pub const RUNTIME_OTHER: f64 = 0.25;
+/// Off by more than this share: the match is not certain enough to be taken automatically.
+pub const RUNTIME_DOUBT: f64 = 0.08;
+
+/// |have − want| / want of a file against the shop's runtime – None when one of them is unknown.
+pub fn runtime_deviation(book: &Value, duration: f64) -> Option<f64> {
+    let want = book["runtime_min"]
+        .as_f64()
+        .or_else(|| s(book, "runtime_min").parse().ok())
+        .unwrap_or(0.0)
+        * 60.0;
+    (duration > 0.0 && want > 0.0).then(|| (duration - want).abs() / want)
+}
+
+/// Why a downloaded folder can't be this book – another volume, another language, another recording, a far
+/// other runtime – or None.
 pub fn mismatch(name: &str, book: &Value, duration: f64) -> Option<String> {
     if packs::pack_info(name).is_none() {
         let stated = release_volumes(name, book);
@@ -479,17 +533,71 @@ pub fn mismatch(name: &str, book: &Value, duration: f64) -> Option<String> {
     if !want.is_empty() && !got.is_empty() && got != want {
         return Some(t("andere Sprache ({lang})", &[("lang", &got)]));
     }
-    let runtime = book["runtime_min"].as_f64().map(|f| f as i64).unwrap_or(0) * 60;
-    if duration > 0.0 && runtime > 0 && !(0.6..=1.67).contains(&(duration / runtime as f64)) {
+    if let Some(why) = crate::edition::content_conflict(name, book) {
+        return Some(why);
+    }
+    if runtime_deviation(book, duration).is_some_and(|d| d > RUNTIME_OTHER) {
         return Some(t(
             "Laufzeit passt nicht ({have} statt {want} min)",
             &[
                 ("have", &py_round(duration / 60.0).to_string()),
-                ("want", &(runtime / 60).to_string()),
+                ("want", &runtime_min(book).to_string()),
             ],
         ));
     }
     None
+}
+
+fn runtime_min(book: &Value) -> i64 {
+    book["runtime_min"]
+        .as_f64()
+        .or_else(|| s(book, "runtime_min").parse().ok())
+        .unwrap_or(0.0) as i64
+}
+
+/// Why a match is not certain enough to be filed without a look – or None: the runtime is a bit off, the
+/// file's narrator tag names someone else, the chapters don't line up with the shop's (`agreement`).
+pub fn doubt(book: &Value, duration: f64, narrator_tag: &str, agreement: Option<f64>) -> Option<String> {
+    if let Some(d) = runtime_deviation(book, duration).filter(|d| *d > RUNTIME_DOUBT) {
+        return Some(t(
+            "Laufzeit weicht {n} % ab ({have} statt {want} min)",
+            &[
+                ("n", &py_round(d * 100.0).to_string()),
+                ("have", &py_round(duration / 60.0).to_string()),
+                ("want", &runtime_min(book).to_string()),
+            ],
+        ));
+    }
+    if let Some(why) = crate::edition::narrator_doubt(&crate::edition::tag_names(narrator_tag), book) {
+        return Some(why);
+    }
+    if let Some(a) = agreement.filter(|a| *a < CHAPTERS_AGREE) {
+        return Some(t(
+            "Kapitel passen nicht zur Fassung im Shop (nur {n} % der Kapitelgrenzen gleich)",
+            &[("n", &py_round(a * 100.0).to_string())],
+        ));
+    }
+    None
+}
+
+/// Below this share of matching chapter starts the file is most likely another recording.
+pub const CHAPTERS_AGREE: f64 = 0.4;
+
+/// The chapters as a fingerprint: which share of the shop's chapter starts (scaled to the file's length) has a
+/// chapter start of the file close by? None when one side has too few chapters to tell.
+pub fn chapter_agreement(file: &[f64], shop: &[f64], file_len: f64, shop_len: f64) -> Option<f64> {
+    let inner = |v: &[f64]| v.iter().copied().filter(|x| *x > 1.0).collect::<Vec<_>>();
+    let (f, sh) = (inner(file), inner(shop));
+    if f.len() < 4 || sh.len() < 4 || file_len <= 0.0 || shop_len <= 0.0 {
+        return None;
+    }
+    let scale = file_len / shop_len;
+    let near = (file_len * 0.002).max(4.0);
+    let hits = sh
+        .iter()
+        .filter(|x| f.iter().any(|y| (*y - *x * scale).abs() <= near))
+        .count();
+    Some(hits as f64 / sh.len() as f64)
 }
 
 /// All results with their verdict, the accepted ones first (best first).
@@ -532,6 +640,88 @@ mod tests {
             .iter()
             .map(|x| x.as_str().unwrap().to_string())
             .collect()
+    }
+
+    #[test]
+    fn another_recording_of_the_same_book_is_refused() {
+        crate::text::set_language("de");
+        let cast = json!({"title": "Harry Potter und der Stein der Weisen (Hörbuch mit voller Besetzung)",
+                          "authors": ["J.K. Rowling"], "release_date": "2026-11-10", "runtime_min": 650,
+                          "series": "Harry Potter (Hörbücher mit voller Besetzung)", "series_position": "1",
+                          "narrators": ["Daniel Brühl", "Nina Hoss", "Armin Rohde", "Robert Stadlober"]});
+        let beck = json!({"title": "J.K.Rowling-Harry Potter und der Stein der Weisen Gesprochen von Rufus Beck-AudioBook-2016-M4B",
+                          "size": 560_000_000, "published": 1_475_000_000.0});
+        let verdict = evaluate(&beck, &cast, "de", true, &[], true);
+        assert_eq!(verdict["ok"], json!(false));
+        assert!(verdict["reason"].as_str().unwrap().starts_with("Lesung"), "{verdict}");
+        let right = json!({"title": "J.K.Rowling-Harry.Potter.und.der.Stein.der.Weisen.Hoerbuch.mit.voller.Besetzung.German.M4B",
+                           "size": 600_000_000, "published": 1_794_400_000.0});
+        let v = evaluate(&right, &cast, "de", true, &[], true);
+        assert_eq!(v["ok"], json!(true), "{v}");
+        // nothing said about the recording: loaded as before
+        let plain = json!({"title": "J.K.Rowling-Harry.Potter.und.der.Stein.der.Weisen.German.M4B",
+                           "size": 600_000_000, "published": 1_794_400_000.0});
+        assert_eq!(evaluate(&plain, &cast, "de", true, &[], true)["ok"], json!(true));
+        // after the download: the folder name gives the reading away
+        assert!(
+            mismatch(s(&beck, "title"), &cast, 650.0 * 60.0)
+                .unwrap()
+                .starts_with("Lesung")
+        );
+        assert_eq!(mismatch(s(&right, "title"), &cast, 650.0 * 60.0), None);
+    }
+
+    #[test]
+    fn a_release_replaces_a_book_only_when_clearly_better() {
+        let have = json!({"format": "m4b", "kbps": 64});
+        let rel = |format: &str, kbps: i64| json!({"format": format, "verdict": {"kbps": kbps}});
+        assert!(better_than(&rel("M4B", 128), &have));
+        assert!(!better_than(&rel("M4B", 80), &have)); // +25 % but only +16 kbit/s
+        assert!(!better_than(&rel("MP3", 192), &json!({"format": "m4b", "kbps": 160})));
+        assert!(better_than(&rel("M4B", 120), &json!({"format": "mp3", "kbps": 128}))); // format up, bitrate kept
+        assert!(!better_than(&rel("M4B", 64), &json!({"format": "mp3", "kbps": 128}))); // format up, half the sound
+        assert!(better_than(&rel("", 128), &have)); // unknown format: like the one there
+        assert!(!better_than(&json!({"format": "M4B", "verdict": {}}), &have)); // without size: no way to tell
+    }
+
+    #[test]
+    fn runtime_and_chapters_decide_how_sure_a_match_is() {
+        crate::text::set_language("de");
+        let book = json!({"title": "Ein Buch", "authors": ["Anna Autorin"], "runtime_min": 600, "narrators": ["Sina Sprecherin"]});
+        assert_eq!(runtime_deviation(&book, 0.0), None);
+        // up to 8 %: sure; up to 25 %: a person looks; more: another recording
+        assert_eq!(doubt(&book, 620.0 * 60.0, "", None), None);
+        assert!(
+            doubt(&book, 680.0 * 60.0, "", None)
+                .unwrap()
+                .starts_with("Laufzeit weicht 13 %")
+        );
+        assert_eq!(mismatch("Anna Autorin - Ein Buch", &book, 680.0 * 60.0), None);
+        assert!(
+            mismatch("Anna Autorin - Ein Buch", &book, 800.0 * 60.0)
+                .unwrap()
+                .starts_with("Laufzeit passt nicht")
+        );
+        // the narrator tag: another person is a doubt, the author in the tag is none
+        assert!(
+            doubt(&book, 600.0 * 60.0, "Rufus Beck", None)
+                .unwrap()
+                .starts_with("Sprecher in der Datei")
+        );
+        assert_eq!(doubt(&book, 600.0 * 60.0, "Anna Autorin", None), None);
+        assert_eq!(doubt(&book, 600.0 * 60.0, "Sina Sprecherin", None), None);
+        // chapters as a fingerprint: the same recording lines up (also a few seconds longer), another does not
+        let shop = [0.0, 600.0, 1250.0, 1900.0, 2500.0, 3300.0];
+        let same: Vec<f64> = shop.iter().map(|x| x * 1.002).collect();
+        let other = [0.0, 450.0, 1000.0, 1700.0, 2300.0, 2950.0, 3500.0];
+        assert_eq!(chapter_agreement(&same, &shop, 3607.0, 3600.0), Some(1.0));
+        assert!(chapter_agreement(&other, &shop, 3600.0, 3600.0).unwrap() < CHAPTERS_AGREE);
+        assert_eq!(chapter_agreement(&[0.0, 600.0], &shop, 3600.0, 3600.0), None); // too few to tell
+        assert!(
+            doubt(&book, 600.0 * 60.0, "", Some(0.1))
+                .unwrap()
+                .starts_with("Kapitel passen nicht")
+        );
     }
 
     #[test]
