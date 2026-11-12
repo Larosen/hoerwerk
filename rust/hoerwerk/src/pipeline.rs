@@ -596,6 +596,38 @@ fn safe_track_name(name: &str) -> String {
 }
 
 /// `03 - Name.mp3` for every track (in its own subfolder); returns the new relative paths.
+/// The files are merged in the order of their names (CD folders one after the other). When every file has a
+/// track number in its tags and, within one folder, these do not count up in that order, something is off
+/// (badly named files): which file – else None. Without track numbers nothing can be said.
+pub fn order_doubt(files: &[String], infos: &[Value]) -> Option<String> {
+    let number = |v: &Value| -> Option<u64> {
+        let text = match v {
+            Value::String(x) => x.clone(),
+            Value::Number(n) => n.to_string(),
+            _ => return None,
+        };
+        text.split('/').next()?.trim().parse().ok()
+    };
+    let tracks: Vec<Option<u64>> = infos.iter().map(|i| number(&i["tags"]["track"])).collect();
+    if files.len() < 2 || tracks.iter().any(Option::is_none) {
+        return None;
+    }
+    let disc = |i: usize| number(&infos[i]["tags"]["disc"]).unwrap_or(0);
+    let folder = |f: &str| f.rsplit_once('/').map_or("", |x| x.0).to_string();
+    for i in 1..files.len() {
+        if folder(&files[i]) != folder(&files[i - 1]) {
+            continue; // a new CD folder starts counting again
+        }
+        if (disc(i), tracks[i]) <= (disc(i - 1), tracks[i - 1]) {
+            return Some(t(
+                "Track-Nummer in „{file}“ passt nicht zur Reihenfolge der Dateinamen",
+                &[("file", &files[i])],
+            ));
+        }
+    }
+    None
+}
+
 pub fn rename_tracks(folder: &Path, files: &[String], names: &[String]) -> std::io::Result<Vec<String>> {
     let width = files.len().to_string().len().max(2);
     let plan: Vec<(String, String)> = files
@@ -1951,6 +1983,11 @@ impl Pipeline {
             "asin": audible::find_asin(&[s(&tags, "asin"), s(&tags, "audible_asin"), &name]), "duration": duration, "folder": folder_name,
         });
         let mut notes: Vec<String> = Vec::new();
+        if let Some(why) = order_doubt(&files, &infos) {
+            // the files are merged in the order of their names – the tags say otherwise: a person looks first
+            hints["order_doubt"] = json!(why);
+            notes.push(t("Reihenfolge unsicher: {why}", &[("why", &why)]));
+        }
         if let Some(p) = &pack {
             // one volume of a pack: author and series from the download, the title from this folder
             let mut title = packs::title_of(if album.is_empty() { &name } else { &album }, Some(p));
@@ -2039,6 +2076,13 @@ impl Pipeline {
     fn do_match(&self, app: &Arc<App>, slot: &JobRef) {
         let s_ = app.settings();
         let mode = sval(&s_, "ab_match", "auto");
+        let order = slot.lock().hints["order_doubt"].as_str().map(str::to_string);
+        if mode == "off"
+            && let Some(why) = &order
+        {
+            slot.say(&t("Bitte prüfen: {why}", &[("why", why)]));
+            return;
+        }
         if mode == "off" && !slot.lock().review_first {
             slot.lock().matched = Some(json!({"source": "tags"}));
             return;
@@ -2120,6 +2164,12 @@ impl Pipeline {
         if mode == "auto" && best.is_none() && ranked.first().is_some_and(|r| !r["request_id"].is_null()) {
             // a requested book from another shop: clearly the best, certain enough → take it
             best = audible::best_match(&ranked, threshold);
+        }
+        if let Some(why) = &order
+            && best.is_some()
+        {
+            slot.say(&t("Bitte prüfen: {why}", &[("why", why)]));
+            best = None;
         }
         if slot.lock().review_first {
             // taken back for a correction: the person who asked for it picks
@@ -2507,12 +2557,16 @@ impl Pipeline {
             };
             let bitrate = sval(&s_, "bitrate", "auto");
             let mode = sval(&s_, "chapter_titles", "auto");
+            let book = matched.clone().unwrap_or(json!({}));
+            let known = Self::known_names(&book);
+            let lang = Self::chapter_lang(&book, &name);
             let m = encoder::Merge {
                 bitrate: &bitrate,
                 mono: sbool(&s_, "force_mono", false),
                 jobs: app.cfg.cpu_jobs,
                 chapter_mode: &mode,
-                album: "",
+                known: &known,
+                lang: &lang,
                 titles: chapter_names.as_deref(),
                 nice: &nice,
                 profile: &profile,
@@ -2525,7 +2579,8 @@ impl Pipeline {
                 std::fs::rename(&tmp, &out)?;
             }
             let mut j = slot.lock();
-            j.converted_info = json!({"bitrate": info.bitrate, "chapters": info.chapters.len(), "copied": info.copied});
+            j.converted_info = json!({"bitrate": info.bitrate, "chapters": info.chapters.len(), "copied": info.copied,
+                                      "repetitive": info.repetitive});
             j.say(
                 &t(
                     "M4B fertig: {n} Kapitel, {bitrate}",
@@ -3000,6 +3055,28 @@ impl Pipeline {
             return Ok(());
         }
         if mode == "auto" && !encoder::looks_generic(&current) {
+            // real names – but made mostly of text every track repeated: with as many chapters as the shop
+            // has, its names are the better ones (the starts stay those of the tracks)
+            let repetitive = slot.lock().converted_info["repetitive"] == true;
+            if repetitive && chs.len() == current.len() {
+                let named: Vec<Chapter> = current
+                    .iter()
+                    .zip(&chs)
+                    .map(|(c, a)| Chapter {
+                        start: c.start,
+                        title: a["title"]
+                            .as_str()
+                            .map(str::trim)
+                            .filter(|x| !x.is_empty())
+                            .map_or_else(|| c.title.clone(), str::to_string),
+                    })
+                    .collect();
+                self.rechapter(app, &m4b, &named)?;
+                slot.say(&t(
+                    "{n} Kapitelnamen von Audible übernommen (Laufzeit und Kapitelzahl passen)",
+                    &[("n", &named.len().to_string())],
+                ));
+            }
             return Ok(());
         }
         let scale = dur / aud;
@@ -3032,27 +3109,89 @@ impl Pipeline {
         Ok(())
     }
 
-    /// Chapters that are only numbers are numbered 1, 2, 3 … in their real order, in the book's language.
+    /// What a book is called – these go from its chapter names: title, series, authors.
+    fn known_names(book: &Value) -> Vec<String> {
+        let mut out: Vec<String> = ["title", "series"]
+            .iter()
+            .map(|k| s(book, k).trim().to_string())
+            .filter(|x| !x.is_empty())
+            .collect();
+        out.extend(
+            book["authors"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(|a| a.trim().to_string())
+                .filter(|a| !a.is_empty()),
+        );
+        out
+    }
+
+    /// The language for "Kapitel N" / "Chapter N": the book's, else the download's.
+    fn chapter_lang(book: &Value, name: &str) -> String {
+        [
+            releases::book_language(book),
+            crate::usenet::release_info(name)["language"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+            releases::guess_language(name),
+        ]
+        .into_iter()
+        .find(|l| !l.is_empty())
+        .unwrap_or_default()
+    }
+
+    /// Clean the chapter names of a finished M4B in place (a library book, or "Kapitel aufräumen"): the rules
+    /// of `chapters::clean_titles`; the chapter starts stay. (changed, first, last) – or None when nothing changed.
+    pub fn tidy_file(&self, app: &App, m4b: &Path, book: &Value, name: &str) -> Res<Option<(usize, String, String)>> {
+        let current = encoder::file_chapters(m4b);
+        if current.len() < 2 {
+            return Ok(None);
+        }
+        let titles: Vec<String> = current.iter().map(|c| c.title.clone()).collect();
+        let cleaned = crate::chapters::clean_titles(&titles, &Self::known_names(book), &Self::chapter_lang(book, name));
+        if cleaned.names == titles {
+            return Ok(None);
+        }
+        let changed = cleaned.names.iter().zip(&titles).filter(|(a, b)| a != b).count();
+        let wanted: Vec<Chapter> = current
+            .iter()
+            .zip(&cleaned.names)
+            .map(|(c, title)| Chapter {
+                start: c.start,
+                title: title.clone(),
+            })
+            .collect();
+        self.rechapter(app, m4b, &wanted)?;
+        let (first, last) = (wanted[0].title.clone(), wanted[wanted.len() - 1].title.clone());
+        Ok(Some((changed, first, last)))
+    }
+
+    /// Chapters that are only numbers are numbered 1, 2, 3 … in their real order, in the book's language;
+    /// real but cluttered names (one M4B with "Book Title: Chapter One - …") are cleaned like track names.
     fn tidy_chapters(&self, app: &Arc<App>, slot: &JobRef, book: &Value) -> Res<()> {
         let (m4b, name) = {
             let j = slot.lock();
             (PathBuf::from(j.m4b.clone().unwrap_or_default()), j.name.clone())
         };
         let current = encoder::file_chapters(&m4b);
-        if current.len() < 2 || !encoder::looks_generic(&current) {
+        if current.len() < 2 {
             return Ok(());
         }
-        let lang = [
-            releases::book_language(book),
-            crate::usenet::release_info(&name)["language"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
-            releases::guess_language(&name),
-        ]
-        .into_iter()
-        .find(|l| !l.is_empty())
-        .unwrap_or_else(|| "de".into());
+        if !encoder::looks_generic(&current) {
+            if let Some((n, first, last)) = self.tidy_file(app, &m4b, book, &name)? {
+                slot.say(&t(
+                    "{n} Kapitelnamen aufgeräumt: {first} … {last}",
+                    &[("n", &n.to_string()), ("first", &first), ("last", &last)],
+                ));
+            }
+            return Ok(());
+        }
+        let lang = Some(Self::chapter_lang(book, &name))
+            .filter(|l| !l.is_empty())
+            .unwrap_or_else(|| "de".into());
         let wanted = encoder::numbered_chapters(&current, &lang);
         if current.iter().map(|c| &c.title).eq(wanted.iter().map(|c| &c.title)) {
             return Ok(());
@@ -3208,4 +3347,35 @@ fn book_event(app: &Arc<App>, slot: &JobRef) {
 /// Sorted like the inbox listing (natural order of the relative path).
 pub fn sort_paths(paths: &mut [String]) {
     paths.sort_by(|a, b| natural_path_cmp(a, b));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn track_numbers_that_contradict_the_file_order() {
+        crate::text::set_language("de");
+        let info = |track: &str, disc: &str| json!({"tags": {"track": track, "disc": disc}});
+        let files = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        // counting up, also "3/12": fine
+        assert_eq!(
+            order_doubt(&files(&["01.mp3", "02.mp3"]), &[info("1/12", ""), info("2/12", "")]),
+            None
+        );
+        // CD folders start again at 1: fine
+        let cds = files(&["CD1/01.mp3", "CD1/02.mp3", "CD2/01.mp3"]);
+        assert_eq!(order_doubt(&cds, &[info("1", ""), info("2", ""), info("1", "")]), None);
+        // one folder, discs in the tags: fine
+        let one = files(&["a.mp3", "b.mp3"]);
+        assert_eq!(order_doubt(&one, &[info("9", "1"), info("1", "2")]), None);
+        // badly named: the second file is track 1
+        let bad = order_doubt(
+            &files(&["Kapitel 10.mp3", "Kapitel 2.mp3"]),
+            &[info("2", ""), info("1", "")],
+        );
+        assert!(bad.unwrap().contains("Kapitel 2.mp3"));
+        // without track numbers nothing can be said
+        assert_eq!(order_doubt(&one, &[json!({"tags": {}}), info("1", "")]), None);
+    }
 }

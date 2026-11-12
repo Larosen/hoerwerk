@@ -256,6 +256,13 @@ einer neuen Produktion) ein Release, das älter ist als die Produktion. Releases
 geladen. Nach dem Download entscheidet die Laufzeit: bis 8 % Abweichung wird abgelegt, bis 25 % zur Prüfung
 vorgelegt, darüber gilt es als andere Fassung.
 
+**Kapitelnamen:** Ein Kapitel behält nur, was es von den anderen unterscheidet. Track-Nummern, Buchtitel, Reihe und
+Autor sowie Text, den (fast) jeder Track wiederholt, fallen weg – aus „01 - Buch (Full-Cast Edition): Chapter One - The
+Worst Birthday“ wird „Chapter 1: The Worst Birthday“. Bleibt nichts Sinnvolles übrig, werden die Kapitel durchnummeriert
+(„Kapitel 1“, „Chapter 1“). Die Reihenfolge kommt immer aus den Dateinamen; widersprechen die Track-Nummern in den Tags,
+wartet das Buch auf eine Prüfung. **Kapitel aufräumen** in der Bibliothek wendet dieselben Regeln auf ein vorhandenes
+Buch an.
+
 **Besseres Release / Korrigieren:** Jedes Buch in der Bibliothek hat **Besseres Release** – Hörwerk sucht erneut und
 lädt automatisch nur ein klar besseres Release (besseres Format oder deutlich mehr Bitrate); unter *Anfragen* kannst du
 auch selbst eins wählen. Der neue Download ersetzt das Buch, die alte Datei wird archiviert. **Korrigieren** holt ein

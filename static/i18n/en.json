@@ -1413,5 +1413,13 @@
  "Vorhanden: {have} – automatisch nur ein klar besseres Release, im Releases-Fenster zählt deine Wahl": "There now: {have} – automatically only a clearly better release, in the release window your pick counts",
  "besser als vorhanden": "better than the one there",
  "nicht besser als vorhanden": "not better than the one there",
- "{n} passende Releases, keins besser als das vorhandene ({have}) – neuer Versuch in {h} h": "{n} fitting releases, none better than the one there ({have}) – next try in {h} h"
+ "{n} passende Releases, keins besser als das vorhandene ({have}) – neuer Versuch in {h} h": "{n} fitting releases, none better than the one there ({have}) – next try in {h} h",
+ "Die Kapitelnamen sind schon sauber": "The chapter names are already clean",
+ "Kapitel aufräumen": "Tidy chapters",
+ "Kapitel aufräumen geht nur bei einer einzelnen M4B": "Tidying chapters only works for a single M4B",
+ "Kapitelnamen nach den Regeln für neue Bücher aufräumen (Buchtitel und Track-Nummern weg)": "Tidy the chapter names by the rules for new books (book title and track numbers go)",
+ "Reihenfolge unsicher: {why}": "Order uncertain: {why}",
+ "Track-Nummer in „{file}“ passt nicht zur Reihenfolge der Dateinamen": "The track number in “{file}” doesn't match the order of the file names",
+ "{n} Kapitelnamen aufgeräumt: {first} … {last}": "{n} chapter names tidied: {first} … {last}",
+ "{n} Kapitelnamen von Audible übernommen (Laufzeit und Kapitelzahl passen)": "{n} chapter names taken from Audible (runtime and chapter count match)"
 }

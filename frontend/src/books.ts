@@ -193,6 +193,8 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
     IS_ADMIN ? el("div", { class: "lib-actions" },
       el("button", { type: "button", class: "btn small ghost", title: t("Erneut nach Releases suchen: ein besseres ersetzt dieses Buch"),
         onclick: () => upgradeLibraryBook(b) }, icon("refresh"), t("Besseres Release")),
+      b.format === "m4b" ? el("button", { type: "button", class: "btn small ghost", title: t("Kapitelnamen nach den Regeln für neue Bücher aufräumen (Buchtitel und Track-Nummern weg)"),
+        onclick: (e: Event) => tidyLibraryChapters(b, e.currentTarget as HTMLButtonElement) }, t("Kapitel aufräumen")) : null,
       el("button", { type: "button", class: "btn small ghost", title: t("Falsch erkannt oder falsche Fassung? Neu zuordnen"),
         onclick: () => correctLibraryBook(b) }, t("Korrigieren"))) : null);
 }
@@ -695,6 +697,17 @@ async function upgradeLibraryBook(b: LibraryBook): Promise<void> {
     toast(t("Sucht nach einem besseren Release – zu sehen unter „Anfragen“"));
     loadRequests();
   } catch (e) { toast(errMsg(e), true); }
+}
+
+/** The chapter names of a filed M4B, cleaned by the same rules as new books. */
+async function tidyLibraryChapters(b: LibraryBook, btn: HTMLButtonElement): Promise<void> {
+  btn.disabled = true;
+  try {
+    const r = await api<{ changed: number; first?: string; last?: string }>("POST", "/api/library/chapters", { path: b.path });
+    toast(r.changed ? t("{n} Kapitelnamen aufgeräumt: {first} … {last}", { n: r.changed, first: r.first || "", last: r.last || "" })
+      : t("Die Kapitelnamen sind schon sauber"));
+  } catch (e) { toast(errMsg(e), true); }
+  btn.disabled = false;
 }
 
 /** Any book of the library back for a correction – also when its import is long gone from the list. */

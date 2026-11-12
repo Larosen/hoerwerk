@@ -5,6 +5,10 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
 
 ## Recently done
 
+- **7.17** – clean chapter names: track numbers, the book title and text every track repeats go
+  ("01 - Book (Full-Cast Edition): Chapter One - The Worst Birthday" → "Chapter 1: The Worst Birthday"), number words
+  become digits, nonsense falls back to "Chapter N"; track numbers in the tags that contradict the file order mean
+  a look before filing; **Tidy chapters** for books already in the library.
 - **7.16** – the right edition: releases that clearly are another recording (other narrator, reading instead of
   full cast, older than a new production) are not loaded, and downloads are checked by runtime, narrator tag and
   chapters before they are filed. Every library book can be corrected, marked as the wrong edition, or searched again
@@ -23,7 +27,7 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
 | 1 | **Follow authors and series** | "Tell me / request automatically when a new volume of this series or a new book by this author appears on Audible." Today you have to look yourself. |
 | 2 | **Prowlarr sync** | Take indexers (and their categories) from Prowlarr instead of entering them twice. |
 | 3 | **More free and legal sources** | ARD Audiothek (public-broadcaster audio dramas and readings, downloadable while online), Vorleser.net (classics read by professional speakers, free for private use), more public-domain collections of the Internet Archive with a clear licence. Each source only if its terms allow downloading. |
-| 4 | **Versioned releases** | `v7.16.0`-style tags with release notes, so you can pin a version instead of `latest`. |
+| 4 | **Versioned releases** | `v7.17.0`-style tags with release notes, so you can pin a version instead of `latest`. |
 | 5 | **arm64 image** | Built on a native arm64 runner (Raspberry Pi, Apple-silicon NAS). |
 
 ## Later
