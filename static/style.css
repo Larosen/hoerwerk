@@ -841,7 +841,11 @@ legend .help-q { margin-left: 6px; vertical-align: 1px; }
 /* release lists: note on the left, sort order on the right */
 .result-tools { justify-content: space-between; flex-wrap: wrap; }
 .result-tools .grow { flex: 1 1 16rem; min-width: 0; margin: 0; }
-.sort-pick { width: auto; flex: 0 0 auto; }
+.sort-bar { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.sort-bar::-webkit-scrollbar { display: none; }
+.sort-bar .chip { flex: none; }
+.lib-sort { padding: 0 2px; }
+.result-tools { flex-wrap: wrap; }
 
 /* statistics: one account in detail, the own share in the month chart */
 .stats-panel { max-width: 1100px; }
@@ -907,3 +911,30 @@ a.person-link:hover { border-color: var(--accent); background: var(--panel-2); }
 .stats-facts dt { color: var(--muted); }
 .stats-facts dd { margin: 0; overflow-wrap: anywhere; }
 @media (min-width: 900px) { .stats-facts { grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr); } }
+
+/* -- phones ------------------------------------------------------------------------------------------ */
+/* iOS zooms into every field whose text is smaller than 16px and stays zoomed: on touch devices fields are 16px */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]), select, textarea, .login-form input:not([type=checkbox]) { font-size: 16px; }
+}
+@media (max-width: 640px) {
+  /* the log: time, level and source in one line, the text below it over the full width */
+  .log-view { height: min(70vh, 640px); }
+  .log-line { flex-wrap: wrap; gap: 0 8px; padding: 5px 10px; border-bottom: 1px solid var(--border); }
+  .log-source { max-width: none; flex: 1 1 0; min-width: 0; }
+  .log-text { flex: 1 0 100%; }
+  /* release lists: the verdict gets its own full line (it was squeezed into one word per line) */
+  table.results td.c-verdict { flex: 1 0 100%; order: 5; }
+  table.results .c-act { order: 4; }
+  table.results .verdict { white-space: normal; }
+  dialog .result-tools { flex-direction: column; align-items: stretch; gap: 8px; }
+  dialog .result-tools .grow { flex: none; }
+  /* the release window uses the whole screen; its explanation makes room for the list */
+  #releasesDialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
+  #releasesDialog .dialog-intro { display: none; }
+  .lib-actions { justify-content: flex-start; flex-wrap: wrap; }
+  .uc-bar { flex-wrap: wrap; }
+  .inline-setting { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  .inline-setting select { min-width: 0; max-width: 100%; height: 36px; }
+  .lib-actions .btn { padding-left: 6px; padding-right: 6px; }
+}

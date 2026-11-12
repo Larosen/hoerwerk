@@ -217,10 +217,36 @@ pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
         .unwrap_or_default();
     match blocking(move || a.pipeline.tidy_file(&a, &f, &book, &name)).await {
         Ok(Some((n, first, last))) => {
+            // Audiobookshelf reads the chapters from metadata.json first: give it the same names, then let
+            // the media servers read the book again
+            let chapters = crate::encoder::file_chapters(&file);
+            let sidecar = crate::tagger::rename_abs_chapters(&folder, &chapters).unwrap_or(false);
+            crate::mediaservers::request_scans(&app);
             app.audit(&req.user_name(), &req.ip, "library_chapters", &rel);
-            json_reply(json!({"changed": n, "first": first, "last": last}))
+            json_reply(json!({"changed": n, "first": first, "last": last, "metadata_json": sidecar}))
         }
-        Ok(None) => json_reply(json!({"changed": 0})),
+        Ok(None) => {
+            // the M4B is clean already – but an older metadata.json may still carry the long names
+            let chapters = crate::encoder::file_chapters(&file);
+            let stale = std::fs::read_to_string(folder.join(crate::tagger::METADATA_FILE))
+                .ok()
+                .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+                .and_then(|d| d["chapters"].as_array().cloned())
+                .filter(|l| l.len() == chapters.len())
+                .map_or(0, |l| {
+                    l.iter()
+                        .zip(&chapters)
+                        .filter(|(a, b)| a["title"] != json!(b.title))
+                        .count()
+                });
+            if stale > 0 && crate::tagger::rename_abs_chapters(&folder, &chapters).unwrap_or(false) {
+                crate::mediaservers::request_scans(&app);
+                app.audit(&req.user_name(), &req.ip, "library_chapters", &rel);
+                let (first, last) = (chapters[0].title.clone(), chapters[chapters.len() - 1].title.clone());
+                return json_reply(json!({"changed": stale, "first": first, "last": last, "metadata_json": true}));
+            }
+            json_reply(json!({"changed": 0}))
+        }
         Err(e) => pipe_error(e, 409, 500),
     }
 }

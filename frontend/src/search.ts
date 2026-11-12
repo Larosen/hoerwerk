@@ -342,7 +342,7 @@ function renderResults(): void {
     body.append(el("tr", {}, el("td", { colspan: "5", class: "empty-row" }, t("Keine Treffer – anders formulieren (weniger Wörter, ohne Band-Nummer)."))));
     return;
   }
-  for (const r of sortReleases(search.results, $<HTMLSelectElement>("#searchSort").value)) {
+  for (const r of sortReleases(search.results)) {
     const tags = [
       r.format, r.language === "de" ? t("Deutsch") : r.language === "en" ? t("Englisch") : null,
       r.bitrate ? r.bitrate + " kbps" : null, r.abridged ? t("Gekürzt") : null, r.drama ? t("Hörspiel") : null,
@@ -439,7 +439,7 @@ function initSearch(): void {
   }
   $("#searchForm").addEventListener("submit", lookupBooks);
   $("#releaseForm").addEventListener("submit", (e) => runSearch(e));
-  initReleaseSort($<HTMLSelectElement>("#searchSort"), () => { if (search.results.length) renderResults(); });
+  initReleaseSort($("#searchSort"), () => { if (search.results.length) renderResults(); });
   $("#freeSearchBtn").addEventListener("click", () => runSearch(undefined, true));
   $("#addIndexerBtn").addEventListener("click", () => $("#indexerRows").append(indexerRow()));
   $("#sourcesForm").addEventListener("submit", (e) => { e.preventDefault(); saveSources(); });

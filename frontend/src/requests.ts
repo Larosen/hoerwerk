@@ -436,7 +436,7 @@ async function openReleases(r: BookRequest, query = ""): Promise<void> {
 function renderReleases(): void {
   const r = requests.current;
   if (!r) return;
-  const list = sortReleases(requests.releases, $<HTMLSelectElement>("#releasesSort").value);
+  const list = sortReleases(requests.releases);
   $("#releasesRows").replaceChildren(...(list.length ? list.map((x) => releaseRow(r, x))
     : [el("tr", {}, el("td", { colspan: "6", class: "empty-row" }, t("Keine Releases – anderen Suchbegriff versuchen (z. B. nur Titel).")))]));
 }
@@ -473,7 +473,7 @@ function releaseRow(r: BookRequest, x: JudgedRelease): HTMLTableRowElement {
 function initRequests(): void {
   requests.filter = store.get("requestFilter", "open");
   if (!(requests.filter in REQ_FILTERS)) requests.filter = "open";
-  initReleaseSort($<HTMLSelectElement>("#releasesSort"), renderReleases);
+  initReleaseSort($("#releasesSort"), renderReleases);
   $("#releasesGo").addEventListener("click", () => { if (requests.current) openReleases(requests.current, $<HTMLInputElement>("#releasesQuery").value); });
   // Enter in the search field searches again – it must not submit (and so close) the window
   $("#releasesQuery").addEventListener("keydown", (e) => {

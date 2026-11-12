@@ -24,6 +24,8 @@ const books = {
   picked: new Set<string>(),                  // selected paths in that list
   tracks: null as Track[] | null,             // tracks of the book in the "Kapitel & Namen" dialog
   libQuery: "",                               // search in the library view
+  trickle: null as Trickle | null,            // the gentle conversion of the whole library
+  libSort: store.get("librarySort", "author"),  // order of the library view
   libShown: 100,                              // rows loaded so far
   libTotal: null as number | null,            // books in the library (for the filter chip)
   libTimer: undefined as number | undefined,
@@ -134,10 +136,16 @@ function renderBooks(): void {
 // ------------------------------------------------------------------------- //
 // The whole library: browse and search (shows how every book was read)
 // ------------------------------------------------------------------------- //
+interface Trickle { on: boolean; left: number }
 interface LibraryBook {
   path: string; title: string; authors: string[]; names?: string[]; series: string | null;
   series_position: string | null; asin: string | null; format: string; files: number; mtime?: number; cover?: boolean;
 }
+
+const LIBRARY_SORTS: [string, () => string][] = [
+  ["author", () => t("Autor")], ["title", () => t("Titel")], ["new", () => t("Neueste")], ["old", () => t("Älteste")],
+  ["format", () => t("Nicht M4B zuerst")],
+];
 
 function renderLibrary(list: HTMLElement): void {
   const q = el("input", { type: "search", value: books.libQuery, placeholder: t("Titel, Autor, Serie oder Ordner"),
@@ -149,7 +157,11 @@ function renderLibrary(list: HTMLElement): void {
     clearTimeout(books.libTimer);
     books.libTimer = setTimeout(loadLibraryBooks, 250);
   });
-  list.append(el("li", { class: "lib-search" }, icon("search"), q), el("li", { class: "lib-wrap" }, rows));
+  const sort = el("div", { class: "sort-bar", role: "group", "aria-label": t("Bibliothek sortieren") });
+  sortBar(sort, LIBRARY_SORTS, () => books.libSort, (key) => {
+    books.libSort = key; store.set("librarySort", key); books.libShown = 100; loadLibraryBooks();
+  });
+  list.append(el("li", { class: "lib-search" }, icon("search"), q), el("li", { class: "lib-sort" }, sort), el("li", { class: "lib-wrap" }, rows));
   loadLibraryBooks();
 }
 
@@ -158,7 +170,7 @@ async function loadLibraryBooks(): Promise<void> {
   if (target && !target.children.length) skeleton(target, 6);
   try {
     const res = await api<{ total: number; books: LibraryBook[] }>("GET",
-      `/api/library/books?q=${encodeURIComponent(books.libQuery)}&limit=${books.libShown}`, undefined, { key: "library" });
+      `/api/library/books?q=${encodeURIComponent(books.libQuery)}&limit=${books.libShown}&sort=${books.libSort}`, undefined, { key: "library" });
     if (!books.libQuery) books.libTotal = res.total;
     const rows = document.getElementById("libRows");
     if (!rows) return;
@@ -235,6 +247,22 @@ function renderUnconverted(list: HTMLElement): void {
       onclick: () => convertLibrary([...books.picked].map((path) => ({ path }))),
     }, books.picked.size ? t("{n} zu M4B", { n: books.picked.size }) : t("Zu M4B")));
   list.append(bar);
+  // the whole library in the background: one book after the other, one core, lowest priority
+  const tr = books.trickle;
+  const toggle = el("button", { type: "button", class: "btn small" + (tr?.on ? "" : " primary"),
+    onclick: async () => {
+      try {
+        books.trickle = await api<Trickle>("POST", "/api/library/trickle", { on: !tr?.on });
+        toast(books.trickle.on ? t("Schonende Umwandlung läuft – ein Buch nach dem anderen") : t("Schonende Umwandlung angehalten"));
+        renderBooks();
+      } catch (e) { toast(errMsg(e), true); }
+    } }, tr?.on ? t("Anhalten") : t("Alle nach und nach umwandeln"));
+  list.append(el("li", { class: "uc-bar trickle" },
+    el("span", { class: "muted small" }, tr?.on
+      ? plural(tr.left, t("Schonende Umwandlung läuft: noch 1 Buch."), t("Schonende Umwandlung läuft: noch {n} Bücher.", { n: tr.left }))
+        + " " + t("Ein Buch nach dem anderen, mit einem CPU-Kern und niedrigster Priorität; neue Bücher und Downloads gehen vor.")
+      : t("Schonend im Hintergrund: ein Buch nach dem anderen, mit einem CPU-Kern und niedrigster Priorität – der Server bleibt nutzbar, auch wenn es Tage dauert. Was unklar ist, bleibt unter „Zu prüfen“ liegen.")),
+    toggle));
   for (const b of items) {
     const cb = el("input", { type: "checkbox", checked: books.picked.has(b.path), disabled: !!b.job });
     cb.addEventListener("change", () => { pick(b.path, cb.checked); renderBooks(); });
@@ -319,6 +347,9 @@ async function loadLibraryStats(): Promise<void> {
 }
 
 function renderLibraryStats(st: LibraryStats): void {
+  const before = JSON.stringify(books.trickle);
+  books.trickle = st.trickle || null;
+  if (books.filter === "unconverted" && before !== JSON.stringify(books.trickle)) { books.lastJson = ""; renderBooks(); }
   if (books.libTotal !== st.books) {
     books.libTotal = st.books;
     if (books.filter === "library" && !$("#viewBooks").hidden && !st.scanning) loadLibraryBooks();

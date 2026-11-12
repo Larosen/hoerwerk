@@ -344,6 +344,12 @@
    "raw_body": false
   },
   {
+   "method": "POST",
+   "path": "/api/library/trickle",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/library/unconverted",
    "access": "admin",

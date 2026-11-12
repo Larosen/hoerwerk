@@ -142,6 +142,23 @@ async fn library_rescanner(app: Arc<App>) {
         app.pipeline.schedule(&app, j);
     }
     std::thread::Builder::new()
+        .name("library-trickle".into())
+        .spawn({
+            let app = app.clone();
+            move || {
+                while !app.stopping() {
+                    std::thread::sleep(std::time::Duration::from_secs(
+                        std::env::var("TRICKLE_SECONDS")
+                            .ok()
+                            .and_then(|v| v.parse().ok())
+                            .unwrap_or(60),
+                    ));
+                    app.pipeline.trickle_tick(&app);
+                }
+            }
+        })
+        .expect("trickle thread");
+    std::thread::Builder::new()
         .name("inbox-scanner".into())
         .spawn({
             let app = app.clone();

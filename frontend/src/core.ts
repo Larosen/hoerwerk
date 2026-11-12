@@ -103,7 +103,7 @@ interface AudiobooksStatus {
   ignored?: string[];
   jobs: AudiobookJob[]; review: number; queues?: { encode: QueueStat; io: QueueStat };
 }
-interface LibraryStats { books: number; m4b: number; other: number; last_scan: number | null; scanning: boolean }
+interface LibraryStats { books: number; m4b: number; other: number; last_scan: number | null; scanning: boolean; trickle?: { on: boolean; left: number } }
 interface UnconvertedBook {
   path: string; title: string; authors: string[]; series: string | null; series_position: string | null;
   files: number; format: string; job: { id: string; status: BookStatus } | null; cover?: boolean;
@@ -126,25 +126,45 @@ interface Release {
   pack?: { volumes: number[]; series: string; author: string; owned: Record<string, string> };
 }
 /** The order of a release list: as Hörwerk ranks them, by size or by age (store key "releaseSort"). */
-function sortReleases<T extends { size: number; published: number | null }>(list: T[], order: string): T[] {
+const RELEASE_SORTS: [string, () => string][] = [
+  ["best", () => t("Beste")], ["new", () => t("Neueste")], ["old", () => t("Älteste")], ["size-desc", () => t("Größte")],
+  ["size-asc", () => t("Kleinste")], ["name", () => t("Name")], ["indexer", () => t("Indexer")],
+];
+
+/** The order picked for release lists (remembered, shared by the search and the request window). */
+function releaseOrder(): string {
+  const o = store.get("releaseSort", "best");
+  return RELEASE_SORTS.some(([k]) => k === o) ? o : "best";
+}
+
+function sortReleases<T extends { size: number; published: number | null; title: string; indexer: string }>(list: T[], order = releaseOrder()): T[] {
   const out = list.slice();
   const age = (r: T): number => r.published || 0;
+  const text = (a: string, b: string): number => a.localeCompare(b, LOCALE, { numeric: true, sensitivity: "base" });
   if (order === "size-desc") out.sort((a, b) => b.size - a.size);
   else if (order === "size-asc") out.sort((a, b) => a.size - b.size);
   else if (order === "new") out.sort((a, b) => age(b) - age(a));
   else if (order === "old") out.sort((a, b) => (age(a) || Infinity) - (age(b) || Infinity));
+  else if (order === "name") out.sort((a, b) => text(a.title, b.title));
+  else if (order === "indexer") out.sort((a, b) => text(a.indexer || "", b.indexer || ""));
   return out;
 }
 
-/** A sort selector for a release list – remembered across both lists. */
-function initReleaseSort(sel: HTMLSelectElement, render: () => void): void {
-  sel.value = store.get("releaseSort", "best");
-  if (!sel.value) sel.value = "best";
-  sel.addEventListener("change", () => {
-    store.set("releaseSort", sel.value);
-    for (const other of document.querySelectorAll<HTMLSelectElement>(".sort-pick")) other.value = sel.value;
-    render();
-  });
+/** A row of chips to pick an order with one tap: `options` are [key, label], `current` the chosen key. */
+function sortBar(host: HTMLElement, options: [string, () => string][], current: () => string, pick: (key: string) => void): void {
+  const draw = (): void => {
+    host.replaceChildren(...options.map(([key, label]) =>
+      el("button", { type: "button", class: "chip" + (current() === key ? " on" : ""), "aria-pressed": String(current() === key),
+        onclick: () => { pick(key); for (const bar of document.querySelectorAll<HTMLElement>(".sort-bar")) bar.dispatchEvent(new Event("redraw")); } },
+      label())));
+  };
+  host.addEventListener("redraw", draw);
+  draw();
+}
+
+/** The sort chips of a release list. */
+function initReleaseSort(host: HTMLElement, render: () => void): void {
+  sortBar(host, RELEASE_SORTS, releaseOrder, (key) => { store.set("releaseSort", key); render(); });
 }
 
 interface Download {

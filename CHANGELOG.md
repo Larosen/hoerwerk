@@ -1,7 +1,19 @@
 # Changelog
 
-What changed in each version of Hörwerk. Every version is also a tag (`v7.17.1`), a GitHub release and an image
-(`ghcr.io/larosen/hoerwerk:7.17.1`); `latest` is always the newest one.
+What changed in each version of Hörwerk. Every version is also a tag (`v7.18.0`), a GitHub release and an image
+(`ghcr.io/larosen/hoerwerk:7.18.0`); `latest` is always the newest one.
+
+## 7.18.0 – 2026-11-12
+
+- **Convert the library bit by bit:** under *Audiobooks → Not an M4B*, "Convert all, bit by bit" turns the MP3 books
+  into M4Bs one after the other, with one CPU core at the lowest priority. New books and downloads go first; what is
+  unclear waits under "To review"; it stops by itself when nothing is left.
+- **Sort with one tap:** releases by best, newest, oldest, largest, smallest, name or indexer; the library by author,
+  title, newest, oldest or "not M4B first".
+- **Phone:** tapping into a field no longer zooms the page; the log shows time and source in one line and the text
+  below it; the release window uses the whole screen and gives every verdict its own line.
+- Fixed: "Tidy chapters" changed the M4B, but Audiobookshelf kept showing the old names – it reads them from
+  `metadata.json`, which is updated now as well (also for books tidied before), followed by a rescan.
 
 ## 7.17.2 – 2026-11-12
 

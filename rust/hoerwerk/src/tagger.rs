@@ -134,6 +134,29 @@ pub fn abs_metadata(book: &Value, chapters: &[Chapter], duration: f64) -> Value 
     })
 }
 
+/// The chapter names of a book changed in its M4B: the `metadata.json` beside it (which Audiobookshelf reads
+/// before the file's own chapters) gets the same names – its other fields and the chapter times stay.
+/// Ok(false): there is no such file, or its chapters don't line up with the file's.
+pub fn rename_abs_chapters(folder: &Path, chapters: &[Chapter]) -> std::io::Result<bool> {
+    let path = folder.join(METADATA_FILE);
+    if !crate::media::is_regular(&path) {
+        return Ok(false);
+    }
+    let Ok(mut data) = serde_json::from_str::<Value>(&std::fs::read_to_string(&path)?) else {
+        return Ok(false);
+    };
+    let Some(list) = data["chapters"].as_array_mut().filter(|l| l.len() == chapters.len()) else {
+        return Ok(false);
+    };
+    for (c, new) in list.iter_mut().zip(chapters) {
+        c["title"] = json!(new.title);
+    }
+    let tmp = folder.join(format!(".{METADATA_FILE}.tmp"));
+    std::fs::write(&tmp, serde_json::to_string_pretty(&data).unwrap_or_default() + "\n")?;
+    std::fs::rename(&tmp, &path)?;
+    Ok(true)
+}
+
 pub fn write_abs_metadata(folder: &Path, book: &Value, chapters: &[Chapter], duration: f64) -> std::io::Result<()> {
     let text = serde_json::to_string_pretty(&abs_metadata(book, chapters, duration)).unwrap_or_default();
     std::fs::write(folder.join(METADATA_FILE), text + "\n")

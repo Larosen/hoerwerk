@@ -139,13 +139,7 @@
       <p class="pad-x muted small admin-only" id="freeSearchRow"><button type="button" class="linkish" id="freeSearchBtn">Nicht im Shop? Direkt bei den Indexern suchen</button></p>
       <div id="searchOwned" class="owned-note admin-only" hidden></div>
       <div class="row gap pad-x admin-only result-tools"><div id="searchNote" class="muted small grow"></div>
-        <select id="searchSort" class="sort-pick" aria-label="Releases sortieren">
-          <option value="best">Beste zuerst</option>
-          <option value="size-desc">Größte zuerst</option>
-          <option value="size-asc">Kleinste zuerst</option>
-          <option value="new">Neueste zuerst</option>
-          <option value="old">Älteste zuerst</option>
-        </select></div>
+        <div id="searchSort" class="sort-bar" role="group" aria-label="Releases sortieren"></div></div>
       <div class="table-wrap admin-only">
         <table class="results">
           <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">Abrufe</th><th class="c-act"></th></tr></thead>
@@ -641,19 +635,13 @@
 <dialog id="releasesDialog" class="wide">
   <form method="dialog" class="dialog-body">
     <h2>Releases für <span id="releasesTitle"></span></h2>
-    <p class="muted small">Hörwerk lädt von selbst das beste passende Release. Hier siehst du alle Treffer – auch die verworfenen, mit Grund – und kannst eins selbst wählen oder sperren.</p>
+    <p class="muted small dialog-intro">Hörwerk lädt von selbst das beste passende Release. Hier siehst du alle Treffer – auch die verworfenen, mit Grund – und kannst eins selbst wählen oder sperren.</p>
     <div class="search-row">
       <input id="releasesQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false">
       <button type="button" class="btn" id="releasesGo">Neu suchen</button>
     </div>
     <div class="row gap result-tools"><p id="releasesNote" class="muted small grow"></p>
-      <select id="releasesSort" class="sort-pick" aria-label="Releases sortieren">
-          <option value="best">Beste zuerst</option>
-          <option value="size-desc">Größte zuerst</option>
-          <option value="size-asc">Kleinste zuerst</option>
-          <option value="new">Neueste zuerst</option>
-          <option value="old">Älteste zuerst</option>
-        </select></div>
+      <div id="releasesSort" class="sort-bar" role="group" aria-label="Releases sortieren"></div></div>
     <div class="table-wrap">
       <table class="results">
         <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">kbit/s</th><th>Urteil</th><th class="c-act"></th></tr></thead>
