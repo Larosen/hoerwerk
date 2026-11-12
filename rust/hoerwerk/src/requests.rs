@@ -1037,6 +1037,20 @@ impl Requests {
         self.failed_release(app, req, &why);
     }
 
+    /// A filed book was the wrong recording (marked by hand): also an available request blocks the release
+    /// and searches again.
+    pub fn wrong_edition(&self, app: &Arc<App>, rid: i64, release_name: &str, why: &str) {
+        let Some(mut req) = self.get(app, rid) else { return };
+        if !OPEN.contains(&req["status"].as_str().unwrap_or("")) && req["status"] != "available" {
+            return;
+        }
+        if text_of(&req["release"]).is_empty() {
+            req["release"] = json!(cut(release_name, 300));
+        }
+        req["path"] = Value::Null;
+        self.failed_release(app, req, why);
+    }
+
     // -- following the download -------------------------------------------------------------------
     /// Every few minutes: search again when due, follow downloads and imports, notice arrivals. Blocking.
     pub fn tick(&self, app: &Arc<App>) {

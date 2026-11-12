@@ -184,6 +184,9 @@ pub struct Job {
     pub stage: String,
     #[serde(default)]
     pub pack: Option<Value>,
+    /// taken back for a correction: never filed automatically, a person picks the right book
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub review_first: bool,
     #[serde(default)]
     pub filing: Option<Value>,
 }
@@ -249,6 +252,7 @@ impl Job {
             rename_files: false,
             stage: "prepare".into(),
             pack: None,
+            review_first: false,
             filing: None,
         }
     }
@@ -915,6 +919,27 @@ impl Pipeline {
         rename: bool,
         pack: Option<Value>,
     ) -> JobRef {
+        self.add_with(app, source, origin, chapter_names, rename, pack, false)
+    }
+
+    /// A book of the library back for a correction – whatever happened to the job that filed it: it is read
+    /// and looked up like a new book, then waits for a person to pick the right one; the old files step aside
+    /// only when the corrected book is filed.
+    pub fn correct(&self, app: &Arc<App>, folder: &Path) -> JobRef {
+        self.add_with(app, folder, "library", None, false, None, true)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn add_with(
+        &self,
+        app: &Arc<App>,
+        source: &Path,
+        origin: &str,
+        chapter_names: Option<Vec<String>>,
+        rename: bool,
+        pack: Option<Value>,
+        review_first: bool,
+    ) -> JobRef {
         let source = real(source).display().to_string();
         let slot = {
             let mut list = self.list();
@@ -933,6 +958,7 @@ impl Pipeline {
             job.chapter_names = chapter_names;
             job.rename_files = rename;
             job.pack = pack;
+            job.review_first = review_first;
             let slot = Slot::new(job);
             list.push(slot.clone());
             // only the newest 200 finished jobs stay
@@ -1202,17 +1228,74 @@ impl Pipeline {
         Ok(slot)
     }
 
+    /// "Wrong edition": the filed book is another recording than the one asked for. Its request (if any)
+    /// blocks this release and searches on; the book comes back for a correction under its real name.
+    pub fn wrong_edition(&self, app: &Arc<App>, id: &str) -> Res<JobRef> {
+        let slot = self.need(id)?;
+        let (rid, release) = {
+            let mut j = slot.lock();
+            if j.status != "done" {
+                return Err(PipeError::Refused(t(
+                    "Nur abgelegte Bücher lassen sich korrigieren",
+                    &[],
+                )));
+            }
+            let rid = j.hints["request_id"].as_i64();
+            // what the request said must not decide again: the book is looked up by its content
+            if let Some(h) = j.hints.as_object_mut() {
+                h.remove("request_id");
+                h.insert("asin".into(), Value::Null);
+            }
+            (rid, base_name(&j.source))
+        };
+        let back = self.reopen(app, id)?;
+        let why = t("Falsche Fassung (von Hand markiert)", &[]);
+        back.say(&why);
+        if let Some(rid) = rid {
+            app.requests.wrong_edition(app, rid, &release, &why);
+            back.say(&t("Anfrage sucht weiter, dieses Release ist gesperrt", &[]));
+        }
+        Ok(back)
+    }
+
     /// Take a filed book back out of the library to match it again.
     pub fn reopen(&self, app: &Arc<App>, id: &str) -> Res<JobRef> {
         let slot = self.need(id)?;
         {
             let mut j = slot.lock();
-            let dest = j.dest.clone().filter(|d| Path::new(d).is_file());
-            let Some(dest) = dest.filter(|_| j.status == "done") else {
+            if j.status != "done" {
                 return Err(PipeError::Refused(t(
-                    "Nur abgelegte Bücher, die noch in der Bibliothek liegen, lassen sich korrigieren",
+                    "Nur abgelegte Bücher lassen sich korrigieren",
                     &[],
                 )));
+            }
+            let dest = j.dest.clone().filter(|d| Path::new(d).is_file());
+            let Some(dest) = dest else {
+                // moved or replaced since: the book is looked for in the library instead
+                let asin = j
+                    .matched
+                    .as_ref()
+                    .map(|m| s(m, "asin").to_uppercase())
+                    .unwrap_or_default();
+                let was = j.dest.clone().unwrap_or_default();
+                drop(j);
+                let found = (!asin.is_empty())
+                    .then(|| {
+                        app.library
+                            .entries()
+                            .into_iter()
+                            .find(|e| s(e, "asin").to_uppercase() == asin)
+                    })
+                    .flatten()
+                    .map(|e| self.library.join(s(&e, "path")))
+                    .filter(|p| p.is_dir());
+                return match found {
+                    Some(folder) => Ok(self.correct(app, &folder)),
+                    None => Err(PipeError::Refused(t(
+                        "Die Datei liegt nicht mehr unter {path}, und in der Bibliothek ist das Buch nicht zu finden. Korrigieren geht auch direkt in der Bibliothek beim Buch.",
+                        &[("path", &was)],
+                    ))),
+                };
             };
             let work = self.job_work(&j.id);
             std::fs::create_dir_all(&work)?;
@@ -1944,7 +2027,8 @@ impl Pipeline {
         for n in notes {
             j.info(&n);
         }
-        if let Some(m) = manual {
+        // a correction: the metadata.json beside a filed book is what Hörwerk wrote – the data in question
+        if let Some(m) = manual.filter(|_| !j.review_first) {
             let src = s(&m, "source").to_string();
             j.matched = Some(m);
             j.info(&t("Angaben aus {source}", &[("source", &src)]));
@@ -1955,7 +2039,7 @@ impl Pipeline {
     fn do_match(&self, app: &Arc<App>, slot: &JobRef) {
         let s_ = app.settings();
         let mode = sval(&s_, "ab_match", "auto");
-        if mode == "off" {
+        if mode == "off" && !slot.lock().review_first {
             slot.lock().matched = Some(json!({"source": "tags"}));
             return;
         }
@@ -1966,6 +2050,14 @@ impl Pipeline {
             .unwrap_or_else(|| sval(&s_, "ab_region", "de"));
         slot.say(&t("Suche bei Audible ({region}) …", &[("region", &region)]));
         let fallback = sbool(&s_, "ab_fallback", true);
+        {
+            // a correction: the ASIN in the tags is what was wrong – look up by title and author instead,
+            // so that the other editions show up as choices
+            let mut j = slot.lock();
+            if j.review_first {
+                j.hints["asin"] = Value::Null;
+            }
+        }
         let hints = slot.lock().hints.clone();
         let (mut ranked, mut notes) = app.providers.lookup(&hints, &region, fallback);
         let (name, duration) = {
@@ -2029,6 +2121,20 @@ impl Pipeline {
             // a requested book from another shop: clearly the best, certain enough → take it
             best = audible::best_match(&ranked, threshold);
         }
+        if slot.lock().review_first {
+            // taken back for a correction: the person who asked for it picks
+            if best.is_some() {
+                slot.say(&t("Zur Korrektur: bitte den richtigen Treffer wählen", &[]));
+            }
+            best = None;
+        }
+        if let Some(b) = best.clone()
+            && let Some(why) = self.doubt(app, slot, &b, &region)
+        {
+            // fits on paper, but something about the recording is off: a person decides
+            slot.say(&t("Bitte prüfen: {why}", &[("why", &why)]));
+            best = None;
+        }
         if let Some(b) = best {
             {
                 let mut j = slot.lock();
@@ -2061,6 +2167,45 @@ impl Pipeline {
             slot.say(&t("Kein Treffer", &[]));
         }
         self.save(app);
+    }
+
+    /// Why a match should not be filed without a look (runtime a bit off, another narrator in the tags, the
+    /// chapters of a single M4B not lining up with the shop's) – or None.
+    fn doubt(&self, app: &Arc<App>, slot: &JobRef, book: &Value, region: &str) -> Option<String> {
+        let (duration, narrator, file) = {
+            let j = slot.lock();
+            let src = PathBuf::from(&j.source);
+            let file = (j.files.len() == 1).then(|| {
+                if src.is_dir() {
+                    src.join(&j.files[0])
+                } else {
+                    src.clone()
+                }
+            });
+            (j.duration, j.hint("narrator"), file)
+        };
+        // the chapters as a fingerprint: only for one M4B/M4A with real chapter names (CD tracks say nothing)
+        let agreement = file
+            .filter(|f| {
+                let ext = f.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+                matches!(ext.as_str(), "m4b" | "m4a") && !s(book, "asin").is_empty()
+            })
+            .and_then(|f| {
+                let mine = encoder::file_chapters(&f);
+                if mine.len() < 4 || encoder::looks_generic(&mine) {
+                    return None;
+                }
+                let shop = app.providers.client.chapters(s(book, "asin"), region)?;
+                let starts: Vec<f64> = shop["chapters"]
+                    .as_array()?
+                    .iter()
+                    .filter_map(|c| c["start"].as_f64())
+                    .collect();
+                let shop_len = shop["runtime_ms"].as_f64().unwrap_or(0.0) / 1000.0;
+                let mine: Vec<f64> = mine.iter().map(|c| c.start).collect();
+                releases::chapter_agreement(&mine, &starts, duration, shop_len)
+            });
+        releases::doubt(book, duration, &narrator, agreement)
     }
 
     /// Downloaded for a request, but it is another book: the request blocks this release and searches on.

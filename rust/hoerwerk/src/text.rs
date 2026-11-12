@@ -203,6 +203,12 @@ pub fn next_local_midnight(ts: f64) -> f64 {
     ts.floor() - (tm.tm_hour as f64 * 3600.0 + tm.tm_min as f64 * 60.0 + tm.tm_sec as f64) + 86400.0
 }
 
+/// "10.11.2026" in local time.
+pub fn local_date(ts: f64) -> String {
+    let tm = local(ts);
+    format!("{:02}.{:02}.{:04}", tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900)
+}
+
 pub fn local_hm(ts: f64) -> String {
     let tm = local(ts);
     format!("{:02}:{:02}", tm.tm_hour, tm.tm_min)

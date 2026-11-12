@@ -589,6 +589,51 @@ class Processing(ContractTest):
         books = self.admin.get("/api/library/books?q=richtig")["books"]
         self.assertEqual([b["title"] for b in books], ["Neuer Titel"])
 
+    def test_any_library_book_can_be_corrected(self):
+        """Correcting works without the job that filed the book; a missing file says where it was looked for;
+        "wrong edition" brings a filed book back for a new assignment."""
+        self.book("Klara Klang - Erste Fassung", "Erste Fassung")
+        job = self.job("Klara Klang - Erste Fassung")
+        self.assertEqual(job["status"], "done", job)
+        old = job["dest"]
+        # "wrong edition" on the filed book: back under review, the file leaves the library
+        back = self.admin.call("POST", f'/api/audiobooks/{job["id"]}/wrong-edition')
+        self.assertEqual(back["status"], "review")
+        self.assertFalse(os.path.exists(old))
+        self.admin.call("POST", f'/api/audiobooks/{job["id"]}/manual', {"title": "Erste Fassung"})
+        job = self.job("Klara Klang - Erste Fassung", until=("done", "failed"))
+        self.assertEqual(job["status"], "done", job)
+        old = job["dest"]
+        # the job is gone from the list – the book can still be corrected from the library
+        self.admin.call("DELETE", f'/api/audiobooks/{job["id"]}')
+        rel = os.path.relpath(os.path.dirname(old), self.server.library)
+        fix = self.admin.call("POST", "/api/library/correct", {"path": rel})
+
+        def waiting():
+            j = next((j for j in self.admin.get("/api/audiobooks")["jobs"] if j["id"] == fix["id"]), None)
+            return j if j and j["status"] in ("review", "done", "failed") else None
+        self.assertEqual(self.admin.wait(waiting, 60, what="correction in review")["status"], "review")
+        self.assertTrue(os.path.isfile(old), "the old files stay until the corrected book is filed")
+        self.admin.call("POST", f'/api/audiobooks/{fix["id"]}/manual', {"title": "Zweite Fassung"})
+
+        def filed():
+            j = next((j for j in self.admin.get("/api/audiobooks")["jobs"] if j["id"] == fix["id"]), None)
+            return j if j and j["status"] in ("done", "failed") else None
+        done = self.admin.wait(filed, 90, what="corrected book filed")
+        self.assertEqual(done["status"], "done", done)
+        self.assertTrue(done["dest"].endswith(os.path.join("Zweite Fassung", "Zweite Fassung.m4b")), done["dest"])
+        self.assertFalse(os.path.exists(old))
+        self.assertEqual([b["title"] for b in self.admin.get("/api/library/books?q=fassung")["books"]], ["Zweite Fassung"])
+        status, _ = self.admin.call("POST", "/api/library/correct", {"path": rel}, expect=None)
+        self.assertEqual(status, 404)                                          # nothing left in the old folder
+        status, _ = self.admin.call("POST", "/api/library/correct", {"path": "../etc"}, expect=None)
+        self.assertIn(status, (400, 403, 404))
+        # the file was moved away by hand: the answer says where it was looked for
+        os.remove(done["dest"])
+        status, body = self.admin.call("POST", f'/api/audiobooks/{fix["id"]}/reopen', expect=None)
+        self.assertEqual(status, 409)
+        self.assertIn("liegt nicht mehr unter", body["error"])
+
     def test_media_servers_are_asked_to_scan_after_filing(self):
         """Audiobookshelf and Plex (a local fake): connection test picks the library, tokens stay on the server,
         one scan each after a book was filed."""

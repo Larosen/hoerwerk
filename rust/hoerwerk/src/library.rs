@@ -567,16 +567,7 @@ fn other_edition(book: &Value, entry: &Value) -> bool {
     // a special production ("mit voller Besetzung", "Full Cast", "Hörspiel") on one side only: another edition,
     // whatever the tags say about narrators (many MP3 books name only the author)
     let marked = |v: &Value, keys: &[&str]| {
-        let text = keys
-            .iter()
-            .map(|k| s(v, k))
-            .collect::<Vec<_>>()
-            .join(" ")
-            .to_lowercase();
-        crate::rx::is_match(
-            crate::rx!(r"voller besetzung|full[- ]cast|h(ö|oe)rspiel|dramati[sz]|radio drama|szenische lesung"),
-            &text,
-        )
+        crate::edition::production_marked(&keys.iter().map(|k| s(v, k)).collect::<Vec<_>>().join(" "))
     };
     if marked(book, &["title", "subtitle", "series"]) != marked(entry, &["title", "series", "path"]) {
         return true;

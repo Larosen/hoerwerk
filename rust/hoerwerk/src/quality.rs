@@ -29,7 +29,7 @@ pub fn is_drama(book: &Value, name: &str) -> bool {
     let text = sub(rx!(r"[._]+"), &text, " ");
     if is_match(
         rx!(
-            r"(?i)h(?:ö|oe)rspiel|dramati[sz]|full[\s-]?cast|radio\s?(?:play|drama)|audio\s?drama|inszenierte\s+lesung"
+            r"(?i)h(?:ö|oe)rspiel|dramati[sz]|full[\s-]?cast|volle[rn]?\s+besetzung|radio\s?(?:play|drama)|audio\s?drama|inszenierte\s+lesung"
         ),
         &text,
     ) {

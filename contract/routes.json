@@ -98,6 +98,12 @@
    "raw_body": false
   },
   {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/wrong-edition",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/audit",
    "access": "admin",
@@ -304,6 +310,12 @@
   {
    "method": "POST",
    "path": "/api/library/convert",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/library/correct",
    "access": "admin",
    "raw_body": false
   },
