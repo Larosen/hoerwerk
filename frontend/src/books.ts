@@ -189,9 +189,12 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
       el("code", { class: "lib-path" }, b.path)),
     el("div", { class: "lib-side" },
       b.format === "m4b" ? el("span", { class: "tag" }, "M4B") : el("span", { class: "tag soft" }, plural(b.files, t("1 Datei"), t("{n} Dateien", { n: b.files }))),
-      b.asin ? el("span", { class: "muted small" }, b.asin) : null,
-      IS_ADMIN ? el("button", { type: "button", class: "btn small ghost", title: t("Falsch erkannt oder falsche Fassung? Neu zuordnen"),
-        onclick: () => correctLibraryBook(b) }, t("Korrigieren")) : null));
+      b.asin ? el("span", { class: "muted small" }, b.asin) : null),
+    IS_ADMIN ? el("div", { class: "lib-actions" },
+      el("button", { type: "button", class: "btn small ghost", title: t("Erneut nach Releases suchen: ein besseres ersetzt dieses Buch"),
+        onclick: () => upgradeLibraryBook(b) }, icon("refresh"), t("Besseres Release")),
+      el("button", { type: "button", class: "btn small ghost", title: t("Falsch erkannt oder falsche Fassung? Neu zuordnen"),
+        onclick: () => correctLibraryBook(b) }, t("Korrigieren"))) : null);
 }
 
 // ------------------------------------------------------------------------- //
@@ -681,6 +684,16 @@ async function wrongEdition(j: AudiobookJob): Promise<void> {
     await api("POST", `/api/audiobooks/${j.id}/wrong-edition`);
     books.filter = "review"; store.set("bookFilter", "review");
     pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+/** Look again for releases of a book that is there: a better one (or the one picked by hand) replaces it. */
+async function upgradeLibraryBook(b: LibraryBook): Promise<void> {
+  if (!(await confirmBox(t("Für „{title}“ erneut nach Releases suchen? Automatisch wird nur ein klar besseres Release geladen (besseres Format oder deutlich mehr Bitrate); unter „Anfragen“ kannst du auch selbst eins wählen. Das neue ersetzt dann dieses Buch, die alte Datei wird archiviert.", { title: b.title || b.path }), t("Suchen")))) return;
+  try {
+    await api("POST", "/api/library/upgrade", { path: b.path });
+    toast(t("Sucht nach einem besseren Release – zu sehen unter „Anfragen“"));
+    loadRequests();
   } catch (e) { toast(errMsg(e), true); }
 }
 

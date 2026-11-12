@@ -9,6 +9,8 @@ interface BookRequest {
   reason?: string; release?: string; error?: string | null; last_search?: number | null; found?: number; seen?: number;
   history?: { time: number; text: string }[]; blocked?: string[]; attempts?: number; group?: RequestGroup | null;
   live?: RequestLive | null; resting?: string[] | null;
+  /** a better release for a book that is there: which one and how it sounds now */
+  upgrade?: { path: string; have?: { format?: string; kbps?: number } | null } | null;
 }
 /** What a running request is doing right now: SABnzbd's download, then the conversion to M4B. */
 interface RequestLive {
@@ -58,6 +60,12 @@ const IMPORT_STATE: Record<string, () => string> = {
   converting: () => t("Wandelt in M4B um"),
   tagging: () => t("Schreibt Tags und Kapitel"),
 };
+
+/** "M4B · 64 kbit/s" of the book that is there. */
+function haveLabel(have?: { format?: string; kbps?: number } | null): string {
+  if (!have) return "?";
+  return [(have.format || "").toUpperCase(), have.kbps ? `${have.kbps} kbit/s` : ""].filter(Boolean).join(" · ") || "?";
+}
 
 /** SABnzbd's "1:02:03" in words: "1 Std. 2 Min.". */
 function fmtLeft(s: string): string {
@@ -262,7 +270,10 @@ function requestCard(r: BookRequest): HTMLLIElement {
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
       el("span", { class: "s-author" }, (b.authors || []).join(", ")),
-      el("span", { class: "tag-row" }, langTag(b), genreTag(b)),
+      el("span", { class: "tag-row" }, r.upgrade ? el("span", { class: "series-tag", title: r.upgrade.path }, icon("refresh"), t("Ersatz")) : null,
+        langTag(b), genreTag(b)),
+      r.upgrade ? el("span", { class: "muted small" }, t("Vorhanden: {have} – automatisch nur ein klar besseres Release, im Releases-Fenster zählt deine Wahl",
+        { have: haveLabel(r.upgrade.have) })) : null,
       el("span", { class: "req-line" }, el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
         r.user && !r.mine ? el("span", { class: "muted small" }, t("von {name}", { name: r.user })) : null,
         el("span", { class: "muted small" }, fmtAgo(r.created))),

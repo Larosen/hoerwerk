@@ -460,6 +460,40 @@ pub fn evaluate(
     json!({"ok": true, "score": (score * 100.0).round_ties_even() / 100.0, "reason": null, "notes": notes, "kbps": kbps})
 }
 
+fn format_rank(format: &str) -> i64 {
+    match format.to_uppercase().as_str() {
+        "FLAC" | "LOSSLESS" | "WAV" => 4,
+        "M4B" => 3,
+        "M4A" | "AAC" => 2,
+        "MP3" => 1,
+        _ => 0,
+    }
+}
+
+/// More bitrate counts only from this share and step on (a few kbit/s more are no audible gain).
+const UPGRADE_SHARE: f64 = 1.25;
+const UPGRADE_STEP: i64 = 24;
+
+/// Is this (judged) release worth replacing the book that is there (`have`: {format, kbps})? A better
+/// format that keeps at least 80 % of the bitrate, or the same format with clearly more bitrate
+/// (+25 % and at least +24 kbit/s). An unknown format counts as the same.
+pub fn better_than(release: &Value, have: &Value) -> bool {
+    let hf = format_rank(s(have, "format"));
+    let rf = match format_rank(s(release, "format")) {
+        0 => hf,
+        x => x,
+    };
+    let rk = release["verdict"]["kbps"].as_i64().or_else(|| release["kbps"].as_i64());
+    match (rk, have["kbps"].as_i64().filter(|k| *k > 0)) {
+        (Some(r), Some(h)) => {
+            (rf > hf && r as f64 >= h as f64 * 0.8)
+                || (rf >= hf && r as f64 >= h as f64 * UPGRADE_SHARE && r - h >= UPGRADE_STEP)
+        }
+        (None, _) => false,
+        (Some(_), None) => rf > hf,
+    }
+}
+
 /// Runtime off by more than this share: clearly another recording (or abridged / incomplete).
 pub const RUNTIME_OTHER: f64 = 0.25;
 /// Off by more than this share: the match is not certain enough to be taken automatically.
@@ -635,6 +669,19 @@ mod tests {
                 .starts_with("Lesung")
         );
         assert_eq!(mismatch(s(&right, "title"), &cast, 650.0 * 60.0), None);
+    }
+
+    #[test]
+    fn a_release_replaces_a_book_only_when_clearly_better() {
+        let have = json!({"format": "m4b", "kbps": 64});
+        let rel = |format: &str, kbps: i64| json!({"format": format, "verdict": {"kbps": kbps}});
+        assert!(better_than(&rel("M4B", 128), &have));
+        assert!(!better_than(&rel("M4B", 80), &have)); // +25 % but only +16 kbit/s
+        assert!(!better_than(&rel("MP3", 192), &json!({"format": "m4b", "kbps": 160})));
+        assert!(better_than(&rel("M4B", 120), &json!({"format": "mp3", "kbps": 128}))); // format up, bitrate kept
+        assert!(!better_than(&rel("M4B", 64), &json!({"format": "mp3", "kbps": 128}))); // format up, half the sound
+        assert!(better_than(&rel("", 128), &have)); // unknown format: like the one there
+        assert!(!better_than(&json!({"format": "M4B", "verdict": {}}), &have)); // without size: no way to tell
     }
 
     #[test]

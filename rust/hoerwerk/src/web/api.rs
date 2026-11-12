@@ -112,6 +112,7 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("POST", "/api/inbox/unignore") => h!(super::audiobooks::unignore),
         ("POST", "/api/library/convert") => h!(super::audiobooks::convert),
         ("POST", "/api/library/correct") => h!(super::audiobooks::correct),
+        ("POST", "/api/library/upgrade") => h!(super::requests::upgrade),
         ("POST", "/api/upload") => h!(super::upload::start),
         ("PUT", "/api/upload/{uid}") => h!(super::upload::put_file),
         ("POST", "/api/upload/{uid}/finish") => h!(super::upload::finish),

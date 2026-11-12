@@ -1399,5 +1399,19 @@
  "Zur Korrektur: bitte den richtigen Treffer wählen": "For correction: please pick the right match",
  "Älter als diese Fassung (Release von {posted}, die Fassung erschien {released})": "Older than this edition (release from {posted}, the edition came out {released})",
  "„{name}“ ist eine andere Fassung als gewünscht? Das Buch kommt zurück unter „Zu prüfen“ und wird dort richtig zugeordnet. Gehört es zu einer Anfrage, wird dieses Release gesperrt und die Anfrage sucht weiter.": "“{name}” is another edition than wanted? The book returns to “To review” to be assigned correctly there. If it belongs to a request, this release is blocked and the request searches on.",
- "„{title}“ neu zuordnen? Das Buch wird neu erkannt und wartet unter „Zu prüfen“ auf deine Wahl. Die alte Ablage bleibt, bis das korrigierte Buch abgelegt ist.": "Reassign “{title}”? The book is recognised again and waits under “To review” for your choice. The old files stay until the corrected book is filed."
+ "„{title}“ neu zuordnen? Das Buch wird neu erkannt und wartet unter „Zu prüfen“ auf deine Wahl. Die alte Ablage bleibt, bis das korrigierte Buch abgelegt ist.": "Reassign “{title}”? The book is recognised again and waits under “To review” for your choice. The old files stay until the corrected book is filed.",
+ "Besseres Release": "Better release",
+ "Besseres Release gesucht von {name}": "Better release asked for by {name}",
+ "Besseres Release gesucht: „{title}“ ({path})": "Looking for a better release: “{title}” ({path})",
+ "Erneut nach Releases suchen: ein besseres ersetzt dieses Buch": "Search for releases again: a better one replaces this book",
+ "Ersatz": "Replacement",
+ "Ersetzt das vorhandene Buch: {path}": "Replaces the book that is there: {path}",
+ "Für dieses Buch wird schon ein besseres Release gesucht": "A better release for this book is already being searched for",
+ "Für „{title}“ erneut nach Releases suchen? Automatisch wird nur ein klar besseres Release geladen (besseres Format oder deutlich mehr Bitrate); unter „Anfragen“ kannst du auch selbst eins wählen. Das neue ersetzt dann dieses Buch, die alte Datei wird archiviert.": "Search for releases for “{title}” again? Automatically only a clearly better release is loaded (better format or clearly more bitrate); under “Requests” you can also pick one yourself. The new one then replaces this book, the old file is archived.",
+ "Nicht in der Bibliothek": "Not in the library",
+ "Sucht nach einem besseren Release – zu sehen unter „Anfragen“": "Looking for a better release – see “Requests”",
+ "Vorhanden: {have} – automatisch nur ein klar besseres Release, im Releases-Fenster zählt deine Wahl": "There now: {have} – automatically only a clearly better release, in the release window your pick counts",
+ "besser als vorhanden": "better than the one there",
+ "nicht besser als vorhanden": "not better than the one there",
+ "{n} passende Releases, keins besser als das vorhandene ({have}) – neuer Versuch in {h} h": "{n} fitting releases, none better than the one there ({have}) – next try in {h} h"
 }

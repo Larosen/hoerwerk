@@ -1324,7 +1324,7 @@ impl Pipeline {
     }
 
     /// {kbps, duration, size, files} of a book file or folder – what one hears, averaged over all its audio.
-    fn quality_of(path: &Path) -> Value {
+    pub fn quality_of(path: &Path) -> Value {
         if !path.exists() {
             return Value::Null;
         }
@@ -2574,6 +2574,37 @@ impl Pipeline {
             )
         };
         let m4b_path = PathBuf::from(&m4b);
+        let mut dup_decision = dup_decision;
+        // a better release for a book that is there: it replaces exactly that book (the old copy is archived)
+        let upgrade = slot.lock().hints["request_id"]
+            .as_i64()
+            .and_then(|rid| app.requests.get(app, rid))
+            .and_then(|r| r["upgrade"]["path"].as_str().map(str::to_string))
+            .filter(|p| !p.is_empty() && self.library.join(p).is_dir());
+        if dup_decision.is_none()
+            && let Some(up) = &upgrade
+        {
+            let entry = app
+                .library
+                .entries()
+                .into_iter()
+                .find(|e| s(e, "path") == up)
+                .unwrap_or_else(|| json!({"path": up}));
+            let mut dup: Map<String, Value> = ["path", "title", "authors", "asin", "format"]
+                .iter()
+                .map(|k| (k.to_string(), entry.get(*k).cloned().unwrap_or(Value::Null)))
+                .collect();
+            dup.insert("why".into(), json!("upgrade"));
+            dup.insert(
+                "quality".into(),
+                json!({"old": Self::quality_of(&self.library.join(up)), "new": Self::quality_of(&m4b_path)}),
+            );
+            let mut j = slot.lock();
+            j.duplicate = Some(Value::Object(dup));
+            j.dup_decision = Some("replace".into());
+            j.info(&t("Ersetzt das vorhandene Buch: {path}", &[("path", up)]));
+            dup_decision = Some("replace".into());
+        }
         let mut book = matched;
         if s(&book, "source") == "tags" {
             // no lookup: keep what the files say, fill gaps from the folder name

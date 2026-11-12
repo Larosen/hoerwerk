@@ -242,6 +242,16 @@ as "In the inbox – starts in about … s" at the top of the audiobook list and
 for requests) then asks that indexer alone; the others are only asked if it has nothing that fits the book. The
 search shows "searched at X only" with a button to ask the others as well.
 
+**The right edition:** a release that clearly is another recording than the requested book is not loaded – a
+reading named "read by …" when the full-cast production is wanted, another narrator, or (for a new production) a
+release older than the production. Releases that say nothing about it are loaded as before. After the download the
+runtime decides: up to 8 % off is filed, up to 25 % waits for a look, more counts as another edition.
+
+**Better release / correct:** every book in the library has **Better release** – Hörwerk searches again and loads
+automatically only a clearly better release (better format, or clearly more bitrate); under *Requests* you can also
+pick one yourself. The new download replaces the book, the old file is archived. **Correct** brings a book back for
+a new assignment, and **Wrong edition** on a filed book also lets its request search on.
+
 Tip: in SABnzbd set *Config → Switches → Unwanted extensions* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
 to **Abort**.
 
