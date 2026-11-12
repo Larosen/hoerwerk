@@ -1,0 +1,41 @@
+# Changelog
+
+What changed in each version of Hörwerk. Every version is also a tag (`v7.17.1`), a GitHub release and an image
+(`ghcr.io/larosen/hoerwerk:7.17.1`); `latest` is always the newest one.
+
+## 7.17.1 – 2026-11-12
+
+- Every version is now a Git tag, a GitHub release and its own image tag, so you can pin a version instead of
+  `latest` and go back to an older one.
+- *Settings → Health* shows the commit the image was built from next to the version.
+- New test: a crash in the middle of filing (old copy put aside, new one not there yet – or there, but the old one
+  not archived yet) loses nothing and files nothing twice.
+- Security page: brought up to the current version; a test keeps it from going stale.
+
+## 7.17.0 – 2026-11-12
+
+- Clean chapter names: track numbers, the book title and text every track repeats go ("01 - Book (Full-Cast
+  Edition): Chapter One - The Worst Birthday" → "Chapter 1: The Worst Birthday"), number words become digits,
+  nonsense falls back to "Chapter N" / "Kapitel N".
+- Track numbers in the tags that contradict the order of the file names: the book waits for a look.
+- **Tidy chapters** for books that are already in the library.
+
+## 7.16.0 – 2026-11-12
+
+- The right edition: a release that clearly is another recording (other narrator, reading instead of full cast,
+  older than a new production) is not loaded.
+- Downloads are checked by runtime, narrator tag and chapters before they are filed.
+- Every library book can be **corrected**, marked as the **wrong edition**, or searched again for a **better
+  release** that then replaces it (the old file is archived).
+
+## 7.15.0 – 2026-11-10
+
+- Requests show download progress, time left and speed, then the conversion step.
+- Another edition of a book no longer counts as "already in the library".
+- An indexer's daily search limit is no error: it rests until midnight, and searches use fewer API calls.
+
+## 7.14.0 – 2026-11-08
+
+- The server is a single Rust program (smaller image, faster, no interpreter); same database as before.
+- Free audiobooks from LibriVox in the search (German and English).
+- Preferred indexer: asked first, the others only when it has nothing that fits.

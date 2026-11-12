@@ -181,7 +181,7 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write        # the tag and GitHub release of a new version
       packages: write
       id-token: write        # keyless signing and attestations (OIDC)
       attestations: write
@@ -193,6 +193,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Version of this build (rust/hoerwerk/Cargo.toml)
+        id: ver
+        run: echo "version=$(sed -n 's/^version = "\(.*\)"/\1/p' rust/hoerwerk/Cargo.toml | head -1)" >> "$GITHUB_OUTPUT"
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
         with:
@@ -202,6 +205,7 @@ jobs:
             ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.ver.outputs.version }},enable={{is_default_branch}}
             type=semver,pattern={{version}}
             type=sha,format=short
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
@@ -214,6 +218,8 @@ jobs:
           push: true
           pull: true
           no-cache: ${{ github.event_name == 'schedule' }}
+          build-args: |
+            COMMIT=${{ github.sha }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=release
@@ -259,3 +265,19 @@ jobs:
           name: sbom-${{ github.sha }}          # artifact names may not contain ":" (the digest has one)
           path: sbom.spdx.json
           retention-days: 90
+      # A new version (not yet tagged): tag this commit and publish a GitHub release with the notes of its
+      # section in CHANGELOG.md. The weekly rebuild and later commits of the same version change nothing here.
+      - name: Tag and release a new version
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          IMAGE: ${{ steps.names.outputs.main }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "v$VERSION is released already"; exit 0
+          fi
+          awk -v v="$VERSION" 'index($0, "## " v " ") == 1 {p=1; next} /^## /{p=0} p' CHANGELOG.md > notes.md
+          printf '\nImage: `%s:%s` (`%s`)\n' "$IMAGE" "$VERSION" "$DIGEST" >> notes.md
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Hörwerk $VERSION" --notes-file notes.md

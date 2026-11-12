@@ -448,6 +448,13 @@ Settings, presets, history, the audiobook list, the library index and all creden
 `/config/backups/hoerwerk-<weekday>.db` (the last seven days) – to restore, stop Hörwerk and put the copy in place as
 `hoerwerk.db`.
 
+**Backup, pinning a version, going back:** `/config` is all Hörwerk needs backed up (your audiobooks live in your own
+library share). Every version is its own image – `ghcr.io/larosen/hoerwerk:7.17.1` instead of `:latest` stays on that
+version (it still gets the weekly security rebuild); what changed is in the [changelog](CHANGELOG.md). To go back, set
+the older tag and start the container again; if the database was changed by the newer version, put a backup copy from
+before the update in place. Books that Hörwerk replaced are not deleted but moved to `_ersetzt` in the inbox – move the
+folder back into the library to restore one.
+
 | Variable | Default | Meaning |
 |---|---|---|
 | `APP_LANGUAGE` | `de` | Interface and notifications: `en` or `de` |

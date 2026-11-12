@@ -20,6 +20,17 @@ fn spec() -> Value {
     serde_json::from_str(CONTRACT).expect("contract/settings.json is valid JSON")
 }
 
+/// The commit the image was built from (set by the Dockerfile) – short, hex only; None outside an image.
+pub fn commit() -> Option<String> {
+    let c: String = std::env::var("HOERWERK_COMMIT")
+        .unwrap_or_default()
+        .chars()
+        .filter(char::is_ascii_hexdigit)
+        .take(7)
+        .collect();
+    (c.len() == 7).then_some(c)
+}
+
 pub fn version() -> String {
     spec()["version"].as_str().unwrap_or("0").to_string()
 }

@@ -500,7 +500,7 @@ dependencies = [
 
 [[package]]
 name = "hoerwerk"
-version = "7.17.0"
+version = "7.17.1"
 dependencies = [
  "axum",
  "base64 0.22.1",

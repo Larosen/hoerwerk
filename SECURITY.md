@@ -2,7 +2,8 @@
 
 **English** · [Deutsch](SECURITY.de.md)
 
-As of the security review of 30 Oct 2026 (version 4.1: ntfy notifications, English/German). Hörwerk processes
+Applies to **version 7.17** (last full security review: 30 Oct 2026; what changed since is in the
+[changelog](CHANGELOG.md), and the protections below are checked by the tests on every change). Hörwerk processes
 files from foreign sources (downloads via SABnzbd), queries external services (Audible, Audnexus, BookBeat, Thalia,
 optionally an indexer, SABnzbd, Audiobookshelf, ntfy) and has a web interface with write access to your shares.
 This page explains what the program protects against, what was tested and what you should do yourself.
@@ -95,7 +96,7 @@ This page explains what the program protects against, what was tested and what y
   without the sandbox, `off` switches it off.
 * Weekly rebuild without cache so security updates arrive.
 
-## Component versions (checked 30 Oct 2026)
+## Component versions (checked 12 Nov 2026)
 
 | Component | Version | Latest | Assessment |
 |---|---|---|---|
@@ -103,9 +104,9 @@ This page explains what the program protects against, what was tested and what y
 | Debian | 13 “trixie” (stable) | 13 | current, security updates via weekly rebuild |
 | ffmpeg | 9.0.2 (own minimal build) | 9.0.2 | current, see below |
 | tini | 0.19.0 (Debian) | 0.19.0 | current |
-| Crates (213, e.g. axum 0.8, tokio 1.54, rustls 0.23, ureq 3.5, rusqlite 0.37 with bundled SQLite) | `rust/Cargo.lock` | – | `cargo deny` clean in every CI run |
+| Crates (216, e.g. axum 0.8, tokio 1.54, rustls 0.23, ureq 3.5, rusqlite 0.41 with bundled SQLite) | `rust/Cargo.lock` | – | `cargo deny` clean in every CI run |
 | Node.js (UI build only) | 26 LTS | 26 | current, not part of the final image |
-| TypeScript / Playwright | 7.0.2 / 1.64.1 | same | current (development/CI only) |
+| TypeScript / Playwright | 7.0.2 / 1.65.0 | same | current (development/CI only) |
 | GitHub Actions | checkout v7, setup-python v7 (tests only), setup-node v7, docker/* v4/v6/v7 | same | current |
 
 Checked interfaces: Audiobookshelf 2.37 (`metadata.json`, library scan), SABnzbd 5.1 (`addurl`, `queue`, `history`,
