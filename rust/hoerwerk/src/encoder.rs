@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
 
-use crate::chapters::{chapter_title, chapter_titles};
+use crate::chapters::{chapter_title, clean_titles};
 use crate::media::{self, AUDIO_DEMUXERS, command, ffmpeg_bin, ffprobe_bin, probe_cached};
 use crate::quality;
 use crate::rx;
@@ -436,22 +436,44 @@ pub struct Merge<'a> {
     pub mono: bool,
     pub jobs: usize,
     pub chapter_mode: &'a str,
-    pub album: &'a str,
+    /// book title, series, author: they go from the chapter names
+    pub known: &'a [String],
+    /// the book's language: "Kapitel N" or "Chapter N"
+    pub lang: &'a str,
     pub titles: Option<&'a [String]>,
     pub nice: &'a str,
     pub profile: &'a str,
     pub drama: bool,
 }
 
-/// One chapter per file – or the file's own chapters if it has several.
-fn chapter_list(files: &[String], paths: &[PathBuf], infos: &[Value], lengths: &[f64], m: &Merge) -> Vec<Chapter> {
+/// One chapter per file – or the file's own chapters if it has several. Also: whether most of the raw names
+/// was text every track repeats.
+fn chapter_list(
+    files: &[String],
+    paths: &[PathBuf],
+    infos: &[Value],
+    lengths: &[f64],
+    m: &Merge,
+) -> (Vec<Chapter>, bool) {
     let mut names: Vec<String> = files
         .iter()
         .enumerate()
         .map(|(n, rel)| chapter_title(rel, infos[n]["tags"]["title"].as_str(), m.chapter_mode))
         .collect();
+    let mut repetitive = false;
     if m.chapter_mode == "auto" {
-        names = chapter_titles(&names, m.album);
+        // what the book is called: from the match and from the album tags of the files
+        let mut known: Vec<String> = m.known.to_vec();
+        for i in infos {
+            if let Some(a) = i["tags"]["album"].as_str().map(str::trim).filter(|a| !a.is_empty())
+                && !known.iter().any(|k| k == a)
+            {
+                known.push(a.to_string());
+            }
+        }
+        let cleaned = clean_titles(&names, &known, m.lang);
+        names = cleaned.names;
+        repetitive = cleaned.repetitive;
     }
     let mut chapters = Vec::new();
     let mut pos = 0.0;
@@ -482,7 +504,7 @@ fn chapter_list(files: &[String], paths: &[PathBuf], infos: &[Value], lengths: &
         }
         pos += length;
     }
-    chapters
+    (chapters, repetitive)
 }
 
 /// Exact length of a raw AAC segment: packets x 1024 samples.
@@ -553,6 +575,8 @@ pub struct Merged {
     pub chapters: Vec<Chapter>,
     pub bitrate: String,
     pub copied: bool,
+    /// most of the track names was text every track repeats (then the shop's names may be better)
+    pub repetitive: bool,
 }
 
 /// Encode `files` (relative to `folder`) into one chapterised M4B; `out_path` appears only on success.
@@ -722,7 +746,7 @@ pub fn merge_to_m4b(
         });
     }
     let lengths: Vec<f64> = segs.iter().map(|x| adts_seconds(x, rate)).collect();
-    let chapters = chapter_list(files, &paths, &infos, &lengths, m);
+    let (chapters, repetitive) = chapter_list(files, &paths, &infos, &lengths, m);
     let total: f64 = lengths.iter().sum();
     let meta = work.0.join("meta.txt");
     std::fs::write(&meta, ffmetadata(&chapters, total, &[("genre", "Audiobook")]))
@@ -774,6 +798,7 @@ pub fn merge_to_m4b(
         chapters,
         bitrate: if copy { "copy".into() } else { br },
         copied: copy,
+        repetitive,
     })
 }
 
@@ -801,7 +826,7 @@ fn pack_as_is(
     );
     let work = TempDir::new(out_path.parent().unwrap_or(Path::new(".")), ".m4b-")?;
     let lengths: Vec<f64> = infos.iter().map(|i| i["duration"].as_f64().unwrap_or(0.0)).collect();
-    let chapters = chapter_list(files, paths, infos, &lengths, m);
+    let (chapters, repetitive) = chapter_list(files, paths, infos, &lengths, m);
     let total: f64 = lengths.iter().sum();
     let meta = work.0.join("meta.txt");
     std::fs::write(&meta, ffmetadata(&chapters, total, &[("genre", "Audiobook")]))
@@ -874,6 +899,7 @@ fn pack_as_is(
         chapters,
         bitrate: "copy".into(),
         copied: true,
+        repetitive,
     })
 }
 

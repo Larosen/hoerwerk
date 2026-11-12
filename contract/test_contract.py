@@ -607,6 +607,34 @@ class Processing(ContractTest):
         self.admin.call("DELETE", f'/api/audiobooks/{job["id"]}')
         self.assertNotIn(job["id"], [j["id"] for j in self.admin.get("/api/audiobooks")["jobs"]])
 
+    def test_chapter_names_lose_what_every_track_repeats(self):
+        """Track titles like "01 - Book (Edition): Chapter One - Name": the M4B's chapters keep only the name;
+        the library button tidies a filed book; track numbers against the file order mean a look first."""
+        tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "album": "Das lange Buch", "genre": "Hörbuch"}
+        titles = ["Das lange Buch (Ungekürzt): Vorspann", "Das lange Buch (Ungekürzt): Kapitel Eins - Der Anfang",
+                  "Das lange Buch (Ungekürzt): Kapitel Zwei - Die Mitte"]
+        deliver(self.server.inbox, "Ella Echo - Das lange Buch",
+                {f"{i + 1:02d}.mp3": {**tags, "title": f"{i + 1:02d} - {x}", "track": str(i + 1)}
+                 for i, x in enumerate(titles)})
+        job = self.job("Ella Echo - Das lange Buch")
+        self.assertEqual(job["status"], "done", job)
+        probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-print_format", "json", "-show_chapters", job["dest"]],
+                                          capture_output=True, text=True, check=True).stdout)
+        self.assertEqual([c["tags"]["title"] for c in probe["chapters"]],
+                         ["Vorspann", "Kapitel 1: Der Anfang", "Kapitel 2: Die Mitte"])
+        rel = os.path.relpath(os.path.dirname(job["dest"]), self.server.library)
+        self.assertEqual(self.admin.call("POST", "/api/library/chapters", {"path": rel}), {"changed": 0})
+        status, _ = self.admin.call("POST", "/api/library/chapters", {"path": "../etc"}, expect=None)
+        self.assertIn(status, (400, 403, 404))
+        # badly named files: the tags count the other way – nothing is filed before a look
+        deliver(self.server.inbox, "Ella Echo - Verdreht",
+                {"Teil 10.mp3": {**tags, "album": "Verdreht", "title": "Anfang", "track": "1"},
+                 "Teil 9.mp3": {**tags, "album": "Verdreht", "title": "Ende", "track": "2"}})
+        twisted = self.job("Ella Echo - Verdreht")
+        self.assertEqual(twisted["status"], "review", twisted)
+        detail = self.admin.get(f'/api/audiobooks/{twisted["id"]}')
+        self.assertTrue(any("Reihenfolge der Dateinamen" in line for line in detail["log"]), detail["log"])
+
     def test_pack_becomes_one_job_per_volume(self):
         tmp = os.path.join(self.server.dir, ".incoming", "Paula Pack - Reihe 01-02")
         for vol, title in ((1, "Erster Fall"), (2, "Zweiter Fall")):

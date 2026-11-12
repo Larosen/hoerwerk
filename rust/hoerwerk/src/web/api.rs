@@ -113,6 +113,7 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("POST", "/api/library/convert") => h!(super::audiobooks::convert),
         ("POST", "/api/library/correct") => h!(super::audiobooks::correct),
         ("POST", "/api/library/upgrade") => h!(super::requests::upgrade),
+        ("POST", "/api/library/chapters") => h!(super::audiobooks::tidy_chapters),
         ("POST", "/api/upload") => h!(super::upload::start),
         ("PUT", "/api/upload/{uid}") => h!(super::upload::put_file),
         ("POST", "/api/upload/{uid}/finish") => h!(super::upload::finish),

@@ -189,6 +189,42 @@ pub async fn wrong_edition(app: Arc<App>, req: Req, p: Params) -> Reply {
     }
 }
 
+/// Clean the chapter names of a book in the library (one M4B): the same rules as for new books.
+pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let rel = match &req.get("path") {
+        Value::String(s) => s.clone(),
+        _ => return error(400, t("Kein Buch angegeben", &[])),
+    };
+    let folder = match super::library::library_path(&app, &rel) {
+        Ok(f) => f,
+        Err(r) => return r,
+    };
+    let audio = crate::media::collect_audio(&folder);
+    let [file] = audio.as_slice() else {
+        return error(409, t("Kapitel aufräumen geht nur bei einer einzelnen M4B", &[]));
+    };
+    let file = folder.join(file);
+    let book = app
+        .library
+        .entries()
+        .into_iter()
+        .find(|e| e["path"].as_str() == Some(rel.as_str()))
+        .unwrap_or_else(|| json!({}));
+    let (a, f) = (app.clone(), file.clone());
+    let name = folder
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    match blocking(move || a.pipeline.tidy_file(&a, &f, &book, &name)).await {
+        Ok(Some((n, first, last))) => {
+            app.audit(&req.user_name(), &req.ip, "library_chapters", &rel);
+            json_reply(json!({"changed": n, "first": first, "last": last}))
+        }
+        Ok(None) => json_reply(json!({"changed": 0})),
+        Err(e) => pipe_error(e, 409, 500),
+    }
+}
+
 /// Any book of the library back for a correction (also without the job that filed it).
 pub async fn correct(app: Arc<App>, req: Req, _: Params) -> Reply {
     let rel = match &req.get("path") {

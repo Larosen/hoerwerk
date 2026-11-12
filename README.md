@@ -247,6 +247,12 @@ reading named "read by …" when the full-cast production is wanted, another nar
 release older than the production. Releases that say nothing about it are loaded as before. After the download the
 runtime decides: up to 8 % off is filed, up to 25 % waits for a look, more counts as another edition.
 
+**Chapter names:** a chapter keeps only what tells it from the others. Track numbers, the book title, series and
+author, and text that (nearly) every track repeats go – "01 - Book (Full-Cast Edition): Chapter One - The Worst
+Birthday" becomes "Chapter 1: The Worst Birthday". When nothing sensible is left, chapters are numbered ("Chapter 1",
+"Kapitel 1"). The order always comes from the file names; if the track numbers in the tags say otherwise, the book
+waits for a look. **Tidy chapters** in the library applies the same rules to a book that is already there.
+
 **Better release / correct:** every book in the library has **Better release** – Hörwerk searches again and loads
 automatically only a clearly better release (better format, or clearly more bitrate); under *Requests* you can also
 pick one yourself. The new download replaces the book, the old file is archived. **Correct** brings a book back for
