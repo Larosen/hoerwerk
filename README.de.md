@@ -467,6 +467,14 @@ SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600). Einmal am Tag legt Hörwerk
 `/config/backups/hoerwerk-<Wochentag>.db` ab (die letzten sieben Tage) – zum Zurückspielen Hörwerk stoppen und die
 Kopie als `hoerwerk.db` einsetzen.
 
+**Sichern, Version festlegen, zurückgehen:** Zu sichern ist nur `/config` (die Hörbücher liegen in deiner eigenen
+Bibliotheks-Freigabe). Jede Version ist ein eigenes Image – `ghcr.io/larosen/hoerwerk:7.17.1` statt `:latest` bleibt bei
+dieser Version (die wöchentlichen Sicherheitsupdates kommen trotzdem); was sich geändert hat, steht im
+[Changelog](CHANGELOG.md). Zum Zurückgehen den älteren Tag eintragen und den Container neu starten; hat die neuere
+Version die Datenbank verändert, eine Sicherung von vor dem Update einsetzen. Bücher, die Hörwerk ersetzt hat, werden
+nicht gelöscht, sondern nach `_ersetzt` im Eingang verschoben – zum Wiederherstellen den Ordner zurück in die
+Bibliothek schieben.
+
 | Variable | Standard | Bedeutung |
 |---|---|---|
 | `APP_LANGUAGE` | `de` | Oberfläche und Benachrichtigungen: `de` oder `en` |

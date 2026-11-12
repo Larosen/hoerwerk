@@ -327,7 +327,8 @@ class System(ContractTest):
         self.assertEqual(sorted(d["services"]), ["abs", "indexers", "plex", "sab"])
         self.assertEqual(d["version"], self.admin.get("/api/health")["version"])
         sysinfo = self.admin.get("/api/system")
-        self.assertEqual(sorted(sysinfo), ["ffmpeg", "queues", "sandbox", "version"])
+        self.assertEqual(sorted(sysinfo), ["commit", "ffmpeg", "queues", "sandbox", "version"])
+        self.assertIsNone(sysinfo["commit"])                                # only an image knows its commit
         self.assertTrue({"mode", "landlock_abi", "active", "network_blocked"} <= set(sysinfo["sandbox"]))
         self.assertEqual(sorted(sysinfo["queues"]), ["encode", "io"])
         self.assertEqual(self.family().call("GET", "/api/diagnostics", expect=None)[0], 403)
@@ -859,6 +860,74 @@ class Lifecycle(unittest.TestCase):
             self.assertEqual(m4bs, ["Lang.m4b"])
             leftovers = [f for _, _, files in os.walk(s.library) for f in files if f.startswith(".")]
             self.assertEqual(leftovers, [])                                     # no half copy left behind
+        finally:
+            s.cleanup()
+
+    def test_crash_while_filing_loses_nothing(self):
+        """The server dies in the middle of filing (power cut, kill -9) – on the next start the journal decides:
+        the new M4B is not in the library → the old copy goes back to its place; it is there → the old copy is
+        archived and the job is done. Half copies are removed, nothing is lost or filed twice (docs/JOBS.md)."""
+        s = Server().start()
+        try:
+            admin = Client(s, ADMIN["name"], ADMIN["password"])
+            tags = {"artist": "Karl Krach", "album_artist": "Karl Krach", "album": "Stromausfall"}
+            deliver(s.inbox, "Karl Krach - Stromausfall", {"01.mp3": tags})
+            jobs = lambda: admin.get("/api/audiobooks")["jobs"]                 # noqa: E731
+            job = admin.wait(lambda: [j for j in jobs() if j["status"] in ("done", "failed")], 90, what="filed")[0]
+            self.assertEqual(job["status"], "done", job)
+            dest = job["dest"]
+            folder, parent = os.path.dirname(dest), os.path.dirname(os.path.dirname(dest))
+            hidden = os.path.join(parent, f'.br-alt-{job["id"]}-{os.path.basename(folder)}')
+            db = os.path.join(s.config, "hoerwerk.db")
+
+            def crash(change) -> None:
+                """Stop, put the job's row into the state a crash would have left, start again."""
+                s.stop(signal.SIGKILL)
+                con = sqlite3.connect(db)
+                data = json.loads(con.execute("SELECT data FROM jobs WHERE id=?", (job["id"],)).fetchone()[0])
+                change(data)
+                con.execute("UPDATE jobs SET data=?, status=? WHERE id=?", (json.dumps(data), data["status"], job["id"]))
+                con.commit()
+                con.close()
+                s.start()
+
+            # 1) the old copy was put aside, the new one never arrived
+            def parked_only(data):
+                os.rename(folder, hidden)
+                data["filing"] = {"parked": [[hidden, folder, "archive"]]}
+            crash(parked_only)
+            admin = Client(s, ADMIN["name"], ADMIN["password"])
+            self.assertTrue(os.path.isfile(dest), "the old copy is back at its place")
+            self.assertFalse(os.path.exists(hidden))
+            log = admin.get(f'/api/audiobooks/{job["id"]}')["log"]
+            self.assertTrue(any("wieder an ihren Platz" in line for line in log), log)
+
+            # 2) the new copy arrived, the crash came before the old one was archived – and a half copy lies around
+            old_copy = os.path.join(hidden, "alt.m4b")
+            part = os.path.join(folder, ".hw-part-Rest.m4b")
+
+            def placed_not_settled(data):
+                os.makedirs(hidden)
+                with open(old_copy, "wb") as fh:
+                    fh.write(b"alte Fassung")
+                with open(part, "wb") as fh:
+                    fh.write(b"halb")
+                data.update(status="tagging", stage="finish", dest=None,
+                            m4b=os.path.join(s.dir, "weg", "book.m4b"),
+                            filing={"parked": [[hidden, folder + " (alt)", "archive"]], "folder": folder,
+                                    "file": os.path.basename(dest), "size": os.path.getsize(dest)})
+            crash(placed_not_settled)
+            admin = Client(s, ADMIN["name"], ADMIN["password"])
+            again = admin.wait(lambda: [j for j in jobs() if j["id"] == job["id"] and j["status"] == "done"], 30,
+                               what="done after the restart")[0]
+            self.assertEqual(again["dest"], dest)
+            self.assertFalse(os.path.exists(part), "half copies are removed")
+            self.assertFalse(os.path.exists(hidden))
+            archived = [os.path.join(d, f) for d, _, files in os.walk(os.path.join(s.inbox, "_ersetzt")) for f in files]
+            self.assertEqual([os.path.basename(a) for a in archived], ["alt.m4b"], "the old copy is archived, not lost")
+            m4bs = [f for _, _, files in os.walk(s.library) for f in files if f.endswith(".m4b")]
+            self.assertEqual(m4bs, [os.path.basename(dest)])                     # filed exactly once
+            self.assertEqual(len(jobs()), 1)
         finally:
             s.cleanup()
 

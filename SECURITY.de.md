@@ -2,7 +2,8 @@
 
 [English](SECURITY.md) · **Deutsch**
 
-Stand: Security-Review vom 30.10.2026 (Version 4.1: ntfy-Benachrichtigungen, Deutsch/Englisch). Hörwerk verarbeitet Dateien aus fremden Quellen
+Gilt für **Version 7.17** (letzte vollständige Sicherheitsprüfung: 30.10.2026; was sich seitdem geändert hat, steht im
+[Changelog](CHANGELOG.md), und die Schutzmaßnahmen unten prüfen die Tests bei jeder Änderung). Hörwerk verarbeitet Dateien aus fremden Quellen
 (Downloads über SABnzbd), fragt externe Dienste ab (Audible, Audnexus, BookBeat, Thalia, optional ein Indexer, SABnzbd, Audiobookshelf, ntfy)
 und hat eine Weboberfläche mit Schreibzugriff auf deine Shares. Hier steht, wovor das Programm sich
 schützt, was dafür geprüft wurde und was du selbst tun solltest.
@@ -96,7 +97,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
   ffmpeg ohne Käfig, `off` schaltet ihn ab.
 * Wöchentlicher Neubau ohne Cache, damit Sicherheitsupdates ankommen.
 
-## Komponenten-Stand (geprüft am 30.10.2026)
+## Komponenten-Stand (geprüft am 12.11.2026)
 
 | Komponente | Version | Neueste | Bewertung |
 |---|---|---|---|
@@ -104,9 +105,9 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 | Debian | 13 „trixie“ (stable) | 13 | aktuell, Sicherheitsupdates per wöchentlichem Neubau |
 | ffmpeg | 9.0.2 (eigener schlanker Build) | 9.0.2 | aktuell, siehe unten |
 | tini | 0.19.0 (Debian) | 0.19.0 | aktuell |
-| Crates (213, u. a. axum 0.8, tokio 1.54, rustls 0.23, ureq 3.5, rusqlite 0.37 mit eingebautem SQLite) | `rust/Cargo.lock` | – | `cargo deny` in jeder CI ohne Meldungen |
+| Crates (216, u. a. axum 0.8, tokio 1.54, rustls 0.23, ureq 3.5, rusqlite 0.41 mit eingebautem SQLite) | `rust/Cargo.lock` | – | `cargo deny` in jeder CI ohne Meldungen |
 | Node.js (nur Build der Oberfläche) | 26 LTS | 26 | aktuell, nicht im fertigen Image |
-| TypeScript / Playwright | 7.0.2 / 1.64.1 | dieselben | aktuell (nur Entwicklung/CI) |
+| TypeScript / Playwright | 7.0.2 / 1.65.0 | dieselben | aktuell (nur Entwicklung/CI) |
 | GitHub Actions | checkout v7, setup-python v7 (nur Tests), setup-node v7, docker/* v4/v6/v7 | dieselben | aktuell |
 
 Geprüfte Schnittstellen: Audiobookshelf 2.37 (`metadata.json`, Bibliotheks-Scan), SABnzbd 5.1 (`addurl`, `queue`, `history`, `get_cats`), ntfy 2.35 (JSON-Publish, Token/Basic-Auth).

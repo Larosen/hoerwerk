@@ -320,6 +320,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_failed_move_keeps_the_source_and_leaves_nothing_behind() {
+        let dir = std::env::temp_dir().join(format!("hw-fail-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let src = dir.join("book.m4b");
+        std::fs::write(&src, b"audio").unwrap();
+        // the target folder can't be made (a file is in the way): nothing is moved, the source stays whole
+        std::fs::write(dir.join("Autor"), b"keine Mappe").unwrap();
+        assert!(place(&src, &dir.join("Autor").join("Buch"), "Buch.m4b").is_err());
+        assert_eq!(std::fs::read(&src).unwrap(), b"audio");
+        // the target is a folder: the move fails, the source stays, no half copy is left
+        let folder = dir.join("Ziel");
+        std::fs::create_dir_all(folder.join("Buch.m4b")).unwrap();
+        std::fs::write(folder.join("Buch.m4b").join("x"), b"x").unwrap();
+        assert!(place(&src, &folder, "Buch.m4b").is_err());
+        assert_eq!(std::fs::read(&src).unwrap(), b"audio");
+        assert_eq!(remove_partials(&folder), 0);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn moves_whole_files_also_across_disks() {
         use std::os::unix::fs::MetadataExt;
         let disk = std::env::temp_dir().join(format!("hw-move-{}", std::process::id()));

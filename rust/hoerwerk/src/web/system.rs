@@ -116,7 +116,10 @@ pub async fn system(app: Arc<App>, _: Req, _: Params) -> Reply {
     let (ff, sb) = tokio::task::spawn_blocking(|| (media::ffmpeg_version(), media::sandbox_status()))
         .await
         .unwrap_or_default();
-    json_reply(json!({"version": settings::version(), "ffmpeg": ff, "sandbox": sb, "queues": app.engine.stats()}))
+    json_reply(
+        json!({"version": settings::version(), "commit": settings::commit(), "ffmpeg": ff, "sandbox": sb,
+                      "queues": app.engine.stats()}),
+    )
 }
 
 /// For Docker, Pangolin & co.: alive. The version only for signed-in users (no help for attackers).
@@ -596,7 +599,16 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
         "ok",
         t(
             "Hörwerk {version}, läuft seit {since}",
-            &[("version", &settings::version()), ("since", &when(app.started))],
+            &[
+                (
+                    "version",
+                    &match settings::commit() {
+                        Some(c) => format!("{} ({c})", settings::version()),
+                        None => settings::version(),
+                    },
+                ),
+                ("since", &when(app.started)),
+            ],
         ),
         none(),
         none(),

@@ -48,7 +48,10 @@ COPY static/ /app/static/
 COPY --from=web /src/static/*.js /app/static/
 WORKDIR /app
 
-ENV CONFIG_DIR=/config \
+# which commit this image was built from – shown under Settings → Health (set by the release build)
+ARG COMMIT=""
+ENV HOERWERK_COMMIT=$COMMIT \
+    CONFIG_DIR=/config \
     INBOX_DIR=/inbox \
     LIBRARY_DIR=/audiobooks \
     PORT=8080 \
