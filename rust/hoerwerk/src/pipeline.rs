@@ -1806,9 +1806,12 @@ impl Pipeline {
     // -- running a stage -----------------------------------------------------------------------------
     /// Run the job's current stage (called by an engine worker).
     pub fn step(&self, app: &Arc<App>, slot: &JobRef) {
+        // lock order: the list first and alone, then the job – `add` looks into the jobs while it holds the
+        // list, so asking for the list with a job locked would let the two wait for each other forever
+        let listed = self.list().iter().any(|x| Arc::ptr_eq(x, slot));
         let stage = {
             let mut j = slot.lock();
-            if j.status != "queued" || !self.list().iter().any(|x| Arc::ptr_eq(x, slot)) {
+            if j.status != "queued" || !listed {
                 return; // cancelled or removed while waiting
             }
             slot.cancel.store(false, Ordering::SeqCst);

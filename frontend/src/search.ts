@@ -305,7 +305,7 @@ async function runSearch(e?: Event, free = false, everywhere = false): Promise<v
     const queries = res.queries || [];
     $("#searchNote").textContent = (res.results.length ? t("{n} Treffer", { n: res.results.length })
       : t("Keine Releases gefunden. Suchbegriff oben ändern, z. B. nur Titel oder Nachname.")) +
-      (queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: queries.map((x) => `„${x}“`).join(", ") }) : "") +
+      (queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: queries.map((x) => t("„{title}“", { title: x })).join(", ") }) : "") +
       (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "") +
       (res.resting?.length ? " · " + restingText(res.resting) : "");
     const skipped = res.skipped || [];

@@ -147,7 +147,7 @@ function requestButton(b: Book & { requested?: string | null }): HTMLElement {
   if (state && state !== "declined") {
     return el("span", { class: `rtag req-${state}`, title: t("Schon angefragt") }, REQ_STATUS[state]?.() || state);
   }
-  const btn = el("button", { type: "button", class: "btn small primary" }, t("Anfragen"));
+  const btn = el("button", { type: "button", class: "btn small primary" }, t("Anfragen|Verb"));
   btn.addEventListener("click", async () => {
     btn.disabled = true;
     try {
@@ -187,7 +187,7 @@ async function openSeries(b: Book): Promise<void> {
   $("#seriesInfo").textContent = t("Lade die Bände …");
   $("#seriesVolumes").replaceChildren();
   ok.disabled = true;
-  ok.textContent = t("Anfragen");
+  ok.textContent = t("Anfragen|Verb");
   d.returnValue = "";
   if (!d.open) d.showModal();
   let res: SeriesAnswer;
@@ -423,7 +423,7 @@ async function openReleases(r: BookRequest, query = ""): Promise<void> {
     $<HTMLInputElement>("#releasesQuery").value = res.query;
     const ok = res.results.filter((x) => x.verdict.ok).length;
     $("#releasesNote").textContent = t("{n} Releases, davon {ok} passend", { n: res.results.length, ok }) +
-      (res.queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: res.queries.map((x) => `„${x}“`).join(", ") }) : "") +
+      (res.queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: res.queries.map((x) => t("„{title}“", { title: x })).join(", ") }) : "") +
       (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "") +
       (res.resting?.length ? " · " + restingText(res.resting) : "");
     requests.releases = res.results;

@@ -3,6 +3,14 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v7.17.1`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:7.17.1`); `latest` is always the newest one.
 
+## 7.17.2 – 2026-11-12
+
+- Fixed: the server could freeze for good when a new folder arrived in the inbox at the very moment another book
+  started its next step (two parts waiting for each other). Found while filing eight books at once; there is a test
+  for exactly that now.
+- The README is a short overview with a demo; the manual moved to `docs/en/` and `docs/de/`.
+- English UI: the button says "Request" (not "Requests"), and quotation marks follow the language.
+
 ## 7.17.1 – 2026-11-12
 
 - Every version is now a Git tag, a GitHub release and its own image tag, so you can pin a version instead of

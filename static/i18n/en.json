@@ -1421,5 +1421,7 @@
  "Reihenfolge unsicher: {why}": "Order uncertain: {why}",
  "Track-Nummer in „{file}“ passt nicht zur Reihenfolge der Dateinamen": "The track number in “{file}” doesn't match the order of the file names",
  "{n} Kapitelnamen aufgeräumt: {first} … {last}": "{n} chapter names tidied: {first} … {last}",
- "{n} Kapitelnamen von Audible übernommen (Laufzeit und Kapitelzahl passen)": "{n} chapter names taken from Audible (runtime and chapter count match)"
+ "{n} Kapitelnamen von Audible übernommen (Laufzeit und Kapitelzahl passen)": "{n} chapter names taken from Audible (runtime and chapter count match)",
+ "Anfragen|Verb": "Request",
+ "„{title}“": "“{title}”"
 }

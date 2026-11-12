@@ -2,63 +2,58 @@
 
 **Hörbücher beschaffen, anfragen und entdecken – und am Ende liegt jedes Buch als eine saubere, getaggte M4B in der Bibliothek.**
 
+[![Build](https://github.com/Larosen/hoerwerk/actions/workflows/docker.yml/badge.svg)](https://github.com/Larosen/hoerwerk/actions/workflows/docker.yml)
+[![Release](https://img.shields.io/github/v/release/Larosen/hoerwerk)](CHANGELOG.md)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-green)](LICENSE)
+
 [English](README.md) · **Deutsch**
 
+![Ein Ordner mit MP3s landet im Eingang und wird zu einer M4B in der Bibliothek](docs/screenshots/de/demo.gif)
+
 Hörwerk ist entstanden, weil mein Hörbuchordner ein Chaos war: CD-Rips in `CD1`/`CD2`, MP3s mit Namen wie
-`Track 01`, fehlende Cover, und die Familie hat neue Bücher per Nachricht bestellt. Hörwerk läuft auf dem NAS neben
-Audiobookshelf oder Plex und kümmert sich um all das.
-
-Einen Ordner in den Eingang legen (oder SABnzbd machen lassen): Hörwerk wartet, bis er vollständig ist, macht daraus
-**eine M4B mit Kapiteln**, findet das Buch bei Audible, schreibt Titel, Autor, Sprecher, Serie, Cover und
-Beschreibung und legt es als `Autor/Serie/03 - Titel` ab. Die Familie bekommt eigene Konten, um Bücher zu
-**entdecken** und **anzufragen** – du gibst frei, Hörwerk besorgt sie.
-
-![Bibliothek](docs/screenshots/bibliothek.png)
-
-| Finden und laden | Diagnose |
-|---|---|
-| ![Suche mit freien LibriVox-Treffern](docs/screenshots/suche.png) | ![Diagnose-Seite](docs/screenshots/diagnose.png) |
-
-> Hörwerk verwaltet Audiodateien, die du nutzen darfst – eigene Käufe, eigene Aufnahmen oder gemeinfreie Werke.
-> Es enthält keine Medien, entfernt keinen Kopierschutz und steht in keiner Verbindung zu Audible, Amazon, Apple,
-> LibriVox oder anderen genannten Diensten. Freie, gemeinfreie Hörbücher kommen von [LibriVox](https://librivox.org).
+`Track 01`, fehlende Cover, und die Familie hat neue Bücher per Nachricht bestellt. Zusammenfügen mit dem einen
+Werkzeug, Taggen mit dem anderen und Suchen von Hand hat pro Buch einen Abend gekostet. Hörwerk läuft auf dem NAS neben
+Audiobookshelf oder Plex und erledigt das alles in einem Durchgang.
 
 ## Was es kann
 
-- **Vom Eingang in die Bibliothek, ohne Handarbeit.** MP3, M4A, FLAC, OGG, Opus, WMA, auch `CD1`/`CD2`-Ordner → eine
-  M4B mit sample-genauen, sauber benannten Kapiteln. Wartet, bis eine Kopie oder ein Download wirklich fertig ist.
-- **Richtig erkannt.** Audible-Suche in 10 Shops, bewertet nach Titel, Autor **und Laufzeit** (ungekürzt ≠ gekürzt ≠
-  Hörspiel). Unsichere Treffer warten auf dich, statt falsch abgelegt zu werden. Ersatzquellen: Audnexus, Apple
-  Books, Open Library, BookBeat oder eine eigene `metadata.yml`.
-- **Freie Hörbücher eingebaut.** LibriVox (gemeinfrei, von Freiwilligen gelesen) auf Deutsch oder Englisch direkt in
-  der Suche – ein Klick lädt das Buch in den Eingang, die Angaben kommen mit.
-- **Anfragen wie bei Overseerr.** Familienkonten entdecken und fragen an; Monatslimit, Freigabe, interaktive Suche.
-  Was noch niemand liefern kann, bleibt auf der Gesucht-Liste und wird alle 12 Stunden neu gesucht.
-- **Entdecken.** Vorschläge aus deiner Bibliothek und dem Hörverlauf (Audiobookshelf/Plex), nach Genre und aus
-  Buchkritiken (Deutschlandfunk, Perlentaucher) – nur gut bewertete, ungekürzte Bücher, die du noch nicht hast.
-- **Usenet, wenn du willst.** SABnzbd + Newznab-Indexer, mit **bevorzugtem Indexer**, der zuerst gefragt wird – die
-  anderen nur, wenn er nichts Passendes hat. Releases werden vor dem Download geprüft (richtiges Buch? Sprache?
-  gekürzt?), Pakete mit mehreren Bänden in einzelne Bücher aufgeteilt.
-- **Die Bibliothek bleibt ordentlich.** Nutzt vorhandene Autor-/Serienordner, erkennt Doppelte, wandelt alte
-  MP3-Bücher in M4B und löscht die MP3s erst, wenn die M4B geprüft ist.
-- **Audiobookshelf & Plex** lesen nach dem Ablegen neu ein; `metadata.json` für Audiobookshelf.
-- **ntfy-Push-Nachrichten** für elf Ereignisse, jedes einzeln schaltbar. Oberfläche **Deutsch und Englisch**, hell
-  und dunkel.
-- **Klein und abgeschottet.** Ein Rust-Programm (Image ~160 MB inkl. ffmpeg), eigenes schlankes ffmpeg 9 im
-  Landlock- und seccomp-Käfig, Anmeldung mit Zweitfaktor, Anmeldeprotokoll für CrowdSec, signierte Images mit
-  SBOM. Siehe [SECURITY.de.md](SECURITY.de.md).
+- **Eingang → Bibliothek, ohne Zutun.** Ordner ablegen (MP3, M4A, FLAC, `CD1`/`CD2` …) und **eine M4B mit
+  Kapiteln** bekommen, abgelegt als `Autor/Serie/03 - Titel`, mit Cover, Sprecher, Serie und Beschreibung von Audible.
+- **Anfragen wie bei Overseerr.** Familienkonten entdecken Bücher und fragen sie an; du gibst frei, Hörwerk besorgt
+  sie und zeigt den Fortschritt von Download und Umwandlung.
+- **Eine Suche, die Hörbücher versteht.** Jedes Release wird vor dem Laden beurteilt: richtiges Buch, richtige
+  Sprache, ungekürzt und die *richtige Aufnahme* – nicht die Lesung, wenn das Hörspiel gefragt war.
+- **Freie Hörbücher eingebaut.** LibriVox (gemeinfrei) auf Deutsch und Englisch, mit einem Klick in den Eingang.
+- **Eine aufgeräumte Bibliothek.** Erkennt Doppelte, wandelt alte MP3-Bücher um, räumt Kapitelnamen auf, sucht für
+  ein vorhandenes Buch ein besseres Release – und löscht die alte Fassung nie ohne geprüfte neue.
+- **Klein und abgesichert.** Ein Rust-Programm, eigenes schlankes ffmpeg in einer Sandbox, Zweitfaktor, signierte Images.
+
+| Anfragen mit Fortschritt | Entdecken |
+|---|---|
+| ![Anfragen](docs/screenshots/de/requests.png) | ![Entdecken](docs/screenshots/de/discover.png) |
+
+![Bibliothek](docs/screenshots/de/library.png)
+
+## Der Vergleich
+
+Bisher brauchte man dafür mehrere Werkzeuge und viel Handarbeit:
+
+| | Zu M4B zusammenfügen | Audible-Tags | Suchen & Laden | Anfragen für die Familie |
+|---|---|---|---|---|
+| [m4b-tool](https://github.com/sandreas/m4b-tool) | ✅ Kommandozeile | – | – | – |
+| [beets-audible](https://github.com/Neurrone/beets-audible) | – | ✅ Kommandozeile | – | – |
+| Readarr | – | – | ✅ (eingestellt, nie aus der Beta) | – |
+| **Hörwerk** | ✅ automatisch | ✅ automatisch | ✅ je Release beurteilt | ✅ |
+
+Außerdem gibt es Listenarr, ein neueres Projekt für Hörbuch-Downloads – schau, was besser zu dir passt.
 
 ## Schnellstart
 
-### Unraid
+**Unraid:** *Docker → Add Container*, als Template
+`https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/hoerwerk.xml`, Eingang und Bibliothek eintragen,
+`http://<unraid-ip>:8080` öffnen und das Admin-Konto anlegen.
 
-1. **Docker → Add Container**, als *Template*:
-   `https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/hoerwerk.xml`
-2. **Hörbuch-Eingang** (`/inbox`, hier kommen neue Bücher an) und **Hörbuch-Bibliothek** (`/audiobooks`, der
-   Ordner für Audiobookshelf/Plex) eintragen. **Language / Sprache** wählen (`de` oder `en`).
-3. `http://<unraid-ip>:8080` öffnen und das Admin-Konto anlegen.
-
-### docker compose
+**docker compose:**
 
 ```bash
 curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.yml
@@ -66,524 +61,33 @@ curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.y
 docker compose up -d
 ```
 
-Image: `ghcr.io/larosen/hoerwerk:latest` – amd64, jede Woche für Sicherheitsupdates neu gebaut, mit cosign signiert.
+Image: `ghcr.io/larosen/hoerwerk:latest` (oder eine feste Version wie `:7.17.1`) – amd64, jede Woche für
+Sicherheitsupdates neu gebaut, mit cosign signiert.
 
-Ein Update von einer älteren Version übernimmt die Datenbank; nichts von Hand zu migrieren.
+## Was es nicht ist
 
----
+- **Kein Player.** Hörwerk füllt die Bibliothek; gehört wird mit Audiobookshelf, Plex oder jeder App, die M4B spielt.
+- **Keine Quelle für Bücher.** Es arbeitet mit *deinen* Dateien, *deinem* SABnzbd und *deinen* Indexern. Die einzige
+  eingebaute Quelle ist LibriVox. Es entfernt keinen Kopierschutz.
+- **Nur amd64** bisher; arm64 steht auf der [Roadmap](docs/ROADMAP.md).
 
-## Inhalt
+## Dokumentation
 
-1. [Hörbücher](#hörbücher)
-2. [Downloads mit SABnzbd](#downloads-mit-sabnzbd)
-3. [Freie Hörbücher (LibriVox)](#freie-hörbücher-librivox)
-4. [Entdecken und Anfragen](#entdecken)
-5. [Benachrichtigungen (ntfy)](#benachrichtigungen-ntfy)
-6. [Protokoll](#protokoll)
-7. [Konten und Zugriff von außen](#konten-und-zugriff-von-außen)
-8. [Konfiguration](#konfiguration)
-9. [Sicherheit](#sicherheit)
-10. [Entwicklung](#entwicklung)
-11. [Pläne](docs/ROADMAP.md)
-
----
-
-## Hörbücher
-
-### Vom Eingang in die Bibliothek
-
-```
-/inbox                                              /audiobooks
-├── Storm - Der Schimmelreiter/               ──►   ├── Theodor Storm/
-│   ├── CD1/01.mp3 …                                │   └── Der Schimmelreiter/
-│   └── CD2/01.mp3 …                                │       ├── Der Schimmelreiter.m4b   (Kapitel, Tags, Cover)
-├── Doyle - The Hound of the Baskervilles.m4b ──►   │       ├── cover.jpg · desc.txt · reader.txt
-├── _fertig/   verarbeitete Originale               │       └── metadata.json
-└── _failed/   mit FEHLER.txt                       └── Arthur Conan Doyle/Sherlock Holmes/03 - The Hound of the Baskervilles/…
-```
-
-1. **Abwarten.** Jeder Ordner bzw. jede Datei im Eingang ist ein Buch. Verarbeitet wird erst, wenn sich eine Weile
-   nichts mehr ändert (`SETTLE_SECONDS`, Standard 2 min) und keine `.part`/`.crdownload`-Dateien mehr da sind.
-   Ein Ordner mit mehreren Buch-Ordnern (`Reihe/Band 1`, `Reihe/Band 2`) wird zu mehreren Büchern.
-2. **M4B erzeugen.** Jede Datei wird parallel zu AAC kodiert und dann ohne Neukodierung zusammengefügt – ein Kapitel
-   pro Datei (oder die Kapitel, die eine Datei schon hat). AAC-Quellen werden kopiert, eine einzelne M4B wird übernommen.
-   **Qualität** (`AUDIO_QUALITY`): Hörspiele (erkannt an Titel, Genre, Release-Name oder vielen Sprechern) bekommen
-   mehr Bitrate als Lesungen – `standard` 128k/192k, `high` 160k/256k (Standard), `original` bis 320k und behält
-   verlustfreies ALAC. Nie mehr, als die Quelle hat. Dolby Atmos / E-AC-3 wird immer unverändert übernommen, nie
-   heruntergemischt (der Web-Player von Audiobookshelf spielt es evtl. nicht, die meisten Apps schon). Kapitel hinter
-   dem Dateiende werden verworfen.
-   Eigene Kapitel: `chapters.txt` (`00:01:02.500 Titel`) in den Buchordner legen.
-3. **Bei Audible erkennen.** Gesucht wird nach Ordnername bzw. Album/Interpret-Tags im gewählten Shop
-   (`AUDIBLE_REGION`); eine ASIN im Namen (`… [B0ABCDE123]`) wird direkt verwendet. Nur eindeutige Treffer werden
-   automatisch abgelegt. Alles andere wartet unter **Zu prüfen**, dort kannst du
-   * einen Treffer übernehmen oder vorher **bearbeiten**,
-   * neu suchen, auch in einem anderen Audible-Shop,
-   * einen **Link von Audible, BookBeat oder Thalia** einfügen – die Angaben werden automatisch geholt,
-   * oder alles selbst eintragen.
-
-   Bücher, die es nirgends gibt: eine `metadata.yml` (Format von beets-audible) in den Ordner legen.
-4. **Tags schreiben & ablegen.** Kapitelnamen kommen von Audible, wenn die eigenen nur „Track 01“ heißen und die Laufzeit
-   passt. Der Pfad in der Bibliothek folgt `FOLDER_TEMPLATE`, Standard `{author}/[{series}/][{series_position:2} - ]{title}` –
-   `[ … ]` entfällt, wenn leer, `:2` macht aus Band 3 „03“. Vorhandene Ordner werden auch bei anderer Schreibweise
-   wiederverwendet (`E. T. A. Hoffmann` = `E.T.A. Hoffmann`, `Storm, Theodor` = `Theodor Storm`, `Mueller` = `Müller`).
-   Originale wandern nach `_fertig` (oder werden gelöscht), Fehlschläge nach `_failed` mit Beschreibung und
-   **Erneut versuchen**-Knopf.
-
-Falsch einsortiert? **Korrigieren** holt das Buch aus der Bibliothek zurück in die Prüf-Liste.
-
-### Hochladen (z. B. von CD)
-
-Hörbücher, die du selbst hast – etwa von CD eingelesen –, lädst du direkt im Browser hoch: *Hörbücher → Eingang →
-**Hochladen***. Einen Ordner pro Hörbuch hineinziehen oder auswählen, am besten „Autor – Titel“, gern mit
-Unterordnern `CD1`, `CD2` …; einzelne Dateien gehen auch (dann den Namen eintragen). Hörwerk übernimmt Audio-Dateien,
-Cover, Cue-Sheets und `chapters.txt`/`metadata.yml`; alles andere wird übersprungen. Geprüft wird auch der
-**Inhalt**: Eine in `.mp3` umbenannte `.exe`, ein PDF, ein Archiv oder ein Skript wird abgelehnt.
-
-Die Dateien landen zuerst in einem versteckten Ordner und werden erst nach dem letzten in einem Schritt in den Eingang
-verschoben – ohne Wartezeit beginnt dann der gewohnte Weg: Ordnername und Tags → Audible → M4B mit Kapiteln → Bibliothek.
-Bis 4 GB pro Datei; abgebrochene Uploads räumt Hörwerk nach einem Tag weg. Nur für Admins.
-
-### Bibliotheks-Ansicht
-
-**Hörbücher → Bibliothek** zeigt alle Bücher der Bibliothek, mit Suche über Titel, Autor, Serie und Ordner. Jede Zeile
-zeigt, wie das Buch gelesen wurde – Autor, weitere Namen aus Tags und Ordnern, Ordner und Format. Genau das nutzen auch
-die Doppelt-Prüfung und die Suche. Cover kommen aus `cover.jpg`/`folder.jpg` im Buchordner oder aus dem Bild in der
-Audiodatei; Bücher ohne Cover bekommen eine erzeugte Kachel.
-
-**Aufräumen** (im Kasten *Bibliothek*) löscht `desc.txt` und `reader.txt` aus allen Buchordnern, in denen eine
-`metadata.json` liegt – vorher zeigt es, wie viele es sind. Alles darin steht auch in `metadata.json` und in den Tags
-der M4B; Plex liest die Dateien gar nicht, Audiobookshelf nur, wenn `metadata.json` fehlt. Hörbücher, `cover.jpg`
-und Ordner ohne `metadata.json` bleiben unberührt, Symlinks werden nicht verfolgt. Neue Bücher bekommen die beiden
-Dateien danach nicht mehr.
-
-### Downloads mit mehreren Bänden
-
-Ein Download wie `Autor-Reihe 01 - 07-…` ist ein **Paket**: Jeder Band-Ordner wird ein eigenes Buch – einzeln
-zusammengefügt, erkannt und getaggt, mit Autor und Band-Nummer aus dem Release-Namen. Ordner wie `01 - Titel`,
-`02 - Titel` sind Bände; `CD1`/`CD2`, `Disc 1`, `Teil 1` oder nur `01`/`02` bleiben Teile eines Buchs.
-
-* In der **Suche** zeigt ein Paket seine Bände und welche davon du schon hast. **Download** fragt, welche Bände du
-  willst – vorhandene sind abgewählt. Nur die gewählten werden konvertiert, die anderen unkonvertiert weggeräumt.
-* Pakete, die nicht über die Suche kamen: Bände, die schon in der Bibliothek sind, werden automatisch übersprungen –
-  über Reihe und Band-Nummer, spätestens wenn Audible das Buch erkennt, immer vor dem Konvertieren.
-
-### Doppelte vermeiden
-
-Die Bibliothek wird beim Start und alle paar Stunden eingelesen (`LIBRARY_RESCAN_HOURS`) – auch ältere MP3-Ordner,
-erkannt über ASIN, Tags oder die Ordnerstruktur. Ist ein neues Buch schon da (gleiche ASIN, gleicher Autor + Titel
-oder gleiche Serie + Folge), entscheidest du: **Verwerfen**, **Altes ersetzen** (die alte Fassung wandert nach
-`_ersetzt` im Eingang) oder **Trotzdem zusätzlich ablegen**. `DUPLICATES=skip` oder `keep` entscheidet automatisch.
-
-Der Abgleich ist bewusst tolerant: Sprecher im Interpreten-Tag, Album-Tags wie „Autor - Titel“, Ordner wie
-„Autor - Titel“ und Release-Namen ohne Autor (bei Titeln ab zwei Wörtern) werden trotzdem erkannt. In der **Suche**
-erscheint „Schon in deiner Bibliothek“ über den Ergebnissen, wenn der Suchbegriff zu einem vorhandenen Buch passt.
-
-### Alte MP3-Bücher zu M4B machen
-
-**Hörbücher → Nicht als M4B** zeigt alle Bücher der Bibliothek, die noch aus Einzeldateien bestehen. Bücher auswählen,
-**Zu M4B** klicken, vorher bei Bedarf die Kapitelnamen anpassen (**Kapitel & Namen …**, benennt auf Wunsch auch die
-Originaldateien in `01 - Kapitel.mp3` um).
-
-**Alte Dateien danach** wählst du direkt neben dem Knopf: *nach `_ersetzt` im Eingang verschieben* (Standard) oder
-*löschen*. In beiden Fällen wird nichts angefasst, bevor die neue M4B liegt: Der alte Ordner wird beiseitegelegt
-(umbenannt, versteckt) und erst gelöscht bzw. verschoben, wenn das neue Buch abgelegt ist. Klappt das Ablegen nicht,
-kommt er unverändert zurück.
-
-Kapitelnamen unter *automatisch* werden für das ganze Buch aufgeräumt: Text, den jeder Track wiederholt (Buchtitel,
-„(2012)“, „Titel - “), fällt weg, und Tracks, die nur nummeriert sind, werden zu „Kapitel 1, 2, 3 …“. Echte
-Kapitelnamen bleiben.
-
-### Weitere Metadaten-Quellen
-
-Ist Audible nicht erreichbar und die ASIN bekannt, kommen dieselben Daten von **Audnexus**. Findet Audible nichts,
-werden **Apple Books** und **Open Library** gefragt. Diese Treffer haben weder Laufzeit noch Sprecher und werden daher
-nie automatisch abgelegt. Abschalten mit `METADATA_FALLBACK=false`.
-
-### Audiobookshelf
-
-* Neben jedem Buch liegt eine `metadata.json` im Format von Audiobookshelf (Titel, Autoren, Sprecher, Serie, Genres,
-  Beschreibung, ASIN, Kapitel) – `WRITE_ABS_METADATA=false` schaltet sie ab.
-* Optional unter **Suchen → Einrichten**: Adresse und API-Token von Audiobookshelf. Nach dem Ablegen neuer Bücher wird
-  die Bibliothek dort neu eingelesen – hilfreich auf Netzwerk-Shares, wo die Ordnerüberwachung nichts mitbekommt.
-
-### Plex
-
-Optional unter **Suchen → Einrichten**: Plex-Adresse (z. B. `http://192.168.1.10:32400`), Token und die
-Hörbuch-Mediathek (wird beim Testen automatisch gewählt, wenn eindeutig). Nach dem Ablegen oder Konvertieren liest Plex
-diese Mediathek neu ein.
-
-**Konvertierte Bücher doppelt** (M4B und die alten MP3s): Plex behält Einträge gelöschter Dateien als „nicht verfügbar“,
-bis sein Papierkorb geleert wird. Mit **Danach Papierkorb der Mediathek leeren** leert Hörwerk nach dem Scan den
-Papierkorb genau dieser Mediathek, und die alten MP3-Einträge verschwinden.
-
-Token: in Plex Web bei einem beliebigen Titel **…** → **Informationen abrufen** → **XML anzeigen**; der Wert hinter
-`X-Plex-Token=` in der Adresse.
-
----
-
-## Downloads mit SABnzbd
-
-Du brauchst nur SABnzbd; die Suche ist optional.
-
-1. In SABnzbd eine Kategorie anlegen, z. B. `audiobooks`, deren Ordner der als **Hörbuch-Eingang** (`/inbox`) eingebundene ist.
-2. In Hörwerk: **Suchen → Einrichten** → SABnzbd-Adresse, API-Key (SABnzbd → Config → General) und Kategorie.
-3. Alles, was SABnzbd in dieser Kategorie fertig lädt, läuft automatisch durch M4B → Audible → Bibliothek. Die Liste
-   **Downloads** zeigt Fortschritt und Verlauf der Kategorie.
-
-**Suchen** (mit einem Newznab-Indexer): Du suchst ein **Hörbuch**, nicht ein Release – Treffer kommen von Audible und
-BookBeat. Erst wenn du eins auswählst, sucht Hörwerk bei den Indexern; den Suchbegriff dafür kannst du ändern, wenn
-nichts kommt (z. B. nur Titel oder nur Nachname). Releases werden zusammengeführt, sortiert (bevorzugte Sprache,
-ungekürzt vor gekürzt, M4B vor MP3) und mit deiner Bibliothek abgeglichen; Umlaute in allen Schreibweisen.
-**Kategorien:** Neben den eingetragenen (Standard `3030`) durchsucht Hörwerk automatisch den **ganzen Audio-Bereich**
-jedes Indexers – alte freie Lesungen (Goethe & Co.) liegen oft unter „Audio > Lossless“ oder „MP3“ – und dessen eigene
-Hörbuch-Kategorien (aus der Kategorienliste, z. B. „Hörbuch DE“, „Hörspiele“). Mitgefundene Musikalben sortiert die
-Release-Bewertung über Autor und Titel aus. Findet sich dort nichts, sucht Hörwerk über alle Kategorien und behält
-nur Treffer aus dem Audio-Bereich. *Testen* beim Indexer zeigt,
-welche Kategorien gefunden wurden. Beim
-Download gehen ASIN bzw. Titel und Autor mit – so erkennt der Eingang das Buch sicher, egal wie das Release heißt.
-Für Bücher, die es in keinem Shop gibt: **Direkt bei den Indexern suchen**.
-
-Fertige SABnzbd-Downloads aus der Suche übernimmt der Eingang nach wenigen Sekunden; bis dahin stehen sie als
-„Im Eingang – startet in ca. … s“ oben in der Hörbuch-Liste und im Protokoll.
-
-**Bevorzugter Indexer:** unter *Einstellungen → Downloads* bei einem Indexer **zuerst** anhaken. Jede Suche (von
-Hand und für Anfragen) fragt dann nur diesen; die anderen erst, wenn er nichts Passendes zum Buch hat. Die Suche zeigt
-„nur bei X gesucht“ mit einem Knopf, um auch die anderen zu fragen.
-
-**Die richtige Fassung:** Ein Release, das klar eine andere Aufnahme als das angefragte Buch ist, wird nicht geladen –
-eine Lesung („gesprochen von …“), wenn die Fassung mit voller Besetzung gesucht ist, ein anderer Sprecher oder (bei
-einer neuen Produktion) ein Release, das älter ist als die Produktion. Releases ohne solche Angaben werden wie bisher
-geladen. Nach dem Download entscheidet die Laufzeit: bis 8 % Abweichung wird abgelegt, bis 25 % zur Prüfung
-vorgelegt, darüber gilt es als andere Fassung.
-
-**Kapitelnamen:** Ein Kapitel behält nur, was es von den anderen unterscheidet. Track-Nummern, Buchtitel, Reihe und
-Autor sowie Text, den (fast) jeder Track wiederholt, fallen weg – aus „01 - Buch (Full-Cast Edition): Chapter One - The
-Worst Birthday“ wird „Chapter 1: The Worst Birthday“. Bleibt nichts Sinnvolles übrig, werden die Kapitel durchnummeriert
-(„Kapitel 1“, „Chapter 1“). Die Reihenfolge kommt immer aus den Dateinamen; widersprechen die Track-Nummern in den Tags,
-wartet das Buch auf eine Prüfung. **Kapitel aufräumen** in der Bibliothek wendet dieselben Regeln auf ein vorhandenes
-Buch an.
-
-**Besseres Release / Korrigieren:** Jedes Buch in der Bibliothek hat **Besseres Release** – Hörwerk sucht erneut und
-lädt automatisch nur ein klar besseres Release (besseres Format oder deutlich mehr Bitrate); unter *Anfragen* kannst du
-auch selbst eins wählen. Der neue Download ersetzt das Buch, die alte Datei wird archiviert. **Korrigieren** holt ein
-Buch zur Neuzuordnung zurück, **Falsche Fassung** an einem abgelegten Buch lässt außerdem seine Anfrage weitersuchen.
-
-Tipp: In SABnzbd unter *Config → Switches → Unerwünschte Endungen* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
-auf **Abbrechen** stellen.
-
----
-
-## Freie Hörbücher (LibriVox)
-
-Bei [LibriVox](https://librivox.org) lesen Freiwillige gemeinfreie Bücher – tausende auf Englisch, hunderte auf
-Deutsch, alle kostenlos und legal. Hörwerk sucht LibriVox (über das Internet Archive) gleich mit: Titel oder Autor
-eingeben, Deutsch oder Englisch wählen, und die freien Aufnahmen erscheinen unter den Shop-Treffern. Ein Klick lädt
-die MP3s direkt in den Eingang, samt `metadata.json` (Titel, Autor, Sprecher, Beschreibung, Cover); der Eingang macht
-daraus eine M4B und legt sie wie jedes andere Buch ab. Was du schon hast, ist markiert.
-
-Gesucht und geladen wird nur die LibriVox-Sammlung und nur von archive.org – sonst lässt sich darüber nichts laden.
-
----
-
-## Entdecken
-
-Der Reiter **Entdecken** schlägt neue Hörbücher vor:
-
-* **Für dich** – Titel, die Audible-Hörer mit den (bis zu 30 neuesten) Büchern deiner Bibliothek verbinden. Je mehr
-  deiner Bücher auf denselben Titel zeigen, desto weiter oben steht er; „Passt zu …“ nennt sie.
-* **Nach Genre** – alle Genres und Unterkategorien wie im Audible-Shop (z. B. *Krimis & Thriller → Thriller*):
-  Bestseller, Bestbewertete und Neuheiten. Kleine Bereiche werden mit Titeln aufgefüllt, die genauso gut (ab 4,0),
-  aber von weniger Hörern bewertet sind – so zeigt jedes Genre Vorschläge; Unterkategorien ganz ohne deutsches Hörbuch
-  (z. B. *Cricket*) werden ausgeblendet. Alle Listen werden einmal am Tag im Hintergrund vorbereitet. Das gewählte
-  Genre merkt sich der Browser.
-* **Aus der Kritik** – besprochene Bücher, die es bei Audible als Hörbuch gibt (gleicher Titel, gleicher Autor), mit Link
-  zur Besprechung. Quellen: die RSS-Feeds „Buchkritik“ und „Lesart“ (Deutschlandfunk Kultur), die Seite
-  [Die Bücher des Monats](https://www.deutschlandfunkkultur.de/rezensionen-des-monats-114.html) mit den monatlichen
-  Bestenlisten für Sachbuch und Krimi (PDFs, jede wird einmal gelesen; angezeigt mit Platz), „Büchermarkt“
-  (Deutschlandfunk), die Perlentaucher-Listen
-  [Hörbücher – Literatur aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-literatur-aktuell.html) und
-  [Sachbuch aktuell](https://www.perlentaucher.de/buchKSL/hoerbuecher-sachbuch-aktuell.html) (mit Anzahl der
-  Pressekritiken) und die Bücherschau/Bücherbriefe aus dem Perlentaucher-Feed. Übernommen werden nur Autor und Titel;
-  gesehene Besprechungen merkt sich Hörwerk 180 Tage, gezeigt werden die neuesten rund 40 Hörbücher. Gibt es zu einem
-  besprochenen Buch noch kein Hörbuch, kommt es auf eine Warteliste: zwei Jahre lang schaut Hörwerk einmal im Monat
-  nach. Ist das Hörbuch erschienen (oder bei Audible angekündigt), steht es oben – markiert mit „jetzt als Hörbuch“
-  bzw. „erscheint <Datum>“. Das läuft täglich im Hintergrund, auch wenn niemand die Seite öffnet.
-
-**Suchen** auf einer Karte springt in den Reiter *Suchen*, mit dem Buch schon ausgewählt (Titel, Autor und ASIN helfen
-später beim Schreiben der Tags).
-
-**Qualitätsregeln** (unter *Einstellungen → Entdecken*): Mindestbewertung (Standard 4,3 Sterne) und Mindestanzahl
-Bewertungen (50), nur ungekürzt, nur deutschsprachig, keine Erotik. **Immer ausgeschlossen** ist, was du schon hast:
-Bücher in der Bibliothek (auch in anderer Schreibweise), Downloads der letzten 30 Tage und Bücher, die gerade verarbeitet werden. Bei
-Büchern aus der Kritik entfällt die Bewertungsregel – sie sind oft neu und noch kaum bewertet.
-
-**Ehrlich gesagt:** Ob ein Sachbuch inhaltlich stimmt, kann keine Software zuverlässig prüfen – auch Bewertungen
-messen nur Beliebtheit. Deshalb zeigt *Für dich* nur Sachbücher von anerkannten Autoren: auf Hörwerks fester Liste (rund 400 Autoren
-faktenbasierter Sachbücher seit 2010, `rust/hoerwerk/src/trusted_authors.txt`), mit einer Perlentaucher-Autorenseite (im Feuilleton
-besprochen), in den Kritiken genannt oder auf der eigenen Liste in den Einstellungen. Das prüft den Ruf, nicht den Inhalt.
-Alle Sachbücher lassen sich in den Einstellungen zuschalten. In *Nach Genre* erscheinen sie, wenn du selbst ein
-Sachbuch-Genre wählst – mit dem Hinweis, dass Sterne kein Faktencheck sind.
-BookBeat ist nicht angebunden, weil es keine offene Schnittstelle hat.
-
-Die Listen werden im Hintergrund zusammengestellt, höchstens einmal am Tag erneuert (oder mit **Aktualisieren**) und
-in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-API des gewählten Shops,
-`www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de`, `bilder.deutschlandfunk.de` (PDFs der Bestenlisten)
-und `www.perlentaucher.de` (HTTPS).
-
-### Anfragen (wie bei Overseerr/Jellyseerr)
-
-Familienmitglieder wünschen sich ein **Buch**, kein Release: in *Suchen* (Audible, BookBeat) oder *Entdecken* auf
-**Anfragen** klicken. Den Rest erledigt Hörwerk – der Reiter **Anfragen** zeigt, wo es steht:
-
-`Wartet auf Freigabe → Wird gesucht → Lädt → Wird verarbeitet → Verfügbar` (oder *Abgelehnt* mit Grund, *Fehlgeschlagen*)
-
-* **Freigabe:** Anfragen von Familienkonten warten, bis ein Admin sie freigibt (ntfy „Neue Buchanfrage“, Zahl am
-  Reiter). Admins und Konten mit dem Recht *Ohne Freigabe* starten sofort.
-* **Monatslimit:** Anfragen pro Kalendermonat (Standard 5, je Konto änderbar; abgelehnte zählen nicht).
-* **Sichtbarkeit:** Jeder sieht seine eigenen Anfragen; mit dem Recht *Alle Anfragen sehen* auch die der anderen.
-* **Automatisch besorgen (wie Radarr):** Hörwerk sucht bei allen Indexern und bewertet jedes Release – passt der
-  Autor, passt der Titel, ist es ungekürzt, in der richtigen Sprache, passt die Größe zur Laufzeit (kbit/s), ist es
-  ein Paket mit genau diesem Band? Das beste passende geht mit ASIN und Anfrage-Nummer an SABnzbd; danach verfolgt
-  Hörwerk den Download bis in die Bibliothek. Scheitert der Download oder passt das Buch beim Import nicht, wird
-  das Release gesperrt und das nächste genommen (höchstens 5 Versuche). Ohne Treffer wird alle 12 Stunden erneut
-  gesucht.
-* **Interaktive Suche (nur bei Bedarf):** Admins und Konten mit dem Recht *Interaktive Suche* öffnen bei einer
-  Anfrage **Releases**: alle Treffer mit Urteil – auch die verworfenen samt Grund („gekürzte Fassung“, „zu klein
-  für 9 h Laufzeit“ …). Ein Release von Hand laden, eins sperren oder mit anderen Wörtern neu suchen.
-* **Benachrichtigung an den Anfragenden:** Wer unter *Konto* ein eigenes ntfy-Topic einträgt, erfährt, wenn sein
-  Hörbuch da ist oder abgelehnt wurde.
-
-**Bücher, die anders in den Eingang kommen** (hochgeladen, von JDownloader o. Ä.): Die Erkennung vergleicht jedes Buch
-auch mit den offenen Anfragen. Ist es zweifelsfrei ein angefragtes Buch (mindestens die eingestellte
-*Mindest-Trefferquote*, Standard 80 %), wird es automatisch zugeordnet, abgelegt und die Anfrage auf *Verfügbar*
-gesetzt; die Suche dafür hört auf. Darunter wartet es unter *Hörbücher → Zu prüfen* auf einen Admin – das
-angefragte Buch steht dort mit „Anfrage von …“ oben, **Übernehmen** erfüllt die Anfrage, **Bearbeiten** korrigiert
-die Erkennung vorher.
-
-Eine „Gesucht“-Liste aus Version 5.3 wird beim ersten Start als Anfragen des Admins übernommen.
-
----
-
-## Benachrichtigungen (ntfy)
-
-Push-Nachrichten aufs Handy über [ntfy](https://ntfy.sh) – ntfy.sh oder ein eigener Server.
-
-1. ntfy-App installieren und ein Topic abonnieren, z. B. `hoerbuecher-1234`.
-2. **⚙︎ Einstellungen → Benachrichtigungen (ntfy)**: Server, Topic, optional Access-Token (oder Benutzer + Passwort)
-   und Priorität. Mit *Adresse dieser Oberfläche* öffnet ein Tippen auf die Nachricht Hörwerk.
-3. Gewünschte Ereignisse anhaken und **Testnachricht senden**.
-
-| Ereignis | Standard |
+| | |
 |---|---|
-| Hörbuch abgelegt | an |
-| Hörbuch braucht Prüfung | an |
-| Schon in der Bibliothek | an |
-| Fehler bei einem Hörbuch | an |
-| Neue Buchanfrage | an |
-| Buchanfrage fehlgeschlagen | an |
-| Download an SABnzbd geschickt | aus |
-| Download in SABnzbd fertig | aus |
-| Download in SABnzbd fehlgeschlagen | an |
-| Audiobookshelf: Einlesen fehlgeschlagen | an |
-| Plex: Einlesen fehlgeschlagen | an |
+| [Hörbücher](docs/de/guide.md) | Eingang, Hochladen, Zuordnung, Doppelte, Kapitel, Fassungen, Audiobookshelf und Plex |
+| [Downloads, Entdecken, Anfragen](docs/de/downloads.md) | SABnzbd und Indexer, LibriVox, Vorschläge, Anfragen der Familie |
+| [Konfiguration](docs/de/configuration.md) | Konten, Zugriff von außen, Benachrichtigungen, Variablen, Backup |
+| [Sicherheit](SECURITY.de.md) | wovor Hörwerk schützt und wie das getestet wird |
+| [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Entwicklung](docs/de/development.md) | |
 
-Token und Passwort bleiben auf dem Server und werden bei geänderter Adresse nicht an einen anderen Server geschickt.
-Nachrichten kommen in der Sprache der Oberfläche.
-
----
-
-## Protokoll
-
-**Einstellungen → Protokoll** (`/settings/logs`) zeigt, was passiert ist: gefundene, konvertierte, erkannte und abgelegte Bücher,
-Scans der Medienserver, Warnungen und Fehler. Nach Stufe oder Text filtern, live mitlesen, als Datei herunterladen.
-Dieselben Zeilen stehen im Container-Protokoll (`docker logs hoerwerk`).
-
----
-
-## Konten und Zugriff von außen
-
-Ohne Anmeldung zeigt Hörwerk nur die Login-Seite. Beim **ersten Aufruf** legst du das Admin-Konto an (aus dem
-Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs hoerwerk`). Wer bisher
-`AUTH_USER`/`AUTH_PASS` gesetzt hatte, bekommt daraus automatisch das Admin-Konto.
-
-* **Konten** (*Einstellungen → Konten*, `/settings/users`, nur für Admins): Familienkonten anlegen (Startpasswort erzeugen und weitergeben),
-  Rolle, Rechte (*Alle Anfragen sehen*, *Ohne Freigabe*, *Interaktive Suche*), Monatslimit pro Monat, sperren,
-  Passwort neu setzen, Zweitfaktor zurücksetzen, löschen. Alle starten auf *Entdecken*; Familienkonten sehen nur *Entdecken*, *Suchen* und *Anfragen* (beim ersten Mal mit einer
-  kurzen Anleitung in drei Schritten)
-  – Eingang, Bibliothek, Einstellungen und Protokoll bleiben Admins vorbehalten. Darunter: das
-  **Admin-Protokoll** (wer hat wann was geändert, mit IP).
-* **Einladungen** (*Einstellungen → Konten*, wie bei Wizarr): einen Link erzeugen und z. B. per WhatsApp verschicken.
-  Wer ihn öffnet, wählt selbst Name und Passwort, bekommt ein Familienkonto und ist sofort angemeldet. Je Link:
-  Notiz („Mama“), Gültigkeit (1, 7, 30 Tage oder unbegrenzt), wie oft nutzbar, Monatslimit. Die Liste zeigt offen,
-  benutzt (von wem), abgelaufen oder widerrufen; Widerrufen geht jederzeit. Über einen Link entsteht nie ein Admin.
-  Die Links zeigen immer auf die öffentliche Adresse (*Einstellungen → Allgemein*), auch wenn du sie zu Hause
-  erstellst; fehlt sie noch, sagt der Bereich Einladungen, wo man sie einträgt.
-  Passwörter müssen den Regeln genügen (mind. 12 Zeichen, gemischt oder ein Satz, kein Name, kein „Hörwerk“) – eine
-  Checkliste zeigt beim Tippen, was fehlt, mit Hinweis auf Passwort-Manager. Falsche Links zählen wie falsche Passwörter (Sperre nach 5 Versuchen, `auth.log` → CrowdSec), ein einmal nutzbarer
-  Link kann auch bei gleichzeitigem Öffnen nur ein Konto ergeben.
-* **Konto** (Name oben rechts, `/account`, für alle): Passwort ändern, **Zweitfaktor** (Authenticator-App wie Aegis, 2FAS,
-  Google/Microsoft Authenticator) einrichten, eigenes ntfy-Topic, angemeldete Geräte sehen und abmelden,
-  und **So sieht dich Hörwerk** (deine Adresse, über welchen Proxy, HTTPS) – zum Prüfen eines Reverse-Proxys.
-  Mit *Admins brauchen einen Zweitfaktor* (Einstellungen) kommen Admins ohne Zweitfaktor nur noch an ihr Konto.
-* „Angemeldet bleiben“ hält 30 Tage (verlängert sich bei Nutzung), sonst 12 Stunden.
-
-**Über Pangolin ins Internet:**
-1. In Pangolin eine Ressource auf `http://<unraid-ip>:8080` anlegen (HTTPS macht Pangolin).
-   Pangolins eigene Anmeldung kann zusätzlich davor bleiben – sicherer, aber zweimal anmelden.
-2. `TRUSTED_PROXIES` auf die Adresse setzen, von der Newt/Pangolin bei Hörwerk ankommt (z. B. `172.18.0.0/16`
-   für das Docker-Netz oder die IP des Newt-Containers). Nur dann steht im Protokoll die echte IP der Besucher.
-3. Die öffentliche Adresse unter *Einstellungen → Allgemein* eintragen (z. B. `https://hoerbuecher.example.de`) –
-   Hörwerk antwortet nur unter IP-Adressen, Namen aus dem Heimnetz und dieser Adresse (Schutz gegen DNS-Rebinding).
-   Weitere Namen gehen über `ALLOWED_HOSTS`. In Pangolin als Pfad des Health Checks `/api/health` eintragen.
-4. **CrowdSec:** Jeder Fehlversuch steht mit IP in `/config/logs/auth.log`. Parser, Szenarien und Beispiele für
-   Vector bzw. den CrowdSec-Agenten liegen in [contrib/crowdsec](contrib/crowdsec/README.md). Hörwerk selbst sperrt
-   eine IP nach 5 Fehlversuchen für 15 Minuten; CrowdSec sperrt sie dann schon am VPS.
-
----
-
-## Konfiguration
-
-Fast alles lässt sich unter **⚙︎ Einstellungen** (`/settings`) ändern; die Umgebungsvariablen liefern nur die
-Startwerte. Die Einstellungen sind eine eigene Seite mit Übersicht: Systemprüfung, Allgemein, Eingang & Bibliothek,
-M4B-Konvertierung, Indexer & SABnzbd, Audiobookshelf & Plex, Entdecken & Anfragen, Benachrichtigungen, Konten und
-Protokoll – jeder Bereich mit eigener Adresse (z. B. `/settings/health`), Lesezeichen und Vor/Zurück im Browser
-funktionieren. Das gilt auch für die Reiter: `/books`, `/search`, `/discover`, `/requests`.
-
-**Systemprüfung** (`/settings/health`, ähnlich der Diagnose von Vaultwarden) prüft auf einen Blick:
-* **Verbindung & Proxy:** als welche Adresse Hörwerk dich sieht, ob der Reverse-Proxy in `TRUSTED_PROXIES` steht
-  (sonst Fehler mit der fertigen Zeile zum Eintragen), ob HTTPS ankommt, `ALLOWED_HOSTS`, ob Live-Updates durch den
-  Proxy kommen, ob die Adresse in Benachrichtigungen passt. Proxys im eigenen Netz, die `X-Forwarded-For` schicken,
-  aber nicht vertrauenswürdig sind (z. B. Newt nach einem Neustart mit neuer IP), stehen hier und im Protokoll.
-* **Sicherheit:** Admins ohne Zweitfaktor, Anmelde-Protokoll für CrowdSec, gerade gesperrte Adressen.
-* **Speicher:** Eingang, Bibliothek, Konfiguration vorhanden, beschreibbar, freier Platz.
-* **Dienste:** Indexer, SABnzbd, Audiobookshelf, Plex (werden live getestet), ntfy, Audible.
-* **System:** Version, ffmpeg und Sandbox, Warteschlangen, Uhrzeit (wichtig für Zweitfaktor-Codes).
-
-**Ohne Anmeldung** gibt es nur die Login-Seite und das, was sie braucht: keine Seite der App, keinen App-Code, keine
-API (bis auf Anmeldung und `/api/health`, das ohne Anmeldung nur `{"ok": true}` sagt – ohne Version). Ein Lesezeichen
-auf eine Unterseite führt erst zur Anmeldung und danach genau dorthin. Einstellungen und Eingang sind nur für Admins.
-Einstellungen, Voreinstellungen, Verlauf, Hörbuch-Liste, Bibliotheks-Index und alle Zugangsdaten liegen in der
-SQLite-Datenbank `/config/hoerwerk.db` (Rechte 600). Einmal am Tag legt Hörwerk eine in sich stimmige Kopie in
-`/config/backups/hoerwerk-<Wochentag>.db` ab (die letzten sieben Tage) – zum Zurückspielen Hörwerk stoppen und die
-Kopie als `hoerwerk.db` einsetzen.
-
-**Sichern, Version festlegen, zurückgehen:** Zu sichern ist nur `/config` (die Hörbücher liegen in deiner eigenen
-Bibliotheks-Freigabe). Jede Version ist ein eigenes Image – `ghcr.io/larosen/hoerwerk:7.17.1` statt `:latest` bleibt bei
-dieser Version (die wöchentlichen Sicherheitsupdates kommen trotzdem); was sich geändert hat, steht im
-[Changelog](CHANGELOG.md). Zum Zurückgehen den älteren Tag eintragen und den Container neu starten; hat die neuere
-Version die Datenbank verändert, eine Sicherung von vor dem Update einsetzen. Bücher, die Hörwerk ersetzt hat, werden
-nicht gelöscht, sondern nach `_ersetzt` im Eingang verschoben – zum Wiederherstellen den Ordner zurück in die
-Bibliothek schieben.
-
-| Variable | Standard | Bedeutung |
-|---|---|---|
-| `APP_LANGUAGE` | `de` | Oberfläche und Benachrichtigungen: `de` oder `en` |
-| `PUID` / `PGID` | `99` / `100` | Benutzer/Gruppe für alle Dateizugriffe |
-| `UMASK` | `000` | Rechte neuer Dateien und Ordner |
-| `INBOX_DIR` / `LIBRARY_DIR` | `/inbox` / `/audiobooks` | Hörbuch-Eingang und -Bibliothek |
-| `AUDIBLE_REGION` | `de` | Audible-Shop: `de us uk fr it es ca au in jp` |
-| `MATCH_MODE` | `auto` | `auto` (eindeutige automatisch), `review` (immer prüfen), `off` (nur konvertieren) |
-| `MATCH_THRESHOLD` | `0.8` | Mindest-Trefferquote für automatisches Ablegen |
-| `FOLDER_TEMPLATE` | `{author}/[{series}/][{series_position:2} - ]{title}` | Ordner in der Bibliothek |
-| `FILE_TEMPLATE` | `{title}` | Dateiname der M4B |
-| `CHAPTERS` | `auto` | Kapitelnamen von Audible: `auto`, `audible`, `files` |
-| `COVER_SOURCE` | `audible` | `audible` (aus dem Shop, volle Auflösung) oder `local` |
-| `INBOX_ORIGINALS` | `archive` | Originale danach: `archive` (nach `_fertig`) oder `delete` |
-| `SETTLE_SECONDS` | `120` | So lange muss ein Eingang-Ordner unverändert sein |
-| `SCAN_INTERVAL` | `60` | Sekunden zwischen zwei Prüfungen des Eingangs |
-| `METADATA_FALLBACK` | `true` | Audnexus, Apple Books und Open Library fragen, wenn Audible nichts findet |
-| `WRITE_ABS_METADATA` | `true` | `metadata.json` für Audiobookshelf schreiben |
-| `DUPLICATES` | `ask` | Buch schon in der Bibliothek: `ask`, `skip`, `keep` |
-| `LIBRARY_RESCAN_HOURS` | `6` | Abstand, in dem die Bibliothek neu eingelesen wird |
-| `LIBRARY_ORIGINALS` | `archive` | Alte Einzeldateien nach „Zu M4B“: `archive` (nach `_ersetzt`) oder `delete` |
-| `NARRATOR_IN_ARTIST` | `false` | Sprecher zusätzlich im Interpreten-Tag |
-| `KEEP_SERIES_IN_TITLE` | `true` | „…, Band 3“ im Titel lassen |
-| `WRITE_DESC` / `WRITE_READER` | `false` | `desc.txt`, `reader.txt` schreiben (nur nötig ohne `metadata.json`) |
-| `WRITE_COVER` | `true` | `cover.jpg` schreiben (Audiobookshelf und Plex nutzen es) |
-| `DISCOVER_MIN_RATING` / `DISCOVER_MIN_COUNT` | `4.3` / `50` | Entdecken: Mindestbewertung und -anzahl Bewertungen |
-| `DISCOVER_UNABRIDGED` / `DISCOVER_GERMAN` | `true` | Entdecken: nur ungekürzt / nur deutschsprachig |
-| `DISCOVER_NONFICTION_STORE` | `false` | Entdecken: alle Sachbücher in „Für dich“ (sonst nur von anerkannten Autoren) |
-| `DISCOVER_TRUSTED_AUTHORS` | – | Entdecken: weitere anerkannte Sachbuch-Autoren, mit Komma getrennt |
-| `WANTED_INTERVAL_HOURS` | `12` | Anfragen ohne Treffer: Abstand der erneuten Suche |
-| `ADMIN_TOTP_REQUIRED` | `false` | Admins brauchen einen Zweitfaktor |
-| `CPU_CORES` | halbe Kernzahl | Parallele ffmpeg-Prozesse pro Buch |
-| `ENCODE_WORKERS` | `1` | Bücher, die gleichzeitig kodiert werden |
-| `IO_WORKERS` | `2` | Gleichzeitige Erkennungs-, Tag- und Ablageschritte |
-| `NICE` | `10` | CPU-Priorität von ffmpeg (0 = normal) |
-| `FFMPEG_SANDBOX` | `auto` | ffmpeg im Landlock-Käfig: `auto`, `require`, `off` |
-| `FFMPEG_MEMORY_MB` | `4096` | Speichergrenze je ffmpeg-Prozess |
-| `AUDIO_QUALITY` | `high` | `standard`, `high` oder `original` – wie viel Bitrate Lesungen und Hörspiele behalten |
-| `AAC_BITRATE` | `auto` | `auto` (wie die Quelle, begrenzt durch `AUDIO_QUALITY`) oder fester Wert |
-| `FORCE_MONO` | `false` | Mono ausgeben |
-| `CHAPTER_TITLES` | `auto` | `auto`, `filename` oder `tag` |
-| `TRUSTED_PROXIES` | – | IPs/Netze des Reverse-Proxys (Pangolin/Newt, Traefik), z. B. `172.18.0.0/16` – nur von dort zählt `X-Forwarded-For` |
-| `COOKIE_SECURE` | `auto` | Anmelde-Cookie nur über HTTPS: `auto` (wenn der Proxy HTTPS meldet), `true`, `false` |
-| `REQUEST_QUOTA` | `5` | Buchanfragen pro Nutzer und Monat (je Konto änderbar) |
-| `AUTH_USER` / `AUTH_PASS` | – | Nur noch für den Umstieg: wird beim ersten Start zum Admin-Konto |
-| `ALLOWED_HOSTS` | – | Namen, unter denen Hörwerk antwortet (Schutz gegen DNS-Rebinding). Leer: IP-Adressen, `localhost`, Namen aus dem Heimnetz (`tower`, `*.local`, `*.lan`, `*.fritz.box` …) und die öffentliche Adresse aus den Einstellungen; über einen Proxy aus `TRUSTED_PROXIES` jeder Name, den der Proxy weiterleitet. Gesetzt: genau diese Namen, z. B. `hoerbuecher.example.de,*.example.de` (IPs und `localhost` gehen immer). `*` = jeder Name wie vor 7.13 (nicht empfohlen). Ungültige Werte (mit `https://` oder Pfad) stoppen den Start mit einer Meldung. `/api/health` antwortet unter jedem Namen – für die Health Checks von Docker und Pangolin |
-
-SABnzbd, der optionale Indexer, Audiobookshelf, Plex und ntfy werden in der Oberfläche eingerichtet, nicht über Variablen.
-
----
-
-## Sicherheit
-
-Kurz gefasst – Details, Tests und Komponenten-Versionen in [SECURITY.de.md](SECURITY.de.md):
-
-* Konten mit Login; ins Internet nur hinter einem Reverse-Proxy mit HTTPS (z. B. Pangolin) und mit
-  `TRUSTED_PROXIES`. Fehlversuche stehen mit IP in `/config/logs/auth.log` – fertig für CrowdSec.
-* Nur nötige Ordner einbinden; der Container läuft ohne Linux-Capabilities und mit `no-new-privileges`.
-* Heruntergeladene Dateien werden nie ausgeführt. ffmpeg ist ein eigener schlanker Build (nur Audio, kein
-  Netzwerk-Code) in einem Landlock-Käfig, der nur die Dateien des Buchs lesen darf.
-* API-Keys, Token und Passwörter (SABnzbd, Indexer, Audiobookshelf, Plex, ntfy) bleiben auf dem Server und gehen nie an den Browser.
-
----
-
-## Entwicklung
-
-Der Server ist ein einziges Rust-Programm (`rust/hoerwerk`), dazu `hw-run` (der Käfig für ffmpeg) und `hw-tags`
-(M4B-Tags). Die Oberfläche ist TypeScript (`frontend/src`), übersetzt nach `static/`.
-
-```bash
-(cd rust && cargo build --release)              # Server, hw-run, hw-tags -> rust/target/release/
-npm ci && npm run build                         # TypeScript (frontend/src) -> static/*.js
-(cd rust && cargo test)                         # Unit-Tests, auch gegen die Golden Files in contract/golden
-pip install -r requirements-dev.txt             # Testwerkzeuge (mutagen, ruff)
-python3 -m unittest discover -s contract        # API-Vertrag gegen den Server (braucht ffmpeg, kein Netz)
-python3 -m unittest discover -s tests           # jeder Text übersetzt
-npm run check                                   # Typprüfung
-npx playwright install chromium && npx playwright test   # Durchklick-Tests gegen einen echten Server
-INBOX_DIR=/tmp/inbox LIBRARY_DIR=/tmp/lib CONFIG_DIR=/tmp/br PORT=8080 rust/target/release/hoerwerk
-```
-
-**Übersetzungen:** Deutsch ist die Ausgangssprache. Jeder Text steht in `t("…")` (Rust und TypeScript);
-`static/i18n/en.json` enthält den englischen Text. `python3 tests/test_i18n.py --missing` listet Texte ohne
-Übersetzung – die Tests schlagen fehl, solange einer fehlt.
-
-Die CI prüft jeden Pull Request: Format, Clippy und Unit-Tests, Lizenzen und Sicherheitsmeldungen aller Crates, den
-API-Vertrag (mit System-ffmpeg und mit dem eigenen ffmpeg 9 im Pflicht-Käfig), Typprüfung, Durchklick-Tests gegen
-den Quelltext und gegen das fertig gebaute Docker-Image.
-
-| Teil | Dateien (`rust/hoerwerk/src/`) |
-|---|---|
-| Start & Verdrahtung | `main.rs`, `config.rs`, `app.rs`, `settings.rs` |
-| Web | `web/mod.rs` (Prüfungen, Seiten, Live-Updates), `web/api.rs` (Routen), `web/*.rs`, `web/hosts.rs` |
-| Daten | `db.rs` (SQLite), `migrations/` |
-| Abläufe | `engine.rs`, `pipeline.rs`, `uploads.rs` |
-| Audio | `encoder.rs`, `chapters.rs`, `quality.rs`, `media.rs`; `rust/hw-run`, `docker/build-ffmpeg.sh` |
-| Metadaten | `audible.rs`, `links.rs`, `tagger.rs`, `rust/hw-tags` |
-| Bibliothek & Downloads | `filing.rs`, `library.rs`, `usenet.rs`, `releases.rs`, `packs.rs`, `requests.rs` |
-| Konten & Sicherheit | `accounts.rs`, `invites.rs`, `totp.rs`, `authlog.rs` |
-| Benachrichtigungen & Protokoll | `notify.rs`, `text.rs` |
-| Medienserver & Hörverlauf | `mediaservers.rs`, `listening.rs`, `stats.rs` |
-| Entdecken | `discover.rs`, `pdftext.rs`, `trusted_authors.txt`, `frontend/src/discover.ts` |
-| Oberfläche | `frontend/src/*.ts`, `static/index.html`, `static/style.css`, `static/i18n/en.json`; Durchklick-Tests in `e2e/` |
-| API-Vertrag | `contract/` (Routen, Schema, Einstellungen, Golden Files, Tests) |
-
-Inspiriert von den Open-Source-Projekten [auto-m4b](https://github.com/seanap/auto-m4b) und
-[beets-audible](https://github.com/Neurrone/beets-audible); Kapiteldaten über [Audnexus](https://github.com/laxamentumtech/audnexus).
+> Hörwerk verwaltet Audiodateien, die du nutzen darfst – eigene Käufe, eigene Aufnahmen oder gemeinfreie Werke.
+> Es enthält keine Medien und steht in keiner Verbindung zu Audible, Amazon, Apple, LibriVox oder anderen genannten
+> Diensten. Die Bücher in den Screenshots sind gemeinfreie Klassiker mit ausgedachten Covern.
 
 ## Lizenz
 
 [MIT](LICENSE). Das Docker-Image enthält außerdem FFmpeg, aus dem offiziellen Quelltext ohne GPL-Teile gebaut und
 damit unter der [LGPL 2.1](https://www.ffmpeg.org/legal.html); das Bauskript ist [docker/build-ffmpeg.sh](docker/build-ffmpeg.sh).
+Inspiriert von [auto-m4b](https://github.com/seanap/auto-m4b) und [beets-audible](https://github.com/Neurrone/beets-audible);
+Kapiteldaten über [Audnexus](https://github.com/laxamentumtech/audnexus).

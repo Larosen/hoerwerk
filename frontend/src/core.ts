@@ -18,7 +18,8 @@ if (typeof ME !== "undefined" && ME) document.documentElement.classList.add(IS_A
 
 /** Translate a German UI text; ``{name}`` placeholders are filled from ``values``. */
 function t(text: string, values: Record<string, string | number> = {}): string {
-  let out = (typeof I18N !== "undefined" && I18N.text[text]) || text;
+  // "Anfragen|Verb": the part after "|" only tells two meanings of the same German word apart
+  let out = (typeof I18N !== "undefined" && I18N.text[text]) || text.split("|")[0];
   for (const [k, v] of Object.entries(values)) out = out.split("{" + k + "}").join(String(v));
   return out;
 }
@@ -423,7 +424,7 @@ function errMsg(e: unknown): string {
 // "Speichern" -> "Speichert …": the running action in the button's own words
 const BUSY_WORDS: [string, string][] = [
   [t("Speichern"), t("Speichert …")], [t("Löschen"), t("Löscht …")], [t("Entfernen"), t("Entfernt …")],
-  [t("Suchen"), t("Sucht …")], [t("Anfragen"), t("Fragt an …")], [t("Hinzufügen"), t("Fügt hinzu …")],
+  [t("Suchen"), t("Sucht …")], [t("Anfragen|Verb"), t("Fragt an …")], [t("Hinzufügen"), t("Fügt hinzu …")],
   [t("Erstellen"), t("Erstellt …")], [t("Übernehmen"), t("Übernimmt …")], [t("Testen"), t("Testet …")],
   [t("Senden"), t("Sendet …")], [t("Hochladen"), t("Lädt hoch …")], [t("Anmelden"), t("Meldet an …")],
   [t("Verbinden"), t("Verbindet …")], [t("Umwandeln"), t("Wandelt um …")], [t("Laden"), t("Lädt …")],

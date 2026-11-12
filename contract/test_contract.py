@@ -863,6 +863,28 @@ class Lifecycle(unittest.TestCase):
         finally:
             s.cleanup()
 
+    def test_many_books_at_once(self):
+        """Eight folders land in the inbox together while the list is polled: every one is filed, the server
+        keeps answering (the scanner adding jobs and the workers starting them once blocked each other forever)."""
+        s = Server().start()
+        try:
+            admin = Client(s, ADMIN["name"], ADMIN["password"])
+            stage = os.path.join(s.dir, "stage")
+            for i in range(8):
+                tone(os.path.join(stage, f"Autor {i} - Buch {i}", "01.mp3"), seconds=20,
+                     tags={"artist": f"Autor {i}", "album": f"Buch {i}", "title": "Kapitel 1"})
+            for name in os.listdir(stage):
+                os.rename(os.path.join(stage, name), os.path.join(s.inbox, name))
+
+            def filed():
+                jobs = admin.get("/api/audiobooks")["jobs"]
+                return jobs if len(jobs) == 8 and all(j["status"] in ("done", "failed", "review") for j in jobs) else None
+            jobs = admin.wait(filed, 90, step=0.05, what="eight books filed")
+            self.assertEqual({j["status"] for j in jobs}, {"done"})
+            self.assertEqual(s.stop(signal.SIGTERM), 0, s.output())
+        finally:
+            s.cleanup()
+
     def test_crash_while_filing_loses_nothing(self):
         """The server dies in the middle of filing (power cut, kill -9) – on the next start the journal decides:
         the new M4B is not in the library → the old copy goes back to its place; it is there → the old copy is
