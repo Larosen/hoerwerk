@@ -174,7 +174,7 @@ pub async fn indexers(app: Arc<App>, req: Req, _: Params) -> Reply {
     json_reply(res)
 }
 
-fn for_browser(app: &App, req: &Req, books: &[Value]) -> Vec<Value> {
+pub fn for_browser(app: &App, req: &Req, books: &[Value]) -> Vec<Value> {
     let requested = app.requests.status_by_key(app);
     let admin = req.user.as_ref().is_some_and(|u| u["role"] == "admin");
     books

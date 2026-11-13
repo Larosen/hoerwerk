@@ -432,7 +432,7 @@ mod tests {
         assert_eq!(std::fs::metadata(&target).unwrap().permissions().mode() & 0o777, 0o600);
         let copy = rusqlite::Connection::open(&target).unwrap();
         let v: i64 = copy.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-        assert_eq!(v, 5);
+        assert_eq!(v, 6);
         assert!(app.maintain_db(t0 + 3600.0).is_none()); // once a day
         assert!(app.maintain_db(t0 + 23.0 * 3600.0).is_some());
         std::fs::remove_dir_all(&dir).unwrap();

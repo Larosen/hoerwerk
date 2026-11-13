@@ -525,7 +525,14 @@ impl Requests {
     }
 
     /// Several volumes of one series as one request: one group, counted once, decided together.
+    /// Several books as one request: the volumes of a series, or works of an author or narrator
+    /// (`series.kind` = "author" | "narrator", `series.title` = the name). They count once for the monthly limit.
     pub fn create_series(&self, app: &Arc<App>, user: &Value, series: &Value, books: &Value) -> Res<Value> {
+        let kind = match series["kind"].as_str() {
+            Some("author") => "author",
+            Some("narrator") => "narrator",
+            _ => "series",
+        };
         let (Some(_), Some(list)) = (series.as_object(), books.as_array().filter(|b| !b.is_empty())) else {
             return err(t("Bitte mindestens einen Band auswählen", &[]), 400);
         };
@@ -556,10 +563,13 @@ impl Requests {
         let asin = cut(&text_of(&series["asin"]), 20);
         let mut group = json!({"id": format!("g{}-{}-{}", (ts * 1000.0) as i64, text_of(&user["id"]), hex::encode(b)), "title": title,
                                "asin": if asin.is_empty() { Value::Null } else { json!(asin) }});
+        if kind != "series" {
+            group["kind"] = json!(kind);
+        }
         let mut skipped: Vec<String> = Vec::new();
         let mut todo = Vec::new();
         for mut b in cleaned {
-            if empty(&b["series"]) {
+            if kind == "series" && empty(&b["series"]) {
                 b["series"] = json!(title);
             }
             if Self::owned(app, &b) {
@@ -583,7 +593,14 @@ impl Requests {
                 fresh.push((key, b));
             }
             if fresh.is_empty() {
-                return err(t("Alle ausgewählten Bände sind schon da oder angefragt", &[]), 409);
+                return err(
+                    if kind == "series" {
+                        t("Alle ausgewählten Bände sind schon da oder angefragt", &[])
+                    } else {
+                        t("Alle ausgewählten Bücher sind schon da oder angefragt", &[])
+                    },
+                    409,
+                );
             }
             self.check_quota(app, user)?;
             let status = if auto_approve(user) { "searching" } else { "pending" };
@@ -595,7 +612,21 @@ impl Requests {
             })?;
             let mut ids = Vec::new();
             for (key, b) in &fresh {
-                let data = json!({"history": [{"time": ts, "text": t("Angefragt von {name} (Reihe „{series}“)", &[("name", &name), ("series", &title)])}],
+                let why = match kind {
+                    "author" => t(
+                        "Angefragt von {name} (Bücher von {person})",
+                        &[("name", &name), ("person", &title)],
+                    ),
+                    "narrator" => t(
+                        "Angefragt von {name} (gelesen von {person})",
+                        &[("name", &name), ("person", &title)],
+                    ),
+                    _ => t(
+                        "Angefragt von {name} (Reihe „{series}“)",
+                        &[("name", &name), ("series", &title)],
+                    ),
+                };
+                let data = json!({"history": [{"time": ts, "text": why}],
                                   "blocked": [], "attempts": 0, "group": group});
                 tx.execute(
                     "INSERT INTO requests(user_id, book_key, book, status, created, updated, data) VALUES(?,?,?,?,?,?,?)",
@@ -614,21 +645,30 @@ impl Requests {
             .as_array()
             .map(|a| a.iter().map(text_of).collect::<Vec<_>>().join(", "))
             .unwrap_or_default();
-        let lbl = t(
-            "{author} – Reihe „{series}“ ({n} Bände)",
-            &[("author", &author), ("series", &title), ("n", &ids.len().to_string())],
-        );
+        let n = ids.len().to_string();
+        let lbl = match kind {
+            "author" => t("{n} Bücher von {person}", &[("n", &n), ("person", &title)]),
+            "narrator" => t("{n} Bücher gelesen von {person}", &[("n", &n), ("person", &title)]),
+            _ => t(
+                "{author} – Reihe „{series}“ ({n} Bände)",
+                &[("author", &author), ("series", &title), ("n", &n)],
+            ),
+        };
         text::info(
             "Anfragen",
             &t(
-                "Reihen-Anfrage: {label} von {name}",
+                "Sammel-Anfrage: {label} von {name}",
                 &[("label", &lbl), ("name", &name)],
             ),
         );
         if status == "pending" {
             app.notifier.send(
                 "request_new",
-                &t("Neue Reihen-Anfrage", &[]),
+                &if kind == "series" {
+                    t("Neue Reihen-Anfrage", &[])
+                } else {
+                    t("Neue Sammel-Anfrage", &[])
+                },
                 &format!("{name}: {lbl}"),
                 None,
             );
@@ -1404,6 +1444,11 @@ fn group_label(req: &Value) -> String {
         .filter(|s| !s.is_empty())
         .map(str::to_string)
         .unwrap_or_else(|| text_of(&b["series"]));
+    match req["group"]["kind"].as_str() {
+        Some("author") => return t("Bücher von {person}", &[("person", &series)]),
+        Some("narrator") => return t("Bücher gelesen von {person}", &[("person", &series)]),
+        _ => {}
+    }
     t(
         "{author} – Reihe „{series}“",
         &[("author", &authors), ("series", &series)],

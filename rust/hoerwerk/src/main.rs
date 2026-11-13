@@ -15,6 +15,7 @@ mod edition;
 mod encoder;
 mod engine;
 mod filing;
+mod follows;
 mod free;
 mod htmlent;
 mod http;
@@ -158,6 +159,25 @@ async fn library_rescanner(app: Arc<App>) {
             }
         })
         .expect("trickle thread");
+    std::thread::Builder::new()
+        .name("follows".into())
+        .spawn({
+            let app = app.clone();
+            move || {
+                // a little after the start (the library is read first), then every half hour – each follow
+                // itself is looked at once a day
+                let mut wait = 600;
+                while !app.stopping() {
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                    wait -= 1;
+                    if wait <= 0 {
+                        crate::follows::tick(&app);
+                        wait = 1800;
+                    }
+                }
+            }
+        })
+        .expect("follows thread");
     std::thread::Builder::new()
         .name("inbox-scanner".into())
         .spawn({

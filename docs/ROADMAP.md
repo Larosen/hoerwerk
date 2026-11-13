@@ -5,6 +5,10 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
 
 ## Recently done
 
+- **7.19** – **follow authors and narrators**: a new book is requested by itself once a day (or only shown as
+  new), and all their books can be ticked and requested together.
+- **7.18** – tidier pages, blocked addresses in the UI, a guide for the ffmpeg sandbox, phone use, one-tap sorting,
+  gentle conversion of the whole library.
 - **7.17.1** – every version is a Git tag, a GitHub release and its own image tag (pin a version instead of
   `latest`); the full list of changes lives in [CHANGELOG.md](../CHANGELOG.md).
 - **7.17** – clean chapter names: track numbers, the book title and text every track repeats go
@@ -26,10 +30,9 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
 
 | | What | Why |
 |---|---|---|
-| 1 | **Follow authors and series** | "Tell me / request automatically when a new volume of this series or a new book by this author appears on Audible." Today you have to look yourself. |
-| 2 | **Prowlarr sync** | Take indexers (and their categories) from Prowlarr instead of entering them twice. |
-| 3 | **More free and legal sources** | ARD Audiothek (public-broadcaster audio dramas and readings, downloadable while online), Vorleser.net (classics read by professional speakers, free for private use), more public-domain collections of the Internet Archive with a clear licence. Each source only if its terms allow downloading. |
-| 4 | **arm64 image** | Built on a native arm64 runner (Raspberry Pi, Apple-silicon NAS). |
+| 1 | **Prowlarr sync** | Take indexers (and their categories) from Prowlarr instead of entering them twice. |
+| 2 | **More free and legal sources** | ARD Audiothek (public-broadcaster audio dramas and readings, downloadable while online), Vorleser.net (classics read by professional speakers, free for private use), more public-domain collections of the Internet Archive with a clear licence. Each source only if its terms allow downloading. |
+| 3 | **arm64 image** | Built on a native arm64 runner (Raspberry Pi, Apple-silicon NAS). |
 
 ## Later
 

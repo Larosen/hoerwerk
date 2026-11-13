@@ -598,6 +598,17 @@ table.users select { height: 28px; }
 .blocked-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .blocked-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .blocked-list code { font-size: 13px; }
+/* authors and narrators on cards: a tap opens their books (and following) */
+.person-link { color: inherit; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); }
+.person-link:hover { color: var(--accent); }
+.person-follow { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.person-follow p { margin: 0; }
+.follow-intro { grid-column: 1 / -1; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.follow-intro p { margin: 0; }
+.follow-add { display: flex; flex-wrap: wrap; gap: 8px; }
+.follow-add input { flex: 1 1 220px; }
+.follow-card { list-style: none; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel); }
+.follow-card .s-body { display: flex; flex-direction: column; gap: 4px; }
 .requests-panel { min-height: 300px; overflow: auto; }
 .request-list { list-style: none; margin: 0; padding: 4px 14px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
 .request-list > li.empty { grid-column: 1 / -1; color: var(--muted); padding: 4px 2px; }

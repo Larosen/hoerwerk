@@ -1,6 +1,7 @@
--- Database schema of Hörwerk (PRAGMA user_version = 5). Every backend creates and accepts exactly this.
+-- Database schema of Hörwerk (PRAGMA user_version = 6). Every backend creates and accepts exactly this.
 -- Generated from app/db.py MIGRATIONS; contract/test_contract.py compares a fresh database against it.
 CREATE INDEX audit_time ON audit(time);
+CREATE UNIQUE INDEX follows_person ON follows(user_id, kind, name);
 CREATE INDEX grabs_key ON grabs(key);
 CREATE INDEX grabs_time ON grabs(time);
 CREATE INDEX jobs_source ON jobs(source);
@@ -19,6 +20,18 @@ CREATE TABLE audit (
         ip      TEXT NOT NULL,
         action  TEXT NOT NULL,
         detail  TEXT NOT NULL DEFAULT ''
+    );
+CREATE TABLE follows (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind        TEXT NOT NULL,
+        name        TEXT NOT NULL,
+        language    TEXT NOT NULL DEFAULT '',
+        region      TEXT NOT NULL DEFAULT '',
+        auto        INTEGER NOT NULL DEFAULT 1,
+        since       REAL NOT NULL,
+        checked     REAL,
+        data        TEXT NOT NULL DEFAULT '{}'
     );
 CREATE TABLE grabs (
         name TEXT PRIMARY KEY,

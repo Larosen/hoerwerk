@@ -474,6 +474,41 @@ pub fn normalize_product(p: &Value, region: &str) -> Value {
     })
 }
 
+/// Pages of 50 asked per person: enough for prolific authors and busy narrators, few enough for the daily check.
+const PERSON_PAGES: usize = 4;
+
+/// Keep what really names the person (`want` folded), in the language, one book per title: the unabridged
+/// edition in the wanted language beats the others. Newest first.
+fn person_works(books: Vec<Value>, field: &str, want: &str, language: &str, limit: usize) -> Vec<Value> {
+    let list = if field == "narrator" { "narrators" } else { "authors" };
+    let mut best: Vec<(String, (bool, bool), Value)> = Vec::new();
+    for b in books {
+        if !b[list]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|n| fold(n.as_str().unwrap_or("")) == want)
+        {
+            continue;
+        }
+        let lang = s(&b, "language").to_lowercase();
+        if !language.is_empty() && !lang.is_empty() && lang != language {
+            continue;
+        }
+        let key = fold(s(&b, "title"));
+        let rank = (b["format_type"] == "abridged", !language.is_empty() && lang != language);
+        match best.iter_mut().find(|x| x.0 == key) {
+            Some(x) if rank < x.1 => *x = (key, rank, b),
+            Some(_) => {}
+            None => best.push((key, rank, b)),
+        }
+    }
+    let mut out: Vec<Value> = best.into_iter().map(|x| x.2).collect();
+    out.sort_by(|a, b| s(b, "release_date").cmp(s(a, "release_date")));
+    out.truncate(limit);
+    out
+}
+
 // -- client -----------------------------------------------------------------------------------------------
 
 pub type JsonGetter = dyn Fn(&str) -> Result<Value> + Send + Sync;
@@ -554,6 +589,34 @@ impl Client {
         }
         let data = self.cached(&format!("{}/1.0/catalog/products?{}", api_host(region), form(&params)))?;
         Ok(Self::products(&data["products"], region, upcoming))
+    }
+
+    /// The released audiobooks of one author or narrator, newest first – one entry per work (unabridged and the
+    /// wanted language preferred). Audible's search is fuzzy, so only books that really name the person count.
+    pub fn by_person(&self, region: &str, kind: &str, name: &str, language: &str, limit: usize) -> Result<Vec<Value>> {
+        let field = if kind == "narrator" { "narrator" } else { "author" };
+        let want = fold(name);
+        if want.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut found: Vec<Value> = Vec::new();
+        for page in 1..=PERSON_PAGES {
+            let params = [
+                ("response_groups", RESPONSE_GROUPS.to_string()),
+                ("image_sizes", "500,1024".into()),
+                ("num_results", "50".into()),
+                ("page", page.to_string()),
+                ("products_sort_by", "-ReleaseDate".into()),
+                (field, name.to_string()),
+            ];
+            let data = self.cached(&format!("{}/1.0/catalog/products?{}", api_host(region), form(&params)))?;
+            let raw = data["products"].as_array().map_or(0, Vec::len);
+            found.extend(Self::products(&data["products"], region, false));
+            if raw < 50 {
+                break;
+            }
+        }
+        Ok(person_works(found, field, &want, language, limit))
     }
 
     /// The store's genres with their subcategories: [{id, name, children: [{id, name}]}].
@@ -1601,6 +1664,37 @@ mod tests {
             client.series("B0SERIES01", "de", "german", SERIES_MAX).unwrap(),
             g["series"]["german"]
         );
+    }
+
+    #[test]
+    fn works_of_a_person() {
+        let products = json!([
+            {"asin": "B0NEW00001", "title": "Neu", "language": "german", "format_type": "unabridged", "release_date": "2026-10-01",
+             "authors": [{"name": "Klara Klang"}], "narrators": [{"name": "Rudi Ruhig"}]},
+            {"asin": "B0NEW0000A", "title": "Neu", "language": "german", "format_type": "abridged", "release_date": "2026-10-02",
+             "authors": [{"name": "Klara Klang"}]},
+            {"asin": "B0OLD00001", "title": "Alt", "language": "german", "format_type": "unabridged", "release_date": "2019-01-01",
+             "authors": [{"name": "Klára Klang"}]},
+            {"asin": "B0ENG00001", "title": "Old", "language": "english", "release_date": "2020-01-01", "authors": [{"name": "Klara Klang"}]},
+            {"asin": "B0OTHER001", "title": "Fremd", "language": "german", "release_date": "2025-01-01", "authors": [{"name": "Klara Klangvoll"}]},
+            {"asin": "B0SOON0001", "title": "Bald", "language": "german", "release_date": "2999-01-01", "authors": [{"name": "Klara Klang"}]}]);
+        let seen = std::sync::Arc::new(Mutex::new(Vec::<String>::new()));
+        let log = seen.clone();
+        let client = Client::new(Box::new(move |url: &str| {
+            log.lock().unwrap().push(url.to_string());
+            Ok(json!({"products": products}))
+        }));
+        let works = client.by_person("de", "author", "Klara Klang", "german", 50).unwrap();
+        let asins: Vec<&str> = works.iter().map(|b| b["asin"].as_str().unwrap()).collect();
+        // unabridged beats abridged, accents don't matter, other language, other person and pre-orders are out
+        assert_eq!(asins, ["B0NEW00001", "B0OLD00001"]);
+        let url = seen.lock().unwrap()[0].clone();
+        assert!(
+            url.contains("author=Klara") && url.contains("products_sort_by=-ReleaseDate"),
+            "{url}"
+        );
+        let narrated = client.by_person("de", "narrator", "Rudi Ruhig", "", 50).unwrap();
+        assert_eq!(narrated.len(), 1);
     }
 
     #[test]

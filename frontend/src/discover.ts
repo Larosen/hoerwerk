@@ -24,6 +24,7 @@ const DISCOVER_TITLES: Record<string, () => string> = {
   foryou: () => t("Für dich"),
   genre: () => t("Nach Genre"),
   critics: () => t("Aus der Kritik"),
+  follows: () => t("Gefolgt"),
 };
 
 function fmtCount(n: number): string {
@@ -51,12 +52,12 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     b.cover_url ? el("img", { class: "cover", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, author),
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
-      el("span", { class: "s-author" }, (b.authors || []).join(", ")),
+      el("span", { class: "s-author" }, ...personLinks(b.authors, "author", b)),
       el("span", { class: "tag-row" }, genreTag(b), langTag(b),
         b.announced ? el("span", { class: "tag ok", title: t("Das Hörbuch ist angekündigt, aber noch nicht erschienen") },
           t("erscheint {date}", { date: new Date(b.announced + "T12:00:00").toLocaleDateString(LANG, { dateStyle: "medium" }) }))
         : b.later ? el("span", { class: "tag ok", title: t("Das Buch wurde früher besprochen – das Hörbuch ist erst jetzt erschienen") }, t("jetzt als Hörbuch")) : null),
-      b.narrators?.length ? el("span", { class: "muted small" }, t("gelesen von {names}", { names: b.narrators.slice(0, 2).join(", ") })) : null,
+      b.narrators?.length ? el("span", { class: "muted small" }, t("gelesen von"), " ", ...personLinks(b.narrators, "narrator", b, 2)) : null,
       b.rating ? el("span", { class: "rating", title: plural(b.ratings || 0, t("1 Bewertung bei Audible"), t("{n} Bewertungen bei Audible", { n: fmtCount(b.ratings || 0) })) },
         `★ ${b.rating.toFixed(1)}`, el("span", { class: "muted" }, ` (${fmtCount(b.ratings || 0)})`)) : null,
       facts ? el("span", { class: "muted small" }, facts) : null,
@@ -113,6 +114,15 @@ async function loadDiscover(): Promise<void> {
   $("#discoverGenreWrap").hidden = discover.section !== "genre";
   for (const b of document.querySelectorAll<HTMLElement>("#discoverSections button")) {
     b.setAttribute("aria-current", String(b.dataset.section === discover.section));
+  }
+  const follows = discover.section === "follows";
+  $("#discoverRefresh").hidden = follows;
+  if (follows) {
+    $("#discoverState").textContent = "";
+    $("#discoverNote").hidden = $("#discoverPersonal").hidden = true;
+    $("#discoverList").dataset.shows = "follows";
+    await renderFollows();
+    return;
   }
   const params = new URLSearchParams({ section: discover.section, genre: discover.genre });
   const list = $("#discoverList");

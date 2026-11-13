@@ -20,7 +20,8 @@ Audiobookshelf oder Plex und erledigt das alles in einem Durchgang.
 - **Eingang → Bibliothek, ohne Zutun.** Ordner ablegen (MP3, M4A, FLAC, `CD1`/`CD2` …) und **eine M4B mit
   Kapiteln** bekommen, abgelegt als `Autor/Serie/03 - Titel`, mit Cover, Sprecher, Serie und Beschreibung von Audible.
 - **Anfragen wie bei Overseerr.** Familienkonten entdecken Bücher und fragen sie an; du gibst frei, Hörwerk besorgt
-  sie und zeigt den Fortschritt von Download und Umwandlung.
+  sie und zeigt den Fortschritt von Download und Umwandlung. Einem Autor oder Sprecher **folgen**, und jedes neue Buch
+  wird von selbst angefragt – oder aus allen seinen Büchern auf einmal auswählen.
 - **Eine Suche, die Hörbücher versteht.** Jedes Release wird vor dem Laden beurteilt: richtiges Buch, richtige
   Sprache, ungekürzt und die *richtige Aufnahme* – nicht die Lesung, wenn das Hörspiel gefragt war.
 - **Freie Hörbücher eingebaut.** LibriVox (gemeinfrei) auf Deutsch und Englisch, mit einem Klick in den Eingang.
@@ -38,14 +39,16 @@ Audiobookshelf oder Plex und erledigt das alles in einem Durchgang.
 
 Bisher brauchte man dafür mehrere Werkzeuge und viel Handarbeit:
 
-| | Zu M4B zusammenfügen | Audible-Tags | Suchen & Laden | Anfragen für die Familie |
-|---|---|---|---|---|
-| [m4b-tool](https://github.com/sandreas/m4b-tool) | ✅ Kommandozeile | – | – | – |
-| [beets-audible](https://github.com/Neurrone/beets-audible) | – | ✅ Kommandozeile | – | – |
-| Readarr | – | – | ✅ (eingestellt, nie aus der Beta) | – |
-| **Hörwerk** | ✅ automatisch | ✅ automatisch | ✅ je Release beurteilt | ✅ |
+| | Zu M4B zusammenfügen | Audible-Tags | Suchen & Laden | Anfragen für die Familie | Autoren & Sprechern folgen |
+|---|---|---|---|---|---|
+| [m4b-tool](https://github.com/sandreas/m4b-tool) | ✅ Kommandozeile | – | – | – | – |
+| [beets-audible](https://github.com/Neurrone/beets-audible) | – | ✅ Kommandozeile | – | – | – |
+| Readarr | – | – | ✅ (eingestellt, nie aus der Beta) | – | Autoren |
+| [AudioBookRequest](https://github.com/markbeep/AudioBookRequest) | – | – | ✅ über Prowlarr | ✅ | – |
+| **Hörwerk** | ✅ automatisch | ✅ automatisch | ✅ je Release beurteilt | ✅ | ✅ neue Bücher von selbst angefragt |
 
-Außerdem gibt es Listenarr, ein neueres Projekt für Hörbuch-Downloads – schau, was besser zu dir passt.
+AudioBookRequest ist eine schlanke Anfrage-Liste und überlässt Laden, Umbenennen und Taggen anderen Werkzeugen;
+Listenarr ist ein neueres Projekt für Hörbuch-Downloads – schau, was besser zu dir passt.
 
 ## Schnellstart
 
