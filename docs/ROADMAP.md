@@ -5,9 +5,10 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
 
 ## Recently done
 
-- **7.18** – **follow authors and narrators**: a new book is requested by itself once a day (or only shown as
-  new), and all their books can be ticked and requested together; tidier pages, blocked addresses in the UI, a guide
-  for the ffmpeg sandbox.
+- **7.19** – **follow authors and narrators**: a new book is requested by itself once a day (or only shown as
+  new), and all their books can be ticked and requested together.
+- **7.18** – tidier pages, blocked addresses in the UI, a guide for the ffmpeg sandbox, phone use, one-tap sorting,
+  gentle conversion of the whole library.
 - **7.17.1** – every version is a Git tag, a GitHub release and its own image tag (pin a version instead of
   `latest`); the full list of changes lives in [CHANGELOG.md](../CHANGELOG.md).
 - **7.17** – clean chapter names: track numbers, the book title and text every track repeats go
