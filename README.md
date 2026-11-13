@@ -1,25 +1,36 @@
 # Hörwerk
 
-**Get, request and discover audiobooks – and end up with one clean, tagged M4B per book in your library.**
+**From CD rip to finished audiobook in Audiobookshelf or Plex – in one pass, with clean metadata and reliable handling of German umlauts.**
 
 [![Build](https://github.com/Larosen/hoerwerk/actions/workflows/docker.yml/badge.svg)](https://github.com/Larosen/hoerwerk/actions/workflows/docker.yml)
 [![Release](https://img.shields.io/github/v/release/Larosen/hoerwerk)](CHANGELOG.md)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 
 **English** · [Deutsch](README.de.md)
 
 ![A folder of MP3s lands in the inbox and becomes one M4B in the library](docs/screenshots/en/demo.gif)
 
-I built Hörwerk because my audiobook folder was a mess: CD rips split into `CD1`/`CD2`, MP3s named `Track 01`,
-half the books missing covers, and the family asking me for new ones by message. Merging with one tool, tagging with
-another and searching by hand took an evening per book. Hörwerk sits on the NAS next to Audiobookshelf or Plex and
-does all of it in one go.
+## Why Hörwerk?
+
+My audiobook collection was disorganised. CD rips sat in `CD1`/`CD2`/`CD3` subfolders, MP3s were named `Track 01`,
+`Track 02`, and metadata was missing or incomplete. Covers, titles, authors and descriptions were wrong or absent in
+Plex and Audiobookshelf.
+
+Over the years I assembled a workflow from several tools to achieve uniform metadata, a clean folder structure and
+correct chapter names. Since my family listens to a lot of audiobooks, this became time-consuming: merging with one
+tool, tagging with another and researching metadata manually took an entire evening per book. In addition, many tools
+handle German audiobooks poorly, because umlauts and author names with special characters cause errors.
+
+Hörwerk is aimed at self-hosters who keep their own audiobook collection on a NAS or server and want to automate this
+process.
 
 ## What it does
 
-- **Inbox → library, hands-off.** Drop a folder (MP3, M4A, FLAC, `CD1`/`CD2` …) and get **one M4B with chapters**,
+- **Inbox → library, fully automatic.** Drop a folder (MP3, M4A, FLAC, `CD1`/`CD2` …) and get **one M4B with chapters**,
   filed as `Author/Series/03 - Title`, with cover, narrator, series and description from Audible.
-- **Requests like Overseerr.** Family accounts discover and request books; you approve, Hörwerk fetches them and
+- **German titles and names done right.** Umlauts and special characters in titles and author names are
+  recognised in every spelling (`ä`, `ae`, `a` …), so German audiobooks are matched reliably.
+- **Requests for the whole family.** Family accounts discover and request books; you approve, Hörwerk fetches them and
   shows download and conversion progress. **Follow** an author or narrator and every new book is requested by itself –
   or pick from all their books at once.
 - **A search that understands audiobooks.** It judges every release before loading it: right book, right language,
@@ -27,6 +38,8 @@ does all of it in one go.
 - **Free audiobooks built in.** LibriVox (public domain) in English and German, one click into the inbox.
 - **A tidy library.** Spots duplicates, converts old MP3 books, cleans chapter names, finds a better release for a
   book you already have – and never deletes the old copy without a verified new one.
+- **Recommendations.** *Discover* learns from each user's listening history in Audiobookshelf or Plex and suggests
+  matching books, and it picks up tips from critics (Perlentaucher, Deutschlandfunk Kultur).
 - **Small and locked down.** One Rust program, its own minimal ffmpeg in a sandbox, two-factor login, signed images.
 
 | Requests with live progress | Discover |
@@ -34,21 +47,6 @@ does all of it in one go.
 | ![Requests](docs/screenshots/en/requests.png) | ![Discover](docs/screenshots/en/discover.png) |
 
 ![Library](docs/screenshots/en/library.png)
-
-## How it compares
-
-Until now this took several tools and a lot of manual work:
-
-| | Merge to M4B | Audible tags | Search & download | Requests for the family | Follow authors & narrators |
-|---|---|---|---|---|---|
-| [m4b-tool](https://github.com/sandreas/m4b-tool) | ✅ command line | – | – | – | – |
-| [beets-audible](https://github.com/Neurrone/beets-audible) | – | ✅ command line | – | – | – |
-| Readarr | – | – | ✅ (retired, never left beta) | – | authors |
-| [AudioBookRequest](https://github.com/markbeep/AudioBookRequest) | – | – | ✅ via Prowlarr | ✅ | – |
-| **Hörwerk** | ✅ automatic | ✅ automatic | ✅ judged per release | ✅ | ✅ new books requested by themselves |
-
-AudioBookRequest is a lean request list that leaves downloading, renaming and tagging to other tools; Listenarr is a
-newer project for audiobook downloads – have a look at which one fits you better.
 
 ## Quick start
 
@@ -64,7 +62,7 @@ curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.y
 docker compose up -d
 ```
 
-Image: `ghcr.io/larosen/hoerwerk:latest` (or a fixed version such as `:7.17.1`) – amd64, rebuilt every week for
+Image: `ghcr.io/larosen/hoerwerk:latest` (or a fixed version such as `:7.20.0`) – amd64, rebuilt every week for
 security updates, signed with cosign.
 
 ## What it is not
@@ -88,9 +86,27 @@ security updates, signed with cosign.
 > It ships no media and is not affiliated with Audible, Amazon, Apple, LibriVox or any other service named here.
 > The books in the screenshots are public-domain classics with made-up covers.
 
+## How it came about
+
+Hörwerk was built with Claude Opus 5.5 and Claude Fable 5.2. The goal was a tool that automates the entire process,
+handles German audiobooks reliably and saves as much manual work as possible.
+
+## Contributing
+
+Found a bug, missing a feature, or know a good source of audiobook recommendations? Please open an
+[issue](https://github.com/Larosen/hoerwerk/issues). Suggestions are welcome, and suitable sources will be added where
+possible.
+
 ## License
 
-[MIT](LICENSE). The Docker image also contains FFmpeg, built from its official source without GPL parts and therefore
-under the [LGPL 2.1](https://www.ffmpeg.org/legal.html); the build script is [docker/build-ffmpeg.sh](docker/build-ffmpeg.sh).
+Hörwerk is released under the [PolyForm Noncommercial License 1.0.0](LICENSE): free for personal and other
+noncommercial use – for your own library, your family, a hobby project, research or a charity. You may share and
+change it under the same terms. Commercial use is not covered; if you have one in mind, please get in touch via an
+issue. This makes Hörwerk *source-available*, not open source in the OSI sense.
+
+The Docker image also contains FFmpeg, built from its official source without GPL parts and therefore under the
+[LGPL 2.1](https://www.ffmpeg.org/legal.html); the build script is [docker/build-ffmpeg.sh](docker/build-ffmpeg.sh).
+The licenses of all Rust libraries are listed in [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
+
 Inspired by [auto-m4b](https://github.com/seanap/auto-m4b) and [beets-audible](https://github.com/Neurrone/beets-audible);
 chapter data via [Audnexus](https://github.com/laxamentumtech/audnexus).

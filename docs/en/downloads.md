@@ -99,7 +99,7 @@ Lists are put together in the background, refreshed at most once a day (or with 
 Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de`,
 `bilder.deutschlandfunk.de` (the best-of list PDFs) and `www.perlentaucher.de` (HTTPS).
 
-### Requests (like Overseerr/Jellyseerr)
+### Requests
 
 Family members ask for a **book**, not a release: click **Request** in *Search* (Audible, BookBeat) or *Discover*.
 Hörwerk does the rest – the **Requests** tab shows where it stands:
@@ -110,7 +110,7 @@ Hörwerk does the rest – the **Requests** tab shows where it stands:
   the tab). Admins and accounts with the right *no approval* start right away.
 * **Quota:** requests per calendar month (default 5, adjustable per account; declined ones don't count).
 * **Visibility:** everyone sees their own requests; with the right *see all requests* also everybody else's.
-* **Getting it automatically (like Radarr):** Hörwerk searches all indexers and judges every release – right author,
+* **Getting it automatically:** Hörwerk searches all indexers and judges every release – right author,
   right title, unabridged, right language, size fitting the runtime (kbit/s), a pack with exactly this volume? The best
   match goes to SABnzbd with the ASIN and the request number; Hörwerk then follows the download into the library. If
   the download fails or the book doesn't fit on import, that release is blocked and the next one taken (at most 5

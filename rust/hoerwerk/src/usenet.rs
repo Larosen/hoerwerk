@@ -1,4 +1,4 @@
-//! Search Newznab indexers and send NZBs to SABnzbd – the Readarr part. API keys stay on the server:
+//! Search Newznab indexers and send NZBs to SABnzbd – API keys stay on the server:
 //! the UI only sees whether one is set, and NZB links (which embed the indexer key) never leave the backend.
 
 use std::collections::HashMap;

@@ -1,7 +1,7 @@
 "use strict";
 
 // ------------------------------------------------------------------------- //
-// Indexer search -> SABnzbd (like Readarr), downloads land in the inbox
+// Indexer search -> SABnzbd, downloads land in the inbox
 // ------------------------------------------------------------------------- //
 const search = {
   sources: null as Sources | null,

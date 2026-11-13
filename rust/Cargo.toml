@@ -5,7 +5,8 @@ members = ["hw-run", "hw-tags", "hoerwerk"]
 
 [workspace.package]
 edition = "2024"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
+publish = false
 rust-version = "1.90"
 
 [profile.release]

@@ -199,6 +199,8 @@ jobs:
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
         with:
+          labels: |
+            org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0
           # the image is called "hoerwerk"; the old name (repository name) keeps getting updates for a while
           images: |
             ghcr.io/${{ github.repository_owner }}/hoerwerk

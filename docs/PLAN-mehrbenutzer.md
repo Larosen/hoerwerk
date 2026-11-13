@@ -6,7 +6,7 @@ Hörwerk besorgt sie selbstständig. Der Admin sieht und steuert alles.
 ## Leitlinien
 
 1. **Wunsch statt Release.** Nutzer wählen ein *Buch* (Audible/BookBeat), nie ein Release. Hörwerk sucht, bewertet,
-   lädt, prüft und legt ab – wie Overseerr/Jellyseerr → Radarr. Releases sieht nur, wer die **interaktive Suche**
+   lädt, prüft und legt ab. Releases sieht nur, wer die **interaktive Suche**
    öffnet (Admin, oder Nutzer mit Recht dazu) – inklusive der abgelehnten Treffer und dem Grund der Ablehnung.
 2. **Sicher ab Werk.** Ohne Anmeldung nichts außer Login-Seite, Logo und Health-Check. Jeder Fehlversuch wird mit
    echter Client-IP protokolliert, in einem Format, das CrowdSec direkt versteht.
@@ -64,7 +64,7 @@ Kontingent: Anzahl Anfragen pro Kalendermonat, global voreingestellt, je Nutzer 
 - Admin: Freigabe-Liste mit Ein-Klick-Freigabe/Ablehnung; ntfy „Neue Anfrage“.
 - Sichtbarkeit nach Recht *„Alle Anfragen sehen“*.
 
-### Schritt 3 – Automatisch besorgen (Radarr-Prinzip)
+### Schritt 3 – Automatisch besorgen
 - **Release-Bewertung** mit nachvollziehbaren Gründen: Autor + Titel passen, Sprache, ungekürzt, Format (M4B > M4A > MP3),
   Größe plausibel zur Laufzeit (kbit/s), Alter/Grabs, keine Pakete fremder Bände; harte Ausschlüsse mit Grund
   („anderer Autor“, „gekürzt“, „Größe passt nicht zur Laufzeit“, „schon fehlgeschlagen“).

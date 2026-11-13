@@ -1,4 +1,4 @@
-//! Book requests – like Overseerr/Jellyseerr in front of Radarr.
+//! Book requests: a user asks for a book, Hörwerk searches, downloads and files it.
 //!
 //!     pending ──approve──▶ searching ──grab──▶ downloading ──SABnzbd done──▶ processing ──filed──▶ available
 //!        │                    ▲   (nothing found: again every few hours)             │
