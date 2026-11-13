@@ -1,6 +1,6 @@
 # Hörwerk
 
-**From CD rip to finished audiobook in Audiobookshelf or Plex – in one pass, with clean metadata and no trouble with German umlauts.**
+**From CD rip to finished audiobook in Audiobookshelf or Plex – in one pass, with clean metadata and reliable handling of German umlauts.**
 
 [![Build](https://github.com/Larosen/hoerwerk/actions/workflows/docker.yml/badge.svg)](https://github.com/Larosen/hoerwerk/actions/workflows/docker.yml)
 [![Release](https://img.shields.io/github/v/release/Larosen/hoerwerk)](CHANGELOG.md)
@@ -12,24 +12,24 @@
 
 ## Why Hörwerk?
 
-My audiobook folder was a mess. CD rips sat in `CD1`/`CD2`/`CD3` subfolders, MP3s were called `Track 01`,
-`Track 02`, and the metadata was missing or incomplete. Covers, titles, authors and descriptions were wrong or absent
-in Plex and Audiobookshelf.
+My audiobook collection was disorganised. CD rips sat in `CD1`/`CD2`/`CD3` subfolders, MP3s were named `Track 01`,
+`Track 02`, and metadata was missing or incomplete. Covers, titles, authors and descriptions were wrong or absent in
+Plex and Audiobookshelf.
 
-Over the years I put together a workflow from several tools to get uniform metadata, a clean folder structure and
-proper chapter names. But my family listens to a lot of audiobooks, and merging with one tool, tagging with another and
-searching for metadata by hand cost a whole evening per book. On top of that, German audiobooks fall through the cracks
-of many tools, because umlauts and author names with special characters trip them up.
+Over the years I assembled a workflow from several tools to achieve uniform metadata, a clean folder structure and
+correct chapter names. Since my family listens to a lot of audiobooks, this became time-consuming: merging with one
+tool, tagging with another and researching metadata manually took an entire evening per book. In addition, many tools
+handle German audiobooks poorly, because umlauts and author names with special characters cause errors.
 
-Hörwerk is for self-hosters who keep their own audiobook collection on a NAS or server and want to stop doing this by
-hand.
+Hörwerk is aimed at self-hosters who keep their own audiobook collection on a NAS or server and want to automate this
+process.
 
 ## What it does
 
-- **Inbox → library, hands-off.** Drop a folder (MP3, M4A, FLAC, `CD1`/`CD2` …) and get **one M4B with chapters**,
+- **Inbox → library, fully automatic.** Drop a folder (MP3, M4A, FLAC, `CD1`/`CD2` …) and get **one M4B with chapters**,
   filed as `Author/Series/03 - Title`, with cover, narrator, series and description from Audible.
 - **German titles and names done right.** Umlauts and special characters in titles and author names are
-  recognised in every spelling (`ä`, `ae`, `a` …), so German audiobooks no longer fall through the net.
+  recognised in every spelling (`ä`, `ae`, `a` …), so German audiobooks are matched reliably.
 - **Requests for the whole family.** Family accounts discover and request books; you approve, Hörwerk fetches them and
   shows download and conversion progress. **Follow** an author or narrator and every new book is requested by itself –
   or pick from all their books at once.
@@ -88,13 +88,14 @@ security updates, signed with cosign.
 
 ## How it came about
 
-I built Hörwerk with Claude Opus 5.5 and Claude Fable 5.2. The goal: a tool that takes over the whole process, handles
-German audiobooks with confidence and, at best, gives me my evenings back.
+Hörwerk was built with Claude Opus 5.5 and Claude Fable 5.2. The goal was a tool that automates the entire process,
+handles German audiobooks reliably and saves as much manual work as possible.
 
 ## Contributing
 
-Found a bug, miss a feature, or know a good source of audiobook recommendations? Please open an
-[issue](https://github.com/Larosen/hoerwerk/issues). I appreciate every hint and will add fitting sources where I can.
+Found a bug, missing a feature, or know a good source of audiobook recommendations? Please open an
+[issue](https://github.com/Larosen/hoerwerk/issues). Suggestions are welcome, and suitable sources will be added where
+possible.
 
 ## License
 

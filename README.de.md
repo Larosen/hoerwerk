@@ -1,6 +1,6 @@
 # Hörwerk
 
-**Vom CD-Rip zum fertigen Hörbuch in Audiobookshelf oder Plex – in einem Durchgang, mit sauberen Metadaten und ohne Ärger mit Umlauten.**
+**Vom CD-Rip zum fertigen Hörbuch in Audiobookshelf oder Plex – in einem Durchgang, mit sauberen Metadaten und zuverlässiger Verarbeitung deutscher Umlaute.**
 
 [![Build](https://github.com/Larosen/hoerwerk/actions/workflows/docker.yml/badge.svg)](https://github.com/Larosen/hoerwerk/actions/workflows/docker.yml)
 [![Release](https://img.shields.io/github/v/release/Larosen/hoerwerk)](CHANGELOG.md)
@@ -12,25 +12,25 @@
 
 ## Warum Hörwerk?
 
-Mein Hörbuchordner war ein Chaos. CD-Rips lagen in `CD1`/`CD2`/`CD3`-Unterordnern, MP3s hießen `Track 01`,
-`Track 02`, und die Metadaten fehlten oder waren unvollständig. Cover, Titel, Autor und Beschreibung waren in Plex
-und Audiobookshelf falsch oder gar nicht vorhanden.
+Meine Hörbuchsammlung war unübersichtlich. CD-Rips lagen in `CD1`/`CD2`/`CD3`-Unterordnern, MP3s hießen `Track 01`,
+`Track 02`, und die Metadaten fehlten oder waren unvollständig. Cover, Titel, Autor und Beschreibung waren in Plex und
+Audiobookshelf falsch oder gar nicht vorhanden.
 
-Über die Jahre habe ich mir aus mehreren Werkzeugen einen Workflow gebaut, der für einheitliche Metadaten, eine saubere
-Ordnerstruktur und richtige Kapitelnamen sorgen sollte. Meine Familie hört aber viele Hörbücher, und mit einem Werkzeug
-zusammenfügen, mit einem anderen taggen und Metadaten von Hand suchen hat pro Buch einen ganzen Feierabend gekostet.
-Dazu kam, dass deutsche Hörbücher bei vielen Werkzeugen durchs Raster fallen, weil Umlaute und Autorennamen mit
-Sonderzeichen sie aus dem Tritt bringen.
+Über die Jahre habe ich aus mehreren Werkzeugen einen Workflow zusammengestellt, der für einheitliche Metadaten, eine
+saubere Ordnerstruktur und korrekte Kapitelnamen sorgen sollte. Da meine Familie viele Hörbücher hört, wurde das
+aufwendig: Mit einem Werkzeug zusammenfügen, mit einem anderen taggen und Metadaten manuell recherchieren kostete pro
+Buch einen ganzen Abend. Hinzu kommt, dass viele Werkzeuge deutsche Hörbücher unzureichend verarbeiten, weil Umlaute und
+Autorennamen mit Sonderzeichen zu Fehlern führen.
 
-Hörwerk richtet sich an alle, die ihre eigene Hörbuchsammlung auf einem NAS oder Server betreiben und das nicht länger
-von Hand erledigen wollen.
+Hörwerk richtet sich an alle, die ihre eigene Hörbuchsammlung auf einem NAS oder Server betreiben und diesen Ablauf
+automatisieren möchten.
 
 ## Was es kann
 
-- **Eingang → Bibliothek, ohne Zutun.** Ordner ablegen (MP3, M4A, FLAC, `CD1`/`CD2` …) und **eine M4B mit
+- **Eingang → Bibliothek, vollautomatisch.** Ordner ablegen (MP3, M4A, FLAC, `CD1`/`CD2` …) und **eine M4B mit
   Kapiteln** bekommen, abgelegt als `Autor/Serie/03 - Titel`, mit Cover, Sprecher, Serie und Beschreibung von Audible.
 - **Deutsche Titel und Namen, richtig behandelt.** Umlaute und Sonderzeichen in Titeln und Autorennamen werden in jeder
-  Schreibweise erkannt (`ä`, `ae`, `a` …), damit deutsche Hörbücher nicht mehr durchs Raster fallen.
+  Schreibweise erkannt (`ä`, `ae`, `a` …), damit deutsche Hörbücher zuverlässig zugeordnet werden.
 - **Anfragen für die ganze Familie.** Familienkonten entdecken Bücher und fragen sie an; du gibst frei, Hörwerk besorgt
   sie und zeigt den Fortschritt von Download und Umwandlung. Einem Autor oder Sprecher **folgen**, und jedes neue Buch
   wird von selbst angefragt – oder aus allen seinen Büchern auf einmal auswählen.
@@ -89,14 +89,14 @@ Sicherheitsupdates neu gebaut, mit cosign signiert.
 
 ## Entstehung
 
-Gebaut habe ich Hörwerk mit Claude Opus 5.5 und Claude Fable 5.2. Das Ziel: ein Werkzeug, das den gesamten Prozess
-übernimmt, mit deutschen Hörbüchern souverän umgeht und mir im besten Fall meinen Feierabend zurückgibt.
+Hörwerk wurde mit Claude Opus 5.5 und Claude Fable 5.2 entwickelt. Das Ziel war ein Werkzeug, das den gesamten Prozess
+automatisiert, deutsche Hörbücher zuverlässig verarbeitet und möglichst viel manuelle Arbeit erspart.
 
 ## Mitmachen
 
-Du hast einen Fehler gefunden, vermisst eine Funktion oder kennst weitere gute Quellen für Hörbuch-Empfehlungen? Dann
-eröffne gern ein [Issue](https://github.com/Larosen/hoerwerk/issues). Ich freue mich über jeden Hinweis und baue
-passende Quellen gegebenenfalls ein.
+Du hast einen Fehler gefunden, vermisst eine Funktion oder kennst weitere gute Quellen für Hörbuch-Empfehlungen?
+Bitte eröffne ein [Issue](https://github.com/Larosen/hoerwerk/issues). Hinweise sind willkommen, passende Quellen
+werden nach Möglichkeit eingebunden.
 
 ## Lizenz
 
