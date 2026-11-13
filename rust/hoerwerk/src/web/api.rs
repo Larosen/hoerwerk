@@ -50,6 +50,8 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("PUT", "/api/users/{uid}") => h!(users_update),
         ("DELETE", "/api/users/{uid}") => h!(users_delete),
         ("GET", "/api/audit") => h!(audit),
+        ("GET", "/api/security/blocked") => h!(blocked_list),
+        ("DELETE", "/api/security/blocked") => h!(blocked_lift),
         ("GET", "/api/settings") => h!(settings_get),
         ("PUT", "/api/settings") => h!(settings_put),
         ("GET", "/api/logs") => h!(logs),
@@ -795,6 +797,29 @@ async fn users_delete(app: Arc<App>, req: Req, params: HashMap<String, String>) 
         Ok(false) => error(404, t("Nicht gefunden", &[])),
         Err(e) => error(400, e),
     }
+}
+
+/// Addresses blocked after too many failed logins – they are free again by themselves after 15 minutes.
+async fn blocked_list(app: Arc<App>, _: Req, _: HashMap<String, String>) -> Reply {
+    let list: Vec<Value> = app
+        .accounts
+        .blocked_list()
+        .into_iter()
+        .map(|(address, fails, until)| json!({"address": address, "fails": fails, "until": until}))
+        .collect();
+    json_reply(json!({"blocked": list}))
+}
+
+async fn blocked_lift(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let address = req.str("address");
+    if !app.accounts.unblock(&address) {
+        return error(404, t("Nicht gefunden", &[]));
+    }
+    authlog::event(
+        "ip_unblocked",
+        &[("address", &address), ("by", &req.user_name()), ("ip", &req.ip)],
+    );
+    json_reply(json!({"ok": true}))
 }
 
 async fn audit(app: Arc<App>, _: Req, _: HashMap<String, String>) -> Reply {

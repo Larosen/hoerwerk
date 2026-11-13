@@ -131,11 +131,20 @@ fn limits(nice: i32) -> Result<(), String> {
     Ok(())
 }
 
-/// The Landlock ABI of the running kernel (0: none).
-fn landlock_abi() -> i32 {
+/// The Landlock ABI of the running kernel (0: none) and, without one, why: "kernel" (not built in), "disabled" (built in but not switched on
+/// at boot) or "blocked" (the container's seccomp profile forbids the call).
+fn landlock_probe() -> (i32, &'static str) {
     // SAFETY: LANDLOCK_CREATE_RULESET_VERSION query with null attributes, as documented
     let v = unsafe { libc::syscall(libc::SYS_landlock_create_ruleset, std::ptr::null::<u8>(), 0usize, 1u32) };
-    if v > 0 { v as i32 } else { 0 }
+    if v > 0 {
+        return (v as i32, "");
+    }
+    let reason = match std::io::Error::last_os_error().raw_os_error() {
+        Some(libc::EOPNOTSUPP) => "disabled",
+        Some(libc::EPERM) | Some(libc::EACCES) => "blocked",
+        _ => "kernel",
+    };
+    (0, reason)
 }
 
 fn rules(paths: &[PathBuf], access: BitFlags<AccessFs>) -> Vec<PathBeneath<PathFd>> {
@@ -265,9 +274,9 @@ fn run(args: Args) -> Result<(), (u8, String)> {
         .trim()
         .to_lowercase();
     if args.status {
-        let abi = landlock_abi();
+        let (abi, reason) = landlock_probe();
         println!(
-            "{{\"mode\":\"{mode}\",\"landlock_abi\":{abi},\"active\":{},\"network_blocked\":{},\"seccomp\":{}}}",
+            "{{\"mode\":\"{mode}\",\"landlock_abi\":{abi},\"reason\":\"{reason}\",\"active\":{},\"network_blocked\":{},\"seccomp\":{}}}",
             mode != "off" && abi > 0,
             mode != "off" && abi >= 4,
             mode != "off"

@@ -5,6 +5,12 @@
 // ------------------------------------------------------------------------- //
 interface HealthCheck {
   id: string; group: string; status: "ok" | "warn" | "error" | "info"; title: string; detail?: string; hint?: string;
+  help?: { cause: string; steps: string[]; why: string }; link?: string; link_text?: string;
+}
+
+/** Text with `code` in backticks → text and <code> elements. */
+function withCode(text: string): (string | HTMLElement)[] {
+  return text.split("`").map((part, i) => (i % 2 ? el("code", {}, part) : part));
 }
 interface HealthAnswer {
   checks: HealthCheck[]; server_time: number; app_url: string; version: string;
@@ -84,7 +90,21 @@ function healthRow(c: HealthCheck): HTMLElement {
     el("div", { class: "health-text" },
       el("b", {}, c.title),
       c.detail ? el("span", { class: "muted small" }, c.detail) : null,
-      c.hint ? el("code", { class: "health-hint" }, c.hint) : null));
+      c.hint ? el("code", { class: "health-hint" }, c.hint) : null,
+      c.help ? el("details", { class: "health-help" },
+        el("summary", {}, t("? Warum – und wie einschalten")),
+        el("p", {}, c.help.cause),
+        el("ol", {}, c.help.steps.map((step) => el("li", {}, ...withCode(step)))),
+        el("p", { class: "muted small" }, c.help.why)) : null,
+      c.link ? el("div", { class: "health-action" }, healthLink(c.link, c.link_text || c.link)) : null));
+}
+
+/** A link from a hint to the page that fixes it – also to a box further down that page. */
+function healthLink(href: string, label: string): HTMLAnchorElement {
+  const a = el("a", { href }, label);
+  const target = href.split("#")[1];
+  if (target) a.addEventListener("click", () => setTimeout(() => document.getElementById(target)?.scrollIntoView({ block: "center" }), 300));
+  return a;
 }
 
 /** Checks only the browser can do: clock, live updates through the proxy, the address in notifications. */

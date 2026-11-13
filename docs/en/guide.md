@@ -80,7 +80,8 @@ and tagged separately, with author and volume number from the release name. Fold
 
 ### Avoiding duplicates
 
-The library is scanned at start and every few hours (`LIBRARY_RESCAN_HOURS`) – including older MP3 folders, recognised
+The library is scanned at start and every few hours (*Settings → Inbox & library*, also "Scan now" and the one-off
+cleanup of `desc.txt`/`reader.txt`) – including older MP3 folders, recognised
 by ASIN, tags or the folder structure. If a new book is already there (same ASIN, same author + title or same
 series + volume), you decide: **Discard**, **Replace old** (the old version moves to `_ersetzt` in the inbox) or
 **File additionally**. `DUPLICATES=skip` or `keep` decides automatically.

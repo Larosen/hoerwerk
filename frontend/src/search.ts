@@ -30,29 +30,16 @@ function fmtAge(ts: number | null): string {
 async function loadSources(): Promise<void> {
   let s: Sources;
   try { s = search.sources = await api<Sources>("GET", "/api/sources"); } catch (e) { toast(errMsg(e), true); return; }
+  // the connections themselves live under Einstellungen; here only a note when something is missing for the search
+  const missing: string[] = [];
+  if (!s.indexers.some((i) => i.enabled && i.apikey_set)) missing.push(t("ein Indexer"));
+  if (!s.configured.sab) missing.push("SABnzbd");
   const box = $("#sourcesInfo");
-  box.replaceChildren();
-  if (!s.indexers.length) box.append(el("div", { class: "muted" }, t("Noch kein Indexer eingerichtet.")));
-  for (const i of s.indexers) {
-    box.append(el("div", { class: "kv" }, el("span", {}, t("Indexer")),
-      el("span", { title: i.url }, (i.name || "") + (i.enabled ? "" : " " + t("(aus)")) + (i.preferred ? " · " + t("Wird zuerst gefragt") : "")),
-      el("span", { class: i.apikey_set ? "ok" : "err", title: i.apikey_set ? t("API-Key gespeichert") : t("API-Key fehlt") }, icon(i.apikey_set ? "check" : "alert"))));
-  }
-  box.append(el("div", { class: "kv" }, el("span", {}, "SABnzbd"),
-    el("span", { title: s.sab.url || "" }, s.sab.url ? `${s.sab.url}${s.sab.category ? " · " + s.sab.category : ""}` : t("Nicht eingerichtet")),
-    el("span", { class: s.configured.sab ? "ok" : "err" }, icon(s.configured.sab ? "check" : "alert"))));
-  const abs = s.abs;
-  if (abs?.url) {
-    box.append(el("div", { class: "kv" }, el("span", {}, "Audiobookshelf"),
-      el("span", { title: abs.last || abs.url }, abs.library_name || abs.library || t("Bibliothek fehlt")),
-      el("span", { class: abs.configured ? "ok" : "err" }, icon(abs.configured ? "check" : "alert"))));
-  }
-  const plex = s.plex;
-  if (plex?.url) {
-    box.append(el("div", { class: "kv" }, el("span", {}, "Plex"),
-      el("span", { title: plex.last || plex.url }, plex.section_name || plex.section || t("Mediathek fehlt")),
-      el("span", { class: plex.configured ? "ok" : "err" }, icon(plex.configured ? "check" : "alert"))));
-  }
+  box.hidden = !missing.length;
+  box.replaceChildren(...(missing.length ? [
+    t("Für die Release-Suche fehlt noch: {what}.", { what: missing.length > 1 ? t("ein Indexer und SABnzbd") : missing[0] }), " ",
+    el("a", { href: "/settings/downloads" }, t("Einrichten")),
+  ] : []));
 }
 
 function indexerRow(i: Indexer = {}): HTMLDivElement {

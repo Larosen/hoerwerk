@@ -524,6 +524,18 @@
    "raw_body": false
   },
   {
+   "method": "DELETE",
+   "path": "/api/security/blocked",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/security/blocked",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/settings",
    "access": "user",

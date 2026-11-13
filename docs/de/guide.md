@@ -81,7 +81,8 @@ zusammengefügt, erkannt und getaggt, mit Autor und Band-Nummer aus dem Release-
 
 ### Doppelte vermeiden
 
-Die Bibliothek wird beim Start und alle paar Stunden eingelesen (`LIBRARY_RESCAN_HOURS`) – auch ältere MP3-Ordner,
+Die Bibliothek wird beim Start und alle paar Stunden eingelesen (*Einstellungen → Eingang & Bibliothek*, dort auch
+„Jetzt einlesen“ und das einmalige Aufräumen von `desc.txt`/`reader.txt`) – auch ältere MP3-Ordner,
 erkannt über ASIN, Tags oder die Ordnerstruktur. Ist ein neues Buch schon da (gleiche ASIN, gleicher Autor + Titel
 oder gleiche Serie + Folge), entscheidest du: **Verwerfen**, **Altes ersetzen** (die alte Fassung wandert nach
 `_ersetzt` im Eingang) oder **Trotzdem zusätzlich ablegen**. `DUPLICATES=skip` oder `keep` entscheidet automatisch.

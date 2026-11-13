@@ -93,7 +93,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
   (`--locked`), `cargo deny` prüft Lizenzen, Herkunft und Sicherheitsmeldungen. Dazu das eigene ffmpeg
   (Quelltext vom offiziellen FFmpeg-Repository, Release-Tag auf seinen Commit festgenagelt).
 * ffmpeg-Käfig: `FFMPEG_SANDBOX=auto` (Standard) nutzt Landlock, wenn Kernel und Docker es erlauben (Linux ≥ 5.13,
-  Netzwerk-Regeln ab 6.7; Docker ≥ 23). Ob er aktiv ist, steht unten in ⚙︎ Einstellungen. `require` verweigert
+  Netzwerk-Regeln ab 6.7; Docker ≥ 23). Ob er aktiv ist – und wenn nicht, warum und wie man ihn einschaltet –, steht unter *Einstellungen → Systemprüfung*. `require` verweigert
   ffmpeg ohne Käfig, `off` schaltet ihn ab.
 * Wöchentlicher Neubau ohne Cache, damit Sicherheitsupdates ankommen.
 

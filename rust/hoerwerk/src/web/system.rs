@@ -20,6 +20,93 @@ fn check(group: &str, status: &str, title: String, detail: String, hint: String,
     json!({"id": if id.is_empty() { title.clone() } else { id.to_string() }, "group": group, "status": status, "title": title, "detail": detail, "hint": hint})
 }
 
+/// The "?" behind a hint: why it is shown and what to do – and a way to the page that fixes it.
+fn explain(checks: &mut [Value], sandbox: &Value, blocked: usize) {
+    for c in checks.iter_mut() {
+        match c["id"].as_str() {
+            Some("blocked") if blocked > 0 => {
+                c["link"] = json!("/settings/users#blockedBox");
+                c["link_text"] = json!(t("Gesperrte Adressen ansehen und freigeben", &[]));
+            }
+            Some("sandbox") if c["status"] == "warn" => c["help"] = sandbox_help(sandbox),
+            _ => {}
+        }
+    }
+}
+
+fn sandbox_help(sb: &Value) -> Value {
+    let why = t(
+        "ffmpeg läuft auch so in einem eigenen Prozess mit Seccomp-Filter und Grenzen für Speicher und Dateigröße. Landlock verbietet ihm zusätzlich jeden Dateizugriff außer auf das Buch, das gerade umgewandelt wird – eine zweite Wand, falls eine präparierte Audiodatei eine Lücke in ffmpeg ausnutzt.",
+        &[],
+    );
+    let (cause, steps): (String, Vec<String>) = match (sb["mode"].as_str(), sb["reason"].as_str()) {
+        (Some("off"), _) => (
+            t("Die Abschottung ist mit FFMPEG_SANDBOX=off ausgeschaltet.", &[]),
+            vec![t(
+                "In der Container-Konfiguration FFMPEG_SANDBOX auf `auto` setzen (oder die Variable löschen) und den Container neu starten.",
+                &[],
+            )],
+        ),
+        (_, Some("disabled")) => (
+            t(
+                "Der Kernel des Servers kann Landlock, es wurde beim Start aber nicht eingeschaltet.",
+                &[],
+            ),
+            vec![
+                t(
+                    "Im Terminal des Servers (nicht im Container) `cat /sys/kernel/security/lsm` eingeben. Das ist die Liste der aktiven Schutzmodule, z. B. `lockdown,capability,yama,apparmor`.",
+                    &[],
+                ),
+                t(
+                    "Unraid: Main → Flash (Boot Device) → Syslinux Configuration. In der Zeile `append` des Standard-Eintrags `lsm=landlock,` und dahinter genau die Liste von eben anhängen, z. B. `append initrd=/bzroot lsm=landlock,lockdown,capability,yama,apparmor`.",
+                    &[],
+                ),
+                t(
+                    "Andere Systeme: dasselbe in `GRUB_CMDLINE_LINUX` in `/etc/default/grub` eintragen, danach `update-grub`.",
+                    &[],
+                ),
+                t(
+                    "Server neu starten, dann hier „Erneut prüfen“. Ein Tippfehler in der Liste schaltet andere Schutzmodule ab – deshalb die vorhandene Liste vollständig übernehmen.",
+                    &[],
+                ),
+            ],
+        ),
+        (_, Some("blocked")) => (
+            t(
+                "Docker verbietet den Aufruf (Seccomp-Profil). Ältere Docker-Versionen kennen Landlock noch nicht.",
+                &[],
+            ),
+            vec![
+                t(
+                    "Docker aktualisieren – bei Unraid kommt Docker mit dem Unraid-Update.",
+                    &[],
+                ),
+                t(
+                    "Nicht empfohlen: `--security-opt seccomp=unconfined` würde dem ganzen Container mehr erlauben, als Landlock an Schutz bringt.",
+                    &[],
+                ),
+            ],
+        ),
+        _ => (
+            t(
+                "Der Kernel des Servers enthält Landlock nicht (es gibt es ab Linux 5.13, Kernel-Option CONFIG_SECURITY_LANDLOCK).",
+                &[],
+            ),
+            vec![
+                t(
+                    "Unraid: Das hängt vom Kernel der Unraid-Version ab und lässt sich nicht selbst einschalten. Nach einem Unraid-Update hier erneut prüfen.",
+                    &[],
+                ),
+                t(
+                    "Andere Systeme: einen Kernel mit Landlock verwenden – die meisten aktuellen Distributionen bringen ihn mit.",
+                    &[],
+                ),
+            ],
+        ),
+    };
+    json!({"cause": cause, "steps": steps, "why": why})
+}
+
 fn when(ts: f64) -> String {
     let tm = text::local(ts);
     format!(
@@ -407,7 +494,7 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
             "warn",
             t("Admins ohne Zweitfaktor: {names}", &[("names", &no_totp.join(", "))]),
             t(
-                "Unter Konto → Zweitfaktor einrichten; danach in Entdecken & Anfragen „Admins brauchen einen Zweitfaktor“ einschalten.",
+                "Unter Konto → Zweitfaktor einrichten; danach unter Konten → Sicherheit „Admins brauchen einen Zweitfaktor“ einschalten.",
                 &[],
             ),
             none(),
@@ -634,6 +721,15 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
             none(),
             "sandbox",
         );
+    } else if sb["mode"] == "off" {
+        add(
+            "system",
+            "warn",
+            t("ffmpeg ohne Abschottung", &[]),
+            t("Ausgeschaltet mit FFMPEG_SANDBOX=off.", &[]),
+            none(),
+            "sandbox",
+        );
     } else {
         add(
             "system",
@@ -674,6 +770,7 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
         .get("ntfy")
         .and_then(|v| v.as_object().cloned())
         .unwrap_or_default();
+    explain(&mut checks, &sb, app.accounts.blocked_count());
     json_reply(json!({
         "checks": checks, "server_time": now(), "app_url": app.notifier.link_base(&ntfy_cfg), "version": settings::version(),
         "services": {"indexers": indexers, "sab": src["sab"]["apikey_set"] == true && src["sab"]["url"].as_str().is_some_and(|u| !u.is_empty()),

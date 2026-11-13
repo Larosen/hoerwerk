@@ -92,7 +92,7 @@ This page explains what the program protects against, what was tested and what y
   checks licenses, sources and advisories. Plus the own ffmpeg (source from the official FFmpeg repository, release
   tag pinned to its commit).
 * ffmpeg sandbox: `FFMPEG_SANDBOX=auto` (default) uses Landlock when kernel and Docker allow it (Linux ≥ 5.13, network
-  rules from 6.7; Docker ≥ 23). Whether it is active is shown at the bottom of ⚙︎ Settings. `require` refuses ffmpeg
+  rules from 6.7; Docker ≥ 23). Whether it is active – and, if not, why and how to switch it on – is shown under *Settings → Health*. `require` refuses ffmpeg
   without the sandbox, `off` switches it off.
 * Weekly rebuild without cache so security updates arrive.
 

@@ -86,10 +86,17 @@ funktionieren. Das gilt auch für die Reiter: `/books`, `/search`, `/discover`, 
   (sonst Fehler mit der fertigen Zeile zum Eintragen), ob HTTPS ankommt, `ALLOWED_HOSTS`, ob Live-Updates durch den
   Proxy kommen, ob die Adresse in Benachrichtigungen passt. Proxys im eigenen Netz, die `X-Forwarded-For` schicken,
   aber nicht vertrauenswürdig sind (z. B. Newt nach einem Neustart mit neuer IP), stehen hier und im Protokoll.
-* **Sicherheit:** Admins ohne Zweitfaktor, Anmelde-Protokoll für CrowdSec, gerade gesperrte Adressen.
+* **Sicherheit:** Admins ohne Zweitfaktor, Anmelde-Protokoll für CrowdSec, gerade gesperrte Adressen. Hörwerk sperrt
+  eine Adresse nach 5 falschen Anmeldungen für 15 Minuten; *Einstellungen → Konten → Sicherheit* listet sie auf, und
+  **Freigeben** hebt eine Sperre sofort auf – ganz ohne Terminal. Sperren von CrowdSec oder der Firewall verwaltest du dort.
 * **Speicher:** Eingang, Bibliothek, Konfiguration vorhanden, beschreibbar, freier Platz.
 * **Dienste:** Indexer, SABnzbd, Audiobookshelf, Plex (werden live getestet), ntfy, Audible.
-* **System:** Version, ffmpeg und Sandbox, Warteschlangen, Uhrzeit (wichtig für Zweitfaktor-Codes).
+* **System:** Version, ffmpeg und Sandbox, Warteschlangen, Uhrzeit (wichtig für Zweitfaktor-Codes). Ist die Sandbox
+  nicht aktiv, erklärt das **?** unter dem Hinweis, woran es liegt – Kernel ohne Landlock, Landlock beim Start nicht
+  eingeschaltet (mit den Schritten für die Syslinux-Konfiguration von Unraid oder GRUB) oder Docker verbietet es – und
+  was zu tun ist.
+
+Die Erklärboxen „So funktioniert's“ auf den Seiten lassen sich unter *Einstellungen → Allgemein* für alle ausblenden.
 
 **Ohne Anmeldung** gibt es nur die Login-Seite und das, was sie braucht: keine Seite der App, keinen App-Code, keine
 API (bis auf Anmeldung und `/api/health`, das ohne Anmeldung nur `{"ok": true}` sagt – ohne Version). Ein Lesezeichen

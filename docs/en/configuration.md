@@ -84,10 +84,16 @@ SABnzbd, Audiobookshelf & Plex, discover & requests, notifications, accounts and
   error with the line to add), whether HTTPS arrives, `ALLOWED_HOSTS`, whether live updates get through the proxy,
   whether the address in notifications fits. Proxies in the own network that send `X-Forwarded-For` but are not
   trusted (e.g. Newt after a restart with a new IP) show up here and in the log.
-* **Security:** admins without a second factor, sign-in log for CrowdSec, addresses blocked right now.
+* **Security:** admins without a second factor, sign-in log for CrowdSec, addresses blocked right now. Hörwerk blocks
+  an address for 15 minutes after 5 failed logins; *Settings → Accounts → Security* lists them and **Unblock** frees
+  one at once – no terminal needed. Blocks by CrowdSec or a firewall are managed there.
 * **Storage:** inbox, library, config present, writable, free space.
 * **Services:** indexers, SABnzbd, Audiobookshelf, Plex (tested live), ntfy, Audible.
-* **System:** version, ffmpeg and sandbox, queues, clock (matters for second-factor codes).
+* **System:** version, ffmpeg and sandbox, queues, clock (matters for second-factor codes). If the sandbox is not
+  active, the **?** below the hint says why – kernel without Landlock, Landlock not switched on at boot (with the
+  steps for Unraid's Syslinux configuration or GRUB) or Docker forbidding it – and what to do.
+
+The "How it works" boxes on the pages can be hidden for everybody under *Settings → General*.
 
 **Without signing in** there is only the login page and what it needs: no app page, no app code, no API (except signing
 in and `/api/health`, which without login only says `{"ok": true}` – no version). A bookmark to a sub-page leads to the

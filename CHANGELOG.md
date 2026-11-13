@@ -12,6 +12,15 @@ What changed in each version of Hörwerk. Every version is also a tag (`v7.18.0`
   title, newest, oldest or "not M4B first".
 - **Phone:** tapping into a field no longer zooms the page; the log shows time and source in one line and the text
   below it; the release window uses the whole screen and gives every verdict its own line.
+- **Tidier pages:** *Search* no longer shows the sources box – connections live under *Settings*, the search only
+  says when an indexer or SABnzbd is missing. *Audiobooks* has no sidebar any more: upload and "Check inbox" sit next
+  to the heading, the inbox status is one line that only grows when something needs a look. Library scan (now with
+  its interval and "Scan now") and the one-off `desc.txt`/`reader.txt` cleanup moved to *Settings → Inbox & library*.
+- **"How it works" boxes can be switched off** for everybody under *Settings → General*.
+- **Blocked addresses in the UI:** *Settings → Accounts → Security* lists the addresses Hörwerk blocked after failed
+  logins, with **Unblock**; the health check links there.
+- **Sandbox hint explained:** when ffmpeg runs without Landlock, the health check says why (kernel without Landlock,
+  not switched on at boot, or forbidden by Docker) and, behind a **?**, how to switch it on – including Unraid.
 - Fixed: "Tidy chapters" changed the M4B, but Audiobookshelf kept showing the old names – it reads them from
   `metadata.json`, which is updated now as well (also for books tidied before), followed by a rescan.
 

@@ -70,6 +70,32 @@ class Access(ContractTest):
                                  expect=None)
             self.assertEqual(status, 403, f'{r["method"]} {r["path"]}')
 
+    def test_blocked_addresses_can_be_seen_and_freed(self):
+        """After 5 failed logins the address is listed under Accounts and an admin can free it without a terminal."""
+        s = Server().start()
+        try:
+            admin = Client(s, **ADMIN)
+            self.assertEqual(admin.get("/api/security/blocked")["blocked"], [])
+            for _ in range(5):
+                s.request("POST", "/api/auth/login", {"name": ADMIN["name"], "password": "falsch-falsch"}, headers=OWN)
+            self.assertEqual(s.request("POST", "/api/auth/login", ADMIN, headers=OWN)[0], 429)
+            blocked = admin.get("/api/security/blocked")["blocked"]
+            self.assertEqual([b["address"] for b in blocked], ["127.0.0.1"])
+            self.assertEqual(blocked[0]["fails"], 5)
+            self.assertGreater(blocked[0]["until"], time.time())
+            admin.call("DELETE", "/api/security/blocked", {"address": "127.0.0.1"})
+            admin.call("DELETE", "/api/security/blocked", {"address": "127.0.0.1"}, expect=404)
+            self.assertEqual(admin.get("/api/security/blocked")["blocked"], [])
+            Client(s, **ADMIN)          # signing in works again at once
+            with open(os.path.join(s.config, "logs", "auth.log"), encoding="utf-8") as fh:
+                self.assertIn("event=ip_unblocked", fh.read())
+            # the help boxes: on by default, switched off for everybody in the settings
+            self.assertIn(b'"help":true', admin.get("/me.js"))
+            admin.call("PUT", "/api/settings", {"show_help": False})
+            self.assertIn(b'"help":false', admin.get("/me.js"))
+        finally:
+            s.cleanup()
+
     def test_without_login_only_the_login_page(self):
         s = self.server
         self.assertEqual(s.request("GET", "/api/health")[0], 200)

@@ -573,6 +573,31 @@ table.users select { height: 28px; }
 
 /* Anfragen */
 .books-layout.single { grid-template-columns: minmax(0, 1fr); }
+#viewBooks { grid-template-rows: minmax(0, 1fr) auto; }
+/* "So funktioniert's" can be switched off for everybody (Einstellungen → Allgemein) */
+.no-help .how { display: none !important; }
+/* Hörbücher: the inbox in one line under the heading – details only when something needs a look */
+.inbox-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 8px 14px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.inbox-line:empty { display: none; }
+.inbox-line .err { font-weight: 600; }
+.inbox-line .ico { width: 14px; height: 14px; vertical-align: -2px; }
+.panel-head.sub-head { border-bottom: 1px solid var(--border); padding-top: 8px; padding-bottom: 8px; }
+.lib-status { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.lib-status .inbox-info { padding: 0; }
+.lib-status input[type=number] { width: 5em; }
+/* Systemprüfung: the "?" behind a hint opens a short guide */
+.health-help { margin-top: 4px; font-size: 13px; }
+.health-help > summary { cursor: pointer; color: var(--accent); width: fit-content; }
+.health-help ol, .health-help ul { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.health-help p { margin: 6px 0 0; }
+.health-action { margin-top: 6px; }
+.health-action a, #sourcesInfo a { color: var(--accent); }
+.lib-status .inline-setting { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; }
+#blockedBox { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+#blockedBox > span small { display: block; line-height: 1.45; margin-top: 2px; }
+.blocked-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.blocked-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.blocked-list code { font-size: 13px; }
 .requests-panel { min-height: 300px; overflow: auto; }
 .request-list { list-style: none; margin: 0; padding: 4px 14px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
 .request-list > li.empty { grid-column: 1 / -1; color: var(--muted); padding: 4px 2px; }
@@ -668,8 +693,6 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
 .welcome ol { margin: 8px 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
 .welcome p { margin: 0 0 10px; }
 @media (max-width: 900px) {
-  /* phones: what matters first – the list; the inbox and library boxes come after it */
-  #viewBooks .sidebar { order: 2; }
   /* Entdecken: the three lists side by side as one compact row, the explanation below the suggestions */
   #viewDiscover .sidebar { display: contents; }
   #viewDiscover .sidebar > .panel:first-child { order: 1; }

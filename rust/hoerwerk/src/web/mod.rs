@@ -465,7 +465,15 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
                 );
             }
             "/me.js" => {
-                let me = session(&app).map(|u| crate::accounts::me(&u)).unwrap_or(Value::Null);
+                // "help": whether the "So funktioniert's" boxes are shown (Einstellungen → Allgemein)
+                let help = app.settings().get("show_help").and_then(Value::as_bool).unwrap_or(true);
+                let me = session(&app)
+                    .map(|u| {
+                        let mut me = crate::accounts::me(&u);
+                        me["help"] = json!(help);
+                        me
+                    })
+                    .unwrap_or(Value::Null);
                 return respond(
                     StatusCode::OK,
                     "text/javascript; charset=utf-8",

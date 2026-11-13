@@ -374,37 +374,39 @@ async function cleanLibrary(): Promise<void> {
   } catch (e) { toast(errMsg(e), true); }
 }
 
+/** The inbox in one line under the heading; paths, queues and problems only when they matter. */
 function renderInbox(d: AudiobooksStatus): void {
-  const ok = (flag: boolean): HTMLSpanElement => el("span", { class: flag ? "ok" : "err" }, icon(flag ? "check" : "alert", flag ? "OK" : t("Fehler")));
   const box = $("#inboxInfo");
-  box.replaceChildren(
-    el("div", { class: "kv" }, el("span", {}, t("Eingang")), el("code", { title: d.inbox }, d.inbox || "–"), ok(d.inbox_ok)),
-    el("div", { class: "kv" }, el("span", {}, t("Bibliothek")), el("code", { title: d.library }, d.library || "–"), ok(d.library_ok)),
-    el("div", { class: "kv" }, el("span", {}, t("Überwachung")),
-      el("span", {}, d.enabled ? t("An · zuletzt geprüft {when}", { when: fmtAgo(d.last_scan) }) : t("Aus (Einstellungen)"))),
-  );
+  const parts: (HTMLElement | string)[] = [];
+  const bad = (what: string, path: string): HTMLElement =>
+    el("span", { class: "err", title: path }, icon("alert"), " ", t("{what} nicht erreichbar: {path}", { what, path: path || "–" }));
+  if (!d.inbox_ok) parts.push(bad(t("Eingang"), d.inbox));
+  if (!d.library_ok) parts.push(bad(t("Bibliothek"), d.library));
+  parts.push(el("span", {}, d.enabled
+    ? t("Eingang wird überwacht · zuletzt geprüft {when}", { when: fmtAgo(d.last_scan) })
+    : t("Eingang wird nicht überwacht (Einstellungen)")));
   if (d.queues) {
     const waiting = (n: number): string => plural(n, t("1 wartet"), t("{n} warten", { n }));
-    const q = (x: QueueStat): string => x.running
-      ? plural(x.running, t("1 läuft"), t("{n} laufen", { n: x.running })) + (x.waiting ? ", " + waiting(x.waiting) : "")
-      : x.waiting ? waiting(x.waiting) : t("Frei");
-    box.append(el("div", { class: "kv" }, el("span", {}, t("Kodieren")), el("span", {}, q(d.queues.encode))),
-      el("div", { class: "kv" }, el("span", {}, t("Ablegen")), el("span", {}, q(d.queues.io))));
+    const q = (x: QueueStat): string => (x.running ? plural(x.running, t("1 läuft"), t("{n} laufen", { n: x.running })) : "")
+      + (x.running && x.waiting ? ", " : "") + (x.waiting ? waiting(x.waiting) : "");
+    if (d.queues.encode.running || d.queues.encode.waiting) parts.push(el("span", {}, t("Kodieren: {state}", { state: q(d.queues.encode) })));
+    if (d.queues.io.running || d.queues.io.waiting) parts.push(el("span", {}, t("Ablegen: {state}", { state: q(d.queues.io) })));
   }
-  if (d.scan_note) box.append(el("div", { class: "muted small" }, d.scan_note));
+  if (d.waiting.length) {
+    parts.push(el("span", { title: d.waiting.map((w) => w.name).join("\n") },
+      t("Wird noch kopiert: {names}", { names: d.waiting.map((w) => w.name).join(", ") })));
+  }
+  if (d.scan_note) parts.push(el("span", {}, d.scan_note));
   if (d.ignored?.length) {
-    const back = el("button", { type: "button", class: "btn small ghost" }, t("Wieder aufnehmen"));
+    const back = el("button", { type: "button", class: "linkish" }, t("Wieder aufnehmen"));
     back.addEventListener("click", async () => {
       try { await api("POST", "/api/inbox/unignore", {}); toast(t("Wird beim nächsten Prüfen wieder aufgenommen")); pollBooks(true); }
       catch (e) { toast(errMsg(e), true); }
     });
-    box.append(el("div", { class: "kv" }, el("span", {}, t("Ignoriert")),
-      el("span", { title: d.ignored.join("\n") }, plural(d.ignored.length, t("1 Ordner"), t("{n} Ordner", { n: d.ignored.length }))), back));
+    parts.push(el("span", { title: d.ignored.join("\n") },
+      plural(d.ignored.length, t("1 Ordner ignoriert"), t("{n} Ordner ignoriert", { n: d.ignored.length })), " · ", back));
   }
-  if (d.waiting.length) {
-    box.append(el("div", { class: "small" }, t("Wird noch kopiert / wartet auf Ruhe:")),
-      el("ul", { class: "waiting" }, d.waiting.map((w) => el("li", {}, w.name))));
-  }
+  box.replaceChildren(...parts);
 }
 
 function renderFilter(jobs: AudiobookJob[]): void {
@@ -796,6 +798,7 @@ let pathTimer: number | undefined;
 /** Settings page "Eingang & Bibliothek": the docker paths and a preview of the folder template. */
 function showLibrarySettings(): void {
   updatePathPreview();
+  loadLibraryStats();
   const d = books.data;
   $("#abPaths").textContent = d ? t("Eingang: {inbox} · Bibliothek: {library} (über Docker-Pfade einstellen)", { inbox: d.inbox || "–", library: d.library || "–" }) : "";
 }
@@ -824,6 +827,7 @@ function initBooks(): void {
   $("#libraryScanBtn").addEventListener("click", async () => {
     try {
       await api("POST", "/api/library/scan"); toast(t("Bibliothek wird eingelesen"));
+      setTimeout(loadLibraryStats, 600);
       if (!live.ok) setTimeout(() => { loadLibraryStats(); loadUnconverted(); }, 2500);
     }
     catch (e) { toast(errMsg(e), true); }
