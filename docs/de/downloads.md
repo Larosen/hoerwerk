@@ -118,7 +118,7 @@ Familienmitglieder wünschen sich ein **Buch**, kein Release: in *Suchen* (Audib
   Reiter). Admins und Konten mit dem Recht *Ohne Freigabe* starten sofort.
 * **Monatslimit:** Anfragen pro Kalendermonat (Standard 5, je Konto änderbar; abgelehnte zählen nicht).
 * **Sichtbarkeit:** Jeder sieht seine eigenen Anfragen; mit dem Recht *Alle Anfragen sehen* auch die der anderen.
-* **Automatisch besorgen (wie Radarr):** Hörwerk sucht bei allen Indexern und bewertet jedes Release – passt der
+* **Automatisch besorgen:** Hörwerk sucht bei allen Indexern und bewertet jedes Release – passt der
   Autor, passt der Titel, ist es ungekürzt, in der richtigen Sprache, passt die Größe zur Laufzeit (kbit/s), ist es
   ein Paket mit genau diesem Band? Das beste passende geht mit ASIN und Anfrage-Nummer an SABnzbd; danach verfolgt
   Hörwerk den Download bis in die Bibliothek. Scheitert der Download oder passt das Buch beim Import nicht, wird

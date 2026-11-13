@@ -64,7 +64,7 @@ Kontingent: Anzahl Anfragen pro Kalendermonat, global voreingestellt, je Nutzer 
 - Admin: Freigabe-Liste mit Ein-Klick-Freigabe/Ablehnung; ntfy „Neue Anfrage“.
 - Sichtbarkeit nach Recht *„Alle Anfragen sehen“*.
 
-### Schritt 3 – Automatisch besorgen (Radarr-Prinzip)
+### Schritt 3 – Automatisch besorgen
 - **Release-Bewertung** mit nachvollziehbaren Gründen: Autor + Titel passen, Sprache, ungekürzt, Format (M4B > M4A > MP3),
   Größe plausibel zur Laufzeit (kbit/s), Alter/Grabs, keine Pakete fremder Bände; harte Ausschlüsse mit Grund
   („anderer Autor“, „gekürzt“, „Größe passt nicht zur Laufzeit“, „schon fehlgeschlagen“).
