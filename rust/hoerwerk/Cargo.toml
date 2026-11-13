@@ -1,9 +1,10 @@
 [package]
 name = "hoerwerk"
-version = "7.19.0"
+version = "7.20.0"
 description = "Hörwerk server – the API of contract/, the database, the web UI"
 edition.workspace = true
 license.workspace = true
+publish.workspace = true
 rust-version.workspace = true
 
 [dependencies]

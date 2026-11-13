@@ -1,6 +1,6 @@
 "use strict";
 // ------------------------------------------------------------------------- //
-// Requests (like Overseerr): ask for a book, follow it until it is in the library.
+// Requests: ask for a book, follow it until it is in the library.
 // Admins approve or decline; with the right, the interactive release search per request.
 // ------------------------------------------------------------------------- //
 type RequestStatus = "pending" | "searching" | "downloading" | "processing" | "available" | "declined" | "failed";

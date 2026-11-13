@@ -40,6 +40,3 @@ against the source and against the finished Docker image.
 | Discover | `discover.rs`, `pdftext.rs`, `trusted_authors.txt`, `frontend/src/discover.ts` |
 | Interface | `frontend/src/*.ts`, `static/index.html`, `static/style.css`, `static/i18n/en.json`; E2E tests in `e2e/` |
 | API contract | `contract/` (routes, schema, settings, golden files, tests) |
-
-Inspired by the open-source projects [auto-m4b](https://github.com/seanap/auto-m4b) and
-[beets-audible](https://github.com/Neurrone/beets-audible); chapter data via [Audnexus](https://github.com/laxamentumtech/audnexus).

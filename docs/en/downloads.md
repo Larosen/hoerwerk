@@ -99,7 +99,7 @@ Lists are put together in the background, refreshed at most once a day (or with 
 Outbound connections: only the Audible API of the chosen store, `www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de`,
 `bilder.deutschlandfunk.de` (the best-of list PDFs) and `www.perlentaucher.de` (HTTPS).
 
-### Requests (like Overseerr/Jellyseerr)
+### Requests
 
 Family members ask for a **book**, not a release: click **Request** in *Search* (Audible, BookBeat) or *Discover*.
 Hörwerk does the rest – the **Requests** tab shows where it stands:

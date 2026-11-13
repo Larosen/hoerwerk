@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Audiobook tags for M4B files – the same atoms as Hörwerk's Python tagger (contract/golden)"
 edition.workspace = true
 license.workspace = true
+publish.workspace = true
 rust-version.workspace = true
 
 [dependencies]

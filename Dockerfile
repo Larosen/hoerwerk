@@ -45,6 +45,7 @@ COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin
 COPY --from=rust /src/rust/target/release/hw-run /src/rust/target/release/hoerwerk /usr/local/bin/
 COPY docker/entrypoint.sh /entrypoint.sh
 COPY static/ /app/static/
+COPY LICENSE THIRD-PARTY-LICENSES.md /licenses/
 COPY --from=web /src/static/*.js /app/static/
 WORKDIR /app
 
@@ -66,6 +67,7 @@ EXPOSE 8080
 LABEL org.opencontainers.image.title="Hörwerk" \
       org.opencontainers.image.description="Hörbuch-Automatik: Eingang -> M4B mit Kapiteln -> Audible-Tags -> Bibliothek (Audiobookshelf, Plex)" \
       org.opencontainers.image.source="https://github.com/Larosen/hoerwerk" \
+      org.opencontainers.image.licenses="PolyForm-Noncommercial-1.0.0" \
       net.unraid.docker.webui="http://[IP]:[PORT:8080]/" \
       net.unraid.docker.icon="https://raw.githubusercontent.com/Larosen/hoerwerk/main/unraid/icon.png"
 

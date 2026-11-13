@@ -3,13 +3,20 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v7.19.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:7.19.0`); `latest` is always the newest one.
 
+## 7.20.0 – 2026-11-13
+
+- **New license:** Hörwerk is now under the [PolyForm Noncommercial License 1.0.0](LICENSE) – free for personal and
+  other noncommercial use. Earlier versions (7.19.0 and older) were published under the MIT license; their releases
+  and images were withdrawn.
+- The licenses of all Rust libraries are in `THIRD-PARTY-LICENSES.md` and in the image under `/licenses`.
+- The README was rewritten (new introduction, no comparison with other projects).
+
 ## 7.19.0 – 2026-11-13
 
 - **Follow authors and narrators:** tap a name on any card to see all their books at Audible, tick some or "all
   missing" and request them as one request (it counts once for the monthly limit). Following someone means a new
   book is requested by itself once a day – or only marked as new under *Discover → Following*, which lists everybody
   you follow.
-- AudioBookRequest is part of the comparison in the README.
 
 ## 7.18.0 – 2026-11-12
 

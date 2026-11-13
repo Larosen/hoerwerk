@@ -107,7 +107,7 @@ in der Datenbank zwischengespeichert. Ausgehende Verbindungen: nur die Audible-A
 `www.deutschlandfunkkultur.de`, `www.deutschlandfunk.de`, `bilder.deutschlandfunk.de` (PDFs der Bestenlisten)
 und `www.perlentaucher.de` (HTTPS).
 
-### Anfragen (wie bei Overseerr/Jellyseerr)
+### Anfragen
 
 Familienmitglieder wünschen sich ein **Buch**, kein Release: in *Suchen* (Audible, BookBeat) oder *Entdecken* auf
 **Anfragen** klicken. Den Rest erledigt Hörwerk – der Reiter **Anfragen** zeigt, wo es steht:
