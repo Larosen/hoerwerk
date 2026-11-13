@@ -35,21 +35,6 @@ does all of it in one go.
 
 ![Library](docs/screenshots/en/library.png)
 
-## How it compares
-
-Until now this took several tools and a lot of manual work:
-
-| | Merge to M4B | Audible tags | Search & download | Requests for the family | Follow authors & narrators |
-|---|---|---|---|---|---|
-| [m4b-tool](https://github.com/sandreas/m4b-tool) | ✅ command line | – | – | – | – |
-| [beets-audible](https://github.com/Neurrone/beets-audible) | – | ✅ command line | – | – | – |
-| Readarr | – | – | ✅ (retired, never left beta) | – | authors |
-| [AudioBookRequest](https://github.com/markbeep/AudioBookRequest) | – | – | ✅ via Prowlarr | ✅ | – |
-| **Hörwerk** | ✅ automatic | ✅ automatic | ✅ judged per release | ✅ | ✅ new books requested by themselves |
-
-AudioBookRequest is a lean request list that leaves downloading, renaming and tagging to other tools; Listenarr is a
-newer project for audiobook downloads – have a look at which one fits you better.
-
 ## Quick start
 
 **Unraid:** *Docker → Add Container*, template

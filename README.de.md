@@ -35,21 +35,6 @@ Audiobookshelf oder Plex und erledigt das alles in einem Durchgang.
 
 ![Bibliothek](docs/screenshots/de/library.png)
 
-## Der Vergleich
-
-Bisher brauchte man dafür mehrere Werkzeuge und viel Handarbeit:
-
-| | Zu M4B zusammenfügen | Audible-Tags | Suchen & Laden | Anfragen für die Familie | Autoren & Sprechern folgen |
-|---|---|---|---|---|---|
-| [m4b-tool](https://github.com/sandreas/m4b-tool) | ✅ Kommandozeile | – | – | – | – |
-| [beets-audible](https://github.com/Neurrone/beets-audible) | – | ✅ Kommandozeile | – | – | – |
-| Readarr | – | – | ✅ (eingestellt, nie aus der Beta) | – | Autoren |
-| [AudioBookRequest](https://github.com/markbeep/AudioBookRequest) | – | – | ✅ über Prowlarr | ✅ | – |
-| **Hörwerk** | ✅ automatisch | ✅ automatisch | ✅ je Release beurteilt | ✅ | ✅ neue Bücher von selbst angefragt |
-
-AudioBookRequest ist eine schlanke Anfrage-Liste und überlässt Laden, Umbenennen und Taggen anderen Werkzeugen;
-Listenarr ist ein neueres Projekt für Hörbuch-Downloads – schau, was besser zu dir passt.
-
 ## Schnellstart
 
 **Unraid:** *Docker → Add Container*, als Template
