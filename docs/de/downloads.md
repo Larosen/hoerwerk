@@ -138,3 +138,21 @@ angefragte Buch steht dort mit „Anfrage von …“ oben, **Übernehmen** erfü
 die Erkennung vorher.
 
 Eine „Gesucht“-Liste aus Version 5.3 wird beim ersten Start als Anfragen des Admins übernommen.
+
+### Autoren und Sprechern folgen
+
+Auf jeder Karte – *Entdecken*, das gewählte Buch in *Suchen*, *Anfragen* – lassen sich die Namen von Autoren und
+Sprechern antippen. Das zeigt alle ihre Bücher bei Audible, das neueste zuerst (Deutsch, Englisch oder alle):
+
+* **Ankreuzen und anfragen:** „Alle fehlenden“ oder eine Auswahl geht als **eine** Anfrage los – sie zählt einmal
+  fürs Monatslimit und braucht eine Freigabe, wie eine ganze Reihe. Was in der Bibliothek liegt oder schon angefragt
+  ist, lässt sich nicht ankreuzen.
+* **Folgen:** Einmal am Tag sieht Hörwerk bei Audible für alle nach, denen du folgst. Ein Buch, das nach dem Beginn
+  des Folgens erscheint, wird **von selbst angefragt** – als deine Anfrage, also mit deinem Monatslimit und der
+  Freigabe. Ohne Haken bei „Neue Bücher automatisch anfragen“ werden neue Bücher nur unter *Entdecken → Gefolgt*
+  markiert.
+* **Entdecken → Gefolgt** zeigt alle, denen du folgst, mit dem, was daraus wurde (bisher angefragt, neue Bücher, ein
+  Hinweis, wenn das Monatslimit eine Anfrage verhindert hat – am nächsten Tag wird es erneut versucht), und ein Feld,
+  um einen beliebigen Namen nachzuschlagen.
+* Jeder folgt für sich; es zählen nur Bücher, die die Person wirklich nennen (die Audible-Suche ist ungenau), und ein
+  Buch wird nur einmal angefragt – zuerst die ungekürzte Fassung in der gewählten Sprache.

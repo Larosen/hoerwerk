@@ -253,7 +253,8 @@ function pickBook(b: Book): void {
   box.hidden = false;
   box.replaceChildren(el("div", { class: "picked" },
     b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "" }) : null,
-    el("span", {}, el("b", {}, `${(b.authors || []).join(", ")} – ${b.title}`),
+    el("span", {}, el("b", {}, ...personLinks(b.authors, "author", b), ` – ${b.title}`),
+      b.narrators?.length ? el("span", { class: "muted" }, " · ", t("gelesen von"), " ", ...personLinks(b.narrators, "narrator", b, 2)) : null,
       el("span", { class: "muted" }, " · " + (b.asin ? t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin })
         : t("Titel und Autor werden beim Download mitgegeben")))),
     typeof requestButton === "function" ? requestButton(b) : null,

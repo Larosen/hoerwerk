@@ -269,7 +269,7 @@ function requestCard(r: BookRequest): HTMLLIElement {
     b.cover_url ? el("img", { class: "cover", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, author),
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
-      el("span", { class: "s-author" }, (b.authors || []).join(", ")),
+      el("span", { class: "s-author" }, ...personLinks(b.authors, "author", b)),
       el("span", { class: "tag-row" }, r.upgrade ? el("span", { class: "series-tag", title: r.upgrade.path }, icon("refresh"), t("Ersatz")) : null,
         langTag(b), genreTag(b)),
       r.upgrade ? el("span", { class: "muted small" }, t("Vorhanden: {have} – automatisch nur ein klar besseres Release, im Releases-Fenster zählt deine Wahl",

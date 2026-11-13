@@ -390,6 +390,36 @@ class Requests(ContractTest):
         self.assertEqual(eva.get(f'/api/requests/{item["id"]}')["status"], "declined")
         self.assertIn("total", self.admin.get("/api/stats?period=all"))
 
+    def test_following_authors_and_narrators(self):
+        """Every account follows for itself; books of a person are requested together and count once."""
+        eva = self.family()
+        f = eva.call("POST", "/api/follows", {"kind": "author", "name": "  Klara   Klang ", "language": "de"})
+        self.assertEqual((f["name"], f["kind"], f["language"], f["auto"]), ("Klara Klang", "author", "de", True))
+        again = eva.call("POST", "/api/follows", {"kind": "author", "name": "Klara Klang"})
+        self.assertEqual(again["id"], f["id"])                                     # no second follow
+        n = eva.call("POST", "/api/follows", {"kind": "narrator", "name": "Rudi Ruhig", "auto": False})
+        eva.call("POST", "/api/follows", {"kind": "publisher", "name": "Verlag"}, expect=400)
+        eva.call("PUT", f'/api/follows/{n["id"]}', {"auto": True})
+        mine = {x["name"]: x for x in eva.get("/api/follows")["follows"]}
+        self.assertEqual(set(mine), {"Klara Klang", "Rudi Ruhig"})
+        self.assertTrue(mine["Rudi Ruhig"]["auto"])
+        self.assertNotIn("seen", mine["Klara Klang"])                              # internals stay on the server
+        self.assertEqual(self.admin.get("/api/follows")["follows"], [])           # the admin's own list
+        self.admin.call("DELETE", f'/api/follows/{f["id"]}', expect=404)           # not theirs to remove
+        eva.call("DELETE", f'/api/follows/{f["id"]}')
+        self.assertEqual([x["name"] for x in eva.get("/api/follows")["follows"]], ["Rudi Ruhig"])
+        # books of a person as one request: one group, counted once for the monthly limit
+        books = [{"asin": f"B0KLANG00{i}", "title": f"Klang {i}", "authors": ["Klara Klang"], "language": "german"} for i in (1, 2)]
+        before = eva.get("/api/requests")["quota"]["used"]
+        out = self.admin.call("POST", "/api/requests/series", {"series": {"kind": "author", "title": "Klara Klang"}, "books": books})
+        self.assertEqual(out["group"]["kind"], "author")
+        self.assertEqual(len(out["items"]), 2)
+        self.assertTrue(all(not i["book"].get("series") for i in out["items"]))   # no made-up series
+        out = eva.call("POST", "/api/requests/series", {"series": {"kind": "narrator", "title": "Rudi Ruhig"},
+                                                        "books": [{**books[0], "asin": "B0RUHIG001", "title": "Ruhig 1"},
+                                                                  {**books[1], "asin": "B0RUHIG002", "title": "Ruhig 2"}]})
+        self.assertEqual(eva.get("/api/requests")["quota"]["used"], before + 1)
+
     def test_search_finds_the_book_and_sends_it_to_sabnzbd(self):
         """Indexer and SABnzbd (a local fake): the request finds the right release; keys never reach the browser."""
         size = 300 * 60 * 128000 // 8

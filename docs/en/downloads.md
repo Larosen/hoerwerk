@@ -128,3 +128,18 @@ that it waits under *Audiobooks → To review* for an admin – the requested bo
 **Take** fulfils the request, **Edit** corrects the recognition first.
 
 A "Wanted" list from version 5.3 is taken over as the admin's requests on first start.
+
+### Following authors and narrators
+
+On every card – *Discover*, the picked book in *Search*, *Requests* – the names of authors and narrators can be
+tapped. That opens all their books at Audible, newest first (German, English or all):
+
+* **Tick and request:** "All missing" or a selection goes out as **one** request – it counts once for the monthly
+  limit and needs one approval, like a whole series. What is in the library or already requested can't be ticked.
+* **Follow:** once a day Hörwerk looks at Audible for everybody you follow. A book that came out after you started
+  following is **requested by itself** – as your request, so your monthly limit and the approval apply. Switch off
+  "Request new books automatically" and new books are only marked under *Discover → Following*.
+* **Discover → Following** lists everybody you follow with what came of it (requested so far, new books, a note when
+  the monthly limit stopped a request – it is tried again the next day) and a field to look up any name.
+* Everyone follows for themselves; only books that really name the person count (Audible's search is fuzzy), and one
+  book is requested once – the unabridged edition in the chosen language first.

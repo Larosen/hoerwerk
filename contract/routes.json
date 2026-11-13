@@ -237,6 +237,36 @@
   },
   {
    "method": "GET",
+   "path": "/api/follows",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/follows",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/follows/works",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/follows/{fid}",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "PUT",
+   "path": "/api/follows/{fid}",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
    "path": "/api/health",
    "access": "public",
    "raw_body": false

@@ -12,6 +12,11 @@ What changed in each version of Hörwerk. Every version is also a tag (`v7.18.0`
   title, newest, oldest or "not M4B first".
 - **Phone:** tapping into a field no longer zooms the page; the log shows time and source in one line and the text
   below it; the release window uses the whole screen and gives every verdict its own line.
+- **Follow authors and narrators:** tap a name on any card to see all their books at Audible, tick some or "all
+  missing" and request them as one request (it counts once for the monthly limit). Following someone means a new
+  book is requested by itself once a day – or only marked as new under *Discover → Following*, which lists everybody
+  you follow.
+- AudioBookRequest is part of the comparison in the README.
 - **Tidier pages:** *Search* no longer shows the sources box – connections live under *Settings*, the search only
   says when an indexer or SABnzbd is missing. *Audiobooks* has no sidebar any more: upload and "Check inbox" sit next
   to the heading, the inbox status is one line that only grows when something needs a look. Library scan (now with

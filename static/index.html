@@ -138,6 +138,7 @@
         <button type="button" data-section="foryou">Für dich <small>Passend zur Bibliothek</small></button>
         <button type="button" data-section="genre">Nach Genre <small>Bestseller &amp; Neuheiten</small></button>
         <button type="button" data-section="critics">Aus der Kritik <small>Deutschlandfunk Kultur, Perlentaucher</small></button>
+        <button type="button" data-section="follows">Gefolgt <small>Autoren und Sprecher</small></button>
       </nav>
     </section>
     <details class="panel how">
@@ -148,6 +149,7 @@
         <li><b>Aus der Kritik</b>: Bücher, die Deutschlandfunk, Deutschlandfunk Kultur oder die Presse (laut Perlentaucher) besprochen haben und die es als Hörbuch gibt.</li>
         <li>Gezeigt werden nur gut bewertete, ungekürzte deutsche Hörbücher, die du noch nicht hast (einstellbar unter <b>Einstellungen</b>).</li>
         <li>Sachbücher zeigt „Für dich“ nur von anerkannten Autoren. Sterne sagen nichts über den Inhalt.</li>
+        <li><b>Gefolgt</b>: Autoren und Sprecher, denen du folgst. Ein Tipp auf einen Namen zeigt alle ihre Bücher.</li>
       </ul>
     </details>
   </aside>
@@ -760,6 +762,33 @@
   </form>
 </dialog>
 
+<dialog id="personDialog">
+  <form method="dialog" class="dialog-body">
+    <h2 id="personTitle">Bücher</h2>
+    <div class="person-follow">
+      <div class="row gap wrap">
+        <button type="button" class="btn small primary" id="personFollow">Folgen</button>
+        <label class="check"><input type="checkbox" id="personAuto" checked> Neue Bücher automatisch anfragen</label>
+      </div>
+      <p class="muted small" id="personFollowState"></p>
+    </div>
+    <div class="row gap wrap">
+      <div class="seg" role="radiogroup" aria-label="Sprache der Bücher" id="personLang">
+        <label><input type="radio" name="personLang" value="de"><span>Deutsch</span></label>
+        <label><input type="radio" name="personLang" value="en"><span>Englisch</span></label>
+        <label><input type="radio" name="personLang" value=""><span>Alle</span></label>
+      </div>
+      <button type="button" class="btn small" id="personAll">Alle fehlenden</button><button type="button" class="btn small" id="personNone">Keine</button>
+    </div>
+    <p class="muted small" id="personInfo"></p>
+    <div id="personBooks" class="series-volumes"></div>
+    <div class="dialog-actions">
+      <button value="cancel" class="btn ghost" formnovalidate>Schließen</button>
+      <button value="ok" class="btn primary" id="personOk">Anfragen</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="confirmDialog">
   <form method="dialog" class="dialog-body">
     <p id="confirmText"></p>
@@ -778,6 +807,7 @@
 <script src="/static/books.js"></script>
 <script src="/static/search.js"></script>
 <script src="/static/requests.js"></script>
+<script src="/static/people.js"></script>
 <script src="/static/discover.js"></script>
 <script src="/static/notify.js"></script>
 <script src="/static/logs.js"></script>

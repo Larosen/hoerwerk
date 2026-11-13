@@ -20,7 +20,8 @@ does all of it in one go.
 - **Inbox → library, hands-off.** Drop a folder (MP3, M4A, FLAC, `CD1`/`CD2` …) and get **one M4B with chapters**,
   filed as `Author/Series/03 - Title`, with cover, narrator, series and description from Audible.
 - **Requests like Overseerr.** Family accounts discover and request books; you approve, Hörwerk fetches them and
-  shows download and conversion progress.
+  shows download and conversion progress. **Follow** an author or narrator and every new book is requested by itself –
+  or pick from all their books at once.
 - **A search that understands audiobooks.** It judges every release before loading it: right book, right language,
   unabridged, and the *right recording* – not the single-narrator reading when you asked for the full cast.
 - **Free audiobooks built in.** LibriVox (public domain) in English and German, one click into the inbox.
@@ -38,14 +39,16 @@ does all of it in one go.
 
 Until now this took several tools and a lot of manual work:
 
-| | Merge to M4B | Audible tags | Search & download | Requests for the family |
-|---|---|---|---|---|
-| [m4b-tool](https://github.com/sandreas/m4b-tool) | ✅ command line | – | – | – |
-| [beets-audible](https://github.com/Neurrone/beets-audible) | – | ✅ command line | – | – |
-| Readarr | – | – | ✅ (retired, never left beta) | – |
-| **Hörwerk** | ✅ automatic | ✅ automatic | ✅ judged per release | ✅ |
+| | Merge to M4B | Audible tags | Search & download | Requests for the family | Follow authors & narrators |
+|---|---|---|---|---|---|
+| [m4b-tool](https://github.com/sandreas/m4b-tool) | ✅ command line | – | – | – | – |
+| [beets-audible](https://github.com/Neurrone/beets-audible) | – | ✅ command line | – | – | – |
+| Readarr | – | – | ✅ (retired, never left beta) | – | authors |
+| [AudioBookRequest](https://github.com/markbeep/AudioBookRequest) | – | – | ✅ via Prowlarr | ✅ | – |
+| **Hörwerk** | ✅ automatic | ✅ automatic | ✅ judged per release | ✅ | ✅ new books requested by themselves |
 
-There is also Listenarr, a newer project for audiobook downloads – have a look at which one fits you better.
+AudioBookRequest is a lean request list that leaves downloading, renaming and tagging to other tools; Listenarr is a
+newer project for audiobook downloads – have a look at which one fits you better.
 
 ## Quick start
 
