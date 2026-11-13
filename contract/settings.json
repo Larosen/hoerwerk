@@ -38,6 +38,7 @@
   "discover_genre": "",
   "request_quota": 5,
   "admin_totp_required": false,
+  "show_help": true,
   "wanted_interval_hours": 12
  },
  "choices": {
@@ -246,5 +247,5 @@
    "type": "bool"
   }
  },
- "version": "7.17.1"
+ "version": "7.18.0"
 }

@@ -573,6 +573,31 @@ table.users select { height: 28px; }
 
 /* Anfragen */
 .books-layout.single { grid-template-columns: minmax(0, 1fr); }
+#viewBooks { grid-template-rows: minmax(0, 1fr) auto; }
+/* "So funktioniert's" can be switched off for everybody (Einstellungen → Allgemein) */
+.no-help .how { display: none !important; }
+/* Hörbücher: the inbox in one line under the heading – details only when something needs a look */
+.inbox-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 8px 14px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--border); }
+.inbox-line:empty { display: none; }
+.inbox-line .err { font-weight: 600; }
+.inbox-line .ico { width: 14px; height: 14px; vertical-align: -2px; }
+.panel-head.sub-head { border-bottom: 1px solid var(--border); padding-top: 8px; padding-bottom: 8px; }
+.lib-status { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.lib-status .inbox-info { padding: 0; }
+.lib-status input[type=number] { width: 5em; }
+/* Systemprüfung: the "?" behind a hint opens a short guide */
+.health-help { margin-top: 4px; font-size: 13px; }
+.health-help > summary { cursor: pointer; color: var(--accent); width: fit-content; }
+.health-help ol, .health-help ul { margin: 6px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.health-help p { margin: 6px 0 0; }
+.health-action { margin-top: 6px; }
+.health-action a, #sourcesInfo a { color: var(--accent); }
+.lib-status .inline-setting { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; }
+#blockedBox { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+#blockedBox > span small { display: block; line-height: 1.45; margin-top: 2px; }
+.blocked-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.blocked-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.blocked-list code { font-size: 13px; }
 .requests-panel { min-height: 300px; overflow: auto; }
 .request-list { list-style: none; margin: 0; padding: 4px 14px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
 .request-list > li.empty { grid-column: 1 / -1; color: var(--muted); padding: 4px 2px; }
@@ -668,8 +693,6 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
 .welcome ol { margin: 8px 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
 .welcome p { margin: 0 0 10px; }
 @media (max-width: 900px) {
-  /* phones: what matters first – the list; the inbox and library boxes come after it */
-  #viewBooks .sidebar { order: 2; }
   /* Entdecken: the three lists side by side as one compact row, the explanation below the suggestions */
   #viewDiscover .sidebar { display: contents; }
   #viewDiscover .sidebar > .panel:first-child { order: 1; }
@@ -841,7 +864,11 @@ legend .help-q { margin-left: 6px; vertical-align: 1px; }
 /* release lists: note on the left, sort order on the right */
 .result-tools { justify-content: space-between; flex-wrap: wrap; }
 .result-tools .grow { flex: 1 1 16rem; min-width: 0; margin: 0; }
-.sort-pick { width: auto; flex: 0 0 auto; }
+.sort-bar { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.sort-bar::-webkit-scrollbar { display: none; }
+.sort-bar .chip { flex: none; }
+.lib-sort { padding: 0 2px; }
+.result-tools { flex-wrap: wrap; }
 
 /* statistics: one account in detail, the own share in the month chart */
 .stats-panel { max-width: 1100px; }
@@ -907,3 +934,30 @@ a.person-link:hover { border-color: var(--accent); background: var(--panel-2); }
 .stats-facts dt { color: var(--muted); }
 .stats-facts dd { margin: 0; overflow-wrap: anywhere; }
 @media (min-width: 900px) { .stats-facts { grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr); } }
+
+/* -- phones ------------------------------------------------------------------------------------------ */
+/* iOS zooms into every field whose text is smaller than 16px and stays zoomed: on touch devices fields are 16px */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]), select, textarea, .login-form input:not([type=checkbox]) { font-size: 16px; }
+}
+@media (max-width: 640px) {
+  /* the log: time, level and source in one line, the text below it over the full width */
+  .log-view { height: min(70vh, 640px); }
+  .log-line { flex-wrap: wrap; gap: 0 8px; padding: 5px 10px; border-bottom: 1px solid var(--border); }
+  .log-source { max-width: none; flex: 1 1 0; min-width: 0; }
+  .log-text { flex: 1 0 100%; }
+  /* release lists: the verdict gets its own full line (it was squeezed into one word per line) */
+  table.results td.c-verdict { flex: 1 0 100%; order: 5; }
+  table.results .c-act { order: 4; }
+  table.results .verdict { white-space: normal; }
+  dialog .result-tools { flex-direction: column; align-items: stretch; gap: 8px; }
+  dialog .result-tools .grow { flex: none; }
+  /* the release window uses the whole screen; its explanation makes room for the list */
+  #releasesDialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
+  #releasesDialog .dialog-intro { display: none; }
+  .lib-actions { justify-content: flex-start; flex-wrap: wrap; }
+  .uc-bar { flex-wrap: wrap; }
+  .inline-setting { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  .inline-setting select { min-width: 0; max-width: 100%; height: 36px; }
+  .lib-actions .btn { padding-left: 6px; padding-right: 6px; }
+}

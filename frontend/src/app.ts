@@ -39,6 +39,7 @@ async function saveSettings(): Promise<void> {
     const langChanged = data.language !== undefined && data.language !== state.settings.language;
     state.settings = await api<Settings>("PUT", "/api/settings", data);
     if (langChanged) { location.reload(); return; }   // all texts come from /i18n.js
+    document.documentElement.classList.toggle("no-help", state.settings.show_help === false);
     toast(t("Einstellungen gespeichert"));
   } catch (e) { toast(errMsg(e), true); }
 }

@@ -70,6 +70,32 @@ class Access(ContractTest):
                                  expect=None)
             self.assertEqual(status, 403, f'{r["method"]} {r["path"]}')
 
+    def test_blocked_addresses_can_be_seen_and_freed(self):
+        """After 5 failed logins the address is listed under Accounts and an admin can free it without a terminal."""
+        s = Server().start()
+        try:
+            admin = Client(s, **ADMIN)
+            self.assertEqual(admin.get("/api/security/blocked")["blocked"], [])
+            for _ in range(5):
+                s.request("POST", "/api/auth/login", {"name": ADMIN["name"], "password": "falsch-falsch"}, headers=OWN)
+            self.assertEqual(s.request("POST", "/api/auth/login", ADMIN, headers=OWN)[0], 429)
+            blocked = admin.get("/api/security/blocked")["blocked"]
+            self.assertEqual([b["address"] for b in blocked], ["127.0.0.1"])
+            self.assertEqual(blocked[0]["fails"], 5)
+            self.assertGreater(blocked[0]["until"], time.time())
+            admin.call("DELETE", "/api/security/blocked", {"address": "127.0.0.1"})
+            admin.call("DELETE", "/api/security/blocked", {"address": "127.0.0.1"}, expect=404)
+            self.assertEqual(admin.get("/api/security/blocked")["blocked"], [])
+            Client(s, **ADMIN)          # signing in works again at once
+            with open(os.path.join(s.config, "logs", "auth.log"), encoding="utf-8") as fh:
+                self.assertIn("event=ip_unblocked", fh.read())
+            # the help boxes: on by default, switched off for everybody in the settings
+            self.assertIn(b'"help":true', admin.get("/me.js"))
+            admin.call("PUT", "/api/settings", {"show_help": False})
+            self.assertIn(b'"help":false', admin.get("/me.js"))
+        finally:
+            s.cleanup()
+
     def test_without_login_only_the_login_page(self):
         s = self.server
         self.assertEqual(s.request("GET", "/api/health")[0], 200)
@@ -627,6 +653,20 @@ class Processing(ContractTest):
         self.assertEqual(self.admin.call("POST", "/api/library/chapters", {"path": rel}), {"changed": 0})
         status, _ = self.admin.call("POST", "/api/library/chapters", {"path": "../etc"}, expect=None)
         self.assertIn(status, (400, 403, 404))
+        # Audiobookshelf reads metadata.json first: an older one with the long names is brought in line
+        side = os.path.join(os.path.dirname(job["dest"]), "metadata.json")
+        meta = json.load(open(side, encoding="utf-8"))
+        self.assertEqual([c["title"] for c in meta["chapters"]], ["Vorspann", "Kapitel 1: Der Anfang", "Kapitel 2: Die Mitte"])
+        for c in meta["chapters"]:
+            c["title"] = "01 - Das lange Buch (Ungekürzt): " + c["title"]
+        json.dump(meta, open(side, "w", encoding="utf-8"))
+        out = self.admin.call("POST", "/api/library/chapters", {"path": rel})
+        self.assertEqual((out["changed"], out["metadata_json"]), (3, True))
+        meta = json.load(open(side, encoding="utf-8"))
+        self.assertEqual([c["title"] for c in meta["chapters"]], ["Vorspann", "Kapitel 1: Der Anfang", "Kapitel 2: Die Mitte"])
+        # the library can be sorted
+        newest = self.admin.get("/api/library/books?sort=new&limit=1")["books"][0]
+        self.assertEqual(newest["title"], "Das lange Buch")
         # badly named files: the tags count the other way – nothing is filed before a look
         deliver(self.server.inbox, "Ella Echo - Verdreht",
                 {"Teil 10.mp3": {**tags, "album": "Verdreht", "title": "Anfang", "track": "1"},
@@ -860,6 +900,59 @@ class Lifecycle(unittest.TestCase):
             self.assertEqual(m4bs, ["Lang.m4b"])
             leftovers = [f for _, _, files in os.walk(s.library) for f in files if f.startswith(".")]
             self.assertEqual(leftovers, [])                                     # no half copy left behind
+        finally:
+            s.cleanup()
+
+    def test_many_books_at_once(self):
+        """Eight folders land in the inbox together while the list is polled: every one is filed, the server
+        keeps answering (the scanner adding jobs and the workers starting them once blocked each other forever)."""
+        s = Server().start()
+        try:
+            admin = Client(s, ADMIN["name"], ADMIN["password"])
+            stage = os.path.join(s.dir, "stage")
+            for i in range(8):
+                tone(os.path.join(stage, f"Autor {i} - Buch {i}", "01.mp3"), seconds=20,
+                     tags={"artist": f"Autor {i}", "album": f"Buch {i}", "title": "Kapitel 1"})
+            for name in os.listdir(stage):
+                os.rename(os.path.join(stage, name), os.path.join(s.inbox, name))
+
+            def filed():
+                jobs = admin.get("/api/audiobooks")["jobs"]
+                return jobs if len(jobs) == 8 and all(j["status"] in ("done", "failed", "review") for j in jobs) else None
+            jobs = admin.wait(filed, 90, step=0.05, what="eight books filed")
+            self.assertEqual({j["status"] for j in jobs}, {"done"})
+            self.assertEqual(s.stop(signal.SIGTERM), 0, s.output())
+        finally:
+            s.cleanup()
+
+    def test_library_is_converted_bit_by_bit(self):
+        """The gentle conversion: MP3 books of the library become M4Bs one after the other, each as a job of its
+        own with one core at the lowest priority; when nothing is left it switches itself off."""
+        s = Server(env={"TRICKLE_SECONDS": "1"})
+        for i in (1, 2):
+            tone(os.path.join(s.library, "Lena Langsam", f"Altes Buch {i}", "01.mp3"),
+                 tags={"artist": "Lena Langsam", "album": f"Altes Buch {i}", "title": "Teil 1"})
+        s.start()
+        try:
+            admin = Client(s, ADMIN["name"], ADMIN["password"])
+            admin.wait(lambda: admin.get("/api/library")["other"] == 2 or None, 30, what="library scanned")
+            self.assertEqual(admin.get("/api/library")["trickle"], {"on": False, "left": 2})
+            time.sleep(2.5)
+            self.assertEqual(admin.get("/api/audiobooks")["jobs"], [])           # nothing happens unasked
+            self.assertEqual(admin.call("POST", "/api/library/trickle", {"on": True})["on"], True)
+            status, _ = admin.call("POST", "/api/library/trickle", {"on": "ja"}, expect=None)
+            self.assertEqual(status, 400)
+
+            def finished():
+                st = admin.get("/api/library")
+                return st if st["other"] == 0 and not st["trickle"]["on"] else None
+            admin.wait(finished, 120, what="both books converted, trickle off")
+            jobs = admin.get("/api/audiobooks")["jobs"]
+            self.assertEqual(sorted(j["status"] for j in jobs), ["done", "done"])
+            log = admin.get(f'/api/audiobooks/{jobs[0]["id"]}')["log"]
+            self.assertTrue(any("Schonende Umwandlung" in line for line in log), log)
+            m4bs = sorted(f for _, _, files in os.walk(s.library) for f in files if f.endswith(".m4b"))
+            self.assertEqual(m4bs, ["Altes Buch 1.m4b", "Altes Buch 2.m4b"])
         finally:
             s.cleanup()
 

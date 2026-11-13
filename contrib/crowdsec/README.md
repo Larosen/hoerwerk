@@ -12,6 +12,7 @@ time=2026-10-31T17:05:41Z app=hoerwerk event=login_ok user="Eva" ip=198.51.100.2
 Ereignisse: `login_ok`, `login_failed` (Gründe `bad_password`, `unknown_user`, `disabled`, `bad_setup_code`,
 `bad_old_password`), `login_blocked` (Hörwerks eigene Sperre: 5 Fehlversuche / 15 min je IP), `logout`, `setup`,
 `password_changed`, `user_created`, `user_changed`, `user_deleted`, `sessions_revoked`, `totp_on`, `totp_off`,
+`ip_unblocked` (ein Admin hebt Hörwerks Sperre einer Adresse vorzeitig auf),
 `forbidden` (angemeldeter Nutzer ruft eine Admin-Funktion auf). Ein falscher Zweitfaktor-Code ist
 `login_failed … reason=bad_totp` und zählt damit fürs Szenario mit.
 

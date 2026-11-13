@@ -39,7 +39,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
   ].filter(Boolean).join(" · ");
   let reason: Node | null = null;
   if (b.because?.length) {
-    reason = el("p", { class: "reason" }, t("Passt zu: {titles}", { titles: b.because.map((x) => `„${x}“`).join(", ") }));
+    reason = el("p", { class: "reason" }, t("Passt zu: {titles}", { titles: b.because.map((x) => t("„{title}“", { title: x })).join(", ") }));
   } else if (b.review) {
     reason = el("p", { class: "reason" },
       b.review.list ? t("Platz {rank}: {list} ({source})", { rank: b.review.rank || "?", list: b.review.list, source: b.review.source })

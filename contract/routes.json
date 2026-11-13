@@ -344,6 +344,12 @@
    "raw_body": false
   },
   {
+   "method": "POST",
+   "path": "/api/library/trickle",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/library/unconverted",
    "access": "admin",
@@ -515,6 +521,18 @@
    "method": "POST",
    "path": "/api/search/series",
    "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/security/blocked",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/security/blocked",
+   "access": "admin",
    "raw_body": false
   },
   {

@@ -538,9 +538,9 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   await expect(rows.nth(1)).toContainText("gekürzte Fassung");
   await expect(page.locator("#releasesNote")).toContainText("2 Releases, davon 1 passend");
   // sorted by size: the small one first, then back to "best first"
-  await page.locator("#releasesSort").selectOption("size-asc");
+  await page.locator("#releasesSort").getByRole("button", { name: "Kleinste" }).click();
   await expect(rows.first()).toContainText("GEKUERZT");
-  await page.locator("#releasesSort").selectOption("best");
+  await page.locator("#releasesSort").getByRole("button", { name: "Beste" }).click();
   await expect(rows.first()).toContainText("Sprache passt");
   // the whole release name is readable (wrapped, not cut off)
   const name = rows.first().locator(".c-title span").first();

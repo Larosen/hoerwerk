@@ -495,7 +495,9 @@ impl LibraryIndex {
     }
 
     /// Browse the library: every word of the query in title, author, series or path.
-    pub fn books(&self, query: &str, offset: usize, limit: usize) -> Value {
+    /// `sort`: "author" (the folder order, default), "title", "new" / "old" (when the files changed last),
+    /// "format" (what is not one M4B yet first).
+    pub fn books(&self, query: &str, offset: usize, limit: usize, sort: &str) -> Value {
         let want = match_words(query);
         let mut entries = self.entries();
         if !want.is_empty() {
@@ -513,6 +515,14 @@ impl LibraryIndex {
             });
         }
         entries.sort_by_key(|e| path_key(s(e, "path")));
+        let mtime = |e: &Value| e["mtime"].as_f64().unwrap_or(0.0);
+        match sort {
+            "title" => entries.sort_by_key(|e| crate::words::natural_key(s(e, "title"))),
+            "new" => entries.sort_by(|a, b| mtime(b).partial_cmp(&mtime(a)).unwrap_or(std::cmp::Ordering::Equal)),
+            "old" => entries.sort_by(|a, b| mtime(a).partial_cmp(&mtime(b)).unwrap_or(std::cmp::Ordering::Equal)),
+            "format" => entries.sort_by_key(|e| s(e, "format") == "m4b"),
+            _ => {}
+        }
         let total = entries.len();
         let books: Vec<Value> = entries
             .into_iter()

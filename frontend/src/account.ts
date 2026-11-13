@@ -262,8 +262,27 @@ async function createInvite(): Promise<void> {
   } catch (e) { toast(errMsg(e), true); }
 }
 
+/** Addresses Hörwerk blocked after failed logins – visible and liftable here, no terminal needed. */
+async function loadBlocked(): Promise<void> {
+  const list = $("#blockedList");
+  let res: { blocked: { address: string; fails: number; until: number }[] };
+  try { res = await api("GET", "/api/security/blocked"); } catch (e) { list.replaceChildren(el("li", { class: "err small" }, errMsg(e))); return; }
+  if (!res.blocked.length) { list.replaceChildren(el("li", { class: "muted small" }, t("Gerade ist keine Adresse gesperrt."))); return; }
+  list.replaceChildren(...res.blocked.map((b) => {
+    const lift = el("button", { type: "button", class: "btn small" }, t("Freigeben"));
+    lift.addEventListener("click", async () => {
+      try { await api("DELETE", "/api/security/blocked", { address: b.address }); toast(t("{address} ist wieder frei", { address: b.address })); loadBlocked(); }
+      catch (e) { toast(errMsg(e), true); }
+    });
+    const until = new Date(b.until * 1000).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
+    return el("li", {}, el("code", {}, b.address),
+      el("span", { class: "muted small" }, t("{n} Fehlversuche · frei ab {time}", { n: b.fails, time: until })), lift);
+  }));
+}
+
 async function loadUsers(): Promise<void> {
   void loadInvites();
+  void loadBlocked();
   await loadList($("#userRows"), async () => {
     const res = await api<{ users: UserInfo[]; default_quota: number }>("GET", "/api/users");
     $("#defaultQuota").textContent = String(res.default_quota);

@@ -458,6 +458,29 @@ impl Accounts {
             .count()
     }
 
+    /// Addresses blocked right now: (address or /64 network, failed logins in the window, blocked until).
+    pub fn blocked_list(&self) -> Vec<(String, usize, f64)> {
+        let ts = now();
+        let b = self.brake.lock().unwrap_or_else(|p| p.into_inner());
+        let mut out: Vec<(String, usize, f64)> = b
+            .ip_fails
+            .iter()
+            .filter_map(|(ip, q)| {
+                let recent: Vec<f64> = q.iter().copied().filter(|x| *x >= ts - WINDOW).collect();
+                // free again once so many attempts have left the window that fewer than IP_FAILS remain
+                (recent.len() >= IP_FAILS).then(|| (ip.clone(), recent.len(), recent[recent.len() - IP_FAILS] + WINDOW))
+            })
+            .collect();
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out
+    }
+
+    /// Lift the block of one address (as listed by blocked_list) at once.
+    pub fn unblock(&self, address: &str) -> bool {
+        let mut b = self.brake.lock().unwrap_or_else(|p| p.into_inner());
+        b.ip_fails.remove(address).is_some()
+    }
+
     pub fn fail(&self, ip: &str, name: &str) {
         let ts = now();
         let mut b = self.brake.lock().unwrap_or_else(|p| p.into_inner());

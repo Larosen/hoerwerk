@@ -184,6 +184,9 @@ pub struct Job {
     pub stage: String,
     #[serde(default)]
     pub pack: Option<Value>,
+    /// converted in the background, one after the other: one CPU core, lowest priority
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub gentle: bool,
     /// taken back for a correction: never filed automatically, a person picks the right book
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub review_first: bool,
@@ -252,6 +255,7 @@ impl Job {
             rename_files: false,
             stage: "prepare".into(),
             pack: None,
+            gentle: false,
             review_first: false,
             filing: None,
         }
@@ -403,6 +407,8 @@ pub struct Pipeline {
     pub last_scan: Mutex<Option<f64>>,
     pub scan_note: Mutex<String>,
     pub stopping: AtomicBool,
+    /// library folders the gentle conversion has started already (not tried twice while the server runs)
+    trickle_tried: Mutex<HashSet<String>>,
     pub inbox: PathBuf,
     pub library: PathBuf,
     pub work_dir: PathBuf,
@@ -770,6 +776,7 @@ impl Pipeline {
             last_scan: Mutex::new(None),
             scan_note: Mutex::new(String::new()),
             stopping: AtomicBool::new(false),
+            trickle_tried: Mutex::new(HashSet::new()),
             inbox: if inbox.as_os_str().is_empty() {
                 PathBuf::new()
             } else {
@@ -951,18 +958,91 @@ impl Pipeline {
         rename: bool,
         pack: Option<Value>,
     ) -> JobRef {
-        self.add_with(app, source, origin, chapter_names, rename, pack, false)
+        self.add_job(app, source, origin, chapter_names, rename, pack, false, false)
+    }
+
+    // -- the library, book by book ------------------------------------------------------------------
+    /// Is the gentle conversion of the whole library switched on?
+    pub fn trickle_on(&self, app: &App) -> bool {
+        app.db.get("library_trickle").is_some_and(|v| v == true)
+    }
+
+    pub fn set_trickle(&self, app: &App, on: bool) {
+        let _ = app.db.put("library_trickle", &json!(on));
+        if on {
+            self.trickle_tried.lock().unwrap_or_else(|p| p.into_inner()).clear();
+        }
+    }
+
+    /// Books of the library that are not one M4B yet and have no job: what the gentle conversion still has to do.
+    fn trickle_left(&self, app: &App) -> Vec<String> {
+        let busy: HashSet<String> = self
+            .all()
+            .iter()
+            .map(|j| j.lock())
+            .filter(|j| j.origin == "library" && !matches!(j.status.as_str(), "done" | "cancelled"))
+            .map(|j| j.rel.clone())
+            .collect();
+        let tried = self.trickle_tried.lock().unwrap_or_else(|p| p.into_inner());
+        let mut left: Vec<String> = app
+            .library
+            .entries()
+            .iter()
+            .filter(|e| s(e, "format") != "m4b")
+            .map(|e| s(e, "path").to_string())
+            .filter(|p| !p.is_empty() && !busy.contains(p) && !tried.contains(p))
+            .collect();
+        left.sort_by(|a, b| natural_path_cmp(a, b));
+        left
+    }
+
+    pub fn trickle_status(&self, app: &App) -> Value {
+        json!({"on": self.trickle_on(app), "left": self.trickle_left(app).len()})
+    }
+
+    /// Called every minute: when switched on and nothing else is being processed, the next book of the
+    /// library that is not an M4B yet is converted – one at a time, with one core at the lowest priority.
+    /// A book that fails or needs a look is left as it is and not tried again; when nothing is left the
+    /// conversion switches itself off.
+    pub fn trickle_tick(&self, app: &Arc<App>) {
+        if !self.trickle_on(app) || self.stopping.load(Ordering::SeqCst) {
+            return;
+        }
+        if self.all().iter().any(|j| ACTIVE.contains(&j.lock().status.as_str())) {
+            return; // new books and downloads go first
+        }
+        let Some(rel) = self.trickle_left(app).into_iter().next() else {
+            self.set_trickle(app, false);
+            text::info(
+                "Bibliothek",
+                &t("Schonende Umwandlung fertig: kein Buch mehr übrig", &[]),
+            );
+            return;
+        };
+        self.trickle_tried
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .insert(rel.clone());
+        let folder = self.library.join(&rel);
+        if !folder.is_dir() {
+            return;
+        }
+        let slot = self.add_job(app, &folder, "library", None, false, None, false, true);
+        slot.say(&t(
+            "Schonende Umwandlung der Bibliothek (ein Kern, niedrigste Priorität)",
+            &[],
+        ));
     }
 
     /// A book of the library back for a correction – whatever happened to the job that filed it: it is read
     /// and looked up like a new book, then waits for a person to pick the right one; the old files step aside
     /// only when the corrected book is filed.
     pub fn correct(&self, app: &Arc<App>, folder: &Path) -> JobRef {
-        self.add_with(app, folder, "library", None, false, None, true)
+        self.add_job(app, folder, "library", None, false, None, true, false)
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn add_with(
+    fn add_job(
         &self,
         app: &Arc<App>,
         source: &Path,
@@ -971,6 +1051,7 @@ impl Pipeline {
         rename: bool,
         pack: Option<Value>,
         review_first: bool,
+        gentle: bool,
     ) -> JobRef {
         let source = real(source).display().to_string();
         let slot = {
@@ -991,6 +1072,7 @@ impl Pipeline {
             job.rename_files = rename;
             job.pack = pack;
             job.review_first = review_first;
+            job.gentle = gentle;
             let slot = Slot::new(job);
             list.push(slot.clone());
             // only the newest 200 finished jobs stay
@@ -1806,9 +1888,12 @@ impl Pipeline {
     // -- running a stage -----------------------------------------------------------------------------
     /// Run the job's current stage (called by an engine worker).
     pub fn step(&self, app: &Arc<App>, slot: &JobRef) {
+        // lock order: the list first and alone, then the job – `add` looks into the jobs while it holds the
+        // list, so asking for the list with a job locked would let the two wait for each other forever
+        let listed = self.list().iter().any(|x| Arc::ptr_eq(x, slot));
         let stage = {
             let mut j = slot.lock();
-            if j.status != "queued" || !self.list().iter().any(|x| Arc::ptr_eq(x, slot)) {
+            if j.status != "queued" || !listed {
                 return; // cancelled or removed while waiting
             }
             slot.cancel.store(false, Ordering::SeqCst);
@@ -2491,7 +2576,9 @@ impl Pipeline {
         if self.stopping.load(Ordering::SeqCst) {
             runner.kill();
         }
-        let nice = app.cfg.nice.clone();
+        let gentle = slot.lock().gentle;
+        // the background conversion of the library must not be felt: lowest priority, one core
+        let nice = if gentle { "19".to_string() } else { app.cfg.nice.clone() };
         let mut chapters_txt: Option<Vec<Chapter>> = None;
         if source.is_dir() {
             let mut names: Vec<String> = std::fs::read_dir(&folder)
@@ -2563,7 +2650,7 @@ impl Pipeline {
             let m = encoder::Merge {
                 bitrate: &bitrate,
                 mono: sbool(&s_, "force_mono", false),
-                jobs: app.cfg.cpu_jobs,
+                jobs: if gentle { 1 } else { app.cfg.cpu_jobs },
                 chapter_mode: &mode,
                 known: &known,
                 lang: &lang,

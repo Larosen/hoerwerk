@@ -30,29 +30,16 @@ function fmtAge(ts: number | null): string {
 async function loadSources(): Promise<void> {
   let s: Sources;
   try { s = search.sources = await api<Sources>("GET", "/api/sources"); } catch (e) { toast(errMsg(e), true); return; }
+  // the connections themselves live under Einstellungen; here only a note when something is missing for the search
+  const missing: string[] = [];
+  if (!s.indexers.some((i) => i.enabled && i.apikey_set)) missing.push(t("ein Indexer"));
+  if (!s.configured.sab) missing.push("SABnzbd");
   const box = $("#sourcesInfo");
-  box.replaceChildren();
-  if (!s.indexers.length) box.append(el("div", { class: "muted" }, t("Noch kein Indexer eingerichtet.")));
-  for (const i of s.indexers) {
-    box.append(el("div", { class: "kv" }, el("span", {}, t("Indexer")),
-      el("span", { title: i.url }, (i.name || "") + (i.enabled ? "" : " " + t("(aus)")) + (i.preferred ? " · " + t("Wird zuerst gefragt") : "")),
-      el("span", { class: i.apikey_set ? "ok" : "err", title: i.apikey_set ? t("API-Key gespeichert") : t("API-Key fehlt") }, icon(i.apikey_set ? "check" : "alert"))));
-  }
-  box.append(el("div", { class: "kv" }, el("span", {}, "SABnzbd"),
-    el("span", { title: s.sab.url || "" }, s.sab.url ? `${s.sab.url}${s.sab.category ? " · " + s.sab.category : ""}` : t("Nicht eingerichtet")),
-    el("span", { class: s.configured.sab ? "ok" : "err" }, icon(s.configured.sab ? "check" : "alert"))));
-  const abs = s.abs;
-  if (abs?.url) {
-    box.append(el("div", { class: "kv" }, el("span", {}, "Audiobookshelf"),
-      el("span", { title: abs.last || abs.url }, abs.library_name || abs.library || t("Bibliothek fehlt")),
-      el("span", { class: abs.configured ? "ok" : "err" }, icon(abs.configured ? "check" : "alert"))));
-  }
-  const plex = s.plex;
-  if (plex?.url) {
-    box.append(el("div", { class: "kv" }, el("span", {}, "Plex"),
-      el("span", { title: plex.last || plex.url }, plex.section_name || plex.section || t("Mediathek fehlt")),
-      el("span", { class: plex.configured ? "ok" : "err" }, icon(plex.configured ? "check" : "alert"))));
-  }
+  box.hidden = !missing.length;
+  box.replaceChildren(...(missing.length ? [
+    t("Für die Release-Suche fehlt noch: {what}.", { what: missing.length > 1 ? t("ein Indexer und SABnzbd") : missing[0] }), " ",
+    el("a", { href: "/settings/downloads" }, t("Einrichten")),
+  ] : []));
 }
 
 function indexerRow(i: Indexer = {}): HTMLDivElement {
@@ -305,7 +292,7 @@ async function runSearch(e?: Event, free = false, everywhere = false): Promise<v
     const queries = res.queries || [];
     $("#searchNote").textContent = (res.results.length ? t("{n} Treffer", { n: res.results.length })
       : t("Keine Releases gefunden. Suchbegriff oben ändern, z. B. nur Titel oder Nachname.")) +
-      (queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: queries.map((x) => `„${x}“`).join(", ") }) : "") +
+      (queries.length > 1 ? " · " + t("gesucht als: {queries}", { queries: queries.map((x) => t("„{title}“", { title: x })).join(", ") }) : "") +
       (res.errors.length ? " · " + t("Fehler: {errors}", { errors: res.errors.join("; ") }) : "") +
       (res.resting?.length ? " · " + restingText(res.resting) : "");
     const skipped = res.skipped || [];
@@ -342,7 +329,7 @@ function renderResults(): void {
     body.append(el("tr", {}, el("td", { colspan: "5", class: "empty-row" }, t("Keine Treffer – anders formulieren (weniger Wörter, ohne Band-Nummer)."))));
     return;
   }
-  for (const r of sortReleases(search.results, $<HTMLSelectElement>("#searchSort").value)) {
+  for (const r of sortReleases(search.results)) {
     const tags = [
       r.format, r.language === "de" ? t("Deutsch") : r.language === "en" ? t("Englisch") : null,
       r.bitrate ? r.bitrate + " kbps" : null, r.abridged ? t("Gekürzt") : null, r.drama ? t("Hörspiel") : null,
@@ -439,7 +426,7 @@ function initSearch(): void {
   }
   $("#searchForm").addEventListener("submit", lookupBooks);
   $("#releaseForm").addEventListener("submit", (e) => runSearch(e));
-  initReleaseSort($<HTMLSelectElement>("#searchSort"), () => { if (search.results.length) renderResults(); });
+  initReleaseSort($("#searchSort"), () => { if (search.results.length) renderResults(); });
   $("#freeSearchBtn").addEventListener("click", () => runSearch(undefined, true));
   $("#addIndexerBtn").addEventListener("click", () => $("#indexerRows").append(indexerRow()));
   $("#sourcesForm").addEventListener("submit", (e) => { e.preventDefault(); saveSources(); });

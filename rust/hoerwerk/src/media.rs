@@ -174,7 +174,8 @@ pub fn sandbox_status() -> Value {
         .and_then(|(_, o, _)| serde_json::from_slice::<Value>(&o).ok())
         .unwrap_or(json!({}));
     let abi = out["landlock_abi"].as_i64().unwrap_or(0);
-    json!({"mode": mode, "landlock_abi": abi, "active": mode != "off" && abi > 0, "network_blocked": mode != "off",
+    let reason = out["reason"].as_str().unwrap_or("").to_string();
+    json!({"mode": mode, "landlock_abi": abi, "reason": reason, "active": mode != "off" && abi > 0, "network_blocked": mode != "off",
            "launcher": "hw-run", "seccomp": mode != "off"})
 }
 

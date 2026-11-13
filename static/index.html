@@ -50,72 +50,43 @@
   </div>
 </header>
 
-<main class="books-layout" id="viewBooks" hidden>
-  <aside class="sidebar">
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Eingang</h2>
-        <button id="uploadBtn" class="btn small" title="Hörbuch vom Computer hochladen"><svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg>Hochladen</button>
-        <button id="scanBtn" class="btn small ghost" title="Eingangsordner jetzt prüfen"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Prüfen</button>
-      </div>
-      <div class="inbox-info" id="inboxInfo"></div>
-    </section>
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Bibliothek</h2>
-        <button id="libraryScanBtn" class="btn small ghost" title="Bibliothek neu einlesen"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Einlesen</button>
-        <button id="libraryCleanBtn" class="btn small ghost" title="Überflüssige desc.txt und reader.txt löschen">Aufräumen</button>
-      </div>
-      <div class="inbox-info" id="libraryInfo"></div>
-    </section>
-    <details class="panel how">
-      <summary class="panel-head"><h2>So funktioniert's</h2><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
-      <ol class="steps">
-        <li>Hörbuch-Ordner oder einzelne Dateien in den <b>Eingang</b> legen (MP3, M4A, M4B, FLAC, OGG …).</li>
-        <li>Hörwerk macht daraus <b>eine M4B mit Kapiteln</b>, erkennt das Buch bei <b>Audible</b>, schreibt die Tags und legt es in die <b>Bibliothek</b>.</li>
-        <li>Unsichere Fälle landen unter <b>Zu prüfen</b>. Dort einen Treffer wählen, einen Link einfügen oder alles selbst eintragen.</li>
-        <li>Falsch einsortiert? <b>Korrigieren</b> holt ein fertiges Buch zurück.</li>
-      </ol>
-      <p class="muted small">Eigene Kapitel: <code>chapters.txt</code> im Buchordner. Bücher ohne Audible-Eintrag: <code>metadata.yml</code> (wie bei beets-audible).</p>
-    </details>
-  </aside>
+<main class="books-layout single" id="viewBooks" hidden>
   <section class="panel books-panel">
     <div class="panel-head wrap">
       <h2>Hörbücher</h2>
       <div class="row gap wrap">
-        <div id="bookFilter" class="chips" role="group" aria-label="Status-Filter"></div>
-        <button id="clearBooksBtn" class="btn small ghost" title="Fertige aus der Liste entfernen">Fertige ausblenden</button>
+        <button id="uploadBtn" class="btn small" title="Hörbuch vom Computer hochladen"><svg class="ico" aria-hidden="true"><use href="#i-upload"/></svg>Hochladen</button>
+        <button id="scanBtn" class="btn small ghost" title="Eingangsordner jetzt prüfen"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Eingang prüfen</button>
       </div>
+    </div>
+    <div class="inbox-line" id="inboxInfo"></div>
+    <div class="panel-head wrap sub-head">
+      <div id="bookFilter" class="chips" role="group" aria-label="Status-Filter"></div>
+      <button id="clearBooksBtn" class="btn small ghost" title="Fertige aus der Liste entfernen">Fertige ausblenden</button>
     </div>
     <ul id="bookList" class="book-list"></ul>
   </section>
+  <details class="panel how">
+    <summary class="panel-head"><h2>So funktioniert's</h2><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+    <ol class="steps">
+      <li>Hörbuch-Ordner oder einzelne Dateien in den <b>Eingang</b> legen (MP3, M4A, M4B, FLAC, OGG …).</li>
+      <li>Hörwerk macht daraus <b>eine M4B mit Kapiteln</b>, erkennt das Buch bei <b>Audible</b>, schreibt die Tags und legt es in die <b>Bibliothek</b>.</li>
+      <li>Unsichere Fälle landen unter <b>Zu prüfen</b>. Dort einen Treffer wählen, einen Link einfügen oder alles selbst eintragen.</li>
+      <li>Falsch einsortiert? <b>Korrigieren</b> holt ein fertiges Buch zurück.</li>
+    </ol>
+    <p class="muted small">Eigene Kapitel: <code>chapters.txt</code> im Buchordner. Bücher ohne Audible-Eintrag: <code>metadata.yml</code> (wie bei beets-audible).</p>
+    <p class="muted small">Die Bibliothek wird von selbst eingelesen. Diese Erklärungen lassen sich in den Einstellungen ausblenden.</p>
+  </details>
 </main>
 
-<main class="books-layout" id="viewSearch" hidden>
-  <aside class="sidebar admin-only">
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Quellen</h2>
-        <a id="sourcesBtn" class="btn small ghost" href="/settings/downloads">Einrichten</a>
-      </div>
-      <div id="sourcesInfo" class="inbox-info"></div>
-    </section>
-    <details class="panel how">
-      <summary class="panel-head"><h2>So funktioniert's</h2><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
-      <ol class="steps">
-        <li>SABnzbd unter <b>Einrichten</b> eintragen, für die Suche zusätzlich einen Newznab-Indexer.</li>
-        <li>In SABnzbd eine Kategorie (z. B. <code>audiobooks</code>) anlegen, deren Ordner der <b>Hörbuch-Eingang</b> ist.</li>
-        <li>Hörbuch suchen und auswählen. Hörwerk sucht dann die passenden Releases.</li>
-        <li><b>Download</b> klicken. Danach übernimmt der Eingang.</li>
-      </ol>
-    </details>
-  </aside>
+<main class="books-layout single" id="viewSearch" hidden>
   <div class="content">
     <section class="panel search-panel">
       <div class="panel-head wrap">
         <h2>Hörbuch suchen</h2>
         <span class="muted small">Audible · BookBeat</span>
       </div>
+      <p id="sourcesInfo" class="discover-note admin-only" hidden></p>
       <form id="searchForm" class="search-row pad">
         <input id="searchQuery" type="search" placeholder="Titel oder Autor, z. B. Storm Schimmelreiter" aria-label="Titel oder Autor">
         <div class="seg" role="radiogroup" aria-label="Sprache des Hörbuchs" id="bookLang">
@@ -139,13 +110,7 @@
       <p class="pad-x muted small admin-only" id="freeSearchRow"><button type="button" class="linkish" id="freeSearchBtn">Nicht im Shop? Direkt bei den Indexern suchen</button></p>
       <div id="searchOwned" class="owned-note admin-only" hidden></div>
       <div class="row gap pad-x admin-only result-tools"><div id="searchNote" class="muted small grow"></div>
-        <select id="searchSort" class="sort-pick" aria-label="Releases sortieren">
-          <option value="best">Beste zuerst</option>
-          <option value="size-desc">Größte zuerst</option>
-          <option value="size-asc">Kleinste zuerst</option>
-          <option value="new">Neueste zuerst</option>
-          <option value="old">Älteste zuerst</option>
-        </select></div>
+        <div id="searchSort" class="sort-bar" role="group" aria-label="Releases sortieren"></div></div>
       <div class="table-wrap admin-only">
         <table class="results">
           <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">Abrufe</th><th class="c-act"></th></tr></thead>
@@ -153,6 +118,15 @@
         </table>
       </div>
     </section>
+    <details class="panel how admin-only">
+      <summary class="panel-head"><h2>So funktioniert's</h2><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+      <ol class="steps">
+        <li>SABnzbd und mindestens einen Newznab-Indexer in den Einstellungen eintragen.</li>
+        <li>In SABnzbd eine Kategorie (z. B. <code>audiobooks</code>) anlegen, deren Ordner der <b>Hörbuch-Eingang</b> ist.</li>
+        <li>Hörbuch suchen und auswählen. Hörwerk sucht dann die passenden Releases.</li>
+        <li><b>Download</b> klicken. Danach übernimmt der Eingang.</li>
+      </ol>
+    </details>
   </div>
 </main>
 
@@ -250,6 +224,7 @@
           <option value="en">English</option>
         </select>
       </label>
+      <label class="check"><input type="checkbox" name="show_help"> Erklärboxen „So funktioniert's“ zeigen <small class="muted">Für alle Konten. Aus: die Seiten zeigen nur noch das Nötige.</small></label>
     </fieldset>
     <fieldset data-section="convert">
       <legend>M4B-Konvertierung</legend>
@@ -280,6 +255,14 @@
     <fieldset data-section="library">
       <legend>Hörbücher: Eingang → Bibliothek</legend>
       <p class="muted small" id="abPaths"></p>
+      <div class="lib-status">
+        <div class="inbox-info" id="libraryInfo"></div>
+        <div class="row gap wrap">
+          <button type="button" id="libraryScanBtn" class="btn small"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Jetzt einlesen</button>
+          <label class="inline-setting">Automatisch alle <input name="library_rescan_hours" type="number" min="1" max="168" step="1" aria-label="Stunden zwischen zwei Durchläufen"> Stunden</label>
+        </div>
+        <p class="muted small">Neue Bücher kommen beim Ablegen sofort dazu. Das Einlesen findet Bücher, die an Hörwerk vorbei in die Bibliothek gelegt wurden.</p>
+      </div>
       <label class="check"><input type="checkbox" name="ab_watch"> Eingangsordner automatisch überwachen</label>
       <div class="grid2">
         <label>Audible-Shop
@@ -351,6 +334,8 @@
         <label class="check"><input type="checkbox" name="keep_series_in_title"> „, Band 3“ im Titel lassen</label>
         <label class="check"><input type="checkbox" name="keep_series_in_subtitle"> Serien-Untertitel behalten</label>
       </div>
+      <div class="row gap wrap"><button type="button" id="libraryCleanBtn" class="btn small ghost">desc.txt und reader.txt aufräumen</button>
+        <span class="muted small">Einmalig: löscht diese Dateien in der Bibliothek, wo metadata.json schon alles enthält (mit Vorschau).</span></div>
       <label>Wartezeit, bis ein Ordner fertig kopiert gilt <small>Sekunden ohne Änderung</small>
         <input name="ab_settle" type="number" min="0" step="1">
       </label>
@@ -469,6 +454,11 @@
       <legend>Sicherheit</legend>
       <label class="check"><input type="checkbox" id="adminTotpRequired"><span>Admins brauchen einen Zweitfaktor
         <small class="muted">Ohne Authenticator-App kommen sie nur an ihr eigenes Konto.</small></span></label>
+      <div id="blockedBox">
+        <span class="small">Gesperrte Adressen <small class="muted">Nach 5 falschen Anmeldungen in 15 Minuten sperrt Hörwerk die Adresse
+          für 15 Minuten, danach ist sie von selbst wieder frei. Sperren von CrowdSec oder der Firewall stehen dort.</small></span>
+        <ul id="blockedList" class="blocked-list"></ul>
+      </div>
     </fieldset>
     <fieldset>
       <legend>Einladungen</legend>
@@ -641,19 +631,13 @@
 <dialog id="releasesDialog" class="wide">
   <form method="dialog" class="dialog-body">
     <h2>Releases für <span id="releasesTitle"></span></h2>
-    <p class="muted small">Hörwerk lädt von selbst das beste passende Release. Hier siehst du alle Treffer – auch die verworfenen, mit Grund – und kannst eins selbst wählen oder sperren.</p>
+    <p class="muted small dialog-intro">Hörwerk lädt von selbst das beste passende Release. Hier siehst du alle Treffer – auch die verworfenen, mit Grund – und kannst eins selbst wählen oder sperren.</p>
     <div class="search-row">
       <input id="releasesQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false">
       <button type="button" class="btn" id="releasesGo">Neu suchen</button>
     </div>
     <div class="row gap result-tools"><p id="releasesNote" class="muted small grow"></p>
-      <select id="releasesSort" class="sort-pick" aria-label="Releases sortieren">
-          <option value="best">Beste zuerst</option>
-          <option value="size-desc">Größte zuerst</option>
-          <option value="size-asc">Kleinste zuerst</option>
-          <option value="new">Neueste zuerst</option>
-          <option value="old">Älteste zuerst</option>
-        </select></div>
+      <div id="releasesSort" class="sort-bar" role="group" aria-label="Releases sortieren"></div></div>
     <div class="table-wrap">
       <table class="results">
         <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">kbit/s</th><th>Urteil</th><th class="c-act"></th></tr></thead>

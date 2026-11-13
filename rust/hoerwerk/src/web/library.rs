@@ -45,7 +45,24 @@ fn query_usize(req: &Req, key: &str, default: usize) -> Result<usize, Reply> {
 }
 
 pub async fn stats(app: Arc<App>, _: Req, _: HashMap<String, String>) -> Reply {
-    json_reply(app.library.stats())
+    let mut st = app.library.stats();
+    st["trickle"] = app.pipeline.trickle_status(&app);
+    json_reply(st)
+}
+
+/// Switch the gentle conversion of the whole library on or off (admins).
+pub async fn trickle(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let Some(on) = req.get("on").as_bool() else {
+        return error(400, t("on muss true oder false sein", &[]));
+    };
+    app.pipeline.set_trickle(&app, on);
+    app.audit(
+        &req.user_name(),
+        &req.ip,
+        "library_trickle",
+        if on { "on" } else { "off" },
+    );
+    json_reply(app.pipeline.trickle_status(&app))
 }
 
 pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
@@ -62,7 +79,8 @@ pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
         .get("q")
         .map(|q| q.chars().take(200).collect())
         .unwrap_or_default();
-    json_reply(app.library.books(&q, offset, limit))
+    let sort = req.query.get("sort").map(String::as_str).unwrap_or("");
+    json_reply(app.library.books(&q, offset, limit, sort))
 }
 
 fn image(data: Vec<u8>) -> Option<Reply> {
