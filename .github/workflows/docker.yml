@@ -18,8 +18,28 @@ env:
   TRIVY: ghcr.io/aquasecurity/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
 
 jobs:
-  # Rust (rust/): format, lints, unit tests (incl. the golden files of contract/golden), the ffmpeg jail against the
-  # runner's real kernel, the crates' licenses and advisories. The programs go on to the other jobs.
+  # The programs (hoerwerk, hw-run, hw-tags) – built first and alone, so the black-box jobs below can start while
+  # the checks of the "rust" job are still running.
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - run: rustup show active-toolchain || rustup toolchain install
+      - run: cargo build --release --locked -p hoerwerk -p hw-run -p hw-tags
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
+        with:
+          name: programs
+          path: |
+            rust/target/release/hoerwerk
+            rust/target/release/hw-run
+            rust/target/release/hw-tags
+          retention-days: 3
+
+  # Rust (rust/): format, lints, unit tests (incl. the golden files of contract/golden), the crates' licenses and
+  # advisories. Runs beside the black-box jobs.
   rust:
     runs-on: ubuntu-latest
     defaults:
@@ -36,20 +56,11 @@ jobs:
         run: |
           cargo install --locked cargo-deny@0.20.2
           cargo deny check
-      - run: cargo build --release --locked -p hoerwerk -p hw-run -p hw-tags
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
-        with:
-          name: programs
-          path: |
-            rust/target/release/hoerwerk
-            rust/target/release/hw-run
-            rust/target/release/hw-tags
-          retention-days: 3
 
-  # The API contract (contract/): black-box tests against the server, once with the system ffmpeg and once with our
-  # own ffmpeg 9 inside the mandatory jail; the tag writer against the golden files; every text translated.
+  # The API contract (contract/): black-box tests against the server with the system ffmpeg; the tag writer against
+  # the golden files; every text translated. (The same conversion tests with our own ffmpeg: job "jail".)
   contract:
-    needs: rust
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -61,8 +72,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
         with:
           python-version: "3.15"
-      # system ffmpeg: creates the test audio files (our build has no MP3 encoder); nasm: for our build
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg nasm
+      # system ffmpeg: creates the test audio files
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: pip install -r requirements-dev.txt
       - name: Lint of the test code (ruff)
         run: ruff check contract tests
@@ -76,6 +87,23 @@ jobs:
       - name: API contract
         working-directory: contract
         run: python -m unittest test_contract -v
+
+  # The conversion tests once more with our own ffmpeg 9 inside the mandatory Landlock jail, as in the image.
+  jail:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131  # v7
+        with:
+          name: programs
+          path: rust/target/release
+      - run: chmod +x rust/target/release/hoerwerk rust/target/release/hw-run rust/target/release/hw-tags
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7
+        with:
+          python-version: "3.15"
+      # system ffmpeg: creates the test audio files (our build has no MP3 encoder); nasm: for our build
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg nasm
       - name: Build our minimal FFmpeg (same version, commit and script as the image)
         run: |
           V=$(sed -n 's/^ARG FFMPEG_VERSION=//p' Dockerfile)
@@ -93,7 +121,7 @@ jobs:
             python -m unittest test_contract.Pipeline test_contract.Processing test_contract.Library -v
 
   frontend:
-    needs: rust
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -177,7 +205,7 @@ jobs:
   #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   #   gh attestation verify oci://ghcr.io/<owner>/hoerwerk@sha256:… --owner <owner>
   image:
-    needs: [rust, contract, frontend, image-test]
+    needs: [rust, contract, jail, frontend, image-test]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:

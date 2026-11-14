@@ -725,6 +725,7 @@ class Processing(ContractTest):
             tone(os.path.join(tmp, f"0{vol} - {title}", "01.mp3"),
                  tags={"artist": "Paula Pack", "album": title, "title": "Teil 1"})
         os.rename(tmp, os.path.join(self.server.inbox, "Paula Pack - Reihe 01-02"))
+        self.server.scan_now()
         a, b = self.job("01 - Erster Fall"), self.job("02 - Zweiter Fall")
         self.assertEqual((a["status"], b["status"]), ("done", "done"), (a, b))
         self.assertEqual((a["pack"]["volume"], b["pack"]["volume"]), (1, 2))
@@ -740,6 +741,7 @@ class Processing(ContractTest):
             json.dump({"title": "Richtiger Titel", "authors": ["Ruth Richtig"], "series": ["Meine Reihe #2"],
                        "narrators": "Sina Sprecherin, Sven Sprecher", "publishedYear": 2001}, fh)
         os.rename(tmp, os.path.join(self.server.inbox, "Unbekannt - Eigenes"))
+        self.server.scan_now()
         job = self.job("Unbekannt - Eigenes")
         self.assertEqual(job["status"], "done", job)
         self.assertEqual(job["match"]["source"], "metadata.json")
@@ -926,8 +928,9 @@ class Lifecycle(unittest.TestCase):
         s = Server().start()
         try:
             folder = os.path.join(s.dir, "lang")
-            tone(os.path.join(folder, "01.mp3"), seconds=1200, tags={"artist": "Anna Autorin", "album": "Lang"})
+            tone(os.path.join(folder, "01.mp3"), seconds=300, tags={"artist": "Anna Autorin", "album": "Lang"})
             os.rename(folder, os.path.join(s.inbox, "Anna Autorin - Lang"))
+            s.scan_now()
             admin = Client(s, ADMIN["name"], ADMIN["password"])
             jobs = lambda: admin.get("/api/audiobooks")["jobs"]                 # noqa: E731
             admin.wait(lambda: [j for j in jobs() if j["status"] == "converting"], 120, step=0.1, what="converting")
@@ -958,6 +961,7 @@ class Lifecycle(unittest.TestCase):
                      tags={"artist": f"Autor {i}", "album": f"Buch {i}", "title": "Kapitel 1"})
             for name in os.listdir(stage):
                 os.rename(os.path.join(stage, name), os.path.join(s.inbox, name))
+            s.scan_now()
 
             def filed():
                 jobs = admin.get("/api/audiobooks")["jobs"]

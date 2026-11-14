@@ -26,6 +26,10 @@ ADMIN = {"name": "admin", "password": "Vertrag-Admin-Kaffee-7"}
 OWN = {"X-Requested-With": "Hoerwerk"}
 
 
+# inbox folder -> its server: deliver() uses it to press "scan now" (the scanner itself never looks sooner than every 10 s)
+_SERVERS: dict = {}
+
+
 def free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -48,10 +52,11 @@ class Server:
             "LIBRARY_DIR": self.library, "AUTH_USER": ADMIN["name"], "AUTH_PASS": ADMIN["password"],
             # offline and deterministic: books are filed with their own tags, no shop lookups
             "MATCH_MODE": "off", "METADATA_FALLBACK": "false", "SETTLE_SECONDS": "0", "SCAN_INTERVAL": "1",
-            "DUPLICATES": "ask", "APP_LANGUAGE": "de", **(env or {}),
+            "DUPLICATES": "ask", "APP_LANGUAGE": "de", "MEDIA_SCAN_DELAY_SECONDS": "1", **(env or {}),
         }
         self.proc: Optional[subprocess.Popen] = None
         self.log = os.path.join(self.dir, "server.log")
+        _SERVERS[self.inbox] = self
 
     def start(self) -> "Server":
         cmd = shlex.split(os.environ.get("HW_SERVER_CMD") or shlex.quote(os.path.join(ROOT, "rust", "target", "release", "hoerwerk")))
@@ -87,7 +92,18 @@ class Server:
             self._out.close()
         return self.proc.returncode if self.proc else 0
 
+    def scan_now(self) -> None:
+        """The "scan now" button: the inbox is looked at at once instead of at the next round."""
+        try:
+            status, headers, _ = self.request("POST", "/api/auth/login", {"name": ADMIN["name"], "password": ADMIN["password"]},
+                                              headers=OWN)
+            if status == 200:
+                self.request("POST", "/api/audiobooks/scan", {}, headers=OWN, cookie=headers["set-cookie"].split(";")[0])
+        except OSError:
+            pass
+
     def cleanup(self) -> None:
+        _SERVERS.pop(self.inbox, None)
         self.stop()
         shutil.rmtree(self.dir, ignore_errors=True)
 
@@ -164,6 +180,8 @@ def deliver(inbox: str, name: str, files: dict) -> str:
     dest = os.path.join(inbox, name)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     os.rename(tmp, dest)
+    if inbox in _SERVERS:
+        _SERVERS[inbox].scan_now()
     return dest
 
 
