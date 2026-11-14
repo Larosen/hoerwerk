@@ -8,6 +8,7 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 - **Entdecken: filters instead of a wall of chips.** One row with *Genre*, *Länge* and *Erschienen*. The genres fold out on demand: main
   category, then its subcategories; a second tap on what is picked, *Alle Genres* or the × takes it back. On *Für dich* and *Aus der Kritik*
   the filters narrow the list; on *Nach Genre* the genre chooses the list and it asks for one when none is picked.
+- The genre *LGBT* is no longer offered for picking (its books still show up in their other genres).
 
 ## 1.0.2 – 2026-11-14
 
