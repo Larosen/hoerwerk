@@ -31,8 +31,8 @@ Das Konzept ist in der App umgesetzt – mit diesen Abweichungen und Lücken:
 | Fortschritt als Tonspur (Downloads, Umwandlung, Anfragen), Anmeldung mit Tonspur | **umgesetzt** |
 | Texte gestrichen (Statuszeile in Kritik, „Was gezeigt wird", Quellenzeile in Suchen) | **umgesetzt**; „Hörbuch" statt „Buch" durchgehend |
 | iPhone-App (Home-Bildschirm) mit Anleitung | **umgesetzt**: Manifest, Symbole, Hinweis unter *Konto*, [Anleitung](../de/iphone-app.md) |
-| Buchfarbe aus dem Cover (Karten, Diagramme getönt) | **offen**: braucht die Farbberechnung im Server (siehe Abschnitt 9) |
-| Detailspalte am Mac | **offen** |
+| Buchfarbe aus dem Cover (Karten und Detailspalte getönt) | **umgesetzt**: Farbe aus dem Bild im Browser, Online-Cover über den Cover-Zwischenspeicher des Servers (`/api/cover`); ohne Cover aus dem Farbton des Ersatz-Covers. Diagramme in der Statistik haben keine Buchfarbe |
+| Detailspalte am Mac (Entdecken, Suchen) und Blatt auf iPad/iPhone, mit „Ähnlich wie“ | **umgesetzt**: `GET /api/book/detail` (Beschreibung und Audible-Ähnliche), Spalte ab 1240 px |
 | Messing als zweiter Akzent | umgesetzt für „neu" und Hinweise (Zähler, Spitzenwert in der Statistik) |
 
 ## 1. Befund: Was an der heutigen Oberfläche nicht trägt

@@ -48,10 +48,10 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
       b.review.notes ? " · " + plural(b.review.notes, t("1 Kritik in der Presse"), t("{n} Kritiken in der Presse", { n: b.review.notes })) : null,
       b.review.link ? el("span", {}, " · ", el("a", { href: b.review.link, target: "_blank", rel: "noopener noreferrer" }, b.review.list ? t("Liste ansehen") : t("Kritik lesen"))) : null);
   }
-  return el("li", { class: "suggestion" },
-    b.cover_url ? el("img", { class: "cover", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, author),
+  const card = el("li", { class: "suggestion tint-card", "data-asin": b.asin || "" },
+    coverFor(b.cover_url, b.title, author, "cover"),
     el("div", { class: "s-body" },
-      el("b", { class: "s-title", title: b.title }, b.title),
+      el("button", { type: "button", class: "s-title", title: t("Details"), onclick: () => showDetail(b) }, b.title),
       el("span", { class: "s-author" }, ...personLinks(b.authors, "author", b)),
       el("span", { class: "tag-row" }, genreTag(b), langTag(b),
         b.announced ? el("span", { class: "tag ok", title: t("Das Hörbuch ist angekündigt, aber noch nicht erschienen") },
@@ -67,6 +67,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
       requestButton(b),
       el("button", { type: "button", class: "btn small", onclick: () => searchSuggestion(b) }, icon("search"), t("Suchen")),
       b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null));
+  return card;
 }
 
 /** Into the release search with this book picked (title, author and ASIN help later when tagging). */
@@ -91,6 +92,9 @@ function renderDiscover(res: DiscoverAnswer): void {
   }
   if (res.items.length) {
     list.replaceChildren(...res.items.map(suggestionCard));
+    // wide screens have the column: it starts with the first one, so it is never an empty strip
+    if (window.matchMedia(WIDE).matches && !detail.current) showDetail(res.items[0], false);
+    else if (detail.current) for (const c of list.querySelectorAll<HTMLElement>("[data-asin]")) c.classList.toggle("selected", c.dataset.asin === detail.current.asin);
     return;
   }
   let text = discover.section === "genre"

@@ -18,6 +18,12 @@ request, follow and discover audiobooks. Earlier numbers (7.x) were development 
 - **Hörbücher:** the library as a shelf (covers stand on a board) or as a list; *Besser*, *Kapitel* and *Korrigieren* are icon buttons.
 - **Protokoll:** choose the period – 15 min, 60 min (default), 24 h or everything.
 - **Progress as a waveform** – downloads, conversions and requests; the sign-in page carries the same track as a signature.
+- **Details of an audiobook:** on wide screens (Mac, iPad landscape) a column on the right, otherwise a sheet from below – cover, description,
+  facts, request and search, and *Weiterstöbern*: more by the author or narrator, the whole series, and **Ähnlich wie** (what listeners of the book also
+  listened to, from Audible). A tap on a similar audiobook opens it right there; *Zurück* leads back. In *Entdecken* and *Suchen*.
+- **The colour of a book:** cards, requests and the detail column take a tone from the cover – read from the picture, a cloth tone; without a cover
+  from the tone of the stand-in tile. Online covers go through a cache on the server (`/api/cover`, public https hosts only), so the browser no longer
+  asks the shops' image servers.
 - **iPhone app:** Hörwerk can be put on the home screen and then runs full screen ([guide](docs/en/iphone-app.md)); manifest and icons are
   served without signing in, nothing else is.
 - **License:** [PolyForm Noncommercial 1.0.0](LICENSE) – free for personal and other noncommercial use. The licenses of all Rust libraries are in

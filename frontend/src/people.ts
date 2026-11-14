@@ -73,7 +73,7 @@ async function openPerson(kind: PersonKind, name: string, language: string): Pro
       return { v, cb: el("input", { type: "checkbox", disabled: !!taken }), taken };
     });
     $("#personBooks").replaceChildren(...rows.map(({ v, cb, taken }) => el("label", { class: "check series-vol" + (taken ? " is-taken" : "") }, cb,
-      v.cover_url ? el("img", { class: "thumb", src: v.cover_url, alt: "", loading: "lazy" }) : coverArt(v.title, (v.authors || [])[0]),
+      coverFor(v.cover_url, v.title, (v.authors || [])[0]),
       el("span", { class: "series-vol-text" },
         el("b", {}, v.title),
         el("span", { class: "muted small" }, [kind === "narrator" ? (v.authors || []).slice(0, 2).join(", ") : (v.narrators || []).slice(0, 2).join(", "),

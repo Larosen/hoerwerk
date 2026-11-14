@@ -1151,3 +1151,52 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
   .tabs { padding-left: max(4px, env(safe-area-inset-left)); padding-right: max(4px, env(safe-area-inset-right)); }
 }
 @media (display-mode: standalone) { body { overscroll-behavior-y: none; } }
+
+/* The colour of the book (from its cover) tints the card around it – the picture sits in its surroundings, not on top */
+.tint-card:is(li, button, div) { background: color-mix(in srgb, var(--panel), var(--c, var(--panel)) var(--tint)); border-color: color-mix(in srgb, var(--border), var(--c, var(--border)) 32%); transition: background .3s, border-color .3s; }
+@media (prefers-reduced-motion: reduce) { .tint-card { transition: none; } }
+
+/* ===== Details of one audiobook: column (wide) or sheet (narrow) ===== */
+.book-detail { display: none; }
+.book-detail.open { display: flex; flex-direction: column; }
+.detail-inner { padding: 18px 22px 28px; display: flex; flex-direction: column; gap: 10px; border: 0; min-height: 100%; }
+.detail-bar { display: flex; justify-content: space-between; align-items: center; min-height: 32px; }
+.icon-btn { background: none; border: 0; color: var(--muted); cursor: pointer; width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 50%; }
+.icon-btn:hover { background: var(--hover); color: var(--text); }
+.detail-inner > .cover.big, .detail-inner > .thumb.gen.big, .detail-inner > .thumb.big { width: min(64%, 240px); height: auto; aspect-ratio: 1; margin: 6px auto 8px; border-radius: 7px; object-fit: cover; }
+.detail-inner > .thumb.gen .gen-initial { font-size: 56px; }
+.detail-title { font-size: 25px; line-height: 1.12; letter-spacing: -.01em; margin: 10px 0 0; }
+.detail-by { margin: 0; color: var(--muted); }
+.detail-blurb { font-family: var(--serif); font-size: 15px; line-height: 1.55; margin: 8px 0 0; display: -webkit-box; -webkit-line-clamp: 9; -webkit-box-orient: vertical; overflow: hidden; }
+.detail-inner .leaders { margin: 6px 0 0; }
+.leaders { font-size: 13.5px; }
+.leaders > div { display: flex; align-items: baseline; gap: 6px; padding: 5px 0; }
+.leaders > div::before { content: ""; order: 1; flex: 1; border-bottom: 1.5px dotted var(--border-strong); transform: translateY(-3px); }
+.leaders dt { order: 0; color: var(--muted); } .leaders dd { order: 2; margin: 0; font-weight: 600; text-align: right; }
+.detail-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.detail-more h3, .detail-similar h3 { font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin: 18px 0 10px; font-family: var(--sans); }
+.chip.pill { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); font-size: 13px; font-weight: 550; margin: 0 6px 8px 0; }
+.chip.pill:hover { background: var(--hover); color: var(--text); }
+.detail-more .chips { gap: 0; }
+.sim-row { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; margin: 0 -22px; padding: 2px 22px 8px; scroll-snap-type: x proximity; }
+.sim-row::-webkit-scrollbar { display: none; }
+.sim { flex: none; width: 104px; text-align: left; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; scroll-snap-align: start; display: flex; flex-direction: column; gap: 2px; }
+.sim .thumb { width: 104px; height: 104px; margin-bottom: 6px; }
+.sim .thumb.gen .gen-initial { font-size: 32px; }
+.sim-t { font-family: var(--serif); font-weight: 700; font-size: 13px; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sim-a { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.suggestion.selected { outline: 2px solid var(--accent); outline-offset: 2px; }
+.s-title { background: none; border: 0; padding: 0; margin: 0; text-align: left; color: inherit; cursor: pointer; text-decoration-color: transparent; }
+.s-title:hover { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 3px; }
+@media (min-width: 1240px) {
+  .book-detail.open { flex: none; width: 360px; position: sticky; top: 0; height: 100dvh; overflow-y: auto; border-left: 1px solid var(--border); background: color-mix(in srgb, var(--bg) 70%, var(--panel-2)); }
+  .detail-scrim { display: none !important; }
+}
+@media (max-width: 1239px) {
+  .book-detail.open { position: fixed; left: 0; right: 0; bottom: 0; max-height: 88dvh; z-index: 60; overflow-y: auto; border-radius: 22px 22px 0 0; background: var(--panel); box-shadow: var(--shadow-pop); padding-bottom: var(--safe-b); }
+  .detail-scrim { position: fixed; inset: 0; background: var(--backdrop); z-index: 55; }
+  .detail-inner { max-width: 640px; margin: 0 auto; width: 100%; }
+}
+.detail-inner > * { flex-shrink: 0; }
+.sim-row { scroll-padding: 0 22px; }
+.detail-inner p { margin: 0; }

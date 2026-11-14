@@ -174,8 +174,8 @@ async function lookupBooks(e?: Event): Promise<void> {
       el("div", { class: "muted small" }, res.books.length ? t("Welches Hörbuch? Bitte auswählen.")
         : t("Weder bei Audible noch bei BookBeat gefunden. Anders schreiben, einen Shop-Link einfügen oder direkt bei den Indexern suchen.")),
       seriesRow(res.books) || "",
-      el("div", { class: "pick-list" }, res.books.map((b) => el("button", { type: "button", class: "pick", onclick: () => pickBook(b) },
-        b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, (b.authors || [])[0]),
+      el("div", { class: "pick-list" }, res.books.map((b) => el("button", { type: "button", class: "pick tint-card", onclick: () => pickBook(b) },
+        coverFor(b.cover_url, b.title, (b.authors || [])[0]),
         el("span", { class: "pick-text" },
           el("b", {}, b.title),
           el("span", {}, (b.authors || []).join(", ")),
@@ -217,7 +217,7 @@ async function lookupFree(q: string): Promise<void> {
           toast(t("„{title}“ wird geladen ({n} Dateien) und erscheint dann unter Hörbücher.", { title: res.title, n: res.files }));
         } catch (err) { card.disabled = false; toast(errMsg(err), true); }
       } },
-        b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : coverArt(b.title, (b.authors || [])[0]),
+        coverFor(b.cover_url, b.title, (b.authors || [])[0]),
         el("span", { class: "pick-text" },
           el("b", {}, b.title),
           el("span", {}, (b.authors || []).join(", ")),
@@ -244,6 +244,7 @@ function seriesRow(books: Book[]): HTMLElement | null {
 
 function pickBook(b: Book): void {
   search.book = b;
+  if (window.matchMedia(WIDE).matches) showDetail(b, false);
   // the releases are searched in the language of the chosen edition
   const lang = (b.language || "").toLowerCase();
   if (lang) $<HTMLSelectElement>("#searchLang").value = lang === "english" ? "en" : lang === "german" || lang === "deutsch" ? "de" : "";
@@ -251,8 +252,8 @@ function pickBook(b: Book): void {
   $("#releaseForm").hidden = !IS_ADMIN;
   const box = $("#bookPick");
   box.hidden = false;
-  box.replaceChildren(el("div", { class: "picked" },
-    b.cover_url ? el("img", { class: "thumb", src: b.cover_url, alt: "" }) : null,
+  box.replaceChildren(el("div", { class: "picked tint-card" },
+    b.cover_url ? coverFor(b.cover_url, b.title, (b.authors || [])[0]) : null,
     el("span", {}, el("b", {}, ...personLinks(b.authors, "author", b), ` – ${b.title}`),
       b.narrators?.length ? el("span", { class: "muted" }, " · ", t("gelesen von"), " ", ...personLinks(b.narrators, "narrator", b, 2)) : null,
       el("span", { class: "muted" }, " · " + (b.asin ? t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin })

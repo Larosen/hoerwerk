@@ -17,6 +17,7 @@ import sqlite3
 import subprocess
 import time
 import unittest
+import urllib.parse
 
 from harness import ADMIN, OWN, ROOT, Client, FakeMediaServers, FakeUsenet, Server, deliver, quote, tone
 
@@ -371,6 +372,18 @@ class System(ContractTest):
         self.assertEqual(self.admin.call("POST", "/api/discover/refresh", {"section": "genre", "genre": "../1"},
                                          expect=None)[0], 400)
         self.assertEqual(fam.call("POST", "/api/discover/refresh", {"section": "foryou"}, expect=None)[0], 403)
+
+
+    def test_cover_cache_and_book_detail_refuse_odd_requests(self):
+        """Covers: only https addresses of public hosts (never the LAN or this machine), only real pictures. Details: only a real ASIN."""
+        fam = self.family()
+        for bad in ("", "http://example.org/a.jpg", "ftp://x/y.jpg", "https://127.0.0.1/a.jpg", "https://localhost/a.png",
+                    "https://10.0.0.5/a.jpg", "https://user:pw@example.org/a.jpg", "https://example.org/a b.jpg"):
+            status = fam.call("GET", "/api/cover?u=" + urllib.parse.quote(bad, safe=""), expect=None)[0]
+            self.assertIn(status, (400, 502), bad)
+        self.assertEqual(fam.call("GET", "/api/cover", expect=None)[0], 400)
+        for q in ("", "?asin=abc", "?asin=B0TEST0001&region=xx", "?asin=B0TEST00%2F1"):
+            self.assertEqual(fam.call("GET", "/api/book/detail" + q, expect=None)[0], 400, q)
 
 
 class Requests(ContractTest):

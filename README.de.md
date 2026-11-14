@@ -19,7 +19,7 @@ Audiobookshelf falsch oder gar nicht vorhanden.
 Über die Jahre habe ich aus mehreren Werkzeugen einen Workflow zusammengestellt, der für einheitliche Metadaten, eine
 saubere Ordnerstruktur und korrekte Kapitelnamen sorgen sollte. Da meine Familie viele Hörbücher hört, wurde das
 aufwendig: Mit einem Werkzeug zusammenfügen, mit einem anderen taggen und Metadaten manuell recherchieren kostete pro
-Buch einen ganzen Abend. Hinzu kommt, dass viele Werkzeuge deutsche Hörbücher unzureichend verarbeiten, weil Umlaute und
+Hörbuch einen ganzen Abend. Hinzu kommt, dass viele Werkzeuge deutsche Hörbücher unzureichend verarbeiten, weil Umlaute und
 Autorennamen mit Sonderzeichen zu Fehlern führen.
 
 Hörwerk richtet sich an alle, die ihre eigene Hörbuchsammlung auf einem NAS oder Server betreiben und diesen Ablauf
@@ -31,16 +31,17 @@ automatisieren möchten.
   Kapiteln** bekommen, abgelegt als `Autor/Serie/03 - Titel`, mit Cover, Sprecher, Serie und Beschreibung von Audible.
 - **Deutsche Titel und Namen, richtig behandelt.** Umlaute und Sonderzeichen in Titeln und Autorennamen werden in jeder
   Schreibweise erkannt (`ä`, `ae`, `a` …), damit deutsche Hörbücher zuverlässig zugeordnet werden.
-- **Anfragen für die ganze Familie.** Familienkonten entdecken Bücher und fragen sie an; du gibst frei, Hörwerk besorgt
-  sie und zeigt den Fortschritt von Download und Umwandlung. Einem Autor oder Sprecher **folgen**, und jedes neue Buch
+- **Anfragen für die ganze Familie.** Familienkonten entdecken Hörbücher und fragen sie an; du gibst frei, Hörwerk besorgt
+  sie und zeigt den Fortschritt von Download und Umwandlung. Einem Autor oder Sprecher **folgen**, und jedes neue Hörbuch
   wird von selbst angefragt – oder aus allen seinen Büchern auf einmal auswählen.
-- **Eine Suche, die Hörbücher versteht.** Jedes Release wird vor dem Laden beurteilt: richtiges Buch, richtige
+- **Eine Suche, die Hörbücher versteht.** Jedes Release wird vor dem Laden beurteilt: richtiges Hörbuch, richtige
   Sprache, ungekürzt und die *richtige Aufnahme* – nicht die Lesung, wenn das Hörspiel gefragt war.
 - **Freie Hörbücher eingebaut.** LibriVox (gemeinfrei) auf Deutsch und Englisch, mit einem Klick in den Eingang.
-- **Eine aufgeräumte Bibliothek.** Erkennt Doppelte, wandelt alte MP3-Bücher um, räumt Kapitelnamen auf, sucht für
-  ein vorhandenes Buch ein besseres Release – und löscht die alte Fassung nie ohne geprüfte neue.
+- **Eine aufgeräumte Bibliothek.** Erkennt Doppelte, wandelt alte MP3-Hörbücher um, räumt Kapitelnamen auf, sucht für
+  ein vorhandenes Hörbuch ein besseres Release – und löscht die alte Fassung nie ohne geprüfte neue.
 - **Empfehlungen.** *Entdecken* lernt aus dem Hörverlauf jedes Nutzers in Audiobookshelf oder Plex und schlägt dazu
-  passende Bücher vor; dazu kommen Tipps von Kritikern (Perlentaucher, Deutschlandfunk Kultur).
+  passende Hörbücher vor; dazu kommen Tipps von Kritikern (Perlentaucher, Deutschlandfunk Kultur). Ein Tipp auf ein Hörbuch zeigt
+  die Beschreibung und *Ähnlich wie …* – was Hörer dieses Hörbuchs auch gehört haben –, und jede Karte trägt die Farbe ihres Covers.
 - **Drei Farbwelten und eine App auf dem Home-Bildschirm.** Hell (Papier), Dunkel (Abend) und OLED (echtes Schwarz); auf iPhone und iPad
   läuft Hörwerk im Vollbild wie eine App ([Anleitung](docs/de/iphone-app.md)).
 - **Klein und abgesichert.** Ein Rust-Programm, eigenes schlankes ffmpeg in einer Sandbox, Zweitfaktor, signierte Images.
@@ -71,7 +72,7 @@ Sicherheitsupdates neu gebaut, mit cosign signiert.
 ## Was es nicht ist
 
 - **Kein Player.** Hörwerk füllt die Bibliothek; gehört wird mit Audiobookshelf, Plex oder jeder App, die M4B spielt.
-- **Keine Quelle für Bücher.** Es arbeitet mit *deinen* Dateien, *deinem* SABnzbd und *deinen* Indexern. Die einzige
+- **Keine Quelle für Hörbücher.** Es arbeitet mit *deinen* Dateien, *deinem* SABnzbd und *deinen* Indexern. Die einzige
   eingebaute Quelle ist LibriVox. Es entfernt keinen Kopierschutz.
 - **Nur amd64** bisher; arm64 steht auf der [Roadmap](docs/ROADMAP.md).
 
@@ -88,7 +89,7 @@ Sicherheitsupdates neu gebaut, mit cosign signiert.
 
 > Hörwerk verwaltet Audiodateien, die du nutzen darfst – eigene Käufe, eigene Aufnahmen oder gemeinfreie Werke.
 > Es enthält keine Medien und steht in keiner Verbindung zu Audible, Amazon, Apple, LibriVox oder anderen genannten
-> Diensten. Die Bücher in den Screenshots sind gemeinfreie Klassiker mit ausgedachten Covern.
+> Diensten. Die Hörbücher in den Screenshots sind gemeinfreie Klassiker mit ausgedachten Covern.
 
 ## Entstehung
 

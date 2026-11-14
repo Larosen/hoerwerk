@@ -195,6 +195,18 @@
   },
   {
    "method": "GET",
+   "path": "/api/book/detail",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
+   "path": "/api/cover",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
    "path": "/api/diagnostics",
    "access": "admin",
    "raw_body": false

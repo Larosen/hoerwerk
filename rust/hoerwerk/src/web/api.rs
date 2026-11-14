@@ -94,6 +94,8 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("GET", "/api/library") => h!(super::library::stats),
         ("GET", "/api/library/books") => h!(super::library::books),
         ("GET", "/api/library/cover") => h!(super::library::cover),
+        ("GET", "/api/cover") => h!(super::covers::proxy),
+        ("GET", "/api/book/detail") => h!(super::search::detail),
         ("POST", "/api/library/scan") => h!(super::library::scan),
         ("GET", "/api/library/unconverted") => h!(super::library::unconverted),
         ("GET", "/api/library/tracks") => h!(super::library::tracks),

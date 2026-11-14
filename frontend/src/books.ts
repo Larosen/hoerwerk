@@ -447,7 +447,7 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
   const li = el("li", { class: "book " + j.status });
   const m = j.match;
   const head = el("div", { class: "book-head" },
-    m?.cover_url ? el("img", { class: "thumb", src: m.cover_url, alt: "", loading: "lazy" }) : coverArt(...jobCoverText(j)),
+    m?.cover_url ? coverFor(m.cover_url, ...jobCoverText(j)) : coverArt(...jobCoverText(j)),
     el("div", { class: "book-main" },
       el("div", { class: "book-title" },
         el("span", { class: "name", title: j.source }, m?.title ? m.title : j.rel),
@@ -612,7 +612,7 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
   const score = Math.round((c.match?.score || 0) * 100);
   const narrators = c.narrators || [];
   return el("li", { class: "cand" },
-    c.cover_url ? el("img", { class: "thumb", src: c.cover_url, alt: "", loading: "lazy" }) : coverArt(c.title, (c.authors || [])[0]),
+    coverFor(c.cover_url, c.title, (c.authors || [])[0]),
     el("div", { class: "cand-main" },
       el("div", { class: "cand-title" }, c.title, c.subtitle ? el("span", { class: "muted" }, " – " + c.subtitle) : null),
       el("div", { class: "cand-sub" }, [
@@ -660,7 +660,7 @@ function fillManual(c: Book): void {
   $("#manualDialog").dataset.baseId = c.id || c.asin || "";
   const source = $("#manualSource");
   source.replaceChildren(
-    ...(c.cover_url ? [el("img", { class: "thumb", src: c.cover_url, alt: "" })] : []),
+    ...(c.cover_url ? [coverFor(c.cover_url, c.title, (c.authors || [])[0])] : []),
     el("span", {}, t("Vorlage: {source}", { source: SOURCE_NAMES[c.source || "audible"] || "Audible" })
       + (c.runtime_min ? " · " + fmtDuration(c.runtime_min * 60) : "") + " – "
       + (c.asin ? t("Cover, ASIN und Kapitel kommen von dort, alles hier Eingetragene gilt.")

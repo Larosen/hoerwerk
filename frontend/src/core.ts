@@ -275,6 +275,77 @@ function coverArt(title: string, author = "", tag = ""): HTMLDivElement {
     tag ? el("span", { class: "gen-tag" }, tag) : null);
 }
 
+/** An online cover goes through the server's cache: one origin for the page (so it can read the colour), no request to the shop's image host. */
+function coverSrc(url: string): string {
+  return "/api/cover?u=" + encodeURIComponent(url);
+}
+
+const bookColours = new Map<string, string>();
+
+/** The colour a book gets from its cover – a cloth tone (muted, medium dark), read from a picture of our own origin. */
+function pictureColour(img: HTMLImageElement): string | null {
+  const key = img.currentSrc || img.src;
+  const known = bookColours.get(key);
+  if (known) return known;
+  try {
+    const n = 24, canvas = document.createElement("canvas");
+    canvas.width = canvas.height = n;
+    const g = canvas.getContext("2d", { willReadFrequently: true });
+    if (!g) return null;
+    g.drawImage(img, 0, 0, n, n);
+    const px = g.getImageData(0, 0, n, n).data;
+    let r = 0, gr = 0, b = 0, w = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      const R = px[i] / 255, G = px[i + 1] / 255, B = px[i + 2] / 255;
+      const mx = Math.max(R, G, B), mn = Math.min(R, G, B), l = (mx + mn) / 2, d = mx - mn;
+      if (l < 0.1 || l > 0.92) continue;                            // black and white borders say nothing about the book
+      const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+      const wt = 0.05 + s * (1 - Math.abs(2 * l - 1));              // the colourful parts count most
+      r += R * wt; gr += G * wt; b += B * wt; w += wt;
+    }
+    if (w <= 0) return null;
+    r /= w; gr /= w; b /= w;
+    const mx = Math.max(r, gr, b), mn = Math.min(r, gr, b), d = mx - mn;
+    let h = 0;
+    if (d > 0) h = mx === r ? ((gr - b) / d) % 6 : mx === gr ? (b - r) / d + 2 : (r - gr) / d + 4;
+    h = Math.round(((h * 60) + 360) % 360);
+    const sat = d === 0 ? 0 : d / (1 - Math.abs(mx + mn - 1));
+    const s = sat < 0.1 ? 8 : Math.round(Math.min(55, Math.max(24, sat * 100)));      // a grey cover stays calm
+    const colour = `hsl(${sat < 0.1 ? 30 : h} ${s}% 38%)`;
+    bookColours.set(key, colour);
+    return colour;
+  } catch { return null; }                                           // a picture from another origin cannot be read
+}
+
+/** The cloth tone of a stand-in cover (the hue is set by `coverArt`). */
+function genColour(tile: HTMLElement): string {
+  return `hsl(${tile.style.getPropertyValue("--h") || "30"} 34% 38%)`;
+}
+
+/** The cover of an online result – or the stand-in tile. The card around it (`.tint-card`) takes the book's colour as `--c`. */
+function coverFor(url: string | null | undefined, title: string, author = "", cls = "thumb", attrs: Record<string, string> = {}): HTMLElement {
+  const paint = (node: HTMLElement, colour: string | null): void => {
+    const card = node.closest<HTMLElement>(".tint-card");
+    if (card && colour) card.style.setProperty("--c", colour);
+  };
+  const stand = (): HTMLElement => {
+    const tile = coverArt(title, author);
+    queueMicrotask(() => paint(tile, genColour(tile)));
+    return tile;
+  };
+  if (!url) return stand();
+  const img = el("img", { class: cls, src: coverSrc(url), alt: "", loading: "lazy", decoding: "async", ...attrs }) as HTMLImageElement;
+  let direct = false;
+  img.addEventListener("load", () => paint(img, pictureColour(img)));
+  img.addEventListener("error", () => {
+    if (!direct) { direct = true; img.src = url; return; }          // the cache could not get it: the shop's own address, once
+    const tile = stand();
+    img.replaceWith(tile);
+    queueMicrotask(() => paint(tile, genColour(tile)));
+  });
+  return img;
+}
+
 /** The real cover of a library book (from its folder or audio file), the stand-in tile when there is none. */
 function libraryCover(path: string, title: string, author = "", tag = "", version: number | string = "",
   hasCover = true): HTMLElement {

@@ -3,6 +3,7 @@
 
 pub mod api;
 pub mod audiobooks;
+pub mod covers;
 pub mod discover;
 pub mod follows;
 pub mod hosts;

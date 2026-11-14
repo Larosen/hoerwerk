@@ -576,7 +576,8 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   expect((await mia.request.get("/api/stats")).ok()).toBe(true);
   expect(JSON.stringify(await (await mia.request.get("/api/stats")).json())).not.toContain("admin");
   expect((await mia.request.get("/api/requests?scope=all")).status()).toBe(200);
-  expect(admin.concat(miaErrors).filter((e) => !/40[34]/.test(e))).toEqual([]);
+  // a 502 is the cover cache failing to reach the made-up cover address of this offline test – the card falls back to a stand-in tile
+  expect(admin.concat(miaErrors).filter((e) => !/40[34]|status of 502/.test(e))).toEqual([]);
   await mia.close();
 });
 
@@ -738,5 +739,55 @@ test("Protokoll: Zeitraum wählbar, die letzte Stunde ist voreingestellt", async
   await expect(win.getByRole("button", { name: "Alles" })).toHaveAttribute("aria-pressed", "true");
   await page.reload();
   await expect(win.getByRole("button", { name: "Alles" })).toHaveAttribute("aria-pressed", "true");   // remembered
+  expect(errors).toEqual([]);
+});
+
+const detailBook = (asin: string, title: string) => ({ asin, title, authors: ["Anna Autorin"], narrators: ["Sven Sprecher"], rating: 4.5, ratings: 80,
+  source: "audible", runtime_min: 300, release_date: "2020-01-01", language: "german", genres: ["Krimi"], cover_url: null });
+
+async function mockDetail(page: Page): Promise<void> {
+  const items = [detailBook("B0DETAIL01", "Das erste Hörbuch"), detailBook("B0DETAIL02", "Das zweite Hörbuch")];
+  await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items, updated: 1_700_000_000, error: null, running: false, personal: true, linked: true } }));
+  await page.route("**/api/book/detail?*", (r) => {
+    const asin = new URL(r.request().url()).searchParams.get("asin");
+    const b = items.find((x) => x.asin === asin)!;
+    r.fulfill({ json: { book: { ...b, description: `Beschreibung von ${b.title}` }, similar: items.filter((x) => x.asin !== asin), region: "de" } });
+  });
+}
+
+test("Entdecken am Mac: Detailspalte mit Beschreibung und „Ähnlich wie“ – ein ähnliches Hörbuch öffnet sich dort", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockDetail(page);
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
+  const col = page.locator("#bookDetail");
+  await expect(col.locator(".detail-title")).toHaveText("Das erste Hörbuch");                  // wide: the first one is shown at once
+  await expect(col.locator(".detail-blurb")).toHaveText("Beschreibung von Das erste Hörbuch");
+  await expect(col.locator(".detail-similar")).toContainText("Ähnlich wie „Das erste Hörbuch“");
+  await col.locator(".sim", { hasText: "Das zweite Hörbuch" }).click();
+  await expect(col.locator(".detail-title")).toHaveText("Das zweite Hörbuch");
+  await col.getByRole("button", { name: /Zurück/ }).click();
+  await expect(col.locator(".detail-title")).toHaveText("Das erste Hörbuch");
+  await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();                   // the column belongs to Entdecken and Suchen
+  await expect(col.locator(".detail-title")).toHaveText("Das erste Hörbuch");
+  await page.locator("nav.tabs").getByRole("link", { name: "Anfragen" }).click();
+  await expect(col).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("Entdecken auf dem Handy: Details als Blatt von unten, Escape schließt es", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockDetail(page);
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
+  const sheet = page.locator("#bookDetail");
+  await expect(page.locator(".suggestion")).toHaveCount(2);
+  await expect(sheet).toBeHidden();                                                                // narrow: nothing opens by itself
+  await page.locator(".suggestion .s-title", { hasText: "Das zweite Hörbuch" }).click();
+  await expect(sheet.locator(".detail-title")).toHaveText("Das zweite Hörbuch");
+  expect(await sheet.evaluate((e) => getComputedStyle(e).position)).toBe("fixed");
+  await expect(sheet.locator(".detail-blurb")).toHaveText("Beschreibung von Das zweite Hörbuch");
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
   expect(errors).toEqual([]);
 });
