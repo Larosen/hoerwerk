@@ -91,6 +91,7 @@ svg.i { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.
   font-size:10.5px; font-weight:600; color:var(--faint); position:relative; }
 .tabbar button[aria-current="true"] { color:var(--accent); }
 .tabbar button[aria-current="true"]::before { content:""; position:absolute; top:-7px; width:26px; height:3px; border-radius:0 0 3px 3px; background:var(--accent); }
+.badge.err { background:var(--err) !important; color:#fff !important; }
 .tabbar .badge { position:absolute; top:3px; left:calc(50% + 6px); min-width:16px; height:16px; padding:0 4px; border-radius:8px;
   background:var(--brass); color:var(--bg); font-size:10px; display:grid; place-items:center; font-weight:700; }
 main { padding:0 var(--gut) calc(88px + var(--safe-b)); min-width:0; }
@@ -101,6 +102,8 @@ main { padding:0 var(--gut) calc(88px + var(--safe-b)); min-width:0; }
 .theme-seg button { height:30px; padding:0 11px; border-radius:999px; font-size:12.5px; font-weight:600; color:var(--muted); }
 .theme-seg button[aria-pressed="true"] { background:var(--ink); color:var(--bg); }
 .inspector { display:none; }
+.who { display:flex; align-items:center; gap:10px; padding:2px 8px; font-size:13.5px; font-weight:550; }
+.who i { width:32px; height:32px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; font-style:normal; font-weight:700; font-size:14px; border:1px solid var(--accent-line); flex:none; }
 
 @media (min-width: 780px) {
   .app { grid-template-columns: 216px minmax(0,1fr); }
@@ -118,8 +121,6 @@ main { padding:0 var(--gut) calc(88px + var(--safe-b)); min-width:0; }
   .nav .badge { margin-left:auto; min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:var(--brass); color:var(--bg); font-size:11.5px; font-weight:700; display:grid; place-items:center; }
   .side .spacer { flex:1; }
   .side .theme-seg { align-self:stretch; } .side .theme-seg button { flex:1; padding:0; }
-  .who { display:flex; align-items:center; gap:10px; padding:2px 8px; font-size:13.5px; font-weight:550; }
-  .who i { width:30px; height:30px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; font-style:normal; font-weight:700; font-size:13px; border:1px solid var(--accent-line); }
 }
 @media (min-width: 1240px) {
   .app.has-inspector { grid-template-columns: 232px minmax(0,1fr) 352px; }
@@ -278,8 +279,48 @@ main { padding:0 var(--gut) calc(88px + var(--safe-b)); min-width:0; }
 .entry .tag { justify-self:start; }
 .entry time { font:12.5px var(--mono); color:var(--faint); }
 .entry .msg { font-size:14.5px; line-height:1.45; } .entry .msg small { display:block; color:var(--muted); font-size:13px; margin-top:3px; }
+/* ---- Protokoll-Zeitraum ---- */
+.winrow { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; } .winrow .lbl { font-size:12px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint); font-weight:600; }
+.empty-win { text-align:center; padding:26px 0 8px; color:var(--muted); font-size:14px; } .empty-win .btn { margin-top:12px; }
 .entry.err { --lvl:var(--err); background:linear-gradient(90deg, var(--err-soft), transparent 70%); } .entry.warn { --lvl:var(--warn); } .entry.ok { --lvl:var(--ok); } .entry.info { --lvl:var(--accent); }
 @media (max-width:640px){ .entry { grid-template-columns:auto minmax(0,1fr); } .entry .msg { grid-column:1 / -1; } }
+
+/* ---------- 10b. Reiter, Namen, Kritik-Karten, Menü, Einstellungen ------------------------------------------ */
+.tabs { display:flex; gap:26px; overflow-x:auto; scrollbar-width:none; border-bottom:1px solid var(--line); margin:0 calc(var(--gut) * -1); padding:0 var(--gut); }
+.tabs::-webkit-scrollbar { display:none; }
+.tabs button { flex:none; height:46px; font-weight:600; color:var(--muted); position:relative; font-size:15px; }
+.tabs button[aria-selected="true"] { color:var(--ink); }
+.tabs button[aria-selected="true"]::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:3px; border-radius:3px 3px 0 0; background:var(--accent); }
+.tabs .n { font-size:12px; color:var(--faint); margin-left:6px; }
+.pl { text-decoration:underline; text-decoration-color:color-mix(in srgb, currentColor 32%, transparent); text-underline-offset:3px; }
+.crit-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap:14px; margin-top:18px; }
+.crit { display:grid; grid-template-columns:96px minmax(0,1fr); gap:16px; padding:16px; align-content:start; }
+.crit h3 { font-family:var(--serif); font-size:17px; line-height:1.22; }
+.crit .by { font-size:13.5px; color:var(--muted); margin-top:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.crit .by.sm { font-size:13px; color:var(--faint); margin-top:2px; }
+.crit .tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; align-items:center; font-size:12.5px; color:var(--faint); }
+.crit .rev { grid-column:1 / -1; font-size:13px; color:var(--muted); border-top:1px solid var(--line); padding-top:10px; }
+.crit .rev a, .crit .rev .lnk { color:var(--accent); font-weight:600; white-space:nowrap; }
+.crit .acts { grid-column:1 / -1; display:flex; gap:8px; flex-wrap:wrap; }
+.crit .acts .btn { flex:1; min-width:110px; }
+.foot-note { font-size:12.5px; color:var(--faint); margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.menu { margin-top:6px; overflow:hidden; }
+.menu button { width:100%; display:flex; align-items:center; gap:14px; min-height:56px; padding:0 16px; text-align:left; font-weight:600; font-size:16px; }
+.menu button + button { border-top:1px solid var(--line); }
+.menu button svg { color:var(--accent); } .menu .chev { margin-left:auto; color:var(--faint); }
+.menu .sub { display:block; font-weight:450; font-size:13px; color:var(--muted); }
+.menu .badge2 { margin-left:auto; }
+.menu .badge2 + .chev { margin-left:8px; }
+.themes { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; margin-top:14px; }
+.themecard { text-align:left; border:1.5px solid var(--line); border-radius:var(--r); padding:10px; background:var(--surface); display:flex; flex-direction:column; gap:10px; }
+.themecard[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.themecard .pv { height:78px; border-radius:8px; border:1px solid rgba(128,128,128,.3); position:relative; overflow:hidden; }
+.themecard .pv i { position:absolute; display:block; border-radius:3px; }
+.themecard b { font-size:14px; } .themecard small { display:block; color:var(--muted); font-size:12.5px; font-weight:450; margin-top:2px; }
+.radio { display:flex; gap:12px; align-items:flex-start; padding:12px 0; } .radio + .radio { border-top:1px solid var(--line); }
+.radio .dot { width:20px; height:20px; border-radius:50%; border:2px solid var(--line-strong); flex:none; margin-top:2px; position:relative; }
+.radio.on .dot { border-color:var(--accent); } .radio.on .dot::after { content:""; position:absolute; inset:3px; border-radius:50%; background:var(--accent); }
+.radio b { display:block; font-size:15px; } .radio span.d { color:var(--muted); font-size:13.5px; }
 
 /* ---------- 11. Statistik: dieselben Buchfarben wie die Cover ------------------------------------------------------- */
 .facts4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
@@ -314,19 +355,24 @@ main { padding:0 var(--gut) calc(88px + var(--safe-b)); min-width:0; }
 <script>
 /* ---------- Daten (öffentlich-gemeinfreie Klassiker, ausgedachte Cover) ---------------------------------------- */
 const BOOKS = [
- {id:'hound', t:'Der Hund der Baskervilles', a:'Arthur Conan Doyle', c:'#6B2D2D', v:'v1', g:'Krimi', len:'6 Std. 12 Min.', y:1902, r:'4,6', n:'1.280', narr:'Peter Weis', blurb:'Ein Fluch, ein Moor und ein Hund, der nachts heult: Sherlock Holmes und Dr. Watson ermitteln auf Schloss Baskerville.', like:'Dracula'},
- {id:'emma',  t:'Emma',                      a:'Jane Austen',        c:'#5A3A5E', v:'v3', g:'Klassiker', len:'15 Std. 38 Min.', y:1815, r:'4,7', n:'2.140', narr:'Anna Thalbach', blurb:'Eine junge Frau stiftet Ehen, ohne ihr eigenes Herz zu kennen – ein Meisterwerk der feinen Ironie.', like:'Stolz und Vorurteil'},
- {id:'wotw',  t:'Der Krieg der Welten',      a:'H. G. Wells',        c:'#2F5A45', v:'v2', g:'Science-Fiction', len:'6 Std. 08 Min.', y:1898, r:'4,4', n:'860', narr:'Matthias Haase', blurb:'Marsianer landen in England. Der Urvater aller Invasionsgeschichten, nüchtern erzählt und bis heute beklemmend.', like:'Frankenstein'},
- {id:'eyre',  t:'Jane Eyre',                 a:'Charlotte Brontë',   c:'#2B3F5C', v:'v4', g:'Klassiker', len:'19 Std. 00 Min.', y:1847, r:'4,5', n:'640', narr:'Eva Mattes', blurb:'Die Waise Jane findet ihren Weg als Gouvernante auf Thornfield Hall – und ein Geheimnis unter dem Dach.', like:'Emma'},
- {id:'jekyll',t:'Dr. Jekyll und Mr. Hyde',   a:'Robert Louis Stevenson', c:'#3E4E55', v:'v1', g:'Gruselig', len:'3 Std. 01 Min.', y:1886, r:'4,3', n:'510', narr:'Gert Westphal', blurb:'Ein angesehener Arzt trinkt einen Trank und wird zu einem anderen.', like:'Dracula'},
- {id:'island',t:'Die Schatzinsel',           a:'Robert Louis Stevenson', c:'#A8742A', v:'v2', g:'Abenteuer', len:'6 Std. 52 Min.', y:1883, r:'4,8', n:'3.020', narr:'Hans Paetsch', blurb:'Jim Hawkins, eine Karte und ein einbeiniger Koch: das Abenteuerbuch schlechthin.', like:'Ein Fall von Sherlock Holmes'},
- {id:'scarlet',t:'Eine Studie in Scharlachrot',a:'Arthur Conan Doyle',c:'#8A3A2A', v:'v3', g:'Krimi', len:'5 Std. 20 Min.', y:1887, r:'4,5', n:'980', narr:'Peter Weis', blurb:'Das erste Treffen von Holmes und Watson – und ein Mord ohne Wunde.', like:'Das Zeichen der Vier'},
- {id:'dracula',t:'Dracula',                  a:'Bram Stoker',        c:'#4A1F25', v:'v4', g:'Gruselig', len:'15 Std. 02 Min.', y:1897, r:'4,6', n:'3.610', narr:'Reinhard Kuhnert', blurb:'Ein Graf aus Transsilvanien zieht nach London. Briefe und Tagebücher erzählen vom Grauen.', like:'Frankenstein'},
- {id:'time',  t:'Die Zeitmaschine',          a:'H. G. Wells',        c:'#3F6B63', v:'v1', g:'Science-Fiction', len:'3 Std. 25 Min.', y:1895, r:'4,4', n:'720', narr:'Matthias Haase', blurb:'Ein Erfinder reist in das Jahr 802 701 und trifft auf die Eloi und die Morlocks.', like:'Der Krieg der Welten'},
- {id:'sign',  t:'Das Zeichen der Vier',      a:'Arthur Conan Doyle', c:'#4B5A33', v:'v2', g:'Krimi', len:'4 Std. 41 Min.', y:1890, r:'4,4', n:'700', narr:'Peter Weis', blurb:'Ein Schatz, eine Rache und Watsons Verlobte: Holmes\' zweiter Fall.', like:'Eine Studie in Scharlachrot'},
- {id:'frank', t:'Frankenstein',              a:'Mary Shelley',       c:'#34404F', v:'v3', g:'Gruselig', len:'8 Std. 30 Min.', y:1818, r:'4,3', n:'1.900', narr:'Ulrich Matthes', blurb:'Ein Student erschafft Leben und flieht vor seiner eigenen Schöpfung.', like:'Dr. Jekyll und Mr. Hyde'},
- {id:'pride', t:'Stolz und Vorurteil',       a:'Jane Austen',        c:'#8C5A3C', v:'v4', g:'Klassiker', len:'12 Std. 05 Min.', y:1813, r:'4,8', n:'4.200', narr:'Anna Thalbach', blurb:'Elizabeth Bennet und Mr. Darcy: Vorurteile auf beiden Seiten.', like:'Emma'},
+ {id:'hound', t:'Der Hund der Baskervilles', a:'Arthur Conan Doyle', c:'#6B2D2D', v:'v1', g:'Krimi', len:'6 Std. 12 Min.', y:1902, r:'4,6', n:'1.280', narr:'Jonas Kellerer', blurb:'Ein Fluch, ein Moor und ein Hund, der nachts heult: Sherlock Holmes und Dr. Watson ermitteln auf Schloss Baskerville.', like:'Dracula'},
+ {id:'emma',  t:'Emma',                      a:'Jane Austen',        c:'#5A3A5E', v:'v3', g:'Klassiker', len:'15 Std. 38 Min.', y:1815, r:'4,7', n:'2.140', narr:'Mara Eilers', blurb:'Eine junge Frau stiftet Ehen, ohne ihr eigenes Herz zu kennen – ein Meisterwerk der feinen Ironie.', like:'Stolz und Vorurteil'},
+ {id:'wotw',  t:'Der Krieg der Welten',      a:'H. G. Wells',        c:'#2F5A45', v:'v2', g:'Science-Fiction', len:'6 Std. 08 Min.', y:1898, r:'4,4', n:'860', narr:'Tobias Rennert', blurb:'Marsianer landen in England. Der Urvater aller Invasionsgeschichten, nüchtern erzählt und bis heute beklemmend.', like:'Frankenstein'},
+ {id:'eyre',  t:'Jane Eyre',                 a:'Charlotte Brontë',   c:'#2B3F5C', v:'v4', g:'Klassiker', len:'19 Std. 00 Min.', y:1847, r:'4,5', n:'640', narr:'Lena Marwitz', blurb:'Die Waise Jane findet ihren Weg als Gouvernante auf Thornfield Hall – und ein Geheimnis unter dem Dach.', like:'Emma'},
+ {id:'jekyll',t:'Dr. Jekyll und Mr. Hyde',   a:'Robert Louis Stevenson', c:'#3E4E55', v:'v1', g:'Gruselig', len:'3 Std. 01 Min.', y:1886, r:'4,3', n:'510', narr:'Karl Brandner', blurb:'Ein angesehener Arzt trinkt einen Trank und wird zu einem anderen.', like:'Dracula'},
+ {id:'island',t:'Die Schatzinsel',           a:'Robert Louis Stevenson', c:'#A8742A', v:'v2', g:'Abenteuer', len:'6 Std. 52 Min.', y:1883, r:'4,8', n:'3.020', narr:'Walter Dreyer', blurb:'Jim Hawkins, eine Karte und ein einbeiniger Koch: das Abenteuerbuch schlechthin.', like:'Ein Fall von Sherlock Holmes'},
+ {id:'scarlet',t:'Eine Studie in Scharlachrot',a:'Arthur Conan Doyle',c:'#8A3A2A', v:'v3', g:'Krimi', len:'5 Std. 20 Min.', y:1887, r:'4,5', n:'980', narr:'Jonas Kellerer', blurb:'Das erste Treffen von Holmes und Watson – und ein Mord ohne Wunde.', like:'Das Zeichen der Vier'},
+ {id:'dracula',t:'Dracula',                  a:'Bram Stoker',        c:'#4A1F25', v:'v4', g:'Gruselig', len:'15 Std. 02 Min.', y:1897, r:'4,6', n:'3.610', narr:'Frank Osterloh', blurb:'Ein Graf aus Transsilvanien zieht nach London. Briefe und Tagebücher erzählen vom Grauen.', like:'Frankenstein'},
+ {id:'time',  t:'Die Zeitmaschine',          a:'H. G. Wells',        c:'#3F6B63', v:'v1', g:'Science-Fiction', len:'3 Std. 25 Min.', y:1895, r:'4,4', n:'720', narr:'Tobias Rennert', blurb:'Ein Erfinder reist in das Jahr 802 701 und trifft auf die Eloi und die Morlocks.', like:'Der Krieg der Welten'},
+ {id:'sign',  t:'Das Zeichen der Vier',      a:'Arthur Conan Doyle', c:'#4B5A33', v:'v2', g:'Krimi', len:'4 Std. 41 Min.', y:1890, r:'4,4', n:'700', narr:'Jonas Kellerer', blurb:'Ein Schatz, eine Rache und Watsons Verlobte: Holmes\' zweiter Fall.', like:'Eine Studie in Scharlachrot'},
+ {id:'frank', t:'Frankenstein',              a:'Mary Shelley',       c:'#34404F', v:'v3', g:'Gruselig', len:'8 Std. 30 Min.', y:1818, r:'4,3', n:'1.900', narr:'Paul Reinders', blurb:'Ein Student erschafft Leben und flieht vor seiner eigenen Schöpfung.', like:'Dr. Jekyll und Mr. Hyde'},
+ {id:'grimm', t:'Die Märchen der Brüder Grimm', a:'Jacob Grimm', aa:['Jacob Grimm','Wilhelm Grimm'], c:'#7B3F52', v:'v3', g:'Märchen', len:'11 Std. 40 Min.', y:1812, r:'4,7', n:'1.560', narr:'Paul Reinders', nn:['Paul Reinders','Mara Eilers','Lena Marwitz','Karl Brandner','Walter Dreyer','Tobias Rennert'], blurb:'Hundert Märchen in einer neuen Aufnahme mit sechs Stimmen: von Aschenputtel bis zum Wolf und den sieben Geißlein.', like:'Tausendundeine Nacht', crit:'Buch des Monats bei Deutschlandfunk Kultur'},
+ {id:'verw', t:'Die Verwandlung', a:'Franz Kafka', c:'#4F4A6B', v:'v1', g:'Klassiker', len:'2 Std. 05 Min.', y:1915, r:'4,5', n:'2.480', narr:'Jonas Kellerer', blurb:'Gregor Samsa erwacht eines Morgens als Ungeziefer. Eine neue, sehr nahe Lesung.', like:'Der Process', crit:'Besprochen bei Deutschlandfunk Kultur'},
+ {id:'effi', t:'Effi Briest', a:'Theodor Fontane', c:'#6E4B3A', v:'v4', g:'Klassiker', len:'13 Std. 20 Min.', y:1895, r:'4,6', n:'1.320', narr:'Mara Eilers', blurb:'Ein junges Mädchen, ein älterer Mann und ein Fehltritt, der ein Leben bestimmt.', like:'Emma', crit:'Besprochen bei Perlentaucher'},
+ {id:'sand', t:'Der Sandmann', a:'E. T. A. Hoffmann', c:'#6A2F4E', v:'v2', g:'Gruselig', len:'1 Std. 50 Min.', y:1816, r:'4,4', n:'890', narr:'Karl Brandner', blurb:'Nathanael glaubt, den Sandmann wiederzuerkennen – und verliert den Halt.', like:'Frankenstein', crit:'Besprochen bei Perlentaucher'},
+ {id:'pride', t:'Stolz und Vorurteil',       a:'Jane Austen',        c:'#8C5A3C', v:'v4', g:'Klassiker', len:'12 Std. 05 Min.', y:1813, r:'4,8', n:'4.200', narr:'Mara Eilers', blurb:'Elizabeth Bennet und Mr. Darcy: Vorurteile auf beiden Seiten.', like:'Emma'},
 ];
+const people = (names, max = 2) => names.slice(0, max).map(n => `<span class="pl">${n}</span>`).join(', ') + (names.length > max ? ' u. a.' : '');
 const B = Object.fromEntries(BOOKS.map(b => [b.id, b]));
 
 /* ---------- Bausteine -------------------------------------------------------------------------------------------- */
@@ -355,30 +401,35 @@ const leaders = rows => `<dl class="leaders">${rows.map(([k,v])=>`<div><dt>${k}<
 
 /* ---------- Seiten ------------------------------------------------------------------------------------------------ */
 const SCREENS = {
- discover: { title:'Entdecken', inspector:true, html: () => { const f=B.hound; return `
-  <header class="page-head"><div><p class="eyebrow">Samstag, 14. November</p><h1>Entdecken</h1></div></header>
-  <div class="chips" role="group" aria-label="Stöbern nach">
-    <button class="chip on">Für dich</button><button class="chip">Krimi <span class="n">212</span></button><button class="chip">Klassiker</button><button class="chip">Science-Fiction</button><button class="chip">Gruselig</button><button class="chip">Abenteuer</button><button class="chip">Kurz &amp; gut</button><button class="chip">Gratis</button>
-  </div>
+ discover: { title:'Entdecken', inspector:true, html: () => {
+  const tab = ['foryou','genre','kritik','gefolgt'].includes(q.get('tab')) ? q.get('tab') : 'foryou';
+  const tabs = `<div class="tabs" role="tablist">${[['foryou','Für dich'],['genre','Nach Genre'],['kritik','Aus der Kritik'],['gefolgt','Gefolgt']].map(([k,l])=>`<button role="tab" aria-selected="${k===tab}">${l}</button>`).join('')}</div>`;
+  const genres = `<div class="chips" style="margin-top:14px" role="group" aria-label="Genres"><button class="chip ${tab==='genre'?'on':''}">Alle</button><button class="chip">Krimi <span class="n">212</span></button><button class="chip">Klassiker <span class="n">148</span></button><button class="chip">Science-Fiction</button><button class="chip">Gruselig</button><button class="chip">Abenteuer</button><button class="chip">Märchen</button><button class="chip">Humor</button></div>`;
+  const head = `<header class="page-head"><div><h1>Entdecken</h1></div></header>${tabs}`;
+  if (tab === 'kritik') { const items=['grimm','verw','effi','sand','dracula','emma'];
+    return head + `<div class="crit-grid">${items.map(id=>{ const b=B[id]; const aa=b.aa||[b.a], nn=b.nn||[b.narr]; return `<article class="card crit tinted" style="--c:${b.c}">${cover(b)}<div><h3>${b.t}</h3><p class="by">${people(aa)}</p><p class="by sm">gelesen von ${people(nn)}</p><div class="tags"><span class="tag acc">${b.g}</span><span>★ ${b.r}</span><span>${b.len} · ${b.y}</span></div></div><p class="rev">${b.crit||'Besprochen bei Deutschlandfunk Kultur'} · <span class="lnk">Kritik lesen</span></p><div class="acts"><button class="btn primary sm">Anfragen</button><button class="btn sm">${ic('search')} Suchen</button></div></article>`;}).join('')}</div>
+    <p class="foot-note"><span>Stand: 13.11.26, 22:21 · 231 besprochene Hörbücher warten noch auf ihr Hörbuch</span><button class="more" style="color:var(--accent);font-weight:600">Aktualisieren</button></p>`; }
+  if (tab === 'genre') return head + genres + shelf('Bestseller', ['dracula','pride','island','hound','emma','eyre']) + shelf('Neuheiten', ['grimm','verw','effi','sand'], {newIds:['grimm','verw']});
+  if (tab === 'gefolgt') return head + `<div class="chips" style="margin-top:14px"><button class="chip on">Alle <span class="n">5</span></button><button class="chip">Autoren <span class="n">3</span></button><button class="chip">Sprecher <span class="n">2</span></button></div>` + shelf('Neu von Arthur Conan Doyle', ['scarlet','sign','hound'], {newIds:['sign']}) + shelf('Neu von H. G. Wells', ['wotw','time']) + shelf('Neu mit Mara Eilers', ['emma','pride','effi'], {newIds:['effi']});
+  const f=B.hound; return head + genres + `
   <article class="card tinted feature" style="--c:${f.c}; margin-top:18px">
     ${cover(f,'lg')}
-    <div><p class="eyebrow">Heute für dich</p><h2>${f.t}</h2><p class="by">${f.a} · gelesen von ${f.narr}</p>
+    <div><p class="eyebrow">Heute für dich</p><h2>${f.t}</h2><p class="by">${people([f.a])} · gelesen von ${people([f.narr])}</p>
       <div class="facts"><span><b>★ ${f.r}</b> (${f.n})</span><span>${f.len}</span><span>Deutsch</span><span>ungekürzt</span></div>
       <p class="why">Weil du „Dracula“ und „Frankenstein“ in den letzten Wochen gehört hast.</p>
       <div class="acts"><button class="btn primary">Anfragen</button><button class="btn">Details</button></div></div>
   </article>
   ${shelf('Passt zu deiner Bibliothek', ['dracula','jekyll','frank','wotw','time','eyre'])}
   ${shelf('Neu von Autoren, denen du folgst', ['scarlet','sign','island','pride'], {newIds:['sign','scarlet']})}
-  ${shelf('Kritiker empfehlen', ['hound','emma','eyre','pride','wotw'], {why:'Deutschlandfunk Kultur · Perlentaucher', sel:'hound'})}
-  ${shelf('Gratis zum Mitnehmen', ['island','time','jekyll','dracula'], {why:'LibriVox · gemeinfrei', meta:()=>'<span class="tag ok">gratis</span>'})}`; },
-  insp: () => { const b=B.hound; return `<div class="eyebrow">Details</div>${cover(b,'lg')}<h2>${b.t}</h2><p class="by">${b.a}</p>
+  ${shelf('Aus der Kritik', ['grimm','verw','effi','sand'], {why:'Deutschlandfunk Kultur · Perlentaucher', sel:'hound'})}`; },
+  insp: () => { const k=q.get('tab')==='kritik'; const b=k?B.grimm:B.hound; const aa=b.aa||[b.a], nn=b.nn||[b.narr]; return `<div class="eyebrow">Details</div>${cover(b,'lg')}<h2>${b.t}</h2><p class="by">${people(aa,3)}</p>
    <p class="blurb">${b.blurb}</p>
-   ${leaders([['Sprecher',b.narr],['Laufzeit',b.len],['Erschienen',b.y],['Bewertung','★ '+b.r+' ('+b.n+')'],['Fassung','ungekürzt, Deutsch']])}
+   ${leaders([['Gelesen von', people(nn,2)],['Laufzeit',b.len],['Erschienen',b.y],['Bewertung','★ '+b.r+' ('+b.n+')'],['Fassung','ungekürzt, Deutsch']])}
    <div class="acts"><button class="btn primary">Anfragen</button><button class="btn">Suchen</button></div>
-   <div class="more-like"><h3>Weiterstöbern</h3><button class="chip">Mehr von ${b.a.split(' ').slice(-1)[0]} <span class="n">9</span></button><button class="chip">Gelesen von ${b.narr.split(' ')[0]} <span class="n">14</span></button><button class="chip">Ähnlich wie „${b.like}“</button><button class="chip">Düster &amp; atmosphärisch</button></div>`; } },
+   <div class="more-like"><h3>Weiterstöbern</h3><button class="chip">Mehr von ${aa[0].split(' ').slice(-1)[0]} <span class="n">9</span></button><button class="chip">Gelesen von ${nn[0].split(' ')[0]} <span class="n">14</span></button><button class="chip">Ähnlich wie „${b.like}“</button><button class="chip">Düster &amp; atmosphärisch</button></div>`; } },
 
- library: { title:'Bücher', inspector:false, html: () => `
-  <header class="page-head"><div><p class="eyebrow">48 Bücher · 612 Stunden</p><h1>Bücher</h1></div><div class="seg" role="group"><button aria-pressed="true">Regal</button><button aria-pressed="false">Liste</button></div></header>
+ library: { title:'Hörbücher', inspector:false, html: () => `
+  <header class="page-head"><div><p class="eyebrow">48 Hörbücher · 612 Stunden</p><h1>Hörbücher</h1></div><div class="seg" role="group"><button aria-pressed="true">Regal</button><button aria-pressed="false">Liste</button></div></header>
   <section class="card" aria-label="Werkbank" style="margin-top:4px">
     <div style="padding:14px 16px 0;display:flex;justify-content:space-between;align-items:baseline"><h2 class="serif" style="font-size:18px">Werkbank</h2><span class="muted" style="font-size:13px">2 in Arbeit · 1 wartet</span></div>
     <div class="job">${cover(B.frank)}<div><h3>${B.frank.t}</h3><p class="sub">${B.frank.a} · 14 MP3-Dateien</p>
@@ -388,41 +439,66 @@ const SCREENS = {
       <div class="stations" style="--fill:16.5%"><div class="st done"><b></b>Eingang</div><div class="st now"><b></b>Verbinden</div><div class="st"><b></b>Taggen</div><div class="st"><b></b>Ablegen</div></div>
       <div style="margin-top:12px">${wave(3,34,'brass')}</div><div class="line"><span>Kapitel 7 von 19 · schonende Umwandlung</span><span class="num">34 %</span></div></div></div>
   </section>
-  <div class="attention" style="margin-top:14px"><span class="ico">${ic('warn')}</span><p><b>Ein Buch braucht dich.</b> „Track 01–12“ ließ sich keinem Buch sicher zuordnen.</p><button class="btn warn sm">Prüfen</button></div>
+  <div class="attention" style="margin-top:14px"><span class="ico">${ic('warn')}</span><p><b>Ein Hörbuch braucht dich.</b> „Track 01–12“ ließ sich keinem Hörbuch sicher zuordnen.</p><button class="btn warn sm">Prüfen</button></div>
   <div class="chips" style="margin-top:20px"><button class="chip on">Alle <span class="n">48</span></button><button class="chip">M4B</button><button class="chip">Noch MP3 <span class="n">6</span></button><button class="chip">Doppelte <span class="n">2</span></button><button class="chip">Neu</button></div>
   <div class="toolrow"><span class="muted" style="font-size:13px">Sortiert nach Autor</span><button class="more" style="color:var(--accent);font-weight:600;font-size:13.5px">Sortierung</button></div>
   <div class="grid" style="margin-top:18px">${['hound','scarlet','sign','dracula','jekyll','frank','emma','pride','eyre','island','wotw','time'].map((id,i)=>bookCard(B[id],{new:i===1, meta:'<span class="tag">M4B</span><span>'+B[id].len.replace(' Min.','m').replace(' Std. ','h ')+'</span>'})).join('')}</div>` },
 
  search: { title:'Suche', inspector:false, html: () => `
-  <header class="page-head"><div><p class="eyebrow">Audible · BookBeat · Indexer</p><h1>Suche</h1></div></header>
+  <header class="page-head"><div><h1>Suchen</h1></div></header>
   <div class="searchbox">${ic('search')}<span>Sherlock Holmes</span><span class="caret"></span></div>
-  <div class="chips" style="margin-top:12px"><button class="chip on">Alles</button><button class="chip">Bücher <span class="n">24</span></button><button class="chip">Releases <span class="n">9</span></button><button class="chip">Nur Deutsch</button><button class="chip">Nur ungekürzt</button></div>
-  <h2 class="serif" style="font-size:20px;margin:22px 0 10px">Bücher</h2>
+  <div class="chips" style="margin-top:12px"><button class="chip on">Alles</button><button class="chip">Hörbücher <span class="n">24</span></button><button class="chip">Releases <span class="n">9</span></button><button class="chip">Nur Deutsch</button><button class="chip">Nur ungekürzt</button></div>
+  <h2 class="serif" style="font-size:20px;margin:22px 0 10px">Hörbücher</h2>
   <article class="card tinted result" style="--c:${B.scarlet.c}">${cover(B.scarlet)}<div><h3>${B.scarlet.t}</h3><p class="muted" style="font-size:14px;margin-top:3px">${B.scarlet.a} · Sherlock Holmes 1</p><p class="faint" style="font-size:13px;margin-top:8px">${B.scarlet.narr} · ${B.scarlet.len} · ★ ${B.scarlet.r}</p></div><button class="btn primary">Anfragen</button></article>
   <h2 class="serif" style="font-size:20px;margin:26px 0 4px">Releases</h2><p class="muted" style="font-size:13.5px;margin-bottom:10px">Jedes Release wird vor dem Laden beurteilt – das Beste steht oben.</p>
   <section class="card">
-   <div class="release"><div class="score" style="--v:96;--sc:var(--ok)"><span>96</span></div><div><b>Arthur Conan Doyle – Eine Studie in Scharlachrot</b><div class="name">Doyle.Studie.in.Scharlachrot.DE.ungekuerzt.M4B-HW</div><div class="verdicts"><span class="tag ok">Richtiges Buch</span><span class="tag ok">Deutsch</span><span class="tag ok">ungekürzt</span><span class="tag ok">Einzelsprecher</span></div></div><div class="side-r"><span class="num">412 MB · 2 T.</span><button class="btn primary sm">Laden</button></div></div>
+   <div class="release"><div class="score" style="--v:96;--sc:var(--ok)"><span>96</span></div><div><b>Arthur Conan Doyle – Eine Studie in Scharlachrot</b><div class="name">Doyle.Studie.in.Scharlachrot.DE.ungekuerzt.M4B-HW</div><div class="verdicts"><span class="tag ok">Richtiges Hörbuch</span><span class="tag ok">Deutsch</span><span class="tag ok">ungekürzt</span><span class="tag ok">Einzelsprecher</span></div></div><div class="side-r"><span class="num">412 MB · 2 T.</span><button class="btn primary sm">Laden</button></div></div>
    <div class="release"><div class="score" style="--v:71;--sc:var(--warn)"><span>71</span></div><div><b>Sherlock Holmes – Eine Studie in Scharlachrot</b><div class="name">Sherlock.Holmes.Studie.in.Scharlachrot.MP3.128k</div><div class="verdicts"><span class="tag ok">Richtiges Buch</span><span class="tag ok">Deutsch</span><span class="tag warn">MP3, 128 kbit/s</span><span class="tag warn">Hörspiel-Fassung?</span></div></div><div class="side-r"><span class="num">288 MB · 9 T.</span><button class="btn sm">Laden</button></div></div>
    <div class="release rej"><div class="score" style="--v:22;--sc:var(--err)"><span>22</span></div><div><b>Sherlock Holmes Collection (Englisch)</b><div class="name">Sherlock.Holmes.Complete.Collection.EN.M4B</div><div class="verdicts"><span class="tag err">Sprache: Englisch</span><span class="tag err">Sammelband</span></div></div><div class="side-r"><span class="num">3,1 GB · 40 T.</span><span class="tag err">abgelehnt</span></div></div>
   </section>` },
 
- log: { title:'Protokoll', inspector:false, html: () => `
-  <header class="page-head"><div><p class="eyebrow">Live · letzte 24 Stunden</p><h1>Protokoll</h1></div><div class="seg"><button aria-pressed="true">Live</button><button aria-pressed="false">Pausiert</button></div></header>
-  <div class="chips"><button class="chip on">Alles</button><button class="chip">Fehler <span class="n">1</span></button><button class="chip">Warnungen <span class="n">2</span></button><button class="chip">Eingang</button><button class="chip">Umwandlung</button><button class="chip">Downloads</button><button class="chip">Familie</button></div>
-  <div class="day">Heute <small>14. November</small></div>
-  <div class="log">
-   <div class="entry info"><time>21:42</time><span class="tag acc">Umwandlung</span><div class="msg">„Frankenstein“ wird getaggt<small>Cover und Beschreibung von Audible geladen, 14 Kapitel erkannt.</small></div></div>
-   <div class="entry ok"><time>21:31</time><span class="tag ok">Bibliothek</span><div class="msg">„Das Zeichen der Vier“ abgelegt<small>Arthur Conan Doyle / Sherlock Holmes / 02 – Das Zeichen der Vier</small></div></div>
-   <div class="entry warn"><time>21:12</time><span class="tag warn">Eingang</span><div class="msg">„Track 01–12“ nicht eindeutig<small>Zwei Bücher passen mit je 78 % – bitte unter „Prüfen“ entscheiden.</small></div></div>
-   <div class="entry err"><time>20:58</time><span class="tag err">Download</span><div class="msg">SABnzbd nicht erreichbar<small>Verbindung zu 192.168.1.20:8085 abgelehnt – es wird alle 5 Minuten neu versucht.</small></div></div>
-   <div class="entry"><time>20:41</time><span class="tag">Familie</span><div class="msg">Mia hat „Die Schatzinsel“ angefragt<small>Wartet auf Freigabe.</small></div></div>
-   <div class="entry ok"><time>19:03</time><span class="tag ok">Bibliothek</span><div class="msg">Wochen-Scan abgeschlossen<small>48 Bücher, 2 Doppelte, 6 noch als MP3.</small></div></div>
+ log: { title:'Protokoll', inspector:false, html: () => {
+  const win = [15,60,1440,0].includes(+q.get('win')) && q.get('win')!==null ? +q.get('win') : 60;
+  const NOW='21:52', E=[
+   [10,'info','Umwandlung','„Frankenstein“ wird getaggt','Cover und Beschreibung von Audible geladen, 14 Kapitel erkannt.','21:42'],
+   [21,'ok','Bibliothek','„Das Zeichen der Vier“ abgelegt','Arthur Conan Doyle / Sherlock Holmes / 02 – Das Zeichen der Vier','21:31'],
+   [40,'warn','Eingang','„Track 01–12“ nicht eindeutig','Zwei Hörbücher passen mit je 78 % – bitte unter „Prüfen“ entscheiden.','21:12'],
+   [54,'err','Download','SABnzbd nicht erreichbar','Verbindung zu 192.168.1.20:8085 abgelehnt – es wird alle 5 Minuten neu versucht.','20:58'],
+   [71,'','Familie','Mia hat „Die Schatzinsel“ angefragt','Wartet auf Freigabe.','20:41'],
+   [169,'ok','Bibliothek','Wochen-Scan abgeschlossen','48 Hörbücher, 2 Doppelte, 6 noch als MP3.','19:03']];
+  const vis = E.filter(e => !win || e[0] <= win), hid = E.length - vis.length;
+  const label = win===15?'15 Min.':win===60?'60 Min.':win===1440?'24 Std.':'Alles';
+  const tagc = {ok:'ok',warn:'warn',err:'err',info:'acc','':''};
+  return `
+  <header class="page-head"><div><p class="eyebrow">Live · ${win?'letzte '+label:'alle Einträge'}</p><h1>Protokoll</h1></div><div class="seg"><button aria-pressed="true">Live</button><button aria-pressed="false">Pausiert</button></div></header>
+  <div class="winrow"><span class="lbl">Zeitraum</span><div class="seg" role="group" aria-label="Zeitraum">${[[15,'15 Min.'],[60,'60 Min.'],[1440,'24 Std.'],[0,'Alles']].map(([m,l])=>`<button aria-pressed="${m===win}">${l}</button>`).join('')}</div></div>
+  <div class="chips"><button class="chip on">Alles</button><button class="chip">Fehler <span class="n">1</span></button><button class="chip">Warnungen <span class="n">1</span></button><button class="chip">Eingang</button><button class="chip">Umwandlung</button><button class="chip">Downloads</button><button class="chip">Familie</button></div>
+  <div class="day">Heute <small>14. November · jetzt ${NOW}</small></div>
+  <div class="log">${vis.map(e=>`<div class="entry ${e[1]}"><time>${e[5]}</time><span class="tag ${tagc[e[1]]}">${e[2]}</span><div class="msg">${e[3]}<small>${e[4]}</small></div></div>`).join('')}</div>
+  ${hid?`<div class="empty-win">${hid} ältere ${hid===1?'Eintrag':'Einträge'} außerhalb des Zeitraums<br><button class="btn sm">Letzte 24 Stunden anzeigen</button></div>`:''}`; } },
+
+ more: { title:'Mehr', inspector:false, html: () => `
+  <header class="page-head"><div><h1>Mehr</h1></div></header>
+  <div class="card menu">
+   <button data-go="log">${ic('log')}<span>Protokoll<span class="sub">Was Hörwerk gerade tut</span></span><span class="tag err badge2">1 Fehler</span><svg class="i chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+   <button data-go="stats">${ic('stats')}<span>Statistik<span class="sub">Dein Hörjahr in Zahlen</span></span><svg class="i chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
+   <button data-go="settings">${ic('gear')}<span>Einstellungen<span class="sub">Anzeige, Verbindungen, Konten</span></span><svg class="i chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></button>
   </div>
-  <div class="day">Gestern <small>13. November</small></div>
-  <div class="log">
-   <div class="entry ok"><time>22:15</time><span class="tag ok">Download</span><div class="msg">„Dracula“ geladen und entpackt<small>15 Std. 02 Min. · 612 MB</small></div></div>
-   <div class="entry info"><time>18:20</time><span class="tag acc">Entdecken</span><div class="msg">Neue Bücher von 2 gefolgten Autoren gefunden</div></div>
-  </div>` },
+  <div class="card menu" style="margin-top:16px"><button><span class="who" style="padding:0"><i>L</i></span><span>Larosen<span class="sub">Administrator</span></span></button><button style="color:var(--err)"><span style="font-weight:600">Abmelden</span></button></div>` },
+
+ settings: { title:'Einstellungen', inspector:false, html: () => {
+  const cur = theme, pv = (bg, sf, ln, ac) => `<div class="pv" style="background:${bg}"><i style="left:8px;top:8px;width:34%;height:9px;background:${ln}"></i><i style="left:8px;top:24px;right:8px;height:26px;background:${sf};border:1px solid ${ln}"></i><i style="left:8px;bottom:9px;width:30%;height:10px;background:${ac}"></i></div>`;
+  const cards = [['auto','Automatisch','Folgt dem Gerät', `<div class="pv" style="background:linear-gradient(115deg,#F3EDE0 50%,#1D1916 50%)"><i style="left:8px;top:8px;width:34%;height:9px;background:#C6BA9E"></i><i style="right:8px;top:24px;width:44%;height:26px;background:#27221F;border:1px solid #3B342D"></i><i style="left:8px;bottom:9px;width:30%;height:10px;background:#1B6454"></i></div>`],
+    ['light','Hell','Papier',pv('#F3EDE0','#FBF8F0','#DCD2BC','#1B6454')],['dark','Dunkel','Abend',pv('#1D1916','#27221F','#3B342D','#63BDA6')],['oled','OLED','Nacht – echtes Schwarz',pv('#000','#0B0A09','#2A2520','#6FCFB7')]];
+  return `
+  <header class="page-head"><div><h1>Einstellungen</h1></div></header>
+  <div class="chips" role="group"><button class="chip">Allgemein</button><button class="chip">Eingang &amp; Bibliothek</button><button class="chip">Verbindungen</button><button class="chip">Konten</button><button class="chip on">Anzeige</button><button class="chip">Benachrichtigungen</button></div>
+  <section class="card panel" style="margin-top:18px"><h3>Farbwelt</h3><p class="sub">Wird in deinem Konto gespeichert und gilt auch auf neuen Geräten.</p>
+   <div class="themes">${cards.map(([k,l,d,p])=>`<button class="themecard" data-theme-btn="${k}" aria-pressed="${k===cur}">${p}<span><b>${l}</b><small>${d}</small></span></button>`).join('')}</div>
+   <div style="margin-top:20px"><h3 style="font-size:16px">Gilt für</h3>
+    <div class="radio on"><span class="dot"></span><span><b>Alle meine Geräte</b><span class="d">iPhone, iPad und Mac zeigen dieselbe Farbwelt.</span></span></div>
+    <div class="radio"><span class="dot"></span><span><b>Nur dieses Gerät</b><span class="d">Zum Beispiel OLED auf dem iPhone, Hell am Mac.</span></span></div></div>
+  </section>`; } },
 
  stats: { title:'Statistik', inspector:false, html: () => {
   const days=[['Mo',1.2],['Di',0.6],['Mi',2.1],['Do',1.4],['Fr',0.9],['Sa',3.2],['So',2.6]];
@@ -430,12 +506,12 @@ const SCREENS = {
   const lines=[0,1,2,3,4].map(g=>`<line class="grid-l" x1="${pl}" x2="${W}" y1="${H-pb-(H-pb-8)*g/max}" y2="${H-pb-(H-pb-8)*g/max}"/>`).join('');
   const mon=[18,22,16,25,30,28,34,31,38,42,36,48], MW=520,MH=150; const pts=mon.map((v,i)=>[10+i*(MW-20)/11, MH-14-(MH-34)*v/52]);
   const dpath=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
-  const au=[['Arthur Conan Doyle','hound',84,'9 Bücher · 46 Std.'],['H. G. Wells','wotw',58,'4 Bücher · 18 Std.'],['Jane Austen','emma',46,'3 Bücher · 41 Std.'],['Robert Louis Stevenson','island',31,'2 Bücher · 10 Std.']];
+  const au=[['Arthur Conan Doyle','hound',84,'9 Hörbücher · 46 Std.'],['H. G. Wells','wotw',58,'4 Hörbücher · 18 Std.'],['Jane Austen','emma',46,'3 Hörbücher · 41 Std.'],['Robert Louis Stevenson','island',31,'2 Hörbücher · 10 Std.']];
   return `
   <header class="page-head"><div><p class="eyebrow">Dein Hörjahr</p><h1>Statistik</h1></div><div class="seg"><button aria-pressed="false">Woche</button><button aria-pressed="true">Monat</button><button aria-pressed="false">Jahr</button></div></header>
   <div class="facts4">
    <div class="card fact"><p class="eyebrow">Gehört</p><div class="v">18<small>Std.</small> 40<small>Min.</small></div><p class="d">▲ 22 % zum Vormonat</p></div>
-   <div class="card fact"><p class="eyebrow">Bücher</p><div class="v">5</div><p class="d">2 beendet</p></div>
+   <div class="card fact"><p class="eyebrow">Hörbücher</p><div class="v">5</div><p class="d">2 beendet</p></div>
    <div class="card fact"><p class="eyebrow">Lieblingstag</p><div class="v">Samstag</div><p class="d" style="color:var(--muted)">Ø 3,2 Std.</p></div>
    <div class="card fact"><p class="eyebrow">Serien</p><div class="v">2</div><p class="d" style="color:var(--muted)">Holmes · Dracula</p></div>
   </div>
@@ -454,10 +530,10 @@ const SCREENS = {
 };
 
 /* ---------- Gerüst aufbauen ---------------------------------------------------------------------------------------- */
-const NAV = [['discover','Entdecken','discover'],['search','Suche','search'],['requests','Anfragen','requests',2],['library','Bücher','books']];
+const NAV = [['discover','Entdecken','discover'],['search','Suchen','search'],['requests','Anfragen','requests',2],['library','Hörbücher','books']];
 const MORE = [['log','Protokoll','log'],['stats','Statistik','stats'],['settings','Einstellungen','gear']];
 const q = new URLSearchParams(location.search);
-const screenKey = SCREENS[q.get('screen')] ? q.get('screen') : 'discover';
+let screenKey = SCREENS[q.get('screen')] ? q.get('screen') : 'discover';
 let theme = ['light','dark','oled'].includes(q.get('theme')) ? q.get('theme') : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 if (q.get('safe')) document.documentElement.style.setProperty('--safe-b', q.get('safe') + 'px');
 const brand = `<div class="brand"><span class="mark"><svg class="i" viewBox="0 0 24 24"><path d="M6 8v8M10 5v14M14 8.5v7M18 10.5v3"/></svg></span>Hörwerk</div>`;
@@ -466,17 +542,18 @@ function render(){
   document.documentElement.dataset.theme = theme;
   const s = SCREENS[screenKey];
   document.title = 'Hörwerk – ' + s.title;
-  const item = ([k,l,i,n]) => `<button aria-current="${k===screenKey}">${ic(i)}<span>${l}</span>${n?`<span class="badge">${n}</span>`:''}</button>`;
+  const item = ([k,l,i,n]) => `<button data-go="${k}" aria-current="${k===screenKey}">${ic(i)}<span>${l}</span>${n?`<span class="badge">${n}</span>`:''}</button>`;
   document.getElementById('side').innerHTML = brand + `<nav class="nav" aria-label="Hauptmenü">${NAV.map(item).join('')}<div class="sep"></div>${MORE.map(item).join('')}</nav><div class="spacer"></div>
-    <div class="card" style="padding:12px 14px"><p class="eyebrow" style="margin-bottom:8px">Werkbank</p><p style="font-size:13px;font-weight:600">2 Bücher in Arbeit</p><div style="margin-top:8px">${wave(5,48,'sm')}</div></div>${themeSeg}<div class="who"><i>A</i>admin</div>`;
-  document.getElementById('topbar').innerHTML = brand + themeSeg;
-  document.getElementById('tabbar').innerHTML = [...NAV, ['more','Mehr','more']].map(([k,l,i,n]) => `<button aria-current="${k===screenKey || (k==='more' && ['log','stats'].includes(screenKey))}">${ic(i)}<span>${l}</span>${n?`<span class="badge">${n}</span>`:''}</button>`).join('');
+    <div class="card" style="padding:12px 14px"><p class="eyebrow" style="margin-bottom:8px">Werkbank</p><p style="font-size:13px;font-weight:600">2 Hörbücher in Arbeit</p><div style="margin-top:8px">${wave(5,48,'sm')}</div></div><div class="who"><i>L</i>Larosen</div>`;
+  document.getElementById('topbar').innerHTML = brand;
+  document.getElementById('tabbar').innerHTML = [...NAV, ['more','Mehr','more']].map(([k,l,i,n]) => `<button aria-current="${k===screenKey || (k==='more' && ['more','log','stats','settings'].includes(screenKey))}" ${k==='more'?'data-go="more"':`data-go="${k}"`}>${ic(i)}<span>${l}</span>${k==='more'?'<span class="badge err">1</span>':n?`<span class="badge">${n}</span>`:''}</button>`).join('');
   document.getElementById('main').innerHTML = s.html();
   const insp = document.getElementById('insp');
   insp.innerHTML = s.inspector ? s.insp() : '';
   document.getElementById('app').classList.toggle('has-inspector', !!s.inspector);
   fillWaves();
-  document.querySelectorAll('[data-theme-btn]').forEach(b => b.addEventListener('click', () => { theme = b.dataset.themeBtn; render(); }));
+  document.querySelectorAll('[data-theme-btn]').forEach(b => b.addEventListener('click', () => { theme = b.dataset.themeBtn === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : b.dataset.themeBtn; render(); }));
+  document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { if (SCREENS[b.dataset.go]) { screenKey = b.dataset.go; scrollTo(0, 0); render(); } }));
 }
 render();
 </script>

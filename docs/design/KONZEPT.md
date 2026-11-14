@@ -6,12 +6,15 @@ umgebaut.
 
 | Was | Wo |
 |---|---|
-| Klickbarer Prototyp (HTML/CSS/JS, keine Frameworks, keine Webfonts) | [prototype/index.html](prototype/index.html) – Aufruf mit `?screen=discover\|library\|search\|log\|stats&theme=light\|dark\|oled` |
-| Beispiel-Screenshots | [boards/](boards/): `iphone-alle-seiten.jpg`, `mac-<seite>.jpg`, `ipad-discover.jpg`, `ipad-library.jpg` |
+| Klickbarer Prototyp (HTML/CSS/JS, keine Frameworks, keine Webfonts) | [prototype/index.html](prototype/index.html) – Aufruf mit `?screen=discover\|library\|search\|log\|stats\|more\|settings&theme=light\|dark\|oled` (Entdecken zusätzlich `&tab=foryou\|genre\|kritik\|gefolgt`, Protokoll `&win=15\|60\|1440\|0`) |
+| Beispiel-Screenshots | [boards/](boards/): `iphone-1.jpg`, `iphone-2.jpg`, `mac-<seite>.jpg`, `ipad-entdecken.jpg`, `ipad-hoerbuecher.jpg` |
 | Kontrastprüfung der Farbwelten | `python3 docs/design/check_contrast.py` (alle Textpaare ≥ 4,5:1, aktuell 0 Verstöße) |
 
 > Die Screenshots entstehen in einem Chromium unter Linux, nicht in Safari. Schriftdarstellung und Abstände können auf
 > echten Geräten leicht abweichen; vor der Umsetzung sollte der Prototyp einmal auf iPhone, iPad und Mac geöffnet werden.
+
+> **Wortwahl:** In der Oberfläche heißt es durchgehend **Hörbuch / Hörbücher**, nie „Buch / Bücher". Der Prototyp folgt dem schon;
+> in der App kommt es mit der Umsetzung (inklusive Übersetzung `static/i18n/en.json`).
 
 ## 1. Befund: Was an der heutigen Oberfläche nicht trägt
 
@@ -19,7 +22,7 @@ Grundlage sind die Screenshots der Version 7.20.0 und der Stylesheet `static/sty
 
 1. **Kaltes Grauschwarz.** Das Dunkel (`#131412`, `#1a1b19`) ist ein neutrales, leicht grünliches Grau mit blassem Text. Es
    gibt keine Wärme und keinen zweiten Farbton, deshalb wirkt es bedrückend.
-2. **Alles ist eine Zeile.** Bücher, Suchtreffer und Protokoll sind Listen aus gleich aussehenden Textzeilen mit
+2. **Alles ist eine Zeile.** Hörbücher, Suchtreffer und Protokoll sind Listen aus gleich aussehenden Textzeilen mit
    Haarlinien. Nichts lädt zum Stöbern ein, und nichts zeigt, was gerade wichtig ist.
 3. **Cover wirken aufgeklebt.** Sie haben je nach Seite andere Größen, keinen gemeinsamen Radius und keine Verbindung zur
    Umgebung. Auf einer einfarbigen Karte stehen sie wie Fremdkörper.
@@ -83,10 +86,10 @@ im Prototyp korrigiert, aktuell gibt es 0 Verstöße.
 
 - **Form:** quadratisch (Hörbuch-Standard), Radius 5 px (groß 7 px), 1 px Kante, heller Rücken links, feines Papierkorn,
   Kontaktschatten (Hell/Dunkel) oder Lichtkante (OLED).
-- **Buchfarbe `--c`:** Jedes Buch bekommt eine Farbe, die aus seinem Cover stammt. Sie färbt die Karte um das Cover
+- **Buchfarbe `--c`:** Jedes Hörbuch bekommt eine Farbe, die aus seinem Cover stammt. Sie färbt die Karte um das Cover
   (Mischung aus Fläche und Buchfarbe, 9–16 %), die Detailansicht und die Balken in der Statistik. So sitzt das Cover in
   seiner Umgebung, statt darauf zu liegen.
-- **Regal:** In Bücherlisten stehen die Cover auf einem schmalen Brett, Titel und Autor stehen darunter wie ein
+- **Regal:** In Hörbuchlisten stehen die Cover auf einem schmalen Brett, Titel und Autor stehen darunter wie ein
   Katalogschild.
 - **Statistik:** Diagramme verwenden dieselbe sechsteilige Farbreihe (`--s1…--s6`), je Farbwelt in Helligkeit und Sättigung
   abgestimmt. Der aktuelle Wert ist immer messingfarben, alles andere Leinen.
@@ -96,11 +99,11 @@ im Prototyp korrigiert, aktuell gibt es 0 Verstöße.
 | Baustein | Aussehen | Verwendung |
 |---|---|---|
 | **Tonspur** | Fortschritt als Wellenform aus schmalen Balken; der gespielte Teil ist grün oder messing | Werkbank, Seitenleiste, Downloads, Kapitel |
-| **Stationen** | vier Punkte auf einer Linie: Eingang → Verbinden → Taggen → Ablegen | Jedes Buch in Arbeit |
-| **Regalbrett** | dünnes Brett unter einer Reihe Cover | Entdecken, Bücher |
+| **Stationen** | vier Punkte auf einer Linie: Eingang → Verbinden → Taggen → Ablegen | Jedes Hörbuch in Arbeit |
+| **Regalbrett** | dünnes Brett unter einer Reihe Cover | Entdecken, Hörbücher |
 | **Katalogzeile** | Name … Punktlinie … Wert, wie in einem Inhaltsverzeichnis | Details, Kapitel, Metadaten |
 | **Eyebrow** | kleine Kapitälchen-Zeile über der Überschrift (Datum, Zähler, Quelle) | jede Seite |
-| **Prüfurteil** | farbige Kennzeichen „Richtiges Buch / Deutsch / ungekürzt" plus Punktering | Suche (Releases) |
+| **Prüfurteil** | farbige Kennzeichen „Richtiges Hörbuch / Deutsch / ungekürzt" plus Punktering | Suchen (Releases) |
 
 ## 6. Die drei Geräte
 
@@ -135,32 +138,52 @@ iPhone (< 780 px)                 iPad quer (780–1239 px)             MacBook 
 - **Skalierung:** Titel in `clamp()`, Cover-Text in `cqw` (Container Queries), damit auch kleine Cover lesbar bleiben;
   Einrückung über eine fließende Randvariable `--gut`.
 
+### Navigation auf dem iPhone
+
+Fünf Tabs unten: **Entdecken · Suchen · Anfragen · Hörbücher · Mehr**. Alles Weitere steckt hinter **Mehr**: eine Liste mit
+**Protokoll** (mit rotem Hinweis „1 Fehler", der auch als Punkt am Tab erscheint), **Statistik**, **Einstellungen** und dem
+**Konto** (Name, Abmelden). Ein erneuter Tipp auf „Mehr" führt immer zurück zu dieser Liste. Auf iPad und Mac steht dieselbe
+Struktur als Seitenleiste dauerhaft sichtbar (`iphone-2.jpg`, Spalte „Mehr").
+
+### Farbwelt in den Einstellungen
+
+Die Umschalter für Hell/Dunkel/OLED verschwinden aus der Kopfzeile und Seitenleiste. Sie wohnen unter
+**Einstellungen → Anzeige** als vier Karten mit Vorschau: *Automatisch* (folgt dem Gerät), *Hell*, *Dunkel*, *OLED*. Die Wahl
+gehört zum Konto, nicht zum Gerät. Die Datenbank hat dafür bereits `users.prefs` und die Schnittstelle `/api/auth/prefs`;
+zusätzlich wird die Wahl lokal gemerkt, damit die Seite beim Laden nicht in der falschen Farbe aufblitzt. Als Option steht
+„Nur dieses Gerät" bereit (z. B. OLED auf dem iPhone, Hell am Mac).
+
 ## 7. Stöber-Schleife: Was zum Weitermachen einlädt
 
 Der Hauptgrund, in der App zu bleiben, ist ein Pfad, der nie in einer Sackgasse endet:
 
 1. **Entdecken beginnt mit einem Vorschlag des Tages** („Weil du *Dracula* gehört hast") statt mit einer Liste.
-2. **Regale mit Begründung:** Passt zu deiner Bibliothek · Neu von Autoren, denen du folgst · Kritiker empfehlen · Gratis.
-   Jedes Regal ist seitlich wischbar und führt mit „Alle ansehen" weiter.
+2. **Vier Reiter bleiben:** *Für dich*, *Nach Genre* (Bestseller und Neuheiten je Genre), *Aus der Kritik* (Deutschlandfunk Kultur,
+   Perlentaucher) und *Gefolgt*. Die Genre-Chips sind immer sichtbar. Regale sind seitlich wischbar und führen mit „Alle ansehen" weiter.
+   Das Genre „Gratis" entfällt.
 3. **Jedes Detail endet mit „Weiterstöbern":** *Mehr von diesem Autor*, *Gelesen von diesem Sprecher*, *Ähnlich wie …*,
    *Düster & atmosphärisch*. Ein Tipp öffnet das nächste Regal, nie eine leere Seite.
 4. **Anfragen ist ein Tipp** und zeigt den Zustand gleich am Cover (angefragt → lädt → in der Bibliothek). Man muss die
    Seite dafür nicht verlassen.
-5. **Stimmungs-Chips** („Kurz & gut", „Gruselig", „Gratis") filtern, ohne neue Seite.
+5. **Genre-Chips** („Krimi", „Klassiker", „Gruselig" …) filtern, ohne neue Seite.
 6. **Die Werkbank bleibt sichtbar** (Mini-Tonspur in der Seitenleiste, Hinweis auf dem iPhone): Man sieht, dass etwas
    passiert, und kommt mit einem Tipp zurück.
 
 ## 8. Die Seiten im Einzelnen
 
-- **Entdecken:** Vorschlag des Tages, Chips, vier Regale, Detailspalte. (Screenshots: `mac-discover.jpg`, `ipad-discover.jpg`)
-- **Bücher:** Werkbank mit Stationen und Tonspur oben, darunter der Hinweis „Ein Buch braucht dich", dann das Regal. Ein
-  Schalter wechselt zwischen Regal und Liste. (`mac-library.jpg`)
-- **Suche:** großes Suchfeld, Buchtreffer mit Cover und Anfragen-Knopf, darunter die beurteilten Releases mit Punktering
-  und Urteilen. Abgelehnte Releases sind gedimmt und nennen den Grund. (`mac-search.jpg`)
-- **Protokoll:** wie ein Werkstattbuch: Tagesüberschriften in Serife, links ein Farbstreifen je Schweregrad, Quelle als
-  Kennzeichen, Fehler sind hinterlegt. Auf dem iPhone steht die Meldung in voller Breite. (`mac-log.jpg`)
-- **Statistik:** vier Kennzahlen, Hörwoche, Genreband, Monatsverlauf und meistgehörte Autoren mit Buchfarben.
-  (`mac-stats.jpg`)
+- **Entdecken:** Reiter *Für dich · Nach Genre · Aus der Kritik · Gefolgt*, darunter Genre-Chips. *Für dich* beginnt mit dem Vorschlag
+  des Tages und drei Regalen. *Aus der Kritik* zeigt Karten mit „Besprochen bei … · Kritik lesen", Anfragen und Suchen. Mehrere
+  Autoren oder Sprecher stehen als Fließtext („Jacob Grimm, Wilhelm Grimm", „… u. a."), nie als Kästen. (`mac-entdecken.jpg`,
+  `mac-entdecken-kritik.jpg`, `ipad-entdecken.jpg`)
+- **Hörbücher:** Werkbank mit Stationen und Tonspur oben, darunter „Ein Hörbuch braucht dich", dann das Regal; ein Schalter wechselt
+  zwischen Regal und Liste. (`mac-hoerbuecher.jpg`)
+- **Suchen:** großes Suchfeld ohne Zeile mit Quellen darüber; Treffer mit Cover und Anfragen-Knopf, darunter die beurteilten Releases mit
+  Punktering und Urteilen. Abgelehnte Releases sind gedimmt und nennen den Grund. (`mac-suchen.jpg`)
+- **Protokoll:** wie ein Werkstattbuch (Tagesüberschrift in Serife, Farbstreifen je Schweregrad, Quelle als Kennzeichen, Fehler
+  hinterlegt). Neu: **Zeitraum 15 Min. · 60 Min. · 24 Std. · Alles**; die Seite zeigt, wie viele ältere Einträge ausgeblendet sind. (`mac-protokoll.jpg`)
+- **Statistik:** vier Kennzahlen, Hörwoche, Genreband, Monatsverlauf und meistgehörte Autoren mit Buchfarben. Auf dem iPhone steht
+  derselbe Inhalt untereinander, die Kennzahlen in zwei Spalten. (`mac-statistik.jpg`, `iphone-2.jpg`)
+- **Einstellungen → Anzeige:** Farbwelt-Karten und „Gilt für". (`mac-einstellungen.jpg`)
 
 ## 9. Technische Umsetzung in Hörwerk
 
@@ -171,6 +194,8 @@ Die Oberfläche ist TypeScript in `frontend/src` und `static/style.css`, ausgeli
 |---|---|
 | **Design-Tokens** | Die Variablen in `static/style.css` (heute `--bg`, `--panel`, `--accent`, …) durch die Tokens des Prototyps ersetzen; die Namen bleiben, soweit möglich, damit der Umbau seitenweise geht. |
 | **Dritte Farbwelt** | `frontend/src/theme.ts` kennt heute `auto`, `light`, `dark`. Neu: `oled`; „Automatisch" folgt weiter dem System (Hell/Dunkel), OLED wird bewusst gewählt. Die Texte laufen über `t(…)` und `static/i18n/en.json`. |
+| **Namen** | Die heutige Zerschießung bei mehreren Autoren kommt von einer doppelt vergebenen CSS-Klasse: `.person-link` (Entdecken, Fließtext) wird von der späteren Regel für die Personenkarten überschrieben (`static/style.css`, Zeile 928). Im Umbau bekommen beide Verwendungen eigene Klassen. |
+| **Protokoll-Zeitraum** | Die Einträge haben schon einen Zeitstempel; der Zeitraum filtert im Browser, der Server muss nichts ändern. Das Protokoll ist ein Puffer der letzten 3000 Einträge, „24 Std." zeigt also, was davon noch im Puffer liegt. |
 | **Buchfarbe** | Beim Taggen aus dem Cover eine dominante Farbe berechnen (verkleinern, Median-Cut oder K-Means in Rust), in der Datenbank speichern und über die API als `color` mitgeben. Für Cover von Audible/BookBeat in Suche und Entdecken derselbe Weg beim Laden. Fehlt die Farbe, gilt ein Standardton. |
 | **Schriften** | Keine Webfonts: Charter für Titel (Apple-Geräte liefern sie mit, Rückfall Georgia), Systemschrift für Bedienelemente. Das hält das Image klein, lädt nichts von fremden Servern und rendert auf jedem Gerät scharf. |
 | **Tonspur** | Reiner DOM mit schmalen Balken, Anzahl nach Breite, im Prototyp 25 Zeilen JS. Für echte Kapitel kann die Höhe später aus den Kapitellängen kommen. |
@@ -183,7 +208,7 @@ Die Oberfläche ist TypeScript in `frontend/src` und `static/style.css`, ausgeli
 |---|---|---|
 | 1 | Tokens und Farbwelten (Hell, Dunkel, OLED), Schrift, Cover-Komponente | alle Seiten sehen sofort wärmer und einheitlicher aus |
 | 2 | Gerüst: Tab-Leiste (iPhone), Seitenleiste (iPad/Mac), Detailspalte | die Navigation ist auf jedem Gerät richtig |
-| 3 | Bücher und Werkbank (Tonspur, Stationen, Regal) | der Kern von Hörwerk wird sichtbar |
+| 3 | Hörbücher und Werkbank (Tonspur, Stationen, Regal) | der Kern von Hörwerk wird sichtbar |
 | 4 | Entdecken mit Regalen und Weiterstöbern | die Stöber-Schleife |
 | 5 | Suche und Protokoll | beurteilte Releases und Werkstattbuch |
 | 6 | Statistik und Buchfarben | harmonische Diagramme |
@@ -193,10 +218,19 @@ Die Oberfläche ist TypeScript in `frontend/src` und `static/style.css`, ausgeli
 Playwright-Klicktests (`npx playwright test`) und das Kontrastskript. Zusätzlich eine Screenshot-Matrix (3 Geräte × 3
 Farbwelten × 5 Seiten) als sichtbare Abnahme.
 
-## 11. Offene Entscheidungen
+## 11. Entschieden und offen
 
-1. **Messing als zweiter Akzent** (Neu, Bewertung, aktueller Wert) – oder bei einer Akzentfarbe bleiben?
-2. **Regalbrett:** gefällt der Look, oder lieber ohne Brett nur mit Schatten?
-3. **Detailspalte** am Mac fest oder nur auf Wunsch einblendbar?
-4. **Buchfarbe** aus dem Cover berechnen (empfohlen) oder pro Buch fest aus einer Palette vergeben?
-5. **„Automatisch"** soll weiter Hell/Dunkel nach System wählen; OLED nur manuell – einverstanden?
+**Entschieden:** Hörbücher statt Bücher · Zeile „Audible, BookBeat, Indexer" in *Suchen* entfällt · Genre „Gratis" entfällt, „Aus der Kritik"
+bleibt · Entdecken mit den vier Reitern · Protokoll mit Zeitraum · Farbwelt unter Einstellungen → Anzeige, pro Konto.
+
+**Noch offen** (siehe Antwort im Chat): Texte ohne Mehrwert (Liste unten), Standardzeitraum im Protokoll, Farbwelt je Konto oder je
+Gerät, Messing als zweiter Akzent, Regalbrett, Detailspalte am Mac, Buchfarbe aus dem Cover.
+
+**Kandidaten für Streichungen (bitte je Gruppe Ja/Nein):**
+1. Statuszeile in *Aus der Kritik*: „Stand: … · 231 besprochene Hörbücher warten noch auf ihr Hörbuch".
+2. Hinweiszeile unter *Für dich*: „Passend zu dem, was du zuletzt gehört hast."
+3. Das einklappbare „Was gezeigt wird" unter den Vorschlägen.
+4. Die „So funktioniert's"-Boxen (sind schon abschaltbar).
+5. Kleine Zeilen über den Überschriften („48 Hörbücher · 612 Stunden", „Dein Hörjahr", „Live · letzte 60 Min.").
+6. Erklärzeile unter *Releases*: „Jedes Release wird vor dem Laden beurteilt – das Beste steht oben."
+7. Untertitel in der Statistik („Womit du die Zeit verbringst", „Farben stammen von den Covern" …).
