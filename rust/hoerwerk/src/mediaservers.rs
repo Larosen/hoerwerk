@@ -702,11 +702,20 @@ impl Plex {
     }
 }
 
+/// Quiet time before the media servers are asked to scan (30 s; MEDIA_SCAN_DELAY_SECONDS is for the contract tests).
+fn scan_delay() -> Duration {
+    let secs = std::env::var("MEDIA_SCAN_DELAY_SECONDS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .unwrap_or(30);
+    Duration::from_secs(secs)
+}
+
 /// Media servers should look again after books were filed (each once things calm down, 30 s after the last).
 pub fn request_scans(app: &Arc<crate::app::App>) {
     if app.abs.configured() {
         let a = app.clone();
-        app.abs.debounce.later(Duration::from_secs(30), move || {
+        app.abs.debounce.later(scan_delay(), move || {
             if let Some(e) = a.abs.scan_now() {
                 a.notifier.send(
                     "abs_error",
@@ -719,7 +728,7 @@ pub fn request_scans(app: &Arc<crate::app::App>) {
     }
     if app.plex.configured() {
         let a = app.clone();
-        app.plex.debounce.later(Duration::from_secs(30), move || {
+        app.plex.debounce.later(scan_delay(), move || {
             if let Some(e) = a.plex.scan_now() {
                 a.notifier
                     .send("plex_error", &t("Plex: Einlesen fehlgeschlagen", &[]), &e, None);

@@ -52,7 +52,7 @@ class Server:
             "LIBRARY_DIR": self.library, "AUTH_USER": ADMIN["name"], "AUTH_PASS": ADMIN["password"],
             # offline and deterministic: books are filed with their own tags, no shop lookups
             "MATCH_MODE": "off", "METADATA_FALLBACK": "false", "SETTLE_SECONDS": "0", "SCAN_INTERVAL": "1",
-            "DUPLICATES": "ask", "APP_LANGUAGE": "de", **(env or {}),
+            "DUPLICATES": "ask", "APP_LANGUAGE": "de", "MEDIA_SCAN_DELAY_SECONDS": "1", **(env or {}),
         }
         self.proc: Optional[subprocess.Popen] = None
         self.log = os.path.join(self.dir, "server.log")
