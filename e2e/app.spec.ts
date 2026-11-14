@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 const ROOT = process.env.E2E_ROOT || "e2e/.run";   // prepared by e2e/setup.mjs
 
 declare const live: { ok: boolean };   // global of the page (frontend/src/live.ts)
+declare let versionChecked: number;   // global of the page (frontend/src/live.ts)
 
 function tone(path: string, seconds: number, tags: Record<string, string> = {}): void {
   mkdirSync(dirname(path), { recursive: true });
@@ -866,6 +867,18 @@ test("Detailspalte: ein Wechsel auf eine andere Seite schließt sie, am Mac blei
   }
   await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();
   await expect(col).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("Neue Version auf dem Server: ein offener Tab bietet einmal das Neuladen an", async ({ page }) => {
+  const errors = await open(page);
+  await expect(page.locator("#updateBar")).toHaveCount(0);                          // same version: nothing
+  await page.route("**/api/health", (r) => r.fulfill({ json: { ok: true, version: "99.0.0" } }));
+  await page.evaluate(() => { versionChecked = 0; document.dispatchEvent(new CustomEvent("livechange", { detail: true })); });
+  const bar = page.locator("#updateBar");
+  await expect(bar).toContainText("Hörwerk wurde aktualisiert (99.0.0).");
+  await bar.getByRole("button", { name: "Schließen" }).click();
+  await expect(bar).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

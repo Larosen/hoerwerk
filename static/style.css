@@ -1225,3 +1225,7 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .genre-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
 .genre-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; }
 .listen-chart .mbar { background: var(--s1); }
+
+/* A newer Hörwerk on the server: one quiet bar on top, until reloaded or closed */
+.update-bar { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 90; display: flex; align-items: center; gap: 10px;
+  max-width: calc(100% - 32px); padding: 8px 8px 8px 16px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow-pop); font-size: 14px; }

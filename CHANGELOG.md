@@ -12,6 +12,7 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 - **Daily indexer limits** rest only until the next possible reset (local midnight or midnight UTC, whichever comes first) instead of a full day.
 - **Mac/iPad:** the sidebar and the detail column stay in place while the page scrolls.
 - **Detail column** closes when you go to another page (it stayed open from *Entdecken* on *Suchen*); a list that arrives after you left no longer opens it.
+- **After an update** an open tab says "Hörwerk wurde aktualisiert" and offers to reload, instead of running the old version until reloaded by hand.
 - Critics' picks no longer show "via review".
 - **Phone:** the detail sheet keeps the book's colour all the way down when scrolling (it ended halfway as a box).
 - **Broken characters in release names** ("Philosopherâ€™s") are repaired before matching.

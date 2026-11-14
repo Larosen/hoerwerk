@@ -1546,5 +1546,7 @@
  "Weiter nach oben – wird früher gefragt": "Move up – asked earlier",
  "Auch die alten Dateien so umbenennen („01 - Kapitelname.mp3“)": "Also rename the old files like that (“01 - Chapter name.mp3”)",
  "Die Kapitelnamen oben gelten in jedem Fall für die neue M4B. Das Häkchen betrifft nur die alten Einzeldateien – sinnvoll, wenn sie aufbewahrt werden.": "The chapter names above always apply to the new M4B. The tick only concerns the old single files – useful if they are kept.",
- "Die Beschreibung konnte gerade nicht geladen werden.": "The description could not be loaded right now."
+ "Die Beschreibung konnte gerade nicht geladen werden.": "The description could not be loaded right now.",
+ "Hörwerk wurde aktualisiert ({version}).": "Hörwerk has been updated ({version}).",
+ "Neu laden": "Reload"
 }
