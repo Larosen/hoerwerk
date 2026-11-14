@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 const ROOT = process.env.E2E_ROOT || "e2e/.run";   // prepared by e2e/setup.mjs
 
 declare const live: { ok: boolean };   // global of the page (frontend/src/live.ts)
+declare let versionChecked: number;   // global of the page (frontend/src/live.ts)
 
 function tone(path: string, seconds: number, tags: Record<string, string> = {}): void {
   mkdirSync(dirname(path), { recursive: true });
@@ -806,9 +807,7 @@ test("Entdecken am Mac: Detailspalte mit Beschreibung und „Ähnlich wie“ –
   await expect(col.locator(".detail-title")).toHaveText("Das zweite Hörbuch");
   await col.getByRole("button", { name: /Zurück/ }).click();
   await expect(col.locator(".detail-title")).toHaveText("Das erste Hörbuch");
-  await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();                   // the column belongs to Entdecken and Suchen
-  await expect(col.locator(".detail-title")).toHaveText("Das erste Hörbuch");
-  await page.locator("nav.tabs").getByRole("link", { name: "Anfragen" }).click();
+  await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();                   // the book belongs to the page it was opened on
   await expect(col).toBeHidden();
   expect(errors).toEqual([]);
 });
@@ -827,6 +826,59 @@ test("Entdecken auf dem Handy: Details als Blatt von unten, Escape schließt es"
   await expect(sheet.locator(".detail-blurb")).toHaveText("Beschreibung von Das zweite Hörbuch");
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("Handy: das Detail-Blatt ist bis unten in der Farbe des Hörbuchs, auch beim Scrollen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const item = { asin: "B0TEST0001", title: "Hier geht's lang!", authors: ["Elke Heidenreich"], narrators: ["Elke Heidenreich"], rating: 4.9, ratings: 266,
+    runtime_min: 198, release_date: "2021-01-01", cover_url: null, source: "audible", genres: ["Biografien & Erinnerungen"] };
+  await page.route("**/api/discover/genres", (r) => r.fulfill({ json: { genres: [] } }));     // no chip rows pushing the card under the tab bar
+  await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [item], updated: 1, error: null, running: false } }));
+  await page.route("**/api/book/detail?*", (r) => r.fulfill({ json: { book: { ...item, description: "Eine lebenslange Liebesgeschichte. ".repeat(8) },
+    similar: [1, 2, 3, 4].map((n) => ({ ...item, asin: `B0SIM0000${n}`, title: `Ähnlich ${n}` })), region: "de" } }));
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
+  await expect(page.locator(".suggestion")).toHaveCount(1);
+  await page.locator(".suggestion .s-title").click();
+  const sheet = page.locator("#bookDetail");
+  await expect(sheet.locator(".detail-similar")).toBeVisible();
+  const [scroll, inner] = await sheet.evaluate((s) => [s.scrollHeight, s.querySelector(".detail-inner")!.getBoundingClientRect().height]);
+  expect(inner).toBeGreaterThanOrEqual(scroll - 1);                        // the tinted box is not cut off at the sheet's height
+  expect(errors).toEqual([]);
+});
+
+test("Detailspalte: ein Wechsel auf eine andere Seite schließt sie, am Mac bleiben Menü und Spalte beim Scrollen stehen", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 700 });
+  const items = Array.from({ length: 12 }, (_, i) => ({ asin: `B0TEST00${String(i).padStart(2, "0")}`, title: `Hörbuch ${i}`, authors: ["Anna Autorin"],
+    rating: 4, ratings: 10, runtime_min: 100, cover_url: null, source: "review", review: { source: "Perlentaucher", link: "https://example.org", date: "" } }));
+  await page.route("**/api/discover/genres", (r) => r.fulfill({ json: { genres: [] } }));
+  await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items, updated: 1, error: null, running: false } }));
+  await mockAnyDetail(page);
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
+  const col = page.locator("#bookDetail");
+  await expect(col).toBeVisible();                                                   // wide: the first one opens by itself
+  await expect(page.locator(".suggestion").first()).not.toContainText("via review");
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
+  for (const sel of ["#bookDetail", ".topbar"]) {
+    expect(await page.locator(sel).evaluate((e) => e.getBoundingClientRect().top), sel).toBe(0);      // still at the top of the window
+  }
+  await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();
+  await expect(col).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("Neue Version auf dem Server: ein offener Tab bietet einmal das Neuladen an", async ({ page }) => {
+  const errors = await open(page);
+  await expect(page.locator("#updateBar")).toHaveCount(0);                          // same version: nothing
+  await page.route("**/api/health", (r) => r.fulfill({ json: { ok: true, version: "99.0.0" } }));
+  await page.evaluate(() => { versionChecked = 0; document.dispatchEvent(new CustomEvent("livechange", { detail: true })); });
+  const bar = page.locator("#updateBar");
+  await expect(bar).toContainText("Hörwerk wurde aktualisiert (99.0.0).");
+  await bar.getByRole("button", { name: "Schließen" }).click();
+  await expect(bar).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 

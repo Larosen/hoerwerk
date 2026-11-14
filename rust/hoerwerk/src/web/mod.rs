@@ -491,6 +491,8 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
                         // the colour scheme of the account – known before the page is painted
                         let uid = u.get("id").and_then(Value::as_i64).unwrap_or(0);
                         me["theme"] = json!(api::theme_of(&api::prefs(&app, uid)));
+                        // the version this page was loaded with – an open tab notices when the server is newer
+                        me["version"] = json!(crate::settings::version());
                         me
                     })
                     .unwrap_or(Value::Null);

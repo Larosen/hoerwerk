@@ -37,7 +37,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     b.series ? `${b.series} ${b.series_position || ""}`.trim() : "",
     b.runtime_min ? fmtDuration(b.runtime_min * 60) : "",
     (b.release_date || "").slice(0, 4),
-    b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : "",
+    b.source && !["audible", "review"].includes(b.source) ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : "",
   ].filter(Boolean).join(" · ");
   let reason: Node | null = null;
   if (b.because?.length) {
@@ -87,7 +87,7 @@ function renderDiscover(res: DiscoverAnswer): void {
   if (res.items.length) {
     list.replaceChildren(...res.items.map(suggestionCard));
     // wide screens have the column: it starts with the first one, so it is never an empty strip
-    if (window.matchMedia(WIDE).matches && !detail.current) showDetail(res.items[0], false);
+    if (window.matchMedia(WIDE).matches && !detail.current && !$("#viewDiscover").hidden) showDetail(res.items[0], false);
     else if (detail.current) for (const c of list.querySelectorAll<HTMLElement>("[data-asin]")) c.classList.toggle("selected", c.dataset.asin === detail.current.asin);
     return;
   }

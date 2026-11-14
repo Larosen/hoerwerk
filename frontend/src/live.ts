@@ -60,3 +60,32 @@ function startLive(): void {
 
 // after all scripts registered their topics (a timer could fire between two scripts)
 document.addEventListener("DOMContentLoaded", () => { if (IS_ADMIN) startLive(); });
+
+// ------------------------------------------------------------------------- //
+// A tab that stays open keeps running the code it was loaded with. After an update of the server it says so
+// once and offers to load the new version – checked when the live connection comes back (a restart), when the
+// tab is looked at again, and every half hour.
+// ------------------------------------------------------------------------- //
+let versionChecked = 0;
+
+async function checkVersion(): Promise<void> {
+  const mine = typeof ME !== "undefined" && ME ? ME.version : undefined;
+  if (!mine || document.getElementById("updateBar") || Date.now() - versionChecked < 60_000) return;
+  versionChecked = Date.now();
+  let server: string | undefined;
+  try {
+    const res = await fetch("/api/health", { cache: "no-store", credentials: "same-origin" });
+    server = ((await res.json()) as { version?: string }).version;
+  } catch { return; }                                  // away for a moment: next time
+  if (!server || server === mine) return;
+  const bar = el("div", { id: "updateBar", class: "update-bar", role: "status" },
+    el("span", {}, t("Hörwerk wurde aktualisiert ({version}).", { version: server })),
+    el("button", { type: "button", class: "btn small primary", onclick: () => location.reload() }, t("Neu laden")),
+    el("button", { type: "button", class: "icon-btn", "aria-label": t("Schließen"), title: t("Schließen"),
+      onclick: () => bar.remove() }, icon("x")));
+  document.body.append(bar);
+}
+
+document.addEventListener("livechange", (e) => { if ((e as CustomEvent<boolean>).detail) void checkVersion(); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void checkVersion(); });
+setInterval(() => { void checkVersion(); }, 30 * 60_000);

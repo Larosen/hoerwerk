@@ -44,6 +44,17 @@ fn first_author(book: &Value) -> String {
         .to_string()
 }
 
+/// UK and US titles of the same book: "Philosopher's Stone" and "Sorcerer's Stone" are one name for the matching.
+pub fn same_name(text: &str) -> String {
+    sub(rx!(r"(?i)philosopher[’']?s?\b"), text, "Sorcerer")
+}
+
+/// The other title of a book that is published under two names (for searching), if it has one.
+fn other_title(title: &str) -> Option<String> {
+    is_match(rx!(r"(?i)sorcerer[’']?s?\b"), title)
+        .then(|| sub(rx!(r"(?i)sorcerer([’']?s)?\b"), title, "Philosopher${1}"))
+}
+
 pub fn surname(name: &str) -> String {
     match_words(name).pop().unwrap_or_default()
 }
@@ -98,17 +109,44 @@ pub fn series_core(series: &str) -> String {
 }
 
 /// What to ask the indexers for a book, in rounds – the next round only when the one before found nothing that fits.
+/// Characters a file name cannot carry, as release names write them: "Die drei ???" is "Die drei Fragezeichen".
+pub fn searchable(text: &str) -> String {
+    let t = sub(rx!(r"\?\?\?"), text, "Fragezeichen");
+    sub(rx!(r"!!!"), &t, "Ausrufezeichen")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// An episode of a radio play series ("Die drei ??? 3"): the release names the series and the episode number, but
+/// hardly ever the author of the book behind it.
+fn series_episode(name: &str, book: &Value, words: &BTreeSet<String>) -> bool {
+    let series = title_words(&series_core(s(book, "series")));
+    let Some(v) = volumes(book) else { return false };
+    if series.is_empty() || !series.iter().all(|w| words.contains(w)) {
+        return false;
+    }
+    if release_volumes(name, book).contains(&v) {
+        return true;
+    }
+    let plain = sub(rx!(r"[-_.+]"), name, " ");
+    fancy_regex::Regex::new(&format!(
+        r"(?i)(?:\b|(?<=\D))(?:f|folge\s*|fall\s*|nr\.?\s*)?0*{v}(?=\D|$)"
+    ))
+    .is_ok_and(|re| re.is_match(&plain).unwrap_or(false))
+}
+
 pub fn search_stages(book: &Value) -> Vec<Vec<String>> {
     let author = first_author(book).split_whitespace().collect::<Vec<_>>().join(" ");
     let sur = name_surname(&author);
-    let title = clean_title(s(book, "title"));
+    let title = searchable(&clean_title(s(book, "title")));
     let words: Vec<&str> = title.split_whitespace().collect();
     let short = if words.len() > 4 {
         words[..3].join(" ")
     } else {
         String::new()
     };
-    let series = series_core(s(book, "series"));
+    let series = searchable(&series_core(s(book, "series")));
     let mut stages: Vec<Vec<String>> = vec![vec![format!("{sur} {title}").trim().to_string()]];
     let mut second = Vec::new();
     if words.len() >= 2 || title.chars().count() >= 8 {
@@ -116,6 +154,15 @@ pub fn search_stages(book: &Value) -> Vec<Vec<String>> {
     }
     if !short.is_empty() && !sur.is_empty() {
         second.push(format!("{sur} {short}"));
+    }
+    if let Some(other) = other_title(&title) {
+        second.push(format!("{sur} {other}").trim().to_string());
+    }
+    // a series named with signs ("Die drei ???"): release names say "Die drei Fragezeichen 003", not the author
+    if let Some(v) = volumes(book)
+        && series != series_core(s(book, "series"))
+    {
+        second.push(format!("{series} {v:03}"));
     }
     if !series.is_empty()
         && !sur.is_empty()
@@ -282,7 +329,7 @@ pub fn evaluate(
     check_size: bool,
 ) -> Value {
     let name = s(release, "title");
-    let words: BTreeSet<String> = match_words(name).into_iter().collect();
+    let words: BTreeSet<String> = match_words(&same_name(name)).into_iter().collect();
     let mut notes: Vec<String> = Vec::new();
     let runtime = book["runtime_min"]
         .as_f64()
@@ -298,13 +345,13 @@ pub fn evaluate(
         return no(t("gesperrt (Download oder Import ging schief)", &[]), &notes);
     }
     let author = surname(&first_author(book));
-    if !author.is_empty() && !words.contains(&author) {
+    if !author.is_empty() && !words.contains(&author) && !series_episode(name, book, &words) {
         return no(
             t("Autor „{name}“ fehlt im Namen", &[("name", &first_author(book))]),
             &notes,
         );
     }
-    let title = title_words(s(book, "title"));
+    let title = title_words(&same_name(s(book, "title")));
     if title.is_empty() {
         return no(t("Hörbuch ohne Titel", &[]), &notes);
     }
@@ -632,6 +679,60 @@ pub fn rank(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn radio_play_episodes_without_author() {
+        let book = json!({"title": "Die drei ??? und der Karpatenhund", "authors": ["H.G. Francis"],
+                          "series": "Die drei ???", "series_position": "3", "language": "german"});
+        let ok = |name: &str| {
+            evaluate(
+                &json!({"title": name, "size": 0, "indexer": "x"}),
+                &book,
+                "de",
+                false,
+                &[],
+                false,
+            )["ok"]
+                == json!(true)
+        };
+        assert!(ok("Die.drei.Fragezeichen.003.-.und.der.Karpatenhund.(FLAC)"));
+        assert!(ok(
+            "Die Drei Fragezeichen-F003 Und Der Karpatenhund DE-FLAC-2001-SRK INT"
+        ));
+        assert!(ok("Die Drei Fragezeichen - Folge 003 - und der Karpatenhund"));
+        assert!(!ok(
+            "Karpatenhund-Karpatenhund 2 Gegen den Rest-16BIT-44-KHZ-WEB-FLAC-2007-WALKMAN"
+        ));
+        assert!(!ok("Die Drei Fragezeichen-F004 Und Der Karpatenhund")); // another episode number
+        let stages = search_stages(&book);
+        assert!(
+            stages
+                .iter()
+                .flatten()
+                .any(|q| q == "Die drei Fragezeichen und der Karpatenhund"),
+            "{stages:?}"
+        );
+        assert!(
+            stages.iter().flatten().any(|q| q.ends_with("Fragezeichen 003")),
+            "{stages:?}"
+        );
+        assert!(!stages.iter().flatten().any(|q| q.contains('?')), "{stages:?}");
+    }
+
+    #[test]
+    fn uk_and_us_titles_match_each_other() {
+        let book =
+            json!({"title": "Harry Potter and the Sorcerer’s Stone (Full-Cast Edition)", "authors": ["J.K. Rowling"]});
+        let release = json!({"title": "J.K. Rowling - Harry Potter and the Philosopher’s Stone (Full-Cast Audio Edition, MP3, Unabridged)",
+                             "size": 0, "indexer": "x"});
+        let v = evaluate(&release, &book, "en", true, &[], false);
+        assert_eq!(v["ok"], json!(true), "{v}");
+        assert_eq!(
+            other_title("Harry Potter and the Sorcerer’s Stone").as_deref(),
+            Some("Harry Potter and the Philosopher’s Stone")
+        );
+        assert!(other_title("Krabat").is_none());
+    }
+
     use super::*;
 
     fn strs(v: &Value) -> Vec<String> {

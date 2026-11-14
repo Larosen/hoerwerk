@@ -239,6 +239,14 @@ fn parse(text: &str) -> Result<roxmltree::Document<'_>> {
 /// simply rests until its limit resets at midnight.
 pub const UNTIL_MIDNIGHT: f64 = f64::INFINITY;
 
+/// When a daily limit may be fresh again: indexers count by their own day – some at local midnight, many at
+/// midnight UTC (01:00 or 02:00 in Germany). The earlier of the two is tried; an indexer that is still at its
+/// limit then says so again and rests until the next one.
+fn next_reset(at: f64) -> f64 {
+    let utc = ((at / 86400.0).floor() + 1.0) * 86400.0;
+    crate::text::next_local_midnight(at).min(utc) + 60.0
+}
+
 fn check_error(root: roxmltree::Node) -> Result<()> {
     if root.tag_name().name() == "error" {
         let code = root.attribute("code").unwrap_or("");
@@ -353,7 +361,7 @@ pub fn parse_results(xml: &[u8], indexer: &str) -> Result<Vec<Value>> {
         let published = child_text(item, "pubDate")
             .filter(|p| !p.is_empty())
             .and_then(parse_http_date);
-        let title = child_text(item, "title").unwrap_or("").trim().to_string();
+        let title = crate::text::fix_mojibake(child_text(item, "title").unwrap_or("").trim());
         let details = [
             http_url(child_text(item, "comments")),
             http_url(child_text(item, "guid")),
@@ -1084,11 +1092,7 @@ impl Usenet {
 
     fn pause(&self, name: &str, wait: f64) {
         let daily = wait.is_infinite();
-        let until = if daily {
-            crate::text::next_local_midnight(now()) + 60.0
-        } else {
-            now() + wait
-        };
+        let until = if daily { next_reset(now()) } else { now() + wait };
         self.pauses
             .lock()
             .unwrap_or_else(|p| p.into_inner())
@@ -1524,6 +1528,15 @@ fn rank_key(r: &Value, query: &str, language: &str) -> RankKey {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn daily_limit_rests_only_until_the_next_possible_reset() {
+        let at = 1_794_700_000.0; // some moment
+        let reset = next_reset(at);
+        assert!(reset > at && reset <= at + 86400.0 + 60.0);
+        let utc = ((at / 86400.0).floor() + 1.0) * 86400.0 + 60.0;
+        assert!(reset <= utc);
+    }
+
     use super::*;
     use std::sync::{Arc, Mutex};
 
