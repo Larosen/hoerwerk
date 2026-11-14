@@ -276,9 +276,9 @@ function coverArt(title: string, author = "", tag = ""): HTMLDivElement {
 }
 
 /** An online cover goes through the server's cache: one origin for the page (so it can read the colour), no request to the shop's image host. */
-function coverSrc(url: string): string {
+function coverSrc(url: string, big = false): string {
   if (url.startsWith("/")) return url;                // a cover of our own origin (the library): no detour
-  return "/api/cover?u=" + encodeURIComponent(url);
+  return `/api/cover?w=${big ? 600 : 300}&u=` + encodeURIComponent(url);   // lists 300 px, the detail column 600 px
 }
 
 const bookColours = new Map<string, string>();
@@ -339,7 +339,7 @@ function coverFor(url: string | null | undefined, title: string, author = "", cl
     return tile;
   };
   if (!url) return stand();
-  const img = el("img", { class: cls, src: coverSrc(url), alt: "", loading: "lazy", decoding: "async", ...attrs }) as HTMLImageElement;
+  const img = el("img", { class: cls, src: coverSrc(url, cls.includes("big")), alt: "", loading: "lazy", decoding: "async", ...attrs }) as HTMLImageElement;
   let direct = false;
   img.addEventListener("load", () => paint(img, pictureColour(img)));
   img.addEventListener("error", () => {

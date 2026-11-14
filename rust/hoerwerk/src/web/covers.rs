@@ -21,6 +21,32 @@ const MAX_URL: usize = 2000;
 const KEEP: usize = 3000;
 const PRUNE_TO: usize = 2500;
 
+/// Amazon's image hosts hand out a smaller picture when the address says so ("…/I/51abc._SL300_.jpg"); the
+/// stored addresses carry no size, so a list gets 300 px and the detail column 600 px instead of the original.
+/// Other hosts are left as they are.
+fn sized(url: &str, width: u32) -> String {
+    let Some((head, tail)) = url.split_once("/images/I/") else {
+        return url.to_string();
+    };
+    let host = head.trim_start_matches("https://");
+    let amazon = host.ends_with(".media-amazon.com") || host.ends_with(".ssl-images-amazon.com");
+    match tail.rsplit_once('.') {
+        Some((id, ext))
+            if amazon
+                && matches!(ext, "jpg" | "png")
+                && !id.is_empty()
+                && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '%' || c == '-') =>
+        {
+            format!("{head}/images/I/{id}._SL{width}_.{ext}")
+        }
+        _ => url.to_string(),
+    }
+}
+
+/// The list size is the default for `warm`, so the page finds exactly these files in the cache.
+pub const LIST_WIDTH: u32 = 300;
+pub const BIG_WIDTH: u32 = 600;
+
 fn key(url: &str) -> String {
     hex::encode(Sha256::digest(url.as_bytes()))
 }
@@ -62,7 +88,9 @@ pub fn warm(app: &App, urls: Vec<String>) {
     let dir = app.cfg.config_dir.join("covers");
     let todo: Vec<String> = urls
         .into_iter()
-        .filter(|u| u.len() <= MAX_URL && u.to_lowercase().starts_with("https://") && !dir.join(key(u)).exists())
+        .filter(|u| u.len() <= MAX_URL && u.to_lowercase().starts_with("https://"))
+        .map(|u| sized(&u, LIST_WIDTH))
+        .filter(|u| !dir.join(key(u)).exists())
         .collect::<HashSet<_>>()
         .into_iter()
         .take(60)
@@ -133,6 +161,11 @@ pub async fn proxy(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
     if !valid {
         return error(400, t("Ungültige Daten", &[]));
     }
+    let url = match req.query.get("w").map(String::as_str) {
+        Some("300") => sized(&url, LIST_WIDTH),
+        Some("600") => sized(&url, BIG_WIDTH),
+        _ => url,
+    };
     let dir = app.cfg.config_dir.join("covers");
     let found = tokio::task::spawn_blocking(move || cached_or_fetch(&dir, &url))
         .await
@@ -155,6 +188,25 @@ pub async fn proxy(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn amazon_covers_get_a_size_others_do_not() {
+        let a = "https://m.media-amazon.com/images/I/51AbC-d%2B.jpg";
+        assert_eq!(
+            sized(a, 300),
+            "https://m.media-amazon.com/images/I/51AbC-d%2B._SL300_.jpg"
+        );
+        assert_eq!(
+            sized(a, 600),
+            "https://m.media-amazon.com/images/I/51AbC-d%2B._SL600_.jpg"
+        );
+        let done = "https://m.media-amazon.com/images/I/51AbC._SL500_.jpg";
+        assert_eq!(sized(done, 300), done); // already sized: left alone
+        let other = "https://covers.openlibrary.org/b/id/1-L.jpg";
+        assert_eq!(sized(other, 300), other);
+        let evil = "https://evil.example/images/I/51AbC.jpg";
+        assert_eq!(sized(evil, 300), evil);
+    }
 
     #[test]
     fn cache_keys_differ_and_are_stable() {

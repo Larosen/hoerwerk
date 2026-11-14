@@ -7,6 +7,7 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 
 - **Details for every suggestion:** tips from critics now open with description and *Similar to* as well.
 - **Covers load in parallel:** the server fetches the covers of a list at once instead of one by one.
+- **Smaller covers:** lists load Amazon covers at 300 px, the detail column at 600 px, instead of the original size.
 - **Cover colours** follow the dominant colour of the cover instead of an average that turned most books brown.
 - **Critics' picks:** a review of a new edition (year in the review address) is matched to a recording from that year, not to an older one with the same title.
 - *Hörbücher → Nicht als M4B:* unticking *Alle* clears the selection again; the file-renaming tick says that it only concerns the old files.
