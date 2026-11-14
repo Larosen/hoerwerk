@@ -267,7 +267,7 @@ test("Entdecken: Vorschläge ansehen, Details öffnen, nichts wird von selbst ge
   expect(errors).toEqual([]);
 });
 
-test("Entdecken: Nach Genre startet mit einem Genre, Unterkategorien wie bei Audible", async ({ page }) => {
+test("Entdecken: Genres eingeklappt, Haupt- und Unterkategorie wählen und wieder abwählen, Länge und Jahr filtern", async ({ page }) => {
   const genres = [
     { id: "1", name: "Geschichte", nonfiction: true, children: [{ id: "11", name: "Antike" }] },
     { id: "2", name: "Literatur & Belletristik", nonfiction: false, children: [{ id: "21", name: "Klassiker" }] },
@@ -275,26 +275,61 @@ test("Entdecken: Nach Genre startet mit einem Genre, Unterkategorien wie bei Aud
   const asked: string[] = [];
   await mockAnyDetail(page);        // the first card opens in the detail column on a wide screen
   await page.route("**/api/discover/genres", (r) => r.fulfill({ json: { genres } }));
+  const year = new Date().getFullYear();
+  const mine = [
+    { asin: "B0FORYOU01", title: "Kurzer Klassiker", authors: ["A"], genres: ["Literatur & Belletristik", "Klassiker"], runtime_min: 200, release_date: `${year}-01-01`, source: "audible" },
+    { asin: "B0FORYOU02", title: "Langes Geschichtsbuch", authors: ["B"], genres: ["Geschichte", "Antike"], runtime_min: 900, release_date: "2001-01-01", source: "audible" },
+  ];
   await page.route("**/api/discover?*", (r) => {
     const q = new URL(r.request().url()).searchParams;
-    const genre = q.get("section") === "genre" ? q.get("genre") || "" : "";
+    const genre = q.get("genre") || "";
     if (q.get("section") === "genre") asked.push(genre);
     const item = { asin: `B0GENRE00${genre}`, title: `Buch aus ${genre}`, authors: ["Anna Autorin"], rating: 4.5, ratings: 80, source: "audible" };
-    r.fulfill({ json: { items: genre ? [item] : [], updated: 1_700_000_000, error: null, running: false } });
+    r.fulfill({ json: { items: q.get("section") === "genre" ? [item] : mine, updated: 1_700_000_000, error: null, running: false } });
   });
   const errors = await open(page);
   await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
+  const cards = page.locator(".suggestion");
+  await expect(cards).toHaveCount(2);
+  const panel = page.locator("#genrePanel");
+  await expect(panel).toBeHidden();                                                     // folded away: no wall of chips
+  await expect(page.locator("#genreLabel")).toHaveText("Alle");
+  // Für dich: the genre is a filter on the list
+  await page.locator("#genreToggle").click();
+  await panel.getByRole("button", { name: /^Geschichte/ }).click();
+  await expect(panel.locator("#discoverSubGenres button")).toHaveText(["Alle in Geschichte", "Antike"]);
+  await expect(cards).toHaveCount(1);
+  await expect(cards).toContainText("Langes Geschichtsbuch");
+  await panel.getByRole("button", { name: /^Geschichte/ }).click();                     // again: taken back
+  await expect(cards).toHaveCount(2);
+  await panel.getByRole("button", { name: /^Literatur/ }).click();
+  await panel.getByRole("button", { name: "Klassiker" }).click();                       // a subcategory closes the panel
+  await expect(panel).toBeHidden();
+  await expect(page.locator("#genreLabel")).toHaveText("Literatur & Belletristik › Klassiker");
+  await expect(cards).toHaveCount(1);
+  await page.locator("#genreClear").click();
+  await expect(page.locator("#genreLabel")).toHaveText("Alle");
+  await expect(cards).toHaveCount(2);
+  // length and year
+  await page.locator("#lengthFilter").selectOption("long");
+  await expect(cards).toHaveCount(1);
+  await expect(cards).toContainText("Langes Geschichtsbuch");
+  await page.locator("#yearFilter").selectOption("2");
+  await expect(page.locator("#discoverList")).toContainText("Nichts passt zu den Filtern.");
+  await page.getByRole("button", { name: "Filter zurücksetzen" }).click();
+  await expect(cards).toHaveCount(2);
+  // Nach Genre: no genre yet – it asks, the panel opens; the genre picks the list from the server
   await page.locator("#discoverSections button[data-section=genre]").click();
-  const chips = page.locator("#discoverGenres");
-  await expect(chips.locator("button[aria-pressed=true]")).toHaveText("Literatur & Belletristik");   // no empty list: fiction to start with
-  await expect(page.locator(".suggestion")).toContainText("Buch aus 2");
-  await expect(chips.locator("button")).toHaveText(["Geschichte · Sachbuch", "Literatur & Belletristik"]);
-  await expect(page.locator("#discoverSubGenres button")).toHaveText(["Alle", "Klassiker"]);        // subcategories as a second row
-  await expect(page.locator("#discoverNote")).toBeHidden();
-  await chips.getByRole("button", { name: /Geschichte/ }).click();
-  await page.locator("#discoverSubGenres").getByRole("button", { name: "Antike" }).click();
-  await expect(page.locator(".suggestion")).toContainText("Buch aus 11");
-  await expect(page.locator("#discoverNote")).toBeVisible();            // non-fiction: stars are no fact check
+  await expect(page.locator("#discoverList")).toContainText("Genre wählen.");
+  await expect(panel).toBeVisible();
+  await panel.getByRole("button", { name: /^Geschichte/ }).click();
+  await expect(cards).toContainText("Buch aus 1");
+  await expect(page.locator("#discoverNote")).toBeVisible();                             // non-fiction: stars are no fact check
+  await panel.getByRole("button", { name: "Antike" }).click();
+  await expect(cards).toContainText("Buch aus 11");
+  await page.locator("#genreToggle").click();
+  await panel.getByRole("button", { name: "Alle Genres" }).click();
+  await expect(page.locator("#discoverList")).toContainText("Genre wählen.");
   expect(asked).not.toContain("");
   expect(errors).toEqual([]);
 });

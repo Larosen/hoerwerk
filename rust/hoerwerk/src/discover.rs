@@ -102,6 +102,8 @@ const NONFICTION: [&str; 28] = [
     "Science & Engineering",
 ];
 const HIDDEN_GENRES: [&str; 2] = ["Erotik", "Erotica"];
+/// Not offered as a genre to pick (its books still appear in their other genres).
+const UNLISTED_GENRES: [&str; 3] = ["LGBT", "LGBTQ+", "LGBTQ"];
 const PT_AUTHOR_DAYS: f64 = 60.0;
 const PT_LOOKUPS: i64 = 25;
 const GENRE_MIN: usize = 30;
@@ -1343,7 +1345,7 @@ pub fn genres(env: &Arc<dyn Env>) -> Vec<Value> {
     let mut out = Vec::new();
     for g in gs {
         let name = s(&g, "name");
-        if HIDDEN_GENRES.contains(&name) {
+        if HIDDEN_GENRES.contains(&name) || UNLISTED_GENRES.contains(&name) {
             continue;
         }
         let kids: Vec<Value> = g["children"]
@@ -1559,7 +1561,8 @@ mod tests {
                 {"id": "1", "name": "Krimis & Thriller", "children": [{"id": "11", "name": "Krimis"}, {"id": "12", "name": "Cricket"}]},
                 {"id": "2", "name": "Geschichte", "children": []},
                 {"id": "3", "name": "Erotik", "children": [{"id": "31", "name": "Sexpraktiken"}]},
-                {"id": "4", "name": "Literatur & Belletristik", "children": [{"id": "41", "name": "Erotik"}]}]))
+                {"id": "4", "name": "Literatur & Belletristik", "children": [{"id": "41", "name": "Erotik"}]},
+                {"id": "5", "name": "LGBT", "children": []}]))
             .unwrap())
         }
         fn search(&self, _: &str, title: &str, _: &str, _: usize) -> Result<Vec<Value>, AudibleError> {
