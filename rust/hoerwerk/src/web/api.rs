@@ -143,6 +143,8 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("DELETE", "/api/me/listening/{kind}") => h!(super::listening::unlink),
         ("GET", "/api/listening/accounts") => h!(super::listening::accounts),
         ("PUT", "/api/listening/link") => h!(super::listening::set_link),
+        ("PUT", "/api/listening/people") => h!(super::listening::merge),
+        ("DELETE", "/api/listening/people/{id}") => h!(super::listening::split),
         ("GET", "/api/diagnostics") => h!(super::system::diagnostics),
         ("GET", "/api/discover") => h!(super::discover::suggestions),
         ("GET", "/api/discover/genres") => h!(super::discover::genres),

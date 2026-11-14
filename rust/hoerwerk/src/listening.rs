@@ -59,9 +59,14 @@ fn date(ts: f64) -> String {
 
 type Cache = HashMap<(String, i64, String), (f64, Value)>;
 
+/// The people who listen without a Hörwerk account: an Audiobookshelf account and/or a Plex profile, merged by an admin.
+const PEOPLE_KEY: &str = "listen_people";
+const TARGETS_SECONDS: f64 = 10.0 * 60.0;
+
 #[derive(Default)]
 pub struct Listening {
     cache: Mutex<Cache>,
+    targets: Mutex<Option<(f64, Value)>>,
 }
 
 impl Listening {
@@ -141,7 +146,7 @@ impl Listening {
             } else {
                 s(&item, "title")
             };
-            books.push(json!({"title": title, "author": s(&item, "author"), "asin": item["asin"],
+            books.push(json!({"title": title, "author": s(&item, "author"), "asin": item["asin"], "genres": item["genres"],
                               "progress": p["progress"].as_f64().unwrap_or(0.0), "finished": p["isFinished"].as_bool().unwrap_or(false),
                               "finished_at": if ms(&p["finishedAt"]) == 0.0 { Value::Null } else { json!(ms(&p["finishedAt"])) },
                               "last": if ms(&p["lastUpdate"]) == 0.0 { Value::Null } else { json!(ms(&p["lastUpdate"])) }, "source": "abs"}));
@@ -181,7 +186,12 @@ impl Listening {
 
     /// Everything this account heard: {books, days: {date: seconds}, errors, linked}. Blocking.
     pub fn history(&self, app: &App, uid: i64) -> Value {
-        let links = Self::links(app, uid);
+        self.history_of(app, &Self::links(app, uid))
+    }
+
+    /// Everything heard by these links ({abs, plex}, each {id, name} or null). Blocking.
+    pub fn history_of(&self, app: &App, links: &Value) -> Value {
+        let uid = 0;
         let (mut books, mut days, mut errors, mut linked) = (
             Vec::<Value>::new(),
             BTreeMap::<String, f64>::new(),
@@ -236,6 +246,21 @@ impl Listening {
                 *days.entry(d).or_default() += secs.as_f64().unwrap_or(0.0);
             }
         }
+        // Plex knows no genres: take them from the same book in Audiobookshelf, when there is one
+        if books.iter().any(|b| b["source"] == "plex")
+            && Self::available(app)["abs"] == true
+            && let Ok(items) = app.abs.library_items()
+        {
+            let by_title: HashMap<String, Value> = items
+                .values()
+                .map(|i| (crate::discover::fold(s(i, "title")), i["genres"].clone()))
+                .collect();
+            for b in books.iter_mut().filter(|b| b["source"] == "plex") {
+                if let Some(g) = by_title.get(&crate::discover::fold(s(b, "title"))) {
+                    b["genres"] = g.clone();
+                }
+            }
+        }
         let last = |b: &Value| b["last"].as_f64().unwrap_or(0.0);
         books.sort_by(|a, b| last(b).partial_cmp(&last(a)).unwrap_or(std::cmp::Ordering::Equal));
         json!({"books": books, "days": days, "errors": errors, "linked": linked})
@@ -243,7 +268,12 @@ impl Listening {
 
     /// Numbers for the statistics: seconds heard, books heard / finished, last time – since a moment.
     pub fn summary(&self, app: &App, uid: i64, since: f64) -> Value {
-        let h = self.history(app, uid);
+        self.summary_of(app, &Self::links(app, uid), since)
+    }
+
+    /// The numbers for any links – also for people without a Hörwerk account.
+    pub fn summary_of(&self, app: &App, links: &Value, since: f64) -> Value {
+        let h = self.history_of(app, links);
         let day0 = if since > 0.0 { date(since) } else { String::new() };
         let seconds: f64 = h["days"]
             .as_object()
@@ -268,8 +298,178 @@ impl Listening {
             })
             .count();
         let last = books.iter().map(|b| num(&b["last"])).fold(0.0, f64::max);
+        // the genres of what was heard in the period (main genre of each book)
+        let mut genres: Vec<(String, i64)> = Vec::new();
+        for b in books
+            .iter()
+            .filter(|b| num(&b["last"]) >= since && (num(&b["progress"]) >= 0.02 || b["finished"] == true))
+        {
+            if let Some(g) = b["genres"].as_array().and_then(|g| g.first()).and_then(Value::as_str) {
+                match genres.iter_mut().find(|x| x.0 == g) {
+                    Some(e) => e.1 += 1,
+                    None => genres.push((g.to_string(), 1)),
+                }
+            }
+        }
         json!({"linked": h["linked"], "seconds": crate::releases::py_round(seconds), "books": heard, "finished": finished,
-               "last": if last == 0.0 { Value::Null } else { json!(last) }, "errors": h["errors"]})
+               "last": if last == 0.0 { Value::Null } else { json!(last) }, "errors": h["errors"], "days": h["days"],
+               "genres": genres.into_iter().map(|(name, books)| json!({"name": name, "books": books})).collect::<Vec<_>>()})
+    }
+
+    /// The people an admin merged: [{id, name, abs: {id, name} | null, plex: …}].
+    pub fn people(app: &App) -> Vec<Value> {
+        app.db
+            .get(PEOPLE_KEY)
+            .and_then(|v| v.as_array().cloned())
+            .unwrap_or_default()
+    }
+
+    /// Every Audiobookshelf account and Plex profile ({abs: [...], plex: [...]}, errors) – a few minutes cached. Blocking.
+    pub fn targets(&self, app: &App, fresh: bool) -> (Value, Vec<String>) {
+        if !fresh
+            && let Some((at, v)) = self.targets.lock().unwrap_or_else(|p| p.into_inner()).as_ref()
+            && *at > now() - TARGETS_SECONDS
+        {
+            return (v.clone(), Vec::new());
+        }
+        let avail = Self::available(app);
+        let mut errors = Vec::new();
+        let mut get = |on: bool, r: Result<Vec<Value>, crate::mediaservers::MediaError>| -> Value {
+            if !on {
+                return json!([]);
+            }
+            r.map(|v| json!(v)).unwrap_or_else(|e| {
+                errors.push(e.message);
+                json!([])
+            })
+        };
+        let abs = get(
+            avail["abs"] == true,
+            if avail["abs"] == true {
+                app.abs.users()
+            } else {
+                Ok(Vec::new())
+            },
+        );
+        let plex = get(
+            avail["plex"] == true,
+            if avail["plex"] == true {
+                app.plex.accounts()
+            } else {
+                Ok(Vec::new())
+            },
+        );
+        let v = json!({"abs": abs, "plex": plex});
+        if errors.is_empty() {
+            *self.targets.lock().unwrap_or_else(|p| p.into_inner()) = Some((now(), v.clone()));
+        }
+        (v, errors)
+    }
+
+    /// Who listens without a Hörwerk account: merged people first, then every other account or profile on its own.
+    /// [{key, name, links: {abs, plex}}]. Blocking.
+    pub fn listeners(&self, app: &App) -> Vec<Value> {
+        let (targets, _) = self.targets(app, false);
+        let mut taken: Vec<(String, String)> = Vec::new();
+        for u in app.accounts.list(&app.db) {
+            let l = Self::links(app, u["id"].as_i64().unwrap_or(0));
+            for kind in ["abs", "plex"] {
+                if !l[kind].is_null() {
+                    taken.push((kind.into(), text_of(&l[kind]["id"])));
+                }
+            }
+        }
+        let exists = |kind: &str, id: &str| {
+            targets[kind]
+                .as_array()
+                .is_some_and(|a| a.iter().any(|t| text_of(&t["id"]) == id))
+        };
+        let mut out = Vec::new();
+        for p in Self::people(app) {
+            let mut links = json!({"abs": null, "plex": null});
+            for kind in ["abs", "plex"] {
+                let id = text_of(&p[kind]["id"]);
+                if !id.is_empty() && exists(kind, &id) && !taken.contains(&(kind.to_string(), id.clone())) {
+                    links[kind] = p[kind].clone();
+                    taken.push((kind.into(), id));
+                }
+            }
+            if !links["abs"].is_null() || !links["plex"].is_null() {
+                out.push(
+                    json!({"key": format!("p:{}", s(&p, "id")), "name": p["name"], "links": links, "person": p["id"]}),
+                );
+            }
+        }
+        for kind in ["abs", "plex"] {
+            for tg in targets[kind].as_array().into_iter().flatten() {
+                let id = text_of(&tg["id"]);
+                if taken.contains(&(kind.to_string(), id.clone())) {
+                    continue;
+                }
+                let mut links = json!({"abs": null, "plex": null});
+                links[kind] = json!({"id": id, "name": tg["name"]});
+                out.push(json!({"key": format!("{kind}:{id}"), "name": tg["name"], "links": links, "person": null}));
+            }
+        }
+        out
+    }
+
+    /// Merge an Audiobookshelf account and a Plex profile into one person (or rename one); returns the people.
+    pub fn merge(
+        &self,
+        app: &App,
+        abs: Option<&Value>,
+        plex: Option<&Value>,
+        name: &str,
+    ) -> Result<Vec<Value>, String> {
+        if abs.is_none() && plex.is_none() {
+            return Err(t("Ungültige Daten", &[]));
+        }
+        let cut = |v: &Value| {
+            json!({"id": text_of(&v["id"]).chars().take(100).collect::<String>(),
+                                     "name": text_of(&v["name"]).chars().take(100).collect::<String>()})
+        };
+        let (abs, plex) = (abs.map(cut), plex.map(cut));
+        let same = |p: &Value, kind: &str, t: &Option<Value>| {
+            t.as_ref().is_some_and(|t| text_of(&p[kind]["id"]) == s(t, "id"))
+        };
+        // the targets leave any person they were in
+        let mut people: Vec<Value> = Self::people(app)
+            .into_iter()
+            .map(|mut p| {
+                if same(&p, "abs", &abs) {
+                    p["abs"] = Value::Null;
+                }
+                if same(&p, "plex", &plex) {
+                    p["plex"] = Value::Null;
+                }
+                p
+            })
+            .filter(|p| !p["abs"].is_null() || !p["plex"].is_null())
+            .collect();
+        let fallback = abs
+            .as_ref()
+            .or(plex.as_ref())
+            .map(|t| s(t, "name").to_string())
+            .unwrap_or_default();
+        let name: String = name.trim().chars().take(100).collect();
+        let next = people.iter().filter_map(|p| p["id"].as_i64()).max().unwrap_or(0) + 1;
+        people.push(
+            json!({"id": next, "name": if name.is_empty() { fallback } else { name },
+                           "abs": abs.unwrap_or(Value::Null), "plex": plex.unwrap_or(Value::Null)}),
+        );
+        app.db.put(PEOPLE_KEY, &json!(people)).map_err(|e| e.to_string())?;
+        Ok(people)
+    }
+
+    /// Split a merged person again.
+    pub fn split(&self, app: &App, id: i64) -> Result<Vec<Value>, String> {
+        let people: Vec<Value> = Self::people(app)
+            .into_iter()
+            .filter(|p| p["id"].as_i64() != Some(id))
+            .collect();
+        app.db.put(PEOPLE_KEY, &json!(people)).map_err(|e| e.to_string())?;
+        Ok(people)
     }
 
     /// The books this account heard most recently (ASIN from Audiobookshelf or the library) – for "Für dich".

@@ -416,6 +416,18 @@
    "raw_body": false
   },
   {
+   "method": "PUT",
+   "path": "/api/listening/people",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/listening/people/{id}",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/logs",
    "access": "admin",

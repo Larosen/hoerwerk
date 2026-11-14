@@ -120,8 +120,62 @@ pub async fn accounts(app: Arc<App>, _: Req, _: Params) -> Reply {
     })
     .await;
     json_reply(
-        json!({"available": Listening::available(&app), "abs": abs, "plex": plex, "errors": errors, "users": users}),
+        json!({"available": Listening::available(&app), "abs": abs, "plex": plex, "errors": errors, "users": users,
+               "people": Listening::people(&app)}),
     )
+}
+
+/// Merge an Audiobookshelf account and a Plex profile that belong to the same person (no Hörwerk account needed).
+pub async fn merge(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let (abs_id, plex_id, name) = (
+        req.str("abs").trim().to_string(),
+        req.str("plex").trim().to_string(),
+        req.str("name"),
+    );
+    let a = app.clone();
+    let (targets, errors) = blocking(move || a.listening.targets(&a, true)).await;
+    if let Some(e) = errors.first() {
+        return error(502, e.clone());
+    }
+    let find = |kind: &str, id: &str| -> Result<Option<Value>, Reply> {
+        if id.is_empty() {
+            return Ok(None);
+        }
+        targets[kind]
+            .as_array()
+            .and_then(|a| a.iter().find(|t| t["id"].as_str() == Some(id)).cloned())
+            .map(Some)
+            .ok_or_else(|| error(400, t("Ungültige Daten", &[])))
+    };
+    let (abs, plex) = match (find("abs", &abs_id), find("plex", &plex_id)) {
+        (Ok(a), Ok(p)) => (a, p),
+        (Err(r), _) | (_, Err(r)) => return r,
+    };
+    match app.listening.merge(&app, abs.as_ref(), plex.as_ref(), &name) {
+        Ok(people) => {
+            app.audit(
+                &req.user_name(),
+                &req.ip,
+                "listening_merge",
+                &format!("abs {abs_id} + plex {plex_id}"),
+            );
+            json_reply(json!({"people": people}))
+        }
+        Err(e) => error(400, e),
+    }
+}
+
+pub async fn split(app: Arc<App>, req: Req, p: Params) -> Reply {
+    let Some(id) = p.get("id").and_then(|x| x.parse::<i64>().ok()) else {
+        return error(400, t("Ungültige Daten", &[]));
+    };
+    match app.listening.split(&app, id) {
+        Ok(people) => {
+            app.audit(&req.user_name(), &req.ip, "listening_split", &id.to_string());
+            json_reply(json!({"people": people}))
+        }
+        Err(e) => error(400, e),
+    }
 }
 
 pub async fn set_link(app: Arc<App>, req: Req, _: Params) -> Reply {

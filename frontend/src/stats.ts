@@ -10,19 +10,23 @@ interface UserStats {
   id: number | null; name: string; role: string; requests: number; books: number; available: number; open: number;
   declined: number; failed: number; series: number; minutes: number; minutes_available: number; bytes: number;
   english: number; wait_median: number | null; last: number | null; top_genres: string[]; genres?: GenreShare[];
-  listen?: ListenSummary | null;
+  listen?: (ListenSummary & { genres?: GenreShare[] }) | null;
+  /** someone who listens in Audiobookshelf or Plex without a Hörwerk account */
+  listener?: { key: string; person: number | null; abs: boolean; plex: boolean };
 }
 interface GenreShare { name: string; books: number }
 interface ListenMonth { month: string; seconds: number }
 interface MonthRow { month: string; books: number; minutes: number; mine?: number }
-interface ListenTotal { seconds: number; books: number; finished: number; linked: number }
+interface ListenTotal { seconds: number; books: number; finished: number; linked: number; listeners?: number }
 interface StatsAll {
   scope: "all"; period: string; since: number | null; users: UserStats[]; total: UserStats;
   months: MonthRow[]; library_books: number | null; listen: ListenTotal | null; listen_errors?: string[]; listen_months?: ListenMonth[];
+  listen_genres?: GenreShare[];
 }
 interface StatsOwn {
   scope: "own"; period: string; since: number | null; me: UserStats; total: UserStats; accounts: number;
   months: MonthRow[]; library_books: number | null; listen: ListenTotal | null; listen_months?: ListenMonth[];
+  listen_genres?: GenreShare[];
 }
 interface StatsRequest {
   id: number; title: string; authors: string[]; series: string | null; series_position: string | null;
@@ -107,7 +111,7 @@ function setStatsHead(title: string, back: boolean): void {
 
 /** What is shown in which mode – every part starts hidden and the mode turns its parts on. */
 function resetStatsParts(): void {
-  for (const id of ["#statsTilesHead", "#statsTotalBox", "#statsAccounts", "#statsDetail", "#statsMore", "#statsListenBox", "#statsGenresBox"]) $(id).hidden = true;
+  for (const id of ["#statsTilesHead", "#statsTotalBox", "#statsAccounts", "#statsDetail", "#statsMore", "#statsListenBox", "#statsGenresBox", "#statsMerge"]) $(id).hidden = true;
 }
 
 /** Hours heard per month – the same bars as the requests chart, the month with the most in brass. */
@@ -130,9 +134,11 @@ function renderListenChart(rows: ListenMonth[] | undefined, note: string): void 
   }));
 }
 
-/** The genres of what was asked for as one ribbon, the shares in a legend. */
-function renderGenres(genres: GenreShare[] | undefined): void {
-  const list = (genres || []).filter((g) => g.books > 0);
+/** The genres as one ribbon, the shares in a legend: what was heard when anyone's listening is known, else what was asked for. */
+function renderGenres(heard: GenreShare[] | undefined, asked: GenreShare[] | undefined): void {
+  const useHeard = (heard || []).some((g) => g.books > 0);
+  const list = ((useHeard ? heard : asked) || []).filter((g) => g.books > 0);
+  $("#statsGenresNote").textContent = useHeard ? t("der gehörten Hörbücher") : t("der angefragten Hörbücher");
   $("#statsGenresBox").hidden = !list.length;
   if (!list.length) return;
   const sum = list.reduce((n, g) => n + g.books, 0);
@@ -154,6 +160,8 @@ function personCard(u: UserStats, scale: number): HTMLElement {
   const body = [
     el("div", { class: "person-head" },
       el("b", {}, u.name), u.role === "admin" ? el("span", { class: "muted small" }, "Admin") : null,
+      u.listener ? el("span", { class: "muted small", title: t("Hört über Audiobookshelf oder Plex, ohne Hörwerk-Konto") },
+        [u.listener.abs ? "Audiobookshelf" : "", u.listener.plex ? "Plex" : ""].filter(Boolean).join(" + ")) : null,
       el("span", { class: "muted small person-when" }, active ? t("aktiv {when}", { when: fmtDay(active) }) : t("noch nicht aktiv")),
       u.id !== null ? icon("chevron") : null),
     el("div", { class: "person-row" }, el("span", { class: "plabel" }, t("angefragt")), bar("req", reqH),
@@ -171,9 +179,10 @@ function personCard(u: UserStats, scale: number): HTMLElement {
 function renderAll(s: StatsAll): void {
   resetStatsParts();
   setStatsHead(t("Statistik"), false);
-  const linked = s.listen?.linked || 0;
-  $("#statsTiles").replaceChildren(...userTiles(s.total, linked ? s.listen : null,
-    linked ? plural(linked, t("1 Konto verknüpft"), t("{n} Konten verknüpft", { n: linked })) : ""));
+  const linked = s.listen?.linked || 0, listeners = s.listen?.listeners || 0;
+  const heardBy = linked + listeners;
+  $("#statsTiles").replaceChildren(...userTiles(s.total, heardBy ? s.listen : null,
+    heardBy ? plural(heardBy, t("1 Hörer"), t("{n} Hörer", { n: heardBy })) : ""));
   $("#statsAccounts").hidden = false;
   const scale = Math.max(1, ...s.users.map((u) => Math.max(u.minutes / 60, (u.listen?.seconds || 0) / 3600)));
   const people = [...s.users].sort((a, b) =>
@@ -181,9 +190,46 @@ function renderAll(s: StatsAll): void {
   $("#statsPeople").replaceChildren(...(people.length ? people.map((u) => personCard(u, scale))
     : [el("li", { class: "empty" }, t("Noch keine Konten."))]));
   moreFacts(s.total, s.library_books);
-  renderListenChart(s.listen_months, t("letzte 12 Monate, alle verknüpften Konten"));
-  renderGenres(s.total.genres);
+  renderListenChart(s.listen_months, t("letzte 12 Monate, alle Hörer"));
+  void loadMerge();
+  renderGenres(s.listen_genres, s.total.genres);
   renderMonthChart(s.months, t("Angefragte Hörbücher je Monat"), t("letzte 12 Monate, alle Konten"));
+}
+
+// -- admins: merge an Audiobookshelf account and a Plex profile of the same person --------------------
+interface MergeTarget { id: string; name: string }
+interface MergeAnswer { abs: MergeTarget[] | null; plex: MergeTarget[] | null; users: { links: { abs: MergeTarget | null; plex: MergeTarget | null } }[];
+  people: { id: number; name: string; abs: MergeTarget | null; plex: MergeTarget | null }[]; errors: string[] }
+
+async function loadMerge(): Promise<void> {
+  const box = $("#statsMerge");
+  let d: MergeAnswer;
+  try { d = await api<MergeAnswer>("GET", "/api/listening/accounts"); } catch { box.hidden = true; return; }
+  const abs = d.abs || [], plex = d.plex || [];
+  box.hidden = !(abs.length && plex.length);
+  if (box.hidden) return;
+  // whoever belongs to a Hörwerk account is linked there, not here
+  const owned = new Set(d.users.flatMap((u) => [u.links.abs ? `abs:${u.links.abs.id}` : "", u.links.plex ? `plex:${u.links.plex.id}` : ""]));
+  const options = (list: MergeTarget[], kind: string): HTMLOptionElement[] => [el("option", { value: "" }, "–") as HTMLOptionElement,
+    ...list.filter((x) => !owned.has(`${kind}:${x.id}`)).map((x) => el("option", { value: x.id }, x.name) as HTMLOptionElement)];
+  $("#mergeAbs").replaceChildren(...options(abs, "abs"));
+  $("#mergePlex").replaceChildren(...options(plex, "plex"));
+  $("#mergePeople").replaceChildren(...d.people.map((p) => el("li", {},
+    el("b", {}, p.name), el("span", { class: "muted small" }, [p.abs ? `Audiobookshelf: ${p.abs.name}` : "", p.plex ? `Plex: ${p.plex.name}` : ""].filter(Boolean).join(" · ")),
+    el("button", { type: "button", class: "btn small ghost", onclick: async () => {
+      try { await api("DELETE", `/api/listening/people/${p.id}`); toast(t("Getrennt")); void loadStats(); } catch (e) { toast(errMsg(e), true); }
+    } }, t("Trennen")))));
+}
+
+async function mergeListeners(): Promise<void> {
+  const abs = $<HTMLSelectElement>("#mergeAbs").value, plex = $<HTMLSelectElement>("#mergePlex").value;
+  if (!abs || !plex) { toast(t("Je ein Audiobookshelf-Konto und ein Plex-Profil wählen"), true); return; }
+  try {
+    await api("PUT", "/api/listening/people", { abs, plex, name: $<HTMLInputElement>("#mergeName").value });
+    $<HTMLInputElement>("#mergeName").value = "";
+    toast(t("Zusammengeführt"));
+    void loadStats();
+  } catch (e) { toast(errMsg(e), true); }
 }
 
 // -- a family member: themselves and everyone together -------------------------------------
@@ -196,8 +242,8 @@ function renderOwn(s: StatsOwn): void {
   $("#statsTotalBox").hidden = false;
   $("#statsTotalNote").textContent = plural(s.accounts, t("1 Konto"), t("{n} Konten", { n: s.accounts }));
   $("#statsTotalTiles").replaceChildren(...userTiles(s.total, s.listen?.linked ? s.listen : null, ""));
-  renderListenChart(s.listen_months, t("letzte 12 Monate, alle verknüpften Konten"));
-  renderGenres(s.me.genres?.length ? s.me.genres : s.total.genres);
+  renderListenChart(s.listen_months, t("letzte 12 Monate, alle Hörer"));
+  renderGenres(s.me.listen?.genres?.length ? s.me.listen.genres : s.listen_genres, s.me.genres?.length ? s.me.genres : s.total.genres);
   renderMonthChart(s.months, t("Angefragte Hörbücher je Monat"), t("letzte 12 Monate – dunkel: deine"), true);
 }
 
@@ -320,6 +366,7 @@ async function loadStats(): Promise<void> {
 }
 
 function initStats(): void {
+  $("#mergeGo").addEventListener("click", () => { void mergeListeners(); });
   const saved = store.get("statsPeriod", "365");
   for (const r of document.querySelectorAll<HTMLInputElement>("#statsPeriod input")) {
     r.checked = r.value === saved;

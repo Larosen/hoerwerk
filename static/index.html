@@ -638,6 +638,17 @@
       <h3 class="stats-h">Wer fragt an, wer hört</h3>
       <div class="people-legend muted small"><span class="key req"></span> angefragt (Spielzeit) <span class="key heard"></span> gehört</div>
       <ul id="statsPeople" class="people-list"></ul>
+      <details id="statsMerge" class="stats-merge">
+        <summary>Hörer zusammenführen</summary>
+        <p class="muted small">Ein Audiobookshelf-Konto und ein Plex-Profil derselben Person werden zu einer Karte. Gehört jemand zu einem Hörwerk-Konto, verknüpfst du es dort (Einstellungen → Konten).</p>
+        <div class="merge-form">
+          <label>Audiobookshelf <select id="mergeAbs"></select></label>
+          <label>Plex <select id="mergePlex"></select></label>
+          <label>Name <input id="mergeName" type="text" maxlength="100" placeholder="wie auf der Karte"></label>
+          <button type="button" class="btn small primary" id="mergeGo">Zusammenführen</button>
+        </div>
+        <ul id="mergePeople" class="merge-people"></ul>
+      </details>
     </div>
     <div id="statsDetail" class="stats-detail" hidden>
       <div class="stats-col">
@@ -654,7 +665,7 @@
       <div id="statsListenChart" class="month-chart listen-chart" role="img"></div>
     </div>
     <div id="statsGenresBox" hidden>
-      <h3 class="stats-h">Genres <small class="muted">der angefragten Hörbücher</small></h3>
+      <h3 class="stats-h">Genres <small class="muted" id="statsGenresNote">der angefragten Hörbücher</small></h3>
       <div id="statsGenres"></div>
     </div>
     <h3 class="stats-h"><span id="statsChartHead">Angefragte Hörbücher je Monat</span> <small class="muted" id="statsChartNote">letzte 12 Monate, alle Konten</small></h3>

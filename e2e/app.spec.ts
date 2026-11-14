@@ -917,6 +917,37 @@ test("Neue Version auf dem Server: ein offener Tab bietet einmal das Neuladen an
   expect(errors).toEqual([]);
 });
 
+test("Statistik: Hörer ohne Hörwerk-Konto zählen mit, Audiobookshelf und Plex lassen sich zusammenführen", async ({ page }) => {
+  const months = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`);
+  const blank = { requests: 0, books: 0, available: 0, open: 0, declined: 0, failed: 0, series: 0, minutes: 0, minutes_available: 0, bytes: 0,
+    english: 0, wait_median: null, last: null, top_genres: [], genres: [] };
+  const listen = (sec: number) => ({ seconds: sec, books: 2, finished: 1, last: 1_700_000_000, linked: [], errors: [], genres: [{ name: "Krimis & Thriller", books: 2 }] });
+  await page.route(/\/api\/stats(\?|$)/, (r) => r.fulfill({ json: { scope: "all", period: "365", since: null,
+    users: [{ ...blank, id: 1, name: "admin", role: "admin", listen: null },
+      { ...blank, id: null, name: "Oma", role: "listener", listen: listen(36000), listener: { key: "abs:o", person: null, abs: true, plex: false } }],
+    total: { ...blank, id: null, name: "", role: "user" }, months: months.map((m) => ({ month: m, books: 0, minutes: 0 })), library_books: 3,
+    listen: { seconds: 36000, books: 2, finished: 1, linked: 0, listeners: 1 }, listen_months: months.map((m) => ({ month: m, seconds: 3600 })),
+    listen_genres: [{ name: "Krimis & Thriller", books: 2 }] } }));
+  let merged: unknown = null;
+  await page.route("**/api/listening/accounts", (r) => r.fulfill({ json: { available: { abs: true, plex: true }, errors: [],
+    abs: [{ id: "o", name: "oma" }], plex: [{ id: "9", name: "Oma Plex" }], users: [{ id: 1, name: "admin", links: { abs: null, plex: null } }], people: [] } }));
+  await page.route("**/api/listening/people", (r) => { merged = r.request().postDataJSON(); return r.fulfill({ json: { people: [] } }); });
+  const errors = await open(page);
+  await page.goto("/stats");
+  const oma = page.locator(".person", { hasText: "Oma" });
+  await expect(oma).toContainText("Audiobookshelf");
+  await expect(oma).toContainText("10 h");
+  await expect(oma.locator("a")).toHaveCount(0);                                     // no account page for a listener
+  await expect(page.locator("#statsGenresNote")).toHaveText("der gehörten Hörbücher");
+  await page.locator("#statsMerge summary").click();
+  await page.locator("#mergeAbs").selectOption("o");
+  await page.locator("#mergePlex").selectOption("9");
+  await page.locator("#mergeName").fill("Oma");
+  await page.locator("#mergeGo").click();
+  await expect.poll(() => merged).toEqual({ abs: "o", plex: "9", name: "Oma" });
+  expect(errors).toEqual([]);
+});
+
 test("Hörbücher: Details aus der Bibliothek öffnen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockAnyDetail(page);

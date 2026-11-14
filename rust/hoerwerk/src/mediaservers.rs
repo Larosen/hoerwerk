@@ -341,7 +341,8 @@ impl Abs {
                     let asin = text_of(&meta["asin"]).to_uppercase();
                     out.insert(text_of(&item["id"]), json!({"title": text_of(&meta["title"]), "author": text_of(&meta["authorName"]),
                                                             "asin": if asin.is_empty() { Value::Null } else { json!(asin) },
-                                                            "duration": media["duration"].as_f64().unwrap_or(0.0)}));
+                                                            "duration": media["duration"].as_f64().unwrap_or(0.0),
+                                                            "genres": meta["genres"].as_array().cloned().unwrap_or_default()}));
                 }
                 if results.len() < 500 {
                     break;
