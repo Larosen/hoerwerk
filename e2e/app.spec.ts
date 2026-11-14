@@ -92,6 +92,19 @@ test("Eingang → M4B → Bibliothek, Doppeltes wird erkannt", async ({ page }) 
   expect(errors).toEqual([]);
 });
 
+test("Nicht als M4B: „Alle“ wählt aus und wieder ab", async ({ page }) => {
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Nicht als M4B/ }).click();
+  const all = page.locator(".uc-bar input[type=checkbox]").first();
+  const rows = page.locator("#bookList .book.uc input[type=checkbox]");
+  await all.check();
+  await expect(rows.first()).toBeChecked();
+  await page.locator(".uc-bar input[type=checkbox]").first().uncheck();      // focus stays on the box: the list must still rebuild
+  await expect(rows.first()).not.toBeChecked();
+  expect(errors).toEqual([]);
+});
+
 test("Altes MP3-Buch mit eigenen Kapitelnamen zu M4B", async ({ page }) => {
   const errors = await open(page);
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
@@ -230,7 +243,7 @@ test("Entdecken: Vorschläge ansehen, Details öffnen, nichts wird von selbst ge
   const suggestion = {
     asin: "B0TEST0001", title: "Das stille Haus", authors: ["Anna Autorin"], narrators: ["Sam Sprecher"],
     rating: 4.7, ratings: 1234, runtime_min: 600, release_date: "2026-03-01", cover_url: null,
-    url: "https://www.audible.de/pd/B0TEST0001", because: ["Altes Buch"], source: "audible",
+    url: "https://www.audible.de/pd/B0TEST0001", because: ["Altes Buch"], source: "review",       // tips from critics carry an ASIN too: the details load for them
     genres: ["Krimis & Thriller", "Literatur & Belletristik"],
   };
   await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
@@ -259,6 +272,7 @@ test("Entdecken: Nach Genre startet mit einem Genre, Unterkategorien wie bei Aud
     { id: "2", name: "Literatur & Belletristik", nonfiction: false, children: [{ id: "21", name: "Klassiker" }] },
   ];
   const asked: string[] = [];
+  await mockAnyDetail(page);        // the first card opens in the detail column on a wide screen
   await page.route("**/api/discover/genres", (r) => r.fulfill({ json: { genres } }));
   await page.route("**/api/discover?*", (r) => {
     const q = new URL(r.request().url()).searchParams;
@@ -538,6 +552,7 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   const suggestion = { asin: "B0TEST0002", title: "Die leise Stadt", authors: ["Bea Beispiel"], narrators: [], rating: 4.6,
     ratings: 500, runtime_min: 480, cover_url: null, url: null, because: [], source: "audible", requested: null };
   await mia.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
+  await mockAnyDetail(mia);
   const miaErrors = await open(mia, { name: "mia", password: "Gelbe-Tasse-123" });
   await mia.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
   await mia.locator(".suggestion").getByRole("button", { name: "Anfragen" }).click();

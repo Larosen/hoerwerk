@@ -1219,18 +1219,43 @@ pub fn tick(env: &Arc<dyn Env>) {
     }
 }
 
-/// The Audible audiobook of a reviewed book – same title (roughly) and same author.
+/// The year in a Perlentaucher address ("…-gesamtausgabe-7-cds-2026.html"): the edition that was reviewed.
+fn edition_year(review: &Value) -> Option<i64> {
+    search(rx!(r"-((?:19|20)\d\d)\.html"), s(review, "link")).and_then(|m| m[1].parse().ok())
+}
+
+fn release_year(book: &Value) -> Option<i64> {
+    s(book, "release_date").get(..4).and_then(|y| y.parse().ok())
+}
+
+fn position(book: &Value) -> f64 {
+    s(book, "series_position")
+        .split(['-', ' '])
+        .next()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(f64::MAX)
+}
+
+/// The Audible audiobook of a reviewed book – same title (roughly) and same author. When the address of the review
+/// names the edition's year (a new recording or a complete edition), a recording from that year is meant, not an
+/// older one with the same title; a series published volume by volume yields its first volume of that year.
 fn audiobook_for(env: &dyn Env, review: &Value, region: &str) -> Value {
     let author = s(review, "author");
     let names = surnames(author);
     let first = author.split_whitespace().next().unwrap_or("");
+    let year = edition_year(review);
     let mut hits = Vec::new();
     for a in [
         author.to_string(),
         format!("{first} {}", names[names.len() - 1]),
         String::new(),
     ] {
-        match env.search(region, s(review, "title"), a.trim(), 5) {
+        match env.search(
+            region,
+            s(review, "title"),
+            a.trim(),
+            if year.is_some() { 20 } else { 5 },
+        ) {
             Ok(h) => hits = h,
             Err(_) => return Value::Null,
         }
@@ -1238,25 +1263,42 @@ fn audiobook_for(env: &dyn Env, review: &Value, region: &str) -> Value {
             break;
         }
     }
-    for b in hits {
-        let authors: Vec<String> = strs(&b["authors"]).iter().map(|a| fold(a)).collect();
-        if !names
-            .iter()
-            .any(|n| !n.is_empty() && authors.iter().any(|a| a.contains(n.as_str())))
-        {
-            continue;
-        }
-        if audible::ratio(s(&b, "title"), s(review, "title")) >= 0.6 {
-            let mut keys: Vec<&str> = ITEM_KEYS.to_vec();
-            keys.extend(["is_adult", "format_type", "language", "genres"]);
-            let out: Map<String, Value> = keys
+    let candidates: Vec<Value> = hits
+        .into_iter()
+        .filter(|b| {
+            let authors: Vec<String> = strs(&b["authors"]).iter().map(|a| fold(a)).collect();
+            names
                 .iter()
-                .map(|k| (k.to_string(), b.get(*k).cloned().unwrap_or(Value::Null)))
-                .collect();
-            return Value::Object(out);
+                .any(|n| !n.is_empty() && authors.iter().any(|a| a.contains(n.as_str())))
+                && (audible::ratio(s(b, "title"), s(review, "title")) >= 0.6
+                    || (year.is_some() && audible::ratio(s(b, "series"), s(review, "title")) >= 0.8))
+        })
+        .collect();
+    let mut chosen: Option<&Value> = candidates.first();
+    if let Some(y) = year {
+        let of_year: Vec<&Value> = candidates.iter().filter(|b| release_year(b) == Some(y)).collect();
+        if of_year.is_empty() {
+            // a very recent edition and only older recordings: not the one reviewed – wait for it
+            let this_year: i64 = today()[..4].parse().unwrap_or(0);
+            if y >= this_year - 1 {
+                chosen = None;
+            }
+        } else {
+            chosen = of_year.into_iter().min_by(|a, b| {
+                position(a)
+                    .partial_cmp(&position(b))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
         }
     }
-    Value::Null
+    let Some(b) = chosen else { return Value::Null };
+    let mut keys: Vec<&str> = ITEM_KEYS.to_vec();
+    keys.extend(["is_adult", "format_type", "language", "genres"]);
+    let out: Map<String, Value> = keys
+        .iter()
+        .map(|k| (k.to_string(), b.get(*k).cloned().unwrap_or(Value::Null)))
+        .collect();
+    Value::Object(out)
 }
 
 fn genre_entry_empty(env: &dyn Env, gid: &str) -> bool {
@@ -1762,6 +1804,58 @@ mod tests {
         assert_eq!(gs[2]["children"], json!([]));
         items(&f, "genre", "12"); // nothing German there at all …
         assert_eq!(genres(&e)[0]["children"], json!([{"id": "11", "name": "Krimis"}])); // … so it is left out
+    }
+
+    #[test]
+    fn review_of_a_new_edition_does_not_get_the_old_recording() {
+        let f = setup();
+        let lewis = json!({"authors": ["C. S. Lewis"], "series": "Die Chroniken von Narnia"});
+        let with = |extra: Value| {
+            let mut x = lewis.clone();
+            x.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            x
+        };
+        *lock(&f.hits) = vec![
+            book(
+                "OLD",
+                "Die Chroniken von Narnia 1",
+                with(json!({"release_date": "2005-01-01", "series_position": "1"})),
+            ),
+            book(
+                "N2",
+                "Die Chroniken: Der letzte Kampf",
+                with(json!({"release_date": "2026-05-01", "series_position": "7"})),
+            ),
+            book(
+                "N1",
+                "Die Chroniken: Das Wunder von Narnia",
+                with(json!({"release_date": "2026-05-01", "series_position": "2"})),
+            ),
+        ];
+        let review = |link: &str| json!({"title": "Die Chroniken von Narnia", "author": "C. S. Lewis", "link": link});
+        let year = today()[..4].parse::<i64>().unwrap();
+        // the 2026 edition: a volume from 2026, the first one
+        let got = audiobook_for(
+            &*f,
+            &review(&format!("https://www.perlentaucher.de/buch/x/narnia-{year}.html")),
+            "de",
+        );
+        assert_eq!(s(&got, "asin"), "N1");
+        // no address year: as before
+        let got = audiobook_for(&*f, &review("https://www.perlentaucher.de/buch/x/narnia.html"), "de");
+        assert_eq!(s(&got, "asin"), "OLD");
+        // a recent edition with only old recordings: wait
+        *lock(&f.hits) = vec![book(
+            "OLD",
+            "Die Chroniken von Narnia 1",
+            with(json!({"release_date": "2005-01-01"})),
+        )];
+        let got = audiobook_for(
+            &*f,
+            &review(&format!("https://www.perlentaucher.de/buch/x/narnia-{year}.html")),
+            "de",
+        );
+        assert!(got.is_null());
     }
 
     #[test]

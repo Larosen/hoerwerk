@@ -100,7 +100,8 @@ function renderBooks(): void {
   if ($("#viewBooks").hidden) return;
   // Don't rebuild while the user is typing in a search box
   const active = document.activeElement;
-  if (active && active.closest("#bookList") && /^(INPUT|SELECT)$/.test(active.tagName)) {
+  if (active && active.closest("#bookList") && /^(INPUT|SELECT)$/.test(active.tagName)
+    && !(active instanceof HTMLInputElement && ["checkbox", "radio", "button"].includes(active.type))) {
     books.lastJson = "";   // render on the next update instead
     return;
   }

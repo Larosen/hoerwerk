@@ -19,7 +19,7 @@ const WIDE = "(min-width: 1240px)";
 
 /** Audible knows the book by its ASIN – only then there is a description and "similar" to ask for. */
 function knownAtAudible(b: Book): boolean {
-  return !!b.asin && (!b.source || b.source === "audible");
+  return !!b.asin && b.source !== "librivox" && b.source !== "library";
 }
 
 function detailChip(label: string, run: () => void): HTMLButtonElement {

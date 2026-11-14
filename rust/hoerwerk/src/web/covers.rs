@@ -3,8 +3,9 @@
 //! a book) because they come from the same origin.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use axum::http::StatusCode;
 use bytes::Bytes;
@@ -19,6 +20,32 @@ const MAX_URL: usize = 2000;
 /// At most this many cached covers; when it gets more, the oldest are removed down to `PRUNE_TO`.
 const KEEP: usize = 3000;
 const PRUNE_TO: usize = 2500;
+
+/// Amazon's image hosts hand out a smaller picture when the address says so ("…/I/51abc._SL300_.jpg"); the
+/// stored addresses carry no size, so a list gets 300 px and the detail column 600 px instead of the original.
+/// Other hosts are left as they are.
+fn sized(url: &str, width: u32) -> String {
+    let Some((head, tail)) = url.split_once("/images/I/") else {
+        return url.to_string();
+    };
+    let host = head.trim_start_matches("https://");
+    let amazon = host.ends_with(".media-amazon.com") || host.ends_with(".ssl-images-amazon.com");
+    match tail.rsplit_once('.') {
+        Some((id, ext))
+            if amazon
+                && matches!(ext, "jpg" | "png")
+                && !id.is_empty()
+                && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '%' || c == '-') =>
+        {
+            format!("{head}/images/I/{id}._SL{width}_.{ext}")
+        }
+        _ => url.to_string(),
+    }
+}
+
+/// The list size is the default for `warm`, so the page finds exactly these files in the cache.
+pub const LIST_WIDTH: u32 = 300;
+pub const BIG_WIDTH: u32 = 600;
 
 fn key(url: &str) -> String {
     hex::encode(Sha256::digest(url.as_bytes()))
@@ -39,6 +66,51 @@ fn prune(dir: &Path) {
     }
 }
 
+/// Covers being fetched right now, so a request for the same one waits instead of fetching it a second time.
+static BUSY: Mutex<Option<HashSet<String>>> = Mutex::new(None);
+
+fn claim(k: &str) -> bool {
+    BUSY.lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .get_or_insert_with(HashSet::new)
+        .insert(k.to_string())
+}
+
+fn release(k: &str) {
+    if let Some(set) = BUSY.lock().unwrap_or_else(|p| p.into_inner()).as_mut() {
+        set.remove(k);
+    }
+}
+
+/// Fetch the covers of a list in the background, several at once, so the page finds them cached
+/// instead of the browser asking for them a few at a time.
+pub fn warm(app: &App, urls: Vec<String>) {
+    let dir = app.cfg.config_dir.join("covers");
+    let todo: Vec<String> = urls
+        .into_iter()
+        .filter(|u| u.len() <= MAX_URL && u.to_lowercase().starts_with("https://"))
+        .map(|u| sized(&u, LIST_WIDTH))
+        .filter(|u| !dir.join(key(u)).exists())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .take(60)
+        .collect();
+    if todo.is_empty() {
+        return;
+    }
+    let queue = Arc::new(Mutex::new(todo));
+    for _ in 0..8 {
+        let (q, dir) = (queue.clone(), dir.clone());
+        std::thread::spawn(move || {
+            loop {
+                let next = q.lock().unwrap_or_else(|p| p.into_inner()).pop();
+                let Some(url) = next else { break };
+                let _ = cached_or_fetch(&dir, &url);
+            }
+        });
+    }
+}
+
 /// The cached picture, or fetched now (public hosts only, size-capped, it must really be a JPEG or PNG).
 fn cached_or_fetch(dir: &Path, url: &str) -> Option<Vec<u8>> {
     let path = dir.join(key(url));
@@ -47,7 +119,30 @@ fn cached_or_fetch(dir: &Path, url: &str) -> Option<Vec<u8>> {
     {
         return Some(data);
     }
-    let data = audible::fetch_image(url).ok().flatten()?;
+    let k = key(url);
+    if !claim(&k) {
+        // somebody else is fetching it: wait for the file
+        for _ in 0..300 {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            if let Ok(data) = std::fs::read(&path)
+                && media::image_type(&data).is_some()
+            {
+                return Some(data);
+            }
+            if !BUSY
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .as_ref()
+                .is_some_and(|s| s.contains(&k))
+            {
+                break;
+            }
+        }
+        return std::fs::read(&path).ok().filter(|d| media::image_type(d).is_some());
+    }
+    let fetched = audible::fetch_image(url).ok().flatten();
+    release(&k);
+    let data = fetched?;
     if std::fs::create_dir_all(dir).is_ok() {
         let tmp = path.with_extension("tmp");
         if std::fs::write(&tmp, &data).is_ok() {
@@ -66,6 +161,11 @@ pub async fn proxy(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
     if !valid {
         return error(400, t("Ungültige Daten", &[]));
     }
+    let url = match req.query.get("w").map(String::as_str) {
+        Some("300") => sized(&url, LIST_WIDTH),
+        Some("600") => sized(&url, BIG_WIDTH),
+        _ => url,
+    };
     let dir = app.cfg.config_dir.join("covers");
     let found = tokio::task::spawn_blocking(move || cached_or_fetch(&dir, &url))
         .await
@@ -88,6 +188,25 @@ pub async fn proxy(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn amazon_covers_get_a_size_others_do_not() {
+        let a = "https://m.media-amazon.com/images/I/51AbC-d%2B.jpg";
+        assert_eq!(
+            sized(a, 300),
+            "https://m.media-amazon.com/images/I/51AbC-d%2B._SL300_.jpg"
+        );
+        assert_eq!(
+            sized(a, 600),
+            "https://m.media-amazon.com/images/I/51AbC-d%2B._SL600_.jpg"
+        );
+        let done = "https://m.media-amazon.com/images/I/51AbC._SL500_.jpg";
+        assert_eq!(sized(done, 300), done); // already sized: left alone
+        let other = "https://covers.openlibrary.org/b/id/1-L.jpg";
+        assert_eq!(sized(other, 300), other);
+        let evil = "https://evil.example/images/I/51AbC.jpg";
+        assert_eq!(sized(evil, 300), evil);
+    }
 
     #[test]
     fn cache_keys_differ_and_are_stable() {
