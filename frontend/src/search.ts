@@ -173,7 +173,7 @@ async function lookupBooks(e?: Event): Promise<void> {
     // a new search: the old release list and the free books are gone; the first hit fills the detail column on wide screens
     $("#releaseTools").hidden = true;
     search.results = [];
-    if (res.books.length && window.matchMedia(WIDE).matches) showDetail(res.books[0], false);
+    if (res.books.length && window.matchMedia(WIDE).matches && !$("#viewSearch").hidden) showDetail(res.books[0], false);
   } catch (err) { if (!isSuperseded(err)) toast(errMsg(err), true); }
 }
 

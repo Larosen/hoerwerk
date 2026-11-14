@@ -130,10 +130,12 @@ function initDetail(): void {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && detail.current && !window.matchMedia(WIDE).matches) closeDetail();
   });
-  // the column belongs to Entdecken, Suchen and Hörbücher
+  // the book belongs to the page it was opened on: another page (or the same page opened anew) closes it
+  let shownOn = "";
   document.addEventListener("viewchange", (e) => {
     const view = (e as CustomEvent<string>).detail;
-    if (view !== "discover" && view !== "search" && view !== "books") closeDetail();
+    if (view !== shownOn) closeDetail();
+    shownOn = view;
   });
 }
 
