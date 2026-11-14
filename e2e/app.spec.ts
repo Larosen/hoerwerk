@@ -830,6 +830,23 @@ test("Entdecken auf dem Handy: Details als Blatt von unten, Escape schließt es"
   expect(errors).toEqual([]);
 });
 
+test("Handy: das Detail-Blatt ist bis unten in der Farbe des Hörbuchs, auch beim Scrollen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const item = { asin: "B0TEST0001", title: "Hier geht's lang!", authors: ["Elke Heidenreich"], narrators: ["Elke Heidenreich"], rating: 4.9, ratings: 266,
+    runtime_min: 198, release_date: "2021-01-01", cover_url: null, source: "audible", genres: ["Biografien & Erinnerungen"] };
+  await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [item], updated: 1, error: null, running: false } }));
+  await page.route("**/api/book/detail?*", (r) => r.fulfill({ json: { book: { ...item, description: "Eine lebenslange Liebesgeschichte. ".repeat(8) },
+    similar: [1, 2, 3, 4].map((n) => ({ ...item, asin: `B0SIM0000${n}`, title: `Ähnlich ${n}` })), region: "de" } }));
+  const errors = await open(page);
+  await page.goto("/discover");
+  await page.locator(".s-title").first().click();
+  const sheet = page.locator("#bookDetail");
+  await expect(sheet.locator(".detail-similar")).toBeVisible();
+  const [scroll, inner] = await sheet.evaluate((s) => [s.scrollHeight, s.querySelector(".detail-inner")!.getBoundingClientRect().height]);
+  expect(inner).toBeGreaterThanOrEqual(scroll - 1);                        // the tinted box is not cut off at the sheet's height
+  expect(errors).toEqual([]);
+});
+
 test("Hörbücher: Details aus der Bibliothek öffnen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockAnyDetail(page);

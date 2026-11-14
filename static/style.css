@@ -1163,7 +1163,7 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 /* ===== Details of one audiobook: column (wide) or sheet (narrow) ===== */
 .book-detail { display: none; }
 .book-detail.open { display: flex; flex-direction: column; }
-.detail-inner { padding: 18px 22px 28px; display: flex; flex-direction: column; gap: 10px; border: 0; min-height: 100%; }
+.detail-inner { padding: 18px 22px 28px; display: flex; flex-direction: column; gap: 10px; border: 0; min-height: 100%; flex: 1 0 auto; } /* never squeezed to the sheet's height: its colour goes all the way down when scrolling */
 .detail-bar { display: flex; justify-content: space-between; align-items: center; min-height: 32px; }
 .icon-btn { background: none; border: 0; color: var(--muted); cursor: pointer; width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 50%; }
 .icon-btn:hover { background: var(--hover); color: var(--text); }

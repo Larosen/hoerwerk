@@ -10,6 +10,7 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 - **Series with signs in the name** (*Die drei ???*, *Die drei !!!*): the search asks for "Fragezeichen"/"Ausrufezeichen" and the episode
   number; an episode release that names series, title and number is accepted without the author (H.G. Francis is never in it).
 - **Daily indexer limits** rest only until the next possible reset (local midnight or midnight UTC, whichever comes first) instead of a full day.
+- **Phone:** the detail sheet keeps the book's colour all the way down when scrolling (it ended halfway as a box).
 - **Broken characters in release names** ("Philosopherâ€™s") are repaired before matching.
 - **Protokoll tells more:** a search without a fitting release logs which releases were turned down and why, which indexers failed or rest; the details of a book log what the shop answered. If the description cannot be loaded, the column says so.
 
