@@ -272,6 +272,7 @@ test("Entdecken: Nach Genre startet mit einem Genre, Unterkategorien wie bei Aud
     { id: "2", name: "Literatur & Belletristik", nonfiction: false, children: [{ id: "21", name: "Klassiker" }] },
   ];
   const asked: string[] = [];
+  await mockAnyDetail(page);        // the first card opens in the detail column on a wide screen
   await page.route("**/api/discover/genres", (r) => r.fulfill({ json: { genres } }));
   await page.route("**/api/discover?*", (r) => {
     const q = new URL(r.request().url()).searchParams;
@@ -551,6 +552,7 @@ test("Anfragen: Familienkonto fragt an, Admin gibt frei, Releases mit Urteil", a
   const suggestion = { asin: "B0TEST0002", title: "Die leise Stadt", authors: ["Bea Beispiel"], narrators: [], rating: 4.6,
     ratings: 500, runtime_min: 480, cover_url: null, url: null, because: [], source: "audible", requested: null };
   await mia.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
+  await mockAnyDetail(mia);
   const miaErrors = await open(mia, { name: "mia", password: "Gelbe-Tasse-123" });
   await mia.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
   await mia.locator(".suggestion").getByRole("button", { name: "Anfragen" }).click();
