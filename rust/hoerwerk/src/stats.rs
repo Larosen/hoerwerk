@@ -103,6 +103,16 @@ impl Acc {
             "top_genres".into(),
             json!(g.iter().take(3).map(|x| x.0.clone()).collect::<Vec<_>>()),
         );
+        // the share of each genre (for the ribbon): the six most asked for
+        out.insert(
+            "genres".into(),
+            json!(
+                g.iter()
+                    .take(6)
+                    .map(|x| json!({"name": x.0, "books": x.1}))
+                    .collect::<Vec<_>>()
+            ),
+        );
         Value::Object(out)
     }
 }
@@ -320,9 +330,32 @@ impl Stats {
                 s
             })
             .collect();
+        // hours heard per month, all linked accounts together
+        let mut heard_months: HashMap<String, f64> = HashMap::new();
+        for uid in users_out.iter().filter_map(|u| u["id"].as_i64()) {
+            if users_out
+                .iter()
+                .find(|u| u["id"] == json!(uid))
+                .is_some_and(|u| u["listen"].is_null())
+            {
+                continue;
+            }
+            for (day, secs) in app.listening.history(app, uid)["days"]
+                .as_object()
+                .into_iter()
+                .flatten()
+            {
+                *heard_months.entry(day.chars().take(7).collect()).or_default() += secs.as_f64().unwrap_or(0.0);
+            }
+        }
+        let listen_months: Vec<Value> = month_keys
+            .iter()
+            .map(|k| json!({"month": k, "seconds": crate::releases::py_round(heard_months.get(k).copied().unwrap_or(0.0))}))
+            .collect();
         Some(json!({
             "period": period, "since": if since == 0.0 { Value::Null } else { json!(since) }, "users": users_out,
-            "total": total.finish(), "listen": heard_total, "listen_errors": errors.into_iter().take(5).collect::<Vec<_>>(),
+            "total": total.finish(), "listen": heard_total, "listen_months": listen_months,
+            "listen_errors": errors.into_iter().take(5).collect::<Vec<_>>(),
             "months": month_keys.iter().map(|k| { let (b, m) = month_rows[k]; json!({"month": k, "books": b, "minutes": m}) }).collect::<Vec<_>>(),
             "library_books": app.library.stats()["books"],
         }))
@@ -377,7 +410,7 @@ impl Stats {
             .collect();
         Some(
             json!({"scope": "own", "period": s["period"], "since": s["since"], "me": me, "total": s["total"],
-                    "accounts": s["users"].as_array().map_or(0, Vec::len), "listen": s["listen"], "months": months,
+                    "accounts": s["users"].as_array().map_or(0, Vec::len), "listen": s["listen"], "listen_months": s["listen_months"], "months": months,
                     "library_books": s["library_books"]}),
         )
     }

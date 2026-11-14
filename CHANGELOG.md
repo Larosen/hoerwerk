@@ -18,6 +18,10 @@ request, follow and discover audiobooks. Earlier numbers (7.x) were development 
 - **Hörbücher:** the library as a shelf (covers stand on a board) or as a list; *Besser*, *Kapitel* and *Korrigieren* are icon buttons.
 - **Protokoll:** choose the period – 15 min, 60 min (default), 24 h or everything.
 - **Progress as a waveform** – downloads, conversions and requests; the sign-in page carries the same track as a signature.
+- **Search starts with the shops:** *Suchen* only matches Audible and BookBeat. *Anfragen* then asks the indexers in the order set under
+  *Einstellungen* and stops at the first very good release. Searching indexers and LibriVox directly is a link shown only when nothing was found.
+- **Details everywhere:** picking a book shows cover, date, length, narrator and description; library books open the same column.
+- **Statistik on the phone** has the genre ribbon and the listening hours per month.
 - **Details of an audiobook:** on wide screens (Mac, iPad landscape) a column on the right, otherwise a sheet from below – cover, description,
   facts, request and search, and *Weiterstöbern*: more by the author or narrator, the whole series, and **Ähnlich wie** (what listeners of the book also
   listened to, from Audible). A tap on a similar audiobook opens it right there; *Zurück* leads back. In *Entdecken* and *Suchen*.

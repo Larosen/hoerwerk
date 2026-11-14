@@ -108,26 +108,27 @@
         <button class="btn primary" type="submit" id="bookLookupBtn">Suchen</button>
       </form>
       <div id="bookPick" class="book-pick pad-x" hidden></div>
-      <div id="freePick" class="book-pick pad-x admin-only" hidden></div>
-      <form id="releaseForm" class="search-row pad release-row admin-only" hidden>
-        <label class="release-label">Bei den Indexern als
-          <input id="releaseQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false"></label>
-        <select id="searchLang" aria-label="Sprache bevorzugen">
-          <option value="de">Deutsch bevorzugen</option>
-          <option value="en">Englisch bevorzugen</option>
-          <option value="">Sprache egal</option>
-        </select>
-        <button class="btn" type="submit" id="searchGo">Releases suchen</button>
-      </form>
-      <p class="pad-x muted small admin-only" id="freeSearchRow"><button type="button" class="linkish" id="freeSearchBtn">Nicht im Shop? Direkt bei den Indexern suchen</button></p>
-      <div id="searchOwned" class="owned-note admin-only" hidden></div>
-      <div class="row gap pad-x admin-only result-tools"><div id="searchNote" class="muted small grow"></div>
-        <div id="searchSort" class="sort-bar" role="group" aria-label="Releases sortieren"></div></div>
-      <div class="table-wrap admin-only">
-        <table class="results">
-          <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">Abrufe</th><th class="c-act"></th></tr></thead>
-          <tbody id="searchResults"><tr><td colspan="5" class="empty-row">Erst ein Hörbuch suchen und auswählen.</td></tr></tbody>
-        </table>
+      <div id="releaseTools" class="admin-only" hidden>
+        <div id="freePick" class="book-pick pad-x" hidden></div>
+        <form id="releaseForm" class="search-row pad release-row">
+          <label class="release-label">Bei den Indexern als
+            <input id="releaseQuery" type="search" aria-label="Suchbegriff für die Indexer" spellcheck="false"></label>
+          <select id="searchLang" aria-label="Sprache bevorzugen">
+            <option value="de">Deutsch bevorzugen</option>
+            <option value="en">Englisch bevorzugen</option>
+            <option value="">Sprache egal</option>
+          </select>
+          <button class="btn" type="submit" id="searchGo">Releases suchen</button>
+        </form>
+        <div id="searchOwned" class="owned-note" hidden></div>
+        <div class="row gap pad-x result-tools"><div id="searchNote" class="muted small grow"></div>
+          <div id="searchSort" class="sort-bar" role="group" aria-label="Releases sortieren"></div></div>
+        <div class="table-wrap">
+          <table class="results">
+            <thead><tr><th>Release</th><th class="c-num">Größe</th><th class="c-num">Alter</th><th class="c-num">Abrufe</th><th class="c-act"></th></tr></thead>
+            <tbody id="searchResults"></tbody>
+          </table>
+        </div>
       </div>
     </section>
     <details class="panel how admin-only">
@@ -135,15 +136,14 @@
       <ol class="steps">
         <li>SABnzbd und mindestens einen Newznab-Indexer in den Einstellungen eintragen.</li>
         <li>In SABnzbd eine Kategorie (z. B. <code>audiobooks</code>) anlegen, deren Ordner der <b>Hörbuch-Eingang</b> ist.</li>
-        <li>Hörbuch suchen und auswählen. Hörwerk sucht dann die passenden Releases.</li>
-        <li><b>Download</b> klicken. Danach übernimmt der Eingang.</li>
+        <li>Hörbuch suchen und auf <b>Anfragen</b> tippen. Hörwerk fragt dann die Indexer in der eingestellten Reihenfolge und lädt das erste sehr gute Release.</li>
+        <li>Nichts gefunden? Unter den Treffern lässt sich direkt bei den Indexern suchen und ein Release von Hand wählen.</li>
       </ol>
     </details>
   </div>
 </main>
 
 <main class="page" id="viewDiscover" hidden>
-  <h1 class="page-title">Entdecken</h1>
   <div id="discoverSections" class="tabs-bar" role="tablist" aria-label="Vorschläge">
     <button type="button" role="tab" data-section="foryou">Für dich</button>
     <button type="button" role="tab" data-section="genre">Nach Genre</button>
@@ -385,7 +385,7 @@
     <fieldset data-section="downloads">
       <legend>Newznab-Indexer</legend>
       <p class="muted small">Optional, nur für die Suche: Newznab-Adresse des Indexers (z. B. <code>https://indexer.example/api</code>) und API-Key. Kategorie 3030 = Hörbuch.</p>
-      <p class="muted small">Mit „Zuerst“ wird ein Indexer zuerst gefragt, die anderen nur ohne Treffer.</p>
+      <p class="muted small">Die Indexer werden von oben nach unten gefragt. Sobald einer ein sehr gutes Release hat, ist die Suche zu Ende. Mit „Zuerst“ rückt ein Indexer an die erste Stelle.</p>
       <div id="indexerRows" class="indexer-rows"></div>
       <button type="button" id="addIndexerBtn" class="btn small">+ Indexer</button>
     </fieldset>
@@ -534,8 +534,8 @@
 </main>
 
 <main class="more-layout" id="viewMore" hidden>
-  <h1 class="page-title">Mehr</h1>
   <nav class="menu panel" aria-label="Mehr">
+    <div class="panel-head"><h2>Mehr</h2></div>
     <a href="/settings/logs" class="admin-only"><svg class="ico" aria-hidden="true"><use href="#i-log"/></svg><span>Protokoll<small>Was Hörwerk gerade tut</small></span><span id="moreLogBadge" class="mtag err" hidden></span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg></a>
     <a href="/stats"><svg class="ico" aria-hidden="true"><use href="#i-chart"/></svg><span>Statistik<small>Dein Hörjahr in Zahlen</small></span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg></a>
     <a href="/settings" class="admin-only"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><span>Einstellungen<small>Verbindungen, Eingang, Konten</small></span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron"/></svg></a>
@@ -634,6 +634,14 @@
         <h3 class="stats-h">Gehört <small class="muted" id="statsHeardNote"></small></h3>
         <ul id="statsHeard" class="stats-list"></ul>
       </div>
+    </div>
+    <div id="statsListenBox" hidden>
+      <h3 class="stats-h">Gehörte Stunden je Monat <small class="muted" id="statsListenNote"></small></h3>
+      <div id="statsListenChart" class="month-chart listen-chart" role="img"></div>
+    </div>
+    <div id="statsGenresBox" hidden>
+      <h3 class="stats-h">Genres <small class="muted">der angefragten Hörbücher</small></h3>
+      <div id="statsGenres"></div>
     </div>
     <h3 class="stats-h"><span id="statsChartHead">Angefragte Hörbücher je Monat</span> <small class="muted" id="statsChartNote">letzte 12 Monate, alle Konten</small></h3>
     <div id="statsChart" class="month-chart" role="img"></div>

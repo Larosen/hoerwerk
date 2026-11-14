@@ -36,7 +36,17 @@ function detailFacts(b: DetailBook): HTMLElement {
   return el("dl", { class: "leaders" }, ...rows.map(([k, v]) => el("div", {}, el("dt", {}, k), el("dd", {}, v))));
 }
 
-function renderDetail(b: DetailBook, extra: DetailAnswer | null | "loading"): void {
+/** What the list knew, completed by what the shop says (a library book knows little: title, author, maybe the ASIN). */
+function completed(b: DetailBook, shop: DetailBook | undefined): DetailBook {
+  if (!shop) return b;
+  return { ...b, narrators: b.narrators?.length ? b.narrators : shop.narrators, runtime_min: b.runtime_min || shop.runtime_min,
+    release_date: b.release_date || shop.release_date, genres: b.genres?.length ? b.genres : shop.genres, rating: b.rating ?? shop.rating,
+    ratings: b.ratings ?? shop.ratings, format_type: b.format_type || shop.format_type, language: b.language || shop.language,
+    url: b.url || shop.url, series_asin: b.series_asin || shop.series_asin };
+}
+
+function renderDetail(book: DetailBook, extra: DetailAnswer | null | "loading"): void {
+  const b = completed(book, extra && extra !== "loading" ? extra.book : undefined);
   const author = (b.authors || [])[0] || "";
   const narrator = (b.narrators || [])[0] || "";
   const lang = bookLangCode(b);
@@ -61,7 +71,6 @@ function renderDetail(b: DetailBook, extra: DetailAnswer | null | "loading"): vo
     description ? el("p", { class: "detail-blurb" }, description) : null,
     detailFacts(b),
     el("div", { class: "detail-acts" }, requestButton(b),
-      el("button", { type: "button", class: "btn small", onclick: () => searchSuggestion(b as Suggestion) }, icon("search"), t("Suchen")),
       b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null),
     el("div", { class: "detail-more" },
       el("h3", {}, t("Weiterstöbern")),
@@ -120,10 +129,10 @@ function initDetail(): void {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && detail.current && !window.matchMedia(WIDE).matches) closeDetail();
   });
-  // the column belongs to Entdecken and Suchen
+  // the column belongs to Entdecken, Suchen and Hörbücher
   document.addEventListener("viewchange", (e) => {
     const view = (e as CustomEvent<string>).detail;
-    if (view !== "discover" && view !== "search") closeDetail();
+    if (view !== "discover" && view !== "search" && view !== "books") closeDetail();
   });
 }
 

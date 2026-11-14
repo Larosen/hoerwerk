@@ -277,6 +277,7 @@ function coverArt(title: string, author = "", tag = ""): HTMLDivElement {
 
 /** An online cover goes through the server's cache: one origin for the page (so it can read the colour), no request to the shop's image host. */
 function coverSrc(url: string): string {
+  if (url.startsWith("/")) return url;                // a cover of our own origin (the library): no detour
   return "/api/cover?u=" + encodeURIComponent(url);
 }
 

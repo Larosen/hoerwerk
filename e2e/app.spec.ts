@@ -33,6 +33,11 @@ function watchErrors(page: Page): string[] {
   return errors;
 }
 
+/** The detail column asks for the book's details; offline there is no shop – answer with the book itself. */
+async function mockAnyDetail(page: Page): Promise<void> {
+  await page.route("**/api/book/detail?*", (r) => r.fulfill({ json: { book: { asin: new URL(r.request().url()).searchParams.get("asin"), title: "Details", authors: [], description: "" }, similar: [], region: "de" } }));
+}
+
 const ADMIN = { name: "admin", password: "E2E-Admin-Kaffee-1" };
 const OWN = { "X-Requested-With": "Hoerwerk" };
 
@@ -221,7 +226,7 @@ test("Fremde Seiten dürfen nichts ändern (CSRF)", async ({ page, request }) =>
   await expect(page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toBeVisible();   // still German
 });
 
-test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
+test("Entdecken: Vorschläge ansehen, Details öffnen, nichts wird von selbst gesucht", async ({ page }) => {
   const suggestion = {
     asin: "B0TEST0001", title: "Das stille Haus", authors: ["Anna Autorin"], narrators: ["Sam Sprecher"],
     rating: 4.7, ratings: 1234, runtime_min: 600, release_date: "2026-03-01", cover_url: null,
@@ -229,7 +234,9 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
     genres: ["Krimis & Thriller", "Literatur & Belletristik"],
   };
   await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));
-  await page.route("**/api/search", (r) => r.fulfill({ json: { results: [], errors: [], queries: ["Autorin Das stille Haus"] } }));
+  await page.route("**/api/book/detail?*", (r) => r.fulfill({ json: { book: { ...suggestion, description: "Ein Haus, das schweigt." }, similar: [], region: "de" } }));
+  let indexerSearches = 0;
+  await page.route("**/api/search", (r) => { indexerSearches++; return r.fulfill({ json: { results: [], errors: [], queries: [] } }); });
   const errors = await open(page);
   await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
   const card = page.locator(".suggestion");
@@ -238,10 +245,11 @@ test("Entdecken: Vorschläge ansehen und direkt suchen", async ({ page }) => {
   await expect(card).toContainText("★ 4.7");
   await expect(card.locator(".genre-tag")).toHaveText("Krimis & Thriller");          // the main category
   await expect(card).toContainText("Altes Buch");
-  await card.getByRole("button", { name: "Suchen" }).click();
-  await expect(page.locator("nav.tabs").getByRole("link", { name: "Suchen" })).toHaveAttribute("aria-current", "page");
-  await expect(page.locator("#releaseQuery")).toHaveValue("Autorin Das stille Haus");
-  await expect(page.locator("#bookPick")).toContainText("B0TEST0001");
+  await expect(card.getByRole("button", { name: "Anfragen" })).toBeVisible();
+  await expect(card.getByRole("button", { name: "Suchen" })).toHaveCount(0);          // the request does the searching
+  await card.locator(".s-title").click();
+  await expect(page.locator("#bookDetail .detail-blurb")).toHaveText("Ein Haus, das schweigt.");
+  expect(indexerSearches).toBe(0);
   expect(errors).toEqual([]);
 });
 
@@ -276,7 +284,7 @@ test("Entdecken: Nach Genre startet mit einem Genre, Unterkategorien wie bei Aud
   expect(errors).toEqual([]);
 });
 
-test("Suchen: Deutsch oder Englisch – die Wahl geht mit, jede Kachel zeigt die Sprache", async ({ page }) => {
+test("Suchen: Deutsch oder Englisch – die Wahl geht mit, jede Kachel zeigt die Sprache, die Indexer bleiben in Ruhe", async ({ page }) => {
   const asked: { query: string; language: string }[] = [];
   await page.route("**/api/search/books", async (r) => {
     const body = r.request().postDataJSON();
@@ -287,26 +295,40 @@ test("Suchen: Deutsch oder Englisch – die Wahl geht mit, jede Kachel zeigt die
       authors: ["Stephenie Meyer"], language: english ? "English" : "German", genres: ["Jugendliche & Heranwachsende"],
       series: "Twilight", series_position: "1", runtime_min: 700, source: "audible" }] } });
   });
-  const releaseSearch: { language: string }[] = [];
-  await page.route("**/api/search", (r) => {
-    releaseSearch.push(r.request().postDataJSON());
-    return r.fulfill({ json: { results: [], errors: [], queries: [] } });
-  });
+  await mockAnyDetail(page);
+  const indexerSearch: unknown[] = [];
+  await page.route("**/api/search", (r) => { indexerSearch.push(r.request().postDataJSON()); return r.fulfill({ json: { results: [], errors: [], queries: [] } }); });
   const errors = await open(page);
   await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();
   await page.locator("#searchQuery").fill("Twilight");
   await page.locator("#bookLookupBtn").click();
-  await expect(page.locator("#bookPick .pick")).toContainText("Bis(s) zum Morgengrauen");
+  await expect(page.locator("#bookPick .suggestion")).toContainText("Bis(s) zum Morgengrauen");
   await expect(page.locator("#bookPick .lang-tag")).toHaveCount(0);                   // German is the normal case: no mark
   await page.locator("#bookLang").getByText("Englisch").click();                       // searches again at once
-  await expect(page.locator("#bookPick .pick")).toContainText("Twilight");
+  await expect(page.locator("#bookPick .suggestion")).toContainText("Twilight");
   await expect(page.locator("#bookPick .lang-tag")).toHaveText("Englisch");
   expect(asked.map((a) => a.language)).toEqual(["de", "en"]);
-  // the releases are then searched in the edition's language
-  await page.locator("#bookPick .pick").click();
-  await expect(page.locator("#searchLang")).toHaveValue("en");
-  await expect.poll(() => releaseSearch.map((x) => x.language)).toEqual(["en"]);     // the indexers are asked for English
+  await expect(page.locator("#releaseTools")).toBeHidden();                            // looking at hits never starts a release search
+  expect(indexerSearch).toEqual([]);
   await page.locator("#bookLang").getByText("Deutsch").click();                         // back for the next tests
+  expect(errors).toEqual([]);
+});
+
+test("Suchen: nichts gefunden – erst dann die Suche bei den Indexern, ohne Hinweise vorher", async ({ page }) => {
+  await page.route("**/api/search/books", (r) => r.fulfill({ json: { region: "de", books: [] } }));
+  await page.route("**/api/search/free", (r) => r.fulfill({ json: { books: [] } }));
+  const asked: { query: string }[] = [];
+  await page.route("**/api/search", (r) => { asked.push(r.request().postDataJSON()); return r.fulfill({ json: { results: [], errors: [], queries: [] } }); });
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();
+  await expect(page.locator("#freePick")).toBeHidden();
+  await page.locator("#searchQuery").fill("Gibt es nicht");
+  await page.locator("#bookLookupBtn").click();
+  await expect(page.locator("#bookPick")).toContainText("Nichts gefunden");
+  expect(asked).toEqual([]);                                                           // nothing at the indexers by itself
+  await page.locator("#bookPick").getByRole("button", { name: /Direkt bei den Indexern/ }).click();
+  await expect.poll(() => asked.map((a) => a.query)).toEqual(["Gibt es nicht"]);
+  await expect(page.locator("#releaseTools")).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -314,6 +336,7 @@ test("Suchen: ganze Reihe anfragen – Bände wählen, eine Karte unter Anfragen
   const vol = (n: number) => ({ asin: `B0E2ESER0${n}`, title: `Glaswald ${n}`, authors: ["Mira Testfeld"], language: "English",
     series: "Glaswald-Chroniken", series_asin: "B0E2ESERIE", series_position: String(n), runtime_min: 500, source: "audible", region: "us" });
   await page.route("**/api/search/books", (r) => r.fulfill({ json: { region: "de", books: [vol(1)] } }));
+  await mockAnyDetail(page);
   const asked: { asin: string; region: string; language: string }[] = [];
   await page.route("**/api/search/series", (r) => {
     asked.push(r.request().postDataJSON());
@@ -789,5 +812,41 @@ test("Entdecken auf dem Handy: Details als Blatt von unten, Escape schließt es"
   await expect(sheet.locator(".detail-blurb")).toHaveText("Beschreibung von Das zweite Hörbuch");
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("Hörbücher: Details aus der Bibliothek öffnen", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockAnyDetail(page);
+  const errors = await open(page);
+  await page.goto("/books");
+  await page.locator("#bookFilter .chip").first().click();                                  // Bibliothek
+  const row = page.locator(".lib-row", { hasText: "Altes Buch" });
+  await expect(row).toBeVisible();
+  await row.locator(".lib-open").click();
+  const col = page.locator("#bookDetail");
+  await expect(col.locator(".detail-title")).toHaveText("Altes Buch");
+  await expect(col).toContainText("Max Muster");
+  await expect(col).toContainText("In der Bibliothek");                                       // owned: no request button
+  await expect(col.getByRole("button", { name: "Anfragen" })).toHaveCount(0);
+  await page.locator("nav.tabs").getByRole("link", { name: "Anfragen" }).click();
+  await expect(col).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("Statistik: Genres als Band und gehörte Stunden je Monat", async ({ page }) => {
+  const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"];
+  const user = { id: null, name: "", role: "user", requests: 3, books: 3, available: 2, open: 1, declined: 0, failed: 0, series: 0, minutes: 600,
+    minutes_available: 400, bytes: 1e9, english: 0, wait_median: 3600, last: 1_700_000_000, top_genres: ["Krimi"], listen: null,
+    genres: [{ name: "Krimi", books: 6 }, { name: "Klassiker", books: 3 }, { name: "Märchen", books: 1 }] };
+  await page.route(/\/api\/stats(\?|$)/, (r) => r.fulfill({ json: { scope: "all", period: "365", since: null, users: [], total: user,
+    months: months.map((m) => ({ month: m, books: 1, minutes: 60 })), library_books: 3, listen: { seconds: 36000, books: 4, finished: 2, linked: 1 },
+    listen_months: months.map((m, i) => ({ month: m, seconds: i === 10 ? 25 * 3600 : 3600 })) } }));
+  const errors = await open(page);
+  await page.goto("/stats");
+  await expect(page.locator("#statsGenres .genre-ribbon b")).toHaveCount(3);
+  await expect(page.locator("#statsGenres .genre-legend")).toContainText("Krimi 60 %");
+  await expect(page.locator("#statsListenChart .col")).toHaveCount(12);
+  await expect(page.locator("#statsListenChart .peak")).toHaveText("25");                    // the month with most hours
   expect(errors).toEqual([]);
 });

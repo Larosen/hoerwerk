@@ -37,6 +37,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     b.series ? `${b.series} ${b.series_position || ""}`.trim() : "",
     b.runtime_min ? fmtDuration(b.runtime_min * 60) : "",
     (b.release_date || "").slice(0, 4),
+    b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : "",
   ].filter(Boolean).join(" · ");
   let reason: Node | null = null;
   if (b.because?.length) {
@@ -61,19 +62,12 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
       b.rating ? el("span", { class: "rating", title: plural(b.ratings || 0, t("1 Bewertung bei Audible"), t("{n} Bewertungen bei Audible", { n: fmtCount(b.ratings || 0) })) },
         `★ ${b.rating.toFixed(1)}`, el("span", { class: "muted" }, ` (${fmtCount(b.ratings || 0)})`)) : null,
       facts ? el("span", { class: "muted small" }, facts) : null,
-      reason),
+      reason, editionNote(b)),
     // own row across the whole card (under cover and text), so the buttons never squeeze into the text column
     el("div", { class: "s-actions" },
       requestButton(b),
-      el("button", { type: "button", class: "btn small", onclick: () => searchSuggestion(b) }, icon("search"), t("Suchen")),
       b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null));
   return card;
-}
-
-/** Into the release search with this book picked (title, author and ASIN help later when tagging). */
-function searchSuggestion(b: Suggestion): void {
-  setView("search");
-  pickBook(b);
 }
 
 function renderDiscover(res: DiscoverAnswer): void {

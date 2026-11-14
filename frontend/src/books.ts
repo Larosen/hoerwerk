@@ -199,10 +199,10 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
   const all = [...(b.authors || []), ...(b.names || [])];
   const other = (b.names || []).filter((n, i, arr) => arr.indexOf(n) === i && !(b.authors || []).includes(n)
     && !all.some((m) => m !== n && m.includes(n)));
-  return el("li", { class: "lib-row" },
+  const row = el("li", { class: "lib-row", "data-asin": b.asin || "" },
     libraryCover(b.path, b.title || b.path, author, b.format !== "m4b" ? (b.format || "").toUpperCase() : "", b.mtime || "", !!b.cover),
     el("div", { class: "lib-main" },
-      el("div", { class: "lib-title" }, b.title || b.path,
+      el("div", { class: "lib-title" }, el("button", { type: "button", class: "lib-open", title: t("Details"), onclick: () => showDetail(libraryAsBook(b)) }, b.title || b.path),
         b.series ? el("span", { class: "muted" }, ` · ${b.series}${b.series_position ? " " + b.series_position : ""}`) : null),
       el("div", { class: "book-sub" }, author || t("Autor unbekannt"),
         other.length ? el("span", { class: "faint", title: t("Weitere Namen aus Tags und Ordnern – zählen beim Abgleich mit") },
@@ -218,6 +218,18 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
         onclick: (e: Event) => tidyLibraryChapters(b, e.currentTarget as HTMLButtonElement) }, icon("chapters"), el("span", { class: "lbl" }, t("Kapitel"))) : null,
       el("button", { type: "button", class: "btn small ghost", title: t("Falsch erkannt oder falsche Fassung? Neu zuordnen"),
         onclick: () => correctLibraryBook(b) }, icon("pencil"), el("span", { class: "lbl" }, t("Korrigieren")))) : null);
+  // the whole row opens the details (the buttons keep their own job)
+  row.addEventListener("click", (e) => { if (!(e.target as Element).closest("button, a")) showDetail(libraryAsBook(b)); });
+  return row;
+}
+
+/** A library book as the detail column knows books: title, author, series, the cover from its folder – and, with an ASIN, the shop's details. */
+function libraryAsBook(b: LibraryBook): Book {
+  return {
+    asin: b.asin, title: b.title || b.path, authors: b.authors || [], series: b.series, series_position: b.series_position,
+    cover_url: b.cover ? `/api/library/cover?path=${encodeURIComponent(b.path)}${b.mtime ? "&v=" + b.mtime : ""}` : null,
+    source: b.asin ? "audible" : "library", owned: { path: b.path, title: b.title, authors: b.authors || [], why: "", count: 1 },
+  };
 }
 
 // ------------------------------------------------------------------------- //

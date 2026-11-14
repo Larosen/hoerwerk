@@ -1002,8 +1002,8 @@ impl Usenet {
         self.configured()["sab"].as_bool().unwrap_or(false)
     }
 
-    /// The enabled indexers in the order they are asked: the preferred one alone first (if one is marked and
-    /// there are others), then the rest together. Without a preferred one: all at once.
+    /// The enabled indexers in the order they are asked, one step each: the one marked "Zuerst" in front, then the
+    /// list from top to bottom. A search stops at the first step that brought something fitting.
     fn tiers(&self) -> Vec<Vec<Newznab<'_>>> {
         let (mut first, mut rest) = (Vec::new(), Vec::new());
         for i in self.load()["indexers"].as_array().into_iter().flatten() {
@@ -1023,11 +1023,7 @@ impl Usenet {
                 rest.push(idx);
             }
         }
-        if first.is_empty() || rest.is_empty() {
-            first.extend(rest);
-            return if first.is_empty() { Vec::new() } else { vec![first] };
-        }
-        vec![first, rest]
+        first.into_iter().chain(rest).map(|i| vec![i]).collect()
     }
 
     fn sab(&self) -> Result<Sabnzbd<'_>> {
@@ -1690,14 +1686,23 @@ mod tests {
             (res["asked"].clone(), res["skipped"].clone()),
             (json!(["A"]), json!(["B"]))
         );
-        // without a preferred one: all at once, as before
+        // without one marked "Zuerst": the list from top to bottom – B is not needed when A has something
         u.update_config(&json!({"indexers": [
             {"name": "A", "url": "https://a.example", "apikey": "k1"},
             {"name": "B", "url": "https://b.example", "apikey": "k2"}], "sab": {}}));
         let res = u.search("Schimmelreiter", "", &[], false, 1, false).unwrap();
         assert_eq!(
             (res["asked"].clone(), res["skipped"].clone()),
-            (json!(["A", "B"]), json!([]))
+            (json!(["A"]), json!(["B"]))
         );
+        // three in a row: the third is only asked when the first two had nothing
+        let asked = Arc::new(Mutex::new(Vec::new()));
+        let u = usenet(&["c"], asked.clone());
+        u.update_config(&json!({"indexers": [
+            {"name": "X", "url": "https://x.example", "apikey": "k0"},
+            {"name": "B", "url": "https://b.example", "apikey": "k2"},
+            {"name": "C", "url": "https://c.example", "apikey": "k3"}], "sab": {}}));
+        let res = u.search("Schimmelreiter", "", &[], false, 1, false).unwrap();
+        assert_eq!(res["asked"].clone(), json!(["X", "B", "C"]));
     }
 }

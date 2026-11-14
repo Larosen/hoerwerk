@@ -9,18 +9,20 @@ interface ListenSummary { seconds: number; books: number; finished: number; last
 interface UserStats {
   id: number | null; name: string; role: string; requests: number; books: number; available: number; open: number;
   declined: number; failed: number; series: number; minutes: number; minutes_available: number; bytes: number;
-  english: number; wait_median: number | null; last: number | null; top_genres: string[];
+  english: number; wait_median: number | null; last: number | null; top_genres: string[]; genres?: GenreShare[];
   listen?: ListenSummary | null;
 }
+interface GenreShare { name: string; books: number }
+interface ListenMonth { month: string; seconds: number }
 interface MonthRow { month: string; books: number; minutes: number; mine?: number }
 interface ListenTotal { seconds: number; books: number; finished: number; linked: number }
 interface StatsAll {
   scope: "all"; period: string; since: number | null; users: UserStats[]; total: UserStats;
-  months: MonthRow[]; library_books: number | null; listen: ListenTotal | null; listen_errors?: string[];
+  months: MonthRow[]; library_books: number | null; listen: ListenTotal | null; listen_errors?: string[]; listen_months?: ListenMonth[];
 }
 interface StatsOwn {
   scope: "own"; period: string; since: number | null; me: UserStats; total: UserStats; accounts: number;
-  months: MonthRow[]; library_books: number | null; listen: ListenTotal | null;
+  months: MonthRow[]; library_books: number | null; listen: ListenTotal | null; listen_months?: ListenMonth[];
 }
 interface StatsRequest {
   id: number; title: string; authors: string[]; series: string | null; series_position: string | null;
@@ -105,7 +107,41 @@ function setStatsHead(title: string, back: boolean): void {
 
 /** What is shown in which mode – every part starts hidden and the mode turns its parts on. */
 function resetStatsParts(): void {
-  for (const id of ["#statsTilesHead", "#statsTotalBox", "#statsAccounts", "#statsDetail", "#statsMore"]) $(id).hidden = true;
+  for (const id of ["#statsTilesHead", "#statsTotalBox", "#statsAccounts", "#statsDetail", "#statsMore", "#statsListenBox", "#statsGenresBox"]) $(id).hidden = true;
+}
+
+/** Hours heard per month – the same bars as the requests chart, the month with the most in brass. */
+function renderListenChart(rows: ListenMonth[] | undefined, note: string): void {
+  const any = (rows || []).some((r) => r.seconds > 0);
+  $("#statsListenBox").hidden = !any;
+  if (!any || !rows) return;
+  $("#statsListenNote").textContent = note;
+  const hours = rows.map((r) => r.seconds / 3600);
+  const max = Math.max(...hours, 0.01);
+  const peak = hours.indexOf(Math.max(...hours));
+  const chart = $("#statsListenChart");
+  chart.setAttribute("aria-label", t("Gehörte Stunden je Monat, höchstens {n}", { n: Math.round(hours[peak]) }));
+  chart.replaceChildren(...rows.map((r, i) => {
+    const h = hours[i];
+    const bar = el("div", { class: "mbar", style: `height:${h ? Math.max(2, (h / max) * 100) : 0}%` },
+      i === peak && h ? el("span", { class: "peak" }, h < 10 ? h.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) : String(Math.round(h))) : null);
+    return el("div", { class: "col", tabindex: "0", title: `${monthName(r.month, true)}: ${fmtListen(r.seconds)}`,
+      "aria-label": `${monthName(r.month, true)}: ${fmtListen(r.seconds)}` }, el("div", { class: "plot" }, bar), el("span", { class: "label" }, monthName(r.month)));
+  }));
+}
+
+/** The genres of what was asked for as one ribbon, the shares in a legend. */
+function renderGenres(genres: GenreShare[] | undefined): void {
+  const list = (genres || []).filter((g) => g.books > 0);
+  $("#statsGenresBox").hidden = !list.length;
+  if (!list.length) return;
+  const sum = list.reduce((n, g) => n + g.books, 0);
+  const tone = (i: number): string => `var(--s${(i % 6) + 1})`;
+  $("#statsGenres").replaceChildren(
+    el("div", { class: "genre-ribbon", role: "img", "aria-label": list.map((g) => `${g.name} ${Math.round((g.books / sum) * 100)} %`).join(", ") },
+      ...list.map((g, i) => el("b", { style: `flex:${g.books};background:${tone(i)}`, title: g.name }))),
+    el("div", { class: "genre-legend" }, ...list.map((g, i) => el("span", {},
+      el("i", { style: `background:${tone(i)}` }), `${g.name} ${Math.round((g.books / sum) * 100)} %`))));
 }
 
 // -- admins: every account -------------------------------------------------------
@@ -145,6 +181,8 @@ function renderAll(s: StatsAll): void {
   $("#statsPeople").replaceChildren(...(people.length ? people.map((u) => personCard(u, scale))
     : [el("li", { class: "empty" }, t("Noch keine Konten."))]));
   moreFacts(s.total, s.library_books);
+  renderListenChart(s.listen_months, t("letzte 12 Monate, alle verknüpften Konten"));
+  renderGenres(s.total.genres);
   renderMonthChart(s.months, t("Angefragte Hörbücher je Monat"), t("letzte 12 Monate, alle Konten"));
 }
 
@@ -158,6 +196,8 @@ function renderOwn(s: StatsOwn): void {
   $("#statsTotalBox").hidden = false;
   $("#statsTotalNote").textContent = plural(s.accounts, t("1 Konto"), t("{n} Konten", { n: s.accounts }));
   $("#statsTotalTiles").replaceChildren(...userTiles(s.total, s.listen?.linked ? s.listen : null, ""));
+  renderListenChart(s.listen_months, t("letzte 12 Monate, alle verknüpften Konten"));
+  renderGenres(s.me.genres?.length ? s.me.genres : s.total.genres);
   renderMonthChart(s.months, t("Angefragte Hörbücher je Monat"), t("letzte 12 Monate – dunkel: deine"), true);
 }
 

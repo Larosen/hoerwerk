@@ -57,6 +57,7 @@ function indexerRow(i: Indexer = {}): HTMLDivElement {
           if (other !== e.target) other.checked = false;
         }
       } }), " ", t("Zuerst")),
+    el("button", { type: "button", class: "icon-btn", title: t("Weiter nach oben – wird früher gefragt"), onclick: () => row.previousElementSibling?.before(row) }, "↑"),
     el("button", { type: "button", class: "icon-btn", title: t("Entfernen"), onclick: () => row.remove() }, icon("x")));
   row.dataset.id = i.id || "";
   return row;
@@ -168,24 +169,25 @@ async function lookupBooks(e?: Event): Promise<void> {
     store.set("bookLang", language);
     const res = await api<{ books: Book[]; region: string }>("POST", "/api/search/books", { query: q, language },
       { key: "booksearch", busy: t("Sucht …"), button: btn });
-    const box = $("#bookPick");
-    box.hidden = false;
-    box.replaceChildren(
-      el("div", { class: "muted small" }, res.books.length ? t("Welches Hörbuch? Bitte auswählen.")
-        : t("Weder bei Audible noch bei BookBeat gefunden. Anders schreiben, einen Shop-Link einfügen oder direkt bei den Indexern suchen.")),
-      seriesRow(res.books) || "",
-      el("div", { class: "pick-list" }, res.books.map((b) => el("button", { type: "button", class: "pick tint-card", onclick: () => pickBook(b) },
-        coverFor(b.cover_url, b.title, (b.authors || [])[0]),
-        el("span", { class: "pick-text" },
-          el("b", {}, b.title),
-          el("span", {}, (b.authors || []).join(", ")),
-          el("span", { class: "tag-row" }, langTag(b), genreTag(b)),
-          el("span", { class: "muted" }, [b.series ? `${b.series} ${b.series_position || ""}`.trim() : "",
-            b.runtime_min ? fmtDuration(b.runtime_min * 60) : "", b.format_type === "abridged" ? t("Gekürzt") : "",
-            b.source && b.source !== "audible" ? t("via {source}", { source: SOURCE_NAMES[b.source] || b.source }) : ""].filter(Boolean).join(" · ")),
-          b.owned ? el("span", { class: "owned", title: b.owned.path }, t("✓ schon in der Bibliothek")) : editionNote(b))))));
+    renderHits(res.books);
+    // a new search: the old release list and the free books are gone; the first hit fills the detail column on wide screens
+    $("#releaseTools").hidden = true;
+    search.results = [];
+    if (res.books.length && window.matchMedia(WIDE).matches) showDetail(res.books[0], false);
   } catch (err) { if (!isSuperseded(err)) toast(errMsg(err), true); }
-  void lookupFree(q);
+}
+
+/** The shop hits as cards (cover, facts, Anfragen); a tap on the title opens the details. Nothing found: say so, and offer the direct search below. */
+function renderHits(books: Book[]): void {
+  const box = $("#bookPick");
+  box.hidden = false;
+  if (!books.length) {
+    box.replaceChildren(el("p", { class: "muted" }, t("Nichts gefunden. Anders schreiben oder einen Shop-Link einfügen.")),
+      ...(IS_ADMIN ? [el("p", { class: "small" }, el("button", { type: "button", class: "linkish", onclick: directSearch },
+        t("Direkt bei den Indexern und LibriVox suchen")))] : []));
+    return;
+  }
+  box.replaceChildren(seriesRow(books) || "", el("ul", { class: "discover-grid" }, ...books.map((b) => suggestionCard(b as Suggestion))));
 }
 
 interface FreeBook { id: string; title: string; authors?: string[]; language?: string; runtime_min?: number | null;
@@ -242,34 +244,18 @@ function seriesRow(books: Book[]): HTMLElement | null {
       langTag(b))));
 }
 
-function pickBook(b: Book): void {
-  search.book = b;
-  if (window.matchMedia(WIDE).matches) showDetail(b, false);
-  // the releases are searched in the language of the chosen edition
-  const lang = (b.language || "").toLowerCase();
-  if (lang) $<HTMLSelectElement>("#searchLang").value = lang === "english" ? "en" : lang === "german" || lang === "deutsch" ? "de" : "";
-  $<HTMLInputElement>("#releaseQuery").value = bookQueries(b).query;
-  $("#releaseForm").hidden = !IS_ADMIN;
-  const box = $("#bookPick");
-  box.hidden = false;
-  box.replaceChildren(el("div", { class: "picked tint-card" },
-    b.cover_url ? coverFor(b.cover_url, b.title, (b.authors || [])[0]) : null,
-    el("span", {}, el("b", {}, ...personLinks(b.authors, "author", b), ` – ${b.title}`),
-      b.narrators?.length ? el("span", { class: "muted" }, " · ", t("gelesen von"), " ", ...personLinks(b.narrators, "narrator", b, 2)) : null,
-      el("span", { class: "muted" }, " · " + (b.asin ? t("ASIN {asin} wird beim Download mitgegeben", { asin: b.asin })
-        : t("Titel und Autor werden beim Download mitgegeben")))),
-    typeof requestButton === "function" ? requestButton(b) : null,
-    typeof seriesButton === "function" ? seriesButton(b) : null,
-    el("button", { type: "button", class: "icon-btn", title: t("Auswahl aufheben"), onclick: clearBook }, icon("x"))));
-  if (IS_ADMIN) runSearch();                 // family accounts ask for the book; releases are Hörwerk's job
+/** Nothing at the shops: the typed text goes to the indexers and LibriVox directly (admins) – rarely needed, so it sits at the bottom. */
+function directSearch(): void {
+  const q = $<HTMLInputElement>("#searchQuery").value.trim();
+  if (!q) return;
+  $("#releaseTools").hidden = false;
+  $<HTMLInputElement>("#releaseQuery").value = q;
+  void runSearch(undefined, true);
+  void lookupFree(q);
 }
 
 function clearBook(): void {
   search.book = null;
-  const box = $("#bookPick");
-  box.hidden = true;
-  box.replaceChildren();
-  $("#releaseForm").hidden = true;
 }
 
 interface LibraryHit { path: string; title: string; authors: string[]; format: string }
@@ -429,7 +415,6 @@ function initSearch(): void {
   $("#searchForm").addEventListener("submit", lookupBooks);
   $("#releaseForm").addEventListener("submit", (e) => runSearch(e));
   initReleaseSort($("#searchSort"), () => { if (search.results.length) renderResults(); });
-  $("#freeSearchBtn").addEventListener("click", () => runSearch(undefined, true));
   $("#addIndexerBtn").addEventListener("click", () => $("#indexerRows").append(indexerRow()));
   $("#sourcesForm").addEventListener("submit", (e) => { e.preventDefault(); saveSources(); });
   document.addEventListener("viewchange", (e) => {

@@ -12,23 +12,24 @@ You only need SABnzbd; searching is optional.
    **Downloads** list shows progress and history of the category.
 
 **Search** (with a Newznab indexer): you search for an **audiobook**, not a release – matches come from Audible and
-BookBeat. Only once you pick one Hörwerk searches the indexers; you can change the term for that if nothing comes up
-(e.g. title only or surname only). Releases are merged, ranked (preferred language, unabridged before abridged, M4B
-before MP3) and compared with your library; umlauts in every spelling.
+BookBeat. Tap **Request** and Hörwerk does the rest: it asks the indexers from top to bottom in the order set under
+*Settings → Downloads* and loads the first very good release without looking at the others. Releases are merged, ranked
+(preferred language, unabridged before abridged, M4B before MP3) and compared with your library; umlauts in every
+spelling. A tap on the title shows the details: description, year, length, narrator and "Similar to …".
 **Categories:** besides the ones entered (default `3030`), Hörwerk automatically searches each indexer's **whole audio
 area** – old free readings (Goethe & co.) often sit under "Audio > Lossless" or "MP3" – plus its own audiobook
 categories (from its category list, e.g. "Hörbuch DE", "Hörspiele"). Music albums that come along are sorted out by the
 release verdict (author and title). If nothing turns up there, it searches all categories and keeps only results from
 the audio area. *Test* on an indexer shows which categories were found. The ASIN (or title and author) goes along with
 the download – so the inbox recognises the book safely, whatever the release is called.
-For books that aren't in any shop: **search the indexers directly**.
+Nothing at the shops? Then (admins only) below the hits: **Search the indexers and LibriVox directly** – rarely needed.
 
 Finished SABnzbd downloads from the search are taken over by the inbox after a few seconds; until then they show up
 as "In the inbox – starts in about … s" at the top of the audiobook list and in the log.
 
-**Preferred indexer:** tick **first** next to one indexer under *Settings → Downloads*. Every search (by hand and
-for requests) then asks that indexer alone; the others are only asked if it has nothing that fits the book. The
-search shows "searched at X only" with a button to ask the others as well.
+**Order of the indexers:** under *Settings → Downloads* the indexers are asked from top to bottom (the ↑ arrow moves one
+up). **First** puts one in front. A search ends at the first indexer that has something that fits the book; the others
+are not asked.
 
 **The right edition:** a release that clearly is another recording than the requested book is not loaded – a
 reading named "read by …" when the full-cast production is wanted, another narrator, or (for a new production) a
@@ -81,7 +82,7 @@ The **Discover** tab suggests new audiobooks:
   two years and is looked up again once a month; once the audiobook is out (or announced on Audible) it shows up at
   the top, marked "now as audiobook" or "out <date>". This runs daily in the background, even if nobody opens the page.
 
-**Search** on a card jumps to the *Search* tab with the book already picked (title, author and ASIN help with tagging later).
+A tap on a card's title opens the **details** (a column on the right, a sheet from below on the phone): description, length, narrator, "Similar to …" – what listeners of this audiobook also listened to – and Request. The same works from the library.
 
 **Quality rules** (*Settings → Discover*): minimum rating (default 4.3 stars) and number of ratings (50), unabridged only,
 German only, no erotica. **Always excluded** is what you already have: books in the library
