@@ -1,0 +1,61 @@
+name: Auto-Merge
+
+# Merges a pull request automatically as soon as "Test & Docker-Image" has passed for it – but only
+# pull requests of the trusted authors below, from a branch of this repository (never from a fork).
+# Everyone else's pull requests wait for a manual merge. Opt out per PR with the label "kein-automerge".
+#
+# workflow_run runs with the workflow file of main and never checks out code of the pull request.
+on:
+  workflow_run:
+    workflows: ["Test & Docker-Image"]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # merge
+      pull-requests: write # merge
+      actions: write       # start the release build on main afterwards
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+      TRUSTED_AUTHORS: "Larosen claude[bot]"
+    steps:
+      - name: Check and merge
+        run: |
+          set -euo pipefail
+          if [ -z "$PR_NUMBER" ]; then echo "no pull request of this repository"; exit 0; fi
+          pr=$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")
+          author=$(jq -r '.user.login' <<<"$pr")
+          head_repo=$(jq -r '.head.repo.full_name' <<<"$pr")
+          head_sha=$(jq -r '.head.sha' <<<"$pr")
+          base=$(jq -r '.base.ref' <<<"$pr")
+          default=$(gh api "repos/$GH_REPO" --jq '.default_branch')
+
+          case " $TRUSTED_AUTHORS " in
+            *" $author "*) ;;
+            *) echo "#$PR_NUMBER by $author: not a trusted author, waits for a manual merge"; exit 0 ;;
+          esac
+          [ "$head_repo" = "$GH_REPO" ] || { echo "branch from $head_repo: no auto-merge"; exit 0; }
+          [ "$(jq -r '.state' <<<"$pr")" = "open" ] || { echo "#$PR_NUMBER is not open"; exit 0; }
+          [ "$(jq -r '.draft' <<<"$pr")" = "false" ] || { echo "#$PR_NUMBER is a draft"; exit 0; }
+          [ "$base" = "$default" ] || { echo "#$PR_NUMBER targets $base, not $default"; exit 0; }
+          [ "$head_sha" = "$HEAD_SHA" ] || { echo "#$PR_NUMBER has newer commits than the tested one"; exit 0; }
+          if jq -e '.labels[] | select(.name == "kein-automerge")' <<<"$pr" >/dev/null; then
+            echo "#$PR_NUMBER has the label kein-automerge"; exit 0
+          fi
+
+          gh api -X PUT "repos/$GH_REPO/pulls/$PR_NUMBER/merge" -f merge_method=merge -f sha="$HEAD_SHA"
+          echo "#$PR_NUMBER by $author merged"
+
+          # A merge with the GITHUB_TOKEN starts no push workflow – start the build and release of main by hand.
+          gh workflow run docker.yml --ref "$default"
