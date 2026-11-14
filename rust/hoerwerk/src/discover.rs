@@ -1103,6 +1103,18 @@ fn critics(env: &dyn Env) -> Result<Vec<Value>, String> {
                     memory.insert(key, Value::Object(v));
                 }
                 Some(old) => {
+                    // matched before the address year counted: an older recording stays wrong for months, so look again once
+                    let wants = edition_year(&r);
+                    if let Some(y) = wants
+                        && truthy(&old["book"])
+                        && release_year(&old["book"]) != Some(y)
+                        && old.get("edition_checked").and_then(Value::as_i64) != Some(y)
+                    {
+                        let book = audiobook_for(env, &r, &region);
+                        old.insert("book".into(), book);
+                        old.insert("edition_checked".into(), json!(y));
+                        old.insert("link".into(), r["link"].clone());
+                    }
                     for k in ["notes", "month", "list", "rank"] {
                         if r.get(k).is_some_and(truthy) {
                             old.insert(k.into(), r[k].clone());
@@ -1291,6 +1303,22 @@ fn audiobook_for(env: &dyn Env, review: &Value, region: &str) -> Value {
             });
         }
     }
+    text::info(
+        "Entdecken",
+        &format!(
+            "Kritik „{}“ ({}), Ausgabe {}: {} Treffer, gewählt {}",
+            s(review, "title"),
+            s(review, "author"),
+            year.map_or("?".to_string(), |y| y.to_string()),
+            candidates.len(),
+            chosen.map_or("keiner (wartet)".to_string(), |b| format!(
+                "{} „{}“ ({})",
+                s(b, "asin"),
+                s(b, "title"),
+                s(b, "release_date")
+            )),
+        ),
+    );
     let Some(b) = chosen else { return Value::Null };
     let mut keys: Vec<&str> = ITEM_KEYS.to_vec();
     keys.extend(["is_adult", "format_type", "language", "genres"]);

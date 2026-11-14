@@ -313,6 +313,7 @@ pub async fn detail(app: Arc<App>, req: Req, _: Params) -> Reply {
         return error(400, t("Ungültige Daten", &[]));
     }
     let (a, rg) = (app.clone(), region.clone());
+    let asin_for_log = asin.clone();
     let res = blocking(move || {
         let book = a.providers.client.product(&asin, &rg)?;
         let similar = a.providers.client.similar(&asin, &rg, 16).unwrap_or_default();
@@ -340,9 +341,22 @@ pub async fn detail(app: Arc<App>, req: Req, _: Params) -> Reply {
                 .unwrap_or(Value::Null);
             let text: String = book["description"].as_str().unwrap_or("").chars().take(1500).collect();
             item["description"] = json!(text);
+            crate::text::info(
+                "Details",
+                &format!(
+                    "Details {} ({}): Beschreibung {} Zeichen, {} ähnliche",
+                    own,
+                    region,
+                    text.chars().count(),
+                    similar.len()
+                ),
+            );
             json_reply(json!({"book": item, "similar": for_browser(&app, &req, &similar), "region": region}))
         }
-        Err(e) => error(502, e.0),
+        Err(e) => {
+            crate::text::warn("Details", &format!("Details {asin_for_log} ({region}): {}", e.0));
+            error(502, e.0)
+        }
     }
 }
 

@@ -74,6 +74,55 @@ static LOG: Mutex<Log> = Mutex::new(Log {
     entries: VecDeque::new(),
 });
 
+/// A text that was read as Windows-1252 although it is UTF-8 ("Philosopherâ€™s") gets its characters back; anything
+/// else is returned as it is.
+pub fn fix_mojibake(text: &str) -> String {
+    if !text.contains(['â', 'Ã', 'Â']) {
+        return text.to_string();
+    }
+    const CP1252: [(char, u8); 27] = [
+        ('€', 0x80),
+        ('‚', 0x82),
+        ('ƒ', 0x83),
+        ('„', 0x84),
+        ('…', 0x85),
+        ('†', 0x86),
+        ('‡', 0x87),
+        ('ˆ', 0x88),
+        ('‰', 0x89),
+        ('Š', 0x8a),
+        ('‹', 0x8b),
+        ('Œ', 0x8c),
+        ('Ž', 0x8e),
+        ('‘', 0x91),
+        ('’', 0x92),
+        ('“', 0x93),
+        ('”', 0x94),
+        ('•', 0x95),
+        ('–', 0x96),
+        ('—', 0x97),
+        ('˜', 0x98),
+        ('™', 0x99),
+        ('š', 0x9a),
+        ('›', 0x9b),
+        ('œ', 0x9c),
+        ('ž', 0x9e),
+        ('Ÿ', 0x9f),
+    ];
+    let mut bytes = Vec::with_capacity(text.len());
+    for c in text.chars() {
+        let cp = c as u32;
+        if cp < 0x100 {
+            bytes.push(cp as u8);
+        } else if let Some((_, b)) = CP1252.iter().find(|(x, _)| *x == c) {
+            bytes.push(*b);
+        } else {
+            return text.to_string(); // a character that cannot come from that reading: leave it
+        }
+    }
+    String::from_utf8(bytes).unwrap_or_else(|_| text.to_string())
+}
+
 pub fn log(level: &str, source: &str, text: &str) {
     log_entry(level, source, text, true);
 }
@@ -223,6 +272,17 @@ mod tests {
         assert_eq!(t("Hallo {name}", &[("name", "Eva")]), "Hallo Eva");
         assert_eq!(civil(0), (1970, 1, 1));
         assert_eq!(civil(20_000), (2024, 10, 4));
+    }
+
+    #[test]
+    fn mojibake_is_repaired_and_clean_text_kept() {
+        assert_eq!(
+            fix_mojibake("Harry Potter and the Philosopherâ€™s Stone"),
+            "Harry Potter and the Philosopher’s Stone"
+        );
+        assert_eq!(fix_mojibake("GrÃ¶ÃŸe"), "Größe");
+        assert_eq!(fix_mojibake("Größe – Ärger"), "Größe – Ärger");
+        assert_eq!(fix_mojibake("Â"), "Â");
     }
 
     #[test]

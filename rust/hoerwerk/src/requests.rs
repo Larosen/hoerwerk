@@ -940,6 +940,13 @@ impl Requests {
         let (ranked, queries, errors, resting) = match Self::find(app, &req, None) {
             Ok(x) => x,
             Err(e) => {
+                text::warn(
+                    "Anfragen",
+                    &format!(
+                        "Anfrage {rid} „{}“: Suche fehlgeschlagen: {e}",
+                        text_of(&req["book"]["title"])
+                    ),
+                );
                 req["last_search"] = json!(now());
                 req["error"] = json!(e.to_string());
                 return Some(self.save(app, &req, None, ""));
@@ -978,6 +985,28 @@ impl Requests {
             return Some(self.save(app, &req, None, &note));
         }
         if good.is_empty() {
+            // what the search saw, for the log: who failed or rested, and why the best releases were turned down
+            let top: Vec<String> = ranked
+                .iter()
+                .take(3)
+                .map(|r| format!("{} → {}", text_of(&r["title"]), text_of(&r["verdict"]["reason"])))
+                .collect();
+            text::info(
+                "Anfragen",
+                &format!(
+                    "Anfrage {rid} „{}“: nichts Passendes. Releases {}, Suchbegriffe {:?}, Fehler {:?}, ruhend {:?}. Beste: {}",
+                    text_of(&req["book"]["title"]),
+                    ranked.len(),
+                    queries,
+                    errors,
+                    resting,
+                    if top.is_empty() {
+                        "keine".to_string()
+                    } else {
+                        top.join(" | ")
+                    }
+                ),
+            );
             let note = t(
                 "Nichts Passendes gefunden ({n} Releases geprüft, {q} Suchbegriffe) – neuer Versuch in {h} h",
                 &[

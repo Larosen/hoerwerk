@@ -68,7 +68,8 @@ function renderDetail(book: DetailBook, extra: DetailAnswer | null | "loading"):
     el("p", { class: "detail-by" }, ...personLinks(b.authors, "author", b, 4)),
     narrator ? el("p", { class: "muted small" }, t("gelesen von"), " ", ...personLinks(b.narrators, "narrator", b, 3)) : null,
     el("div", { class: "tag-row" }, genreTag(b), langTag(b)),
-    description ? el("p", { class: "detail-blurb" }, description) : null,
+    description ? el("p", { class: "detail-blurb" }, description)
+      : extra === null && knownAtAudible(b) ? el("p", { class: "muted small" }, t("Die Beschreibung konnte gerade nicht geladen werden.")) : null,
     detailFacts(b),
     el("div", { class: "detail-acts" }, requestButton(b),
       b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null),

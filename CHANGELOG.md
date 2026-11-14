@@ -3,6 +3,16 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.2 – 2026-11-14
+
+- **Critics' picks are matched again** when the review address names a newer edition – picks already stored with an older recording are corrected once.
+- **UK and US titles match:** "Philosopher's Stone" and "Sorcerer's Stone" count as one title, and the search asks for both.
+- **Series with signs in the name** (*Die drei ???*, *Die drei !!!*): the search asks for "Fragezeichen"/"Ausrufezeichen" and the episode
+  number; an episode release that names series, title and number is accepted without the author (H.G. Francis is never in it).
+- **Daily indexer limits** rest only until the next possible reset (local midnight or midnight UTC, whichever comes first) instead of a full day.
+- **Broken characters in release names** ("Philosopherâ€™s") are repaired before matching.
+- **Protokoll tells more:** a search without a fitting release logs which releases were turned down and why, which indexers failed or rest; the details of a book log what the shop answered. If the description cannot be loaded, the column says so.
+
 ## 1.0.1 – 2026-11-14
 
 - **Details for every suggestion:** tips from critics now open with description and *Similar to* as well.
