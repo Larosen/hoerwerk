@@ -1548,5 +1548,19 @@
  "Die Kapitelnamen oben gelten in jedem Fall für die neue M4B. Das Häkchen betrifft nur die alten Einzeldateien – sinnvoll, wenn sie aufbewahrt werden.": "The chapter names above always apply to the new M4B. The tick only concerns the old single files – useful if they are kept.",
  "Die Beschreibung konnte gerade nicht geladen werden.": "The description could not be loaded right now.",
  "Hörwerk wurde aktualisiert ({version}).": "Hörwerk has been updated ({version}).",
- "Neu laden": "Reload"
+ "Neu laden": "Reload",
+ "Genre:": "Genre:",
+ "Genre abwählen": "Clear genre",
+ "Jede Länge": "Any length",
+ "Kurz – bis 5 h": "Short – up to 5 h",
+ "Mittel – 5 bis 12 h": "Medium – 5 to 12 h",
+ "Lang – über 12 h": "Long – over 12 h",
+ "Jedes Jahr": "Any year",
+ "Neu – letzte 2 Jahre": "New – last 2 years",
+ "Letzte 5 Jahre": "Last 5 years",
+ "Älter als 5 Jahre": "Older than 5 years",
+ "Alle Genres": "All genres",
+ "Alle in {genre}": "All of {genre}",
+ "Nichts passt zu den Filtern.": "Nothing fits the filters.",
+ "Filter zurücksetzen": "Reset filters"
 }

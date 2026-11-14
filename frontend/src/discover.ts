@@ -18,6 +18,10 @@ const discover = {
   genres: [] as Genre[],
   nonfiction: new Set<string>(),    // ids of non-fiction genres and their subcategories
   timer: undefined as number | undefined,
+  length: "",                       // "", short, mid, long
+  year: "",                         // "", 2, 5, old
+  last: null as DiscoverAnswer | null,
+  panel: false,                     // the genre panel is open
 };
 
 const DISCOVER_TITLES: Record<string, () => string> = {
@@ -84,10 +88,17 @@ function renderDiscover(res: DiscoverAnswer): void {
         : el("span", {}, t("Vorschläge zur ganzen Bibliothek. Persönlich werden sie, wenn du unter "),
           el("a", { href: "/account" }, t("Konto")), t(" dein Audiobookshelf verbindest.")));
   }
-  if (res.items.length) {
-    list.replaceChildren(...res.items.map(suggestionCard));
+  discover.last = res;
+  const items = filtered(res.items);
+  if (res.items.length && !items.length) {
+    list.replaceChildren(el("li", { class: "empty" }, t("Nichts passt zu den Filtern."), " ",
+      el("button", { type: "button", class: "linkish", onclick: resetFilters }, t("Filter zurücksetzen"))));
+    return;
+  }
+  if (items.length) {
+    list.replaceChildren(...items.map(suggestionCard));
     // wide screens have the column: it starts with the first one, so it is never an empty strip
-    if (window.matchMedia(WIDE).matches && !detail.current && !$("#viewDiscover").hidden) showDetail(res.items[0], false);
+    if (window.matchMedia(WIDE).matches && !detail.current && !$("#viewDiscover").hidden) showDetail(items[0], false);
     else if (detail.current) for (const c of list.querySelectorAll<HTMLElement>("[data-asin]")) c.classList.toggle("selected", c.dataset.asin === detail.current.asin);
     return;
   }
@@ -115,7 +126,16 @@ async function loadDiscover(): Promise<void> {
     await renderFollows();
     return;
   }
-  const params = new URLSearchParams({ section: discover.section, genre: discover.genre });
+  if (discover.section === "genre" && !discover.genre) {
+    $("#discoverState").textContent = "";
+    $("#discoverNote").hidden = $("#discoverPersonal").hidden = true;
+    $("#discoverList").dataset.shows = "";
+    discover.last = null;
+    $("#discoverList").replaceChildren(el("li", { class: "empty" }, t("Genre wählen.")));
+    if (!discover.panel) { discover.panel = true; renderGenreChips(); }
+    return;
+  }
+  const params = new URLSearchParams({ section: discover.section, genre: discover.section === "genre" ? discover.genre : "" });
   const list = $("#discoverList");
   const fresh = list.dataset.shows !== params.toString();     // another section or genre: no stale cards meanwhile
   await loadList(list, async () => {
@@ -134,40 +154,83 @@ async function loadGenres(): Promise<void> {
     discover.genres = g.genres;
     discover.nonfiction = new Set(g.genres.filter((x) => x.nonfiction).flatMap((x) => [x.id, ...x.children.map((c) => c.id)]));
     const ids = new Set(g.genres.flatMap((x) => [x.id, ...x.children.map((c) => c.id)]));
+    // the genre picked last (per browser); never picked: the default an admin set for "Nach Genre", else none
     const saved = store.get("discoverGenre", String(s.discover_genre || ""));
-    // nothing picked yet: start with fiction, so the list is never empty
-    const first = g.genres.find((x) => /Literatur|Fiction/.test(x.name)) || g.genres.find((x) => !x.nonfiction) || g.genres[0];
-    discover.genre = ids.has(saved) ? saved : first?.id || "";
+    discover.genre = ids.has(saved) ? saved : "";
   } catch { /* the store is down: the genre list stays empty */ }
 }
 
-/** Genres as chips: on "Für dich" they lead to the genre page, there a second row offers the subcategories. */
-function renderGenreChips(): void {
-  const row = $("#discoverGenres"), sub = $("#discoverSubGenres");
-  const show = (discover.section === "foryou" || discover.section === "genre") && discover.genres.length > 0;
-  row.hidden = !show;
-  sub.hidden = true;
-  if (!show) return;
+/** The genre that is picked, and its main category. */
+function pickedGenre(): { top: Genre | undefined; sub: SubGenre | undefined } {
   const top = discover.genres.find((x) => x.id === discover.genre || x.children.some((c) => c.id === discover.genre));
-  const here = discover.section === "genre";
-  row.replaceChildren(...discover.genres.map((x) => el("button", {
-    type: "button", class: "chip", "aria-pressed": String(here && x === top),
-    onclick: () => { void selectGenre(x.id, true); },
-  }, x.name + (x.nonfiction ? " · " + t("Sachbuch") : ""))));
-  if (here && top && top.children.length) {
-    sub.hidden = false;
-    sub.replaceChildren(el("button", { type: "button", class: "chip", "aria-pressed": String(discover.genre === top.id),
-      onclick: () => { void selectGenre(top.id, false); } }, t("Alle")),
-    ...top.children.map((c) => el("button", { type: "button", class: "chip", "aria-pressed": String(discover.genre === c.id),
-      onclick: () => { void selectGenre(c.id, false); } }, c.name)));
+  return { top, sub: top?.children.find((c) => c.id === discover.genre) };
+}
+
+/** The list as the filters want it. On "Nach Genre" the server already chose the genre; elsewhere it is a filter. */
+function filtered(items: Suggestion[]): Suggestion[] {
+  const { top, sub } = pickedGenre();
+  const name = sub?.name || top?.name || "";
+  const nowYear = new Date().getFullYear();
+  return items.filter((b) => {
+    if (name && discover.section !== "genre" && !(b.genres || []).includes(name)) return false;
+    const min = b.runtime_min || 0;
+    if (discover.length === "short" && !(min > 0 && min <= 300)) return false;
+    if (discover.length === "mid" && !(min > 300 && min <= 720)) return false;
+    if (discover.length === "long" && !(min > 720)) return false;
+    const year = Number((b.release_date || "").slice(0, 4)) || 0;
+    if (discover.year === "2" && !(year >= nowYear - 1)) return false;
+    if (discover.year === "5" && !(year >= nowYear - 4)) return false;
+    if (discover.year === "old" && !(year > 0 && year < nowYear - 4)) return false;
+    return true;
+  });
+}
+
+/** One quiet row: genre (folded away until wanted), length, year. The genre panel holds the main categories and,
+ *  for the one picked, its subcategories. A second tap on what is picked takes it back. */
+function renderGenreChips(): void {
+  const bar = $("#discoverFilters"), panel = $("#genrePanel"), row = $("#discoverGenres"), sub = $("#discoverSubGenres");
+  const show = discover.section !== "follows";
+  bar.hidden = !show;
+  const canGenre = discover.genres.length > 0;
+  $("#genreToggle").hidden = !canGenre;
+  panel.hidden = !(show && canGenre && discover.panel);
+  $("#genreToggle").setAttribute("aria-expanded", String(!panel.hidden));
+  const { top, sub: picked } = pickedGenre();
+  $("#genreLabel").textContent = picked ? `${top?.name} › ${picked.name}` : top?.name || t("Alle");
+  $("#genreToggle").classList.toggle("active", !!top);
+  $("#genreClear").hidden = !top || !show;
+  $<HTMLSelectElement>("#lengthFilter").value = discover.length;
+  $<HTMLSelectElement>("#yearFilter").value = discover.year;
+  $("#lengthFilter").classList.toggle("active", !!discover.length);
+  $("#yearFilter").classList.toggle("active", !!discover.year);
+  if (panel.hidden) return;
+  row.replaceChildren(
+    el("button", { type: "button", class: "chip", "aria-pressed": String(!top), onclick: () => { void selectGenre("", true); } }, t("Alle Genres")),
+    ...discover.genres.map((x) => el("button", {
+      type: "button", class: "chip", "aria-pressed": String(x === top),
+      onclick: () => { void selectGenre(x === top ? "" : x.id, !x.children.length); },
+    }, x.name + (x.nonfiction ? " · " + t("Sachbuch") : ""))));
+  sub.hidden = !(top && top.children.length);
+  if (top && top.children.length) {
+    sub.replaceChildren(el("button", { type: "button", class: "chip", "aria-pressed": String(!picked),
+      onclick: () => { void selectGenre(top.id, true); } }, t("Alle in {genre}", { genre: top.name })),
+    ...top.children.map((c) => el("button", { type: "button", class: "chip", "aria-pressed": String(c === picked),
+      onclick: () => { void selectGenre(c === picked ? top.id : c.id, c !== picked); } }, c.name)));
   }
 }
 
-async function selectGenre(id: string, fromChip: boolean): Promise<void> {
+async function selectGenre(id: string, close: boolean): Promise<void> {
   discover.genre = id;
   store.set("discoverGenre", id);       // per browser, also for family accounts
-  if (fromChip && discover.section !== "genre") { discover.section = "genre"; store.set("discoverSection", "genre"); }
-  await loadDiscover();
+  if (close && id) discover.panel = false;
+  if (discover.section === "genre") await loadDiscover();
+  else { renderGenreChips(); if (discover.last) renderDiscover(discover.last); }
+}
+
+function resetFilters(): void {
+  discover.length = discover.year = "";
+  store.set("discoverLength", ""); store.set("discoverYear", "");
+  void selectGenre("", false);
 }
 
 async function refreshDiscover(): Promise<void> {
@@ -180,7 +243,7 @@ async function refreshDiscover(): Promise<void> {
 
 async function showDiscover(): Promise<void> {
   await loadRequestKeys();
-  if (discover.section === "genre" || discover.section === "foryou") await loadGenres();
+  if (discover.section !== "follows") await loadGenres();
   await loadDiscover();
 }
 
@@ -203,6 +266,18 @@ function initDiscover(): void {
     });
   }
   $("#discoverRefresh").addEventListener("click", refreshDiscover);
+  discover.length = store.get("discoverLength", "");
+  discover.year = store.get("discoverYear", "");
+  $("#genreToggle").addEventListener("click", () => { discover.panel = !discover.panel; renderGenreChips(); });
+  $("#genreClear").addEventListener("click", () => { void selectGenre("", false); });
+  for (const [sel, key] of [["#lengthFilter", "length"], ["#yearFilter", "year"]] as const) {
+    $<HTMLSelectElement>(sel).addEventListener("change", (e) => {
+      discover[key] = (e.target as HTMLSelectElement).value;
+      store.set(key === "length" ? "discoverLength" : "discoverYear", discover[key]);
+      renderGenreChips();
+      if (discover.last) renderDiscover(discover.last);
+    });
+  }
   document.addEventListener("viewchange", (e) => {
     if ((e as CustomEvent<string>).detail === "discover") showDiscover(); else clearTimeout(discover.timer);
   });

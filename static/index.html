@@ -150,8 +150,22 @@
     <button type="button" role="tab" data-section="critics">Aus der Kritik</button>
     <button type="button" role="tab" data-section="follows">Gefolgt</button>
   </div>
-  <div id="discoverGenres" class="chips" role="group" aria-label="Genre" hidden></div>
-  <div id="discoverSubGenres" class="chips" role="group" aria-label="Unterkategorie" hidden></div>
+  <div id="discoverFilters" class="filter-bar" hidden>
+    <button type="button" id="genreToggle" class="filter-btn" aria-expanded="false" aria-controls="genrePanel">Genre: <b id="genreLabel">Alle</b><svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+    <button type="button" id="genreClear" class="icon-btn small" aria-label="Genre abwählen" title="Genre abwählen" hidden><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
+    <label class="filter-select"><span class="sr-only">Länge</span>
+      <select id="lengthFilter">
+        <option value="">Jede Länge</option><option value="short">Kurz – bis 5 h</option><option value="mid">Mittel – 5 bis 12 h</option><option value="long">Lang – über 12 h</option>
+      </select></label>
+    <label class="filter-select"><span class="sr-only">Erschienen</span>
+      <select id="yearFilter">
+        <option value="">Jedes Jahr</option><option value="2">Neu – letzte 2 Jahre</option><option value="5">Letzte 5 Jahre</option><option value="old">Älter als 5 Jahre</option>
+      </select></label>
+  </div>
+  <div id="genrePanel" class="genre-panel" hidden>
+    <div id="discoverGenres" class="chips" role="group" aria-label="Genre"></div>
+    <div id="discoverSubGenres" class="chips" role="group" aria-label="Unterkategorie" hidden></div>
+  </div>
   <div class="discover-tools">
     <span id="discoverState" class="muted small"></span>
     <button id="discoverRefresh" class="btn small ghost admin-only" title="Liste neu laden"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Aktualisieren</button>
