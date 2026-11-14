@@ -16,7 +16,7 @@ umgebaut.
 > **Wortwahl:** In der Oberfläche heißt es durchgehend **Hörbuch / Hörbücher**, nie „Buch / Bücher". Der Prototyp folgt dem schon;
 > in der App kommt es mit der Umsetzung (inklusive Übersetzung `static/i18n/en.json`).
 
-## Stand der Umsetzung (Version 8.0.0)
+## Stand der Umsetzung (Version 1.0.0)
 
 Das Konzept ist in der App umgesetzt – mit diesen Abweichungen und Lücken:
 

@@ -2,7 +2,7 @@
 
 [English](SECURITY.md) · **Deutsch**
 
-Gilt für **Version 8.0** (letzte vollständige Sicherheitsprüfung: 30.10.2026; was sich seitdem geändert hat, steht im
+Gilt für **Version 1.0** (letzte vollständige Sicherheitsprüfung: 30.10.2026; was sich seitdem geändert hat, steht im
 [Changelog](CHANGELOG.md), und die Schutzmaßnahmen unten prüfen die Tests bei jeder Änderung). Hörwerk verarbeitet Dateien aus fremden Quellen
 (Downloads über SABnzbd), fragt externe Dienste ab (Audible, Audnexus, BookBeat, Thalia, optional ein Indexer, SABnzbd, Audiobookshelf, ntfy)
 und hat eine Weboberfläche mit Schreibzugriff auf deine Shares. Hier steht, wovor das Programm sich

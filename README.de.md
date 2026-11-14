@@ -65,7 +65,7 @@ curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.y
 docker compose up -d
 ```
 
-Image: `ghcr.io/larosen/hoerwerk:latest` (oder eine feste Version wie `:8.0.0`) – amd64, jede Woche für
+Image: `ghcr.io/larosen/hoerwerk:latest` (oder eine feste Version wie `:1.0.0`) – amd64, jede Woche für
 Sicherheitsupdates neu gebaut, mit cosign signiert.
 
 ## Was es nicht ist

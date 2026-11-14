@@ -64,7 +64,7 @@ curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.y
 docker compose up -d
 ```
 
-Image: `ghcr.io/larosen/hoerwerk:latest` (or a fixed version such as `:8.0.0`) – amd64, rebuilt every week for
+Image: `ghcr.io/larosen/hoerwerk:latest` (or a fixed version such as `:1.0.0`) – amd64, rebuilt every week for
 security updates, signed with cosign.
 
 ## What it is not

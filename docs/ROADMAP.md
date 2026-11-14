@@ -5,9 +5,12 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
 
 ## Recently done
 
-- **8.0** – a new look, "Werkstatt & Regal": three colour schemes (light, dark, OLED – per account or per device), sidebar on iPad and
+- **1.0** – the first release, with a new look, "Werkstatt & Regal": three colour schemes (light, dark, OLED – per account or per device), sidebar on iPad and
   Mac, tab bar on the iPhone, the library as a shelf, progress as a waveform, a log you can narrow to 15 or 60 minutes, and Hörwerk
   as an app on the iPhone home screen ([guide](en/iphone-app.md)). Design notes: [docs/design](design/KONZEPT.md).
+
+Development versions before 1.0:
+
 - **7.19** – **follow authors and narrators**: a new book is requested by itself once a day (or only shown as
   new), and all their books can be ticked and requested together.
 - **7.18** – tidier pages, blocked addresses in the UI, a guide for the ffmpeg sandbox, phone use, one-tap sorting,
