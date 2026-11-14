@@ -55,6 +55,10 @@
     <a class="tab admin-only" href="/books" data-view="books" title="Eingang, Verarbeitung und Bibliothek – nur für Admins"><svg class="ico" aria-hidden="true"><use href="#i-books"/></svg><span>Hörbücher</span> <span id="reviewBadge" class="pill" hidden></span></a>
     <a class="tab more-tab" href="/more" data-view="more"><svg class="ico" aria-hidden="true"><use href="#i-more"/></svg><span>Mehr</span></a>
   </nav>
+  <section id="workbench" class="workbench" aria-label="Werkbank" hidden>
+    <a class="wb-head" id="workbenchHead" href="/requests"><span>Werkbank</span> <span id="workbenchCount" class="muted"></span></a>
+    <ul id="workbenchList" class="wb-list"></ul>
+  </section>
   <div class="topbar-actions">
     <a id="logBtn" class="btn ghost admin-only" href="/settings/logs" data-view="settings" data-section="logs" title="Protokoll"><svg class="ico" aria-hidden="true"><use href="#i-log"/></svg><span class="lbl">Protokoll</span></a>
     <a id="settingsBtn" class="btn ghost admin-only" href="/settings" data-view="settings" data-not-section="logs" title="Einstellungen"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><span class="lbl">Einstellungen</span></a>
@@ -875,5 +879,6 @@
 <script src="/static/account.js"></script>
 <script src="/static/upload.js"></script>
 <script src="/static/settings.js"></script>
+<script src="/static/workbench.js"></script>
 </body>
 </html>

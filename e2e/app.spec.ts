@@ -6,7 +6,8 @@ import { dirname, join } from "node:path";
 const ROOT = process.env.E2E_ROOT || "e2e/.run";   // prepared by e2e/setup.mjs
 
 declare const live: { ok: boolean };   // global of the page (frontend/src/live.ts)
-declare let versionChecked: number;   // global of the page (frontend/src/live.ts)
+declare let versionChecked: number;
+declare function pollBench(): Promise<void>;   // global of the page (frontend/src/live.ts)
 
 function tone(path: string, seconds: number, tags: Record<string, string> = {}): void {
   mkdirSync(dirname(path), { recursive: true });
@@ -945,6 +946,29 @@ test("Statistik: Hörer ohne Hörwerk-Konto zählen mit, Audiobookshelf und Plex
   await page.locator("#mergeName").fill("Oma");
   await page.locator("#mergeGo").click();
   await expect.poll(() => merged).toEqual({ abs: "o", plex: "9", name: "Oma" });
+  expect(errors).toEqual([]);
+});
+
+test("Werkbank: links was gerade läuft, auf dem Handy eine Leiste über den Tabs", async ({ page }) => {
+  const req = (id: number, title: string, status: string, live: object) => ({ id, book: { title, authors: ["A"] }, status, created: 1, updated: 1, mine: true, live });
+  let items = [req(1, "Afrika", "downloading", { kind: "download", state: "Downloading", progress: 0.42, mb: 1000, mbleft: 580 }),
+    req(2, "Krabat", "processing", { kind: "import", state: "converting", progress: 0.71 })];
+  await page.route("**/api/requests", (r) => r.fulfill({ json: { items, may_search: true } }));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const errors = await open(page);
+  const bench = page.locator("#workbench");
+  await expect(bench.locator(".wb-item")).toHaveCount(2);
+  await expect(bench.locator(".wb-item").first()).toContainText("Afrika");
+  await expect(bench.locator(".wb-item").first()).toContainText("Lädt · 42 %");
+  await expect(bench.locator(".wb-item").nth(1)).toContainText("Wandelt in M4B um · 71 %");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(bench).toBeVisible();
+  await expect(bench.locator(".wb-plus")).toHaveText(" · +1");
+  items = [];
+  await page.evaluate(() => pollBench());
+  await expect(bench).toBeHidden();                                                  // phone: nothing on the bench, no bar
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(bench).toContainText("Gerade nichts in Arbeit");
   expect(errors).toEqual([]);
 });
 

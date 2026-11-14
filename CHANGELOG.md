@@ -3,6 +3,15 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.4 – 2026-11-14
+
+- **Werkbank:** the sidebar shows what is being worked on – downloading, unpacking, recognising, converting, tagging – with a progress bar.
+  On the phone a slim bar above the tab bar, only while something is running. Admins see every job, family accounts their own requests.
+- **Statistik counts every listener:** Audiobookshelf accounts and Plex profiles without a Hörwerk account get a card too (asked for nothing,
+  heard X), and their hours count in the listening chart and the genres. The genre ribbon now shows what was heard when that is known.
+- **Merge listeners:** under *Statistik → Hörer zusammenführen* an admin joins an Audiobookshelf account and a Plex profile of the same person
+  into one card (and splits them again).
+
 ## 1.0.3 – 2026-11-14
 
 - **Entdecken: filters instead of a wall of chips.** One row with *Genre*, *Länge* and *Erschienen*. The genres fold out on demand: main

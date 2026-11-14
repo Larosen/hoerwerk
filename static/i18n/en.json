@@ -1571,5 +1571,8 @@
  "der gehörten Hörbücher": "of the audiobooks heard",
  "letzte 12 Monate, alle Hörer": "last 12 months, all listeners",
  "wie auf der Karte": "as on the card",
- "{n} Hörer": "{n} listeners"
+ "{n} Hörer": "{n} listeners",
+ "Gerade nichts in Arbeit": "Nothing in progress right now",
+ "Werkbank": "Workbench",
+ "und {n} weitere": "and {n} more"
 }
