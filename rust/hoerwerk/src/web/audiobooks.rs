@@ -193,7 +193,7 @@ pub async fn wrong_edition(app: Arc<App>, req: Req, p: Params) -> Reply {
 pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
     let rel = match &req.get("path") {
         Value::String(s) => s.clone(),
-        _ => return error(400, t("Kein Buch angegeben", &[])),
+        _ => return error(400, t("Kein Hörbuch angegeben", &[])),
     };
     let folder = match super::library::library_path(&app, &rel) {
         Ok(f) => f,
@@ -255,7 +255,7 @@ pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
 pub async fn correct(app: Arc<App>, req: Req, _: Params) -> Reply {
     let rel = match &req.get("path") {
         Value::String(s) => s.clone(),
-        _ => return error(400, t("Kein Buch angegeben", &[])),
+        _ => return error(400, t("Kein Hörbuch angegeben", &[])),
     };
     let folder = match super::library::library_path(&app, &rel) {
         Ok(f) => f,
@@ -395,7 +395,7 @@ pub async fn clear(app: Arc<App>, _: Req, _: Params) -> Reply {
 /// Queue library books for conversion: [{path, chapter_names?, rename_files?}].
 pub async fn convert(app: Arc<App>, req: Req, _: Params) -> Reply {
     let Some(items) = req.get("items").as_array().filter(|i| !i.is_empty()).cloned() else {
-        return error(400, t("Keine Bücher ausgewählt", &[]));
+        return error(400, t("Keine Hörbücher ausgewählt", &[]));
     };
     let mut jobs = Vec::new();
     for it in items.iter().take(200).filter(|i| i.is_object()) {

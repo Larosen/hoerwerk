@@ -39,7 +39,10 @@ process.
 - **A tidy library.** Spots duplicates, converts old MP3 books, cleans chapter names, finds a better release for a
   book you already have – and never deletes the old copy without a verified new one.
 - **Recommendations.** *Discover* learns from each user's listening history in Audiobookshelf or Plex and suggests
-  matching books, and it picks up tips from critics (Perlentaucher, Deutschlandfunk Kultur).
+  matching books, and it picks up tips from critics (Perlentaucher, Deutschlandfunk Kultur). A tap on an audiobook shows its
+  description and *Similar to …* – what listeners of that book also listened to – and every card takes the colour of its cover.
+- **Three colour schemes, and an app on the home screen.** Light (paper), dark (evening) and OLED (true black); on the iPhone and iPad
+  Hörwerk runs full screen like an app ([how to](docs/en/iphone-app.md)).
 - **Small and locked down.** One Rust program, its own minimal ffmpeg in a sandbox, two-factor login, signed images.
 
 | Requests with live progress | Discover |
@@ -62,7 +65,7 @@ curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.y
 docker compose up -d
 ```
 
-Image: `ghcr.io/larosen/hoerwerk:latest` (or a fixed version such as `:7.20.0`) – amd64, rebuilt every week for
+Image: `ghcr.io/larosen/hoerwerk:latest` (or a fixed version such as `:1.0.0`) – amd64, rebuilt every week for
 security updates, signed with cosign.
 
 ## What it is not
@@ -79,6 +82,7 @@ security updates, signed with cosign.
 | [Audiobooks](docs/en/guide.md) | inbox, upload, matching, duplicates, chapters, editions, Audiobookshelf and Plex |
 | [Downloads, discover, requests](docs/en/downloads.md) | SABnzbd and indexers, LibriVox, suggestions, family requests |
 | [Configuration](docs/en/configuration.md) | accounts, access from outside, notifications, variables, backup |
+| [Hörwerk as an app](docs/en/iphone-app.md) | put it on the iPhone and iPad home screen, step by step |
 | [Security](SECURITY.md) | what Hörwerk protects against and how that is tested |
 | [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Development](docs/en/development.md) | |
 

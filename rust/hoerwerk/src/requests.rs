@@ -399,7 +399,7 @@ impl Requests {
     pub fn create(&self, app: &Arc<App>, user: &Value, book: &Value) -> Res<Value> {
         let clean = clean(book)?;
         if Self::owned(app, &clean) {
-            return err(t("Das Buch ist schon in der Bibliothek", &[]), 409);
+            return err(t("Das Hörbuch ist schon in der Bibliothek", &[]), 409);
         }
         let key = book_key(&clean);
         let ts = now();
@@ -407,7 +407,7 @@ impl Requests {
         let (rid, status) = {
             let _g = self.lock.lock().unwrap_or_else(|p| p.into_inner());
             if Self::is_open(&app.db.lock(), &key) {
-                return err(t("Das Buch ist schon angefragt", &[]), 409);
+                return err(t("Das Hörbuch ist schon angefragt", &[]), 409);
             }
             self.check_quota(app, user)?;
             let status = if auto_approve(user) { "searching" } else { "pending" };
@@ -490,7 +490,10 @@ impl Requests {
         let rid = {
             let _g = self.lock.lock().unwrap_or_else(|p| p.into_inner());
             if Self::is_open(&app.db.lock(), &key) {
-                return err(t("Für dieses Buch wird schon ein besseres Release gesucht", &[]), 409);
+                return err(
+                    t("Für dieses Hörbuch wird schon ein besseres Release gesucht", &[]),
+                    409,
+                );
             }
             let data = json!({"history": [{"time": ts, "text": t("Besseres Release gesucht von {name}", &[("name", &name)])}],
                               "blocked": [], "attempts": 0, "upgrade": {"path": rel, "have": have}});
@@ -597,7 +600,7 @@ impl Requests {
                     if kind == "series" {
                         t("Alle ausgewählten Bände sind schon da oder angefragt", &[])
                     } else {
-                        t("Alle ausgewählten Bücher sind schon da oder angefragt", &[])
+                        t("Alle ausgewählten Hörbücher sind schon da oder angefragt", &[])
                     },
                     409,
                 );
@@ -614,7 +617,7 @@ impl Requests {
             for (key, b) in &fresh {
                 let why = match kind {
                     "author" => t(
-                        "Angefragt von {name} (Bücher von {person})",
+                        "Angefragt von {name} (Hörbücher von {person})",
                         &[("name", &name), ("person", &title)],
                     ),
                     "narrator" => t(
@@ -647,8 +650,8 @@ impl Requests {
             .unwrap_or_default();
         let n = ids.len().to_string();
         let lbl = match kind {
-            "author" => t("{n} Bücher von {person}", &[("n", &n), ("person", &title)]),
-            "narrator" => t("{n} Bücher gelesen von {person}", &[("n", &n), ("person", &title)]),
+            "author" => t("{n} Hörbücher von {person}", &[("n", &n), ("person", &title)]),
+            "narrator" => t("{n} Hörbücher gelesen von {person}", &[("n", &n), ("person", &title)]),
             _ => t(
                 "{author} – Reihe „{series}“ ({n} Bände)",
                 &[("author", &author), ("series", &title), ("n", &n)],
@@ -1445,8 +1448,8 @@ fn group_label(req: &Value) -> String {
         .map(str::to_string)
         .unwrap_or_else(|| text_of(&b["series"]));
     match req["group"]["kind"].as_str() {
-        Some("author") => return t("Bücher von {person}", &[("person", &series)]),
-        Some("narrator") => return t("Bücher gelesen von {person}", &[("person", &series)]),
+        Some("author") => return t("Hörbücher von {person}", &[("person", &series)]),
+        Some("narrator") => return t("Hörbücher gelesen von {person}", &[("person", &series)]),
         _ => {}
     }
     t(

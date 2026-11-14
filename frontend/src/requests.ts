@@ -56,7 +56,7 @@ const IMPORT_STATE: Record<string, () => string> = {
   inbox: () => t("Download fertig – wartet auf den Eingang"),
   review: () => IS_ADMIN ? t("Wartet auf deine Prüfung unter „Hörbücher“") : t("Wartet auf Prüfung durch einen Admin"),
   queued: () => t("Wartet auf die Umwandlung"),
-  matching: () => t("Erkennt das Buch"),
+  matching: () => t("Erkennt das Hörbuch"),
   converting: () => t("Wandelt in M4B um"),
   tagging: () => t("Schreibt Tags und Kapitel"),
 };
@@ -200,7 +200,7 @@ async function openSeries(b: Book): Promise<void> {
     const taken = v.owned ? t("In der Bibliothek") : state && state !== "declined" ? REQ_STATUS[state]?.() || state : "";
     const cb = el("input", { type: "checkbox", checked: !taken, disabled: !!taken });
     const row = el("label", { class: "check series-vol" + (taken ? " is-taken" : "") }, cb,
-      v.cover_url ? el("img", { class: "thumb", src: v.cover_url, alt: "", loading: "lazy" }) : coverArt(v.title, (v.authors || [])[0]),
+      coverFor(v.cover_url, v.title, (v.authors || [])[0]),
       el("span", { class: "series-vol-text" },
         el("b", {}, [volumeLabel(v), v.title].filter(Boolean).join(" · ")),
         el("span", { class: "muted small" }, [v.runtime_min ? fmtDuration(v.runtime_min * 60) : "", v.format_type === "abridged" ? t("Gekürzt") : "",
@@ -265,8 +265,8 @@ function requestCard(r: BookRequest): HTMLLIElement {
       checked: plural(r.seen || 0, t("1 Release geprüft"), t("{n} Releases geprüft", { n: r.seen || 0 })) }) + (r.resting?.length ? " · " + restingText(r.resting) : "")
       : r.status === "downloading" && r.release ? r.release
         : r.error || (last ? last.text : "");
-  return el("li", { class: `request req-${r.status}` },
-    b.cover_url ? el("img", { class: "cover", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, author),
+  return el("li", { class: `request tint-card req-${r.status}` },
+    coverFor(b.cover_url, b.title, author, "cover"),
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: b.title }, b.title),
       el("span", { class: "s-author" }, ...personLinks(b.authors, "author", b)),
@@ -321,8 +321,8 @@ function groupCard(members: BookRequest[]): HTMLLIElement {
     el("ul", {}, ...members.map(volumeRow)));
   vols.open = requests.openGroups.has(g.id);
   vols.addEventListener("toggle", () => { if (vols.open) requests.openGroups.add(g.id); else requests.openGroups.delete(g.id); });
-  return el("li", { class: `request request-group req-${pending ? "pending" : first.status}` },
-    b.cover_url ? el("img", { class: "cover", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(g.title, author),
+  return el("li", { class: `request request-group tint-card req-${pending ? "pending" : first.status}` },
+    coverFor(b.cover_url, g.title, author, "cover"),
     el("div", { class: "s-body" },
       el("b", { class: "s-title", title: g.title }, g.title),
       el("span", { class: "s-author" }, (b.authors || []).join(", ")),

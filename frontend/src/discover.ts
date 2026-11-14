@@ -44,19 +44,19 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
   } else if (b.review) {
     reason = el("p", { class: "reason" },
       b.review.list ? t("Platz {rank}: {list} ({source})", { rank: b.review.rank || "?", list: b.review.list, source: b.review.source })
-      : b.review.month ? t("Buch des Monats bei {source}", { source: b.review.source }) : t("Besprochen bei {source}", { source: b.review.source }),
+      : b.review.month ? t("Hörbuch des Monats bei {source}", { source: b.review.source }) : t("Besprochen bei {source}", { source: b.review.source }),
       b.review.notes ? " · " + plural(b.review.notes, t("1 Kritik in der Presse"), t("{n} Kritiken in der Presse", { n: b.review.notes })) : null,
       b.review.link ? el("span", {}, " · ", el("a", { href: b.review.link, target: "_blank", rel: "noopener noreferrer" }, b.review.list ? t("Liste ansehen") : t("Kritik lesen"))) : null);
   }
-  return el("li", { class: "suggestion" },
-    b.cover_url ? el("img", { class: "cover", src: b.cover_url, alt: "", loading: "lazy" }) : coverArt(b.title, author),
+  const card = el("li", { class: "suggestion tint-card", "data-asin": b.asin || "" },
+    coverFor(b.cover_url, b.title, author, "cover"),
     el("div", { class: "s-body" },
-      el("b", { class: "s-title", title: b.title }, b.title),
+      el("button", { type: "button", class: "s-title", title: t("Details"), onclick: () => showDetail(b) }, b.title),
       el("span", { class: "s-author" }, ...personLinks(b.authors, "author", b)),
       el("span", { class: "tag-row" }, genreTag(b), langTag(b),
         b.announced ? el("span", { class: "tag ok", title: t("Das Hörbuch ist angekündigt, aber noch nicht erschienen") },
           t("erscheint {date}", { date: new Date(b.announced + "T12:00:00").toLocaleDateString(LANG, { dateStyle: "medium" }) }))
-        : b.later ? el("span", { class: "tag ok", title: t("Das Buch wurde früher besprochen – das Hörbuch ist erst jetzt erschienen") }, t("jetzt als Hörbuch")) : null),
+        : b.later ? el("span", { class: "tag ok", title: t("Das Hörbuch wurde früher besprochen – das Hörbuch ist erst jetzt erschienen") }, t("jetzt als Hörbuch")) : null),
       b.narrators?.length ? el("span", { class: "muted small" }, t("gelesen von"), " ", ...personLinks(b.narrators, "narrator", b, 2)) : null,
       b.rating ? el("span", { class: "rating", title: plural(b.ratings || 0, t("1 Bewertung bei Audible"), t("{n} Bewertungen bei Audible", { n: fmtCount(b.ratings || 0) })) },
         `★ ${b.rating.toFixed(1)}`, el("span", { class: "muted" }, ` (${fmtCount(b.ratings || 0)})`)) : null,
@@ -67,6 +67,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
       requestButton(b),
       el("button", { type: "button", class: "btn small", onclick: () => searchSuggestion(b) }, icon("search"), t("Suchen")),
       b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null));
+  return card;
 }
 
 /** Into the release search with this book picked (title, author and ASIN help later when tagging). */
@@ -77,14 +78,8 @@ function searchSuggestion(b: Suggestion): void {
 
 function renderDiscover(res: DiscoverAnswer): void {
   const list = $("#discoverList");
-  const state = $("#discoverState");
-  const when = res.updated ? new Date(res.updated * 1000).toLocaleString(LANG, { dateStyle: "short", timeStyle: "short" }) : "";
-  state.textContent = res.running ? t("Wird zusammengestellt …") : res.error ? t("Fehler: {errors}", { errors: res.error })
-    : when ? t("Stand: {time}", { time: when }) : "";
-  if (res.waiting && !res.running && !res.error) {
-    state.textContent += " · " + plural(res.waiting, t("1 besprochenes Buch wartet noch auf sein Hörbuch"),
-      t("{n} besprochene Bücher warten noch auf ihr Hörbuch", { n: res.waiting }));
-  }
+  // only what needs a look: a running update or an error – no time stamps, no counts
+  $("#discoverState").textContent = res.running ? t("Wird zusammengestellt …") : res.error ? t("Fehler: {errors}", { errors: res.error }) : "";
   $("#discoverNote").hidden = !(discover.section === "genre" && discover.nonfiction.has(discover.genre));
   // "Für dich": personal when the account's listening is known – otherwise say how it gets personal
   const personal = $("#discoverPersonal");
@@ -97,6 +92,9 @@ function renderDiscover(res: DiscoverAnswer): void {
   }
   if (res.items.length) {
     list.replaceChildren(...res.items.map(suggestionCard));
+    // wide screens have the column: it starts with the first one, so it is never an empty strip
+    if (window.matchMedia(WIDE).matches && !detail.current) showDetail(res.items[0], false);
+    else if (detail.current) for (const c of list.querySelectorAll<HTMLElement>("[data-asin]")) c.classList.toggle("selected", c.dataset.asin === detail.current.asin);
     return;
   }
   let text = discover.section === "genre"
@@ -104,17 +102,16 @@ function renderDiscover(res: DiscoverAnswer): void {
     : t("Keine Vorschläge, die alle Qualitätsregeln erfüllen.");
   if (res.running) text = t("Vorschläge werden zusammengestellt – das dauert beim ersten Mal etwas.");
   else if (discover.section === "genre" && !discover.genre) text = t("Genre wählen.");
-  else if (discover.section === "foryou" && !res.updated) text = t("Noch keine Bücher mit ASIN in der Bibliothek.");
+  else if (discover.section === "foryou" && !res.updated) text = t("Noch keine Hörbücher mit ASIN in der Bibliothek.");
   list.replaceChildren(el("li", { class: "empty" }, text));
 }
 
 async function loadDiscover(): Promise<void> {
   clearTimeout(discover.timer);
-  $("#discoverTitle").textContent = DISCOVER_TITLES[discover.section]();
-  $("#discoverGenreWrap").hidden = discover.section !== "genre";
   for (const b of document.querySelectorAll<HTMLElement>("#discoverSections button")) {
-    b.setAttribute("aria-current", String(b.dataset.section === discover.section));
+    b.setAttribute("aria-selected", String(b.dataset.section === discover.section));
   }
+  renderGenreChips();
   const follows = discover.section === "follows";
   $("#discoverRefresh").hidden = follows;
   if (follows) {
@@ -142,23 +139,40 @@ async function loadGenres(): Promise<void> {
       api<Settings>("GET", "/api/settings").catch(() => ({} as Settings))]);
     discover.genres = g.genres;
     discover.nonfiction = new Set(g.genres.filter((x) => x.nonfiction).flatMap((x) => [x.id, ...x.children.map((c) => c.id)]));
-    const sel = $<HTMLSelectElement>("#discoverGenre");
-    // like the Audible shop: each genre as a group – the whole genre first, then its subcategories
-    sel.replaceChildren(...g.genres.map((x) => el("optgroup", { label: x.name + (x.nonfiction ? ` (${t("Sachbuch")})` : "") },
-      el("option", { value: x.id }, t("{genre} – alle", { genre: x.name })),
-      ...x.children.map((c) => el("option", { value: c.id }, c.name)))));
     const ids = new Set(g.genres.flatMap((x) => [x.id, ...x.children.map((c) => c.id)]));
     const saved = store.get("discoverGenre", String(s.discover_genre || ""));
     // nothing picked yet: start with fiction, so the list is never empty
     const first = g.genres.find((x) => /Literatur|Fiction/.test(x.name)) || g.genres.find((x) => !x.nonfiction) || g.genres[0];
     discover.genre = ids.has(saved) ? saved : first?.id || "";
-    sel.value = discover.genre;
   } catch { /* the store is down: the genre list stays empty */ }
 }
 
-async function chooseGenre(): Promise<void> {
-  discover.genre = $<HTMLSelectElement>("#discoverGenre").value;
-  store.set("discoverGenre", discover.genre);       // per browser, also for family accounts
+/** Genres as chips: on "Für dich" they lead to the genre page, there a second row offers the subcategories. */
+function renderGenreChips(): void {
+  const row = $("#discoverGenres"), sub = $("#discoverSubGenres");
+  const show = (discover.section === "foryou" || discover.section === "genre") && discover.genres.length > 0;
+  row.hidden = !show;
+  sub.hidden = true;
+  if (!show) return;
+  const top = discover.genres.find((x) => x.id === discover.genre || x.children.some((c) => c.id === discover.genre));
+  const here = discover.section === "genre";
+  row.replaceChildren(...discover.genres.map((x) => el("button", {
+    type: "button", class: "chip", "aria-pressed": String(here && x === top),
+    onclick: () => { void selectGenre(x.id, true); },
+  }, x.name + (x.nonfiction ? " · " + t("Sachbuch") : ""))));
+  if (here && top && top.children.length) {
+    sub.hidden = false;
+    sub.replaceChildren(el("button", { type: "button", class: "chip", "aria-pressed": String(discover.genre === top.id),
+      onclick: () => { void selectGenre(top.id, false); } }, t("Alle")),
+    ...top.children.map((c) => el("button", { type: "button", class: "chip", "aria-pressed": String(discover.genre === c.id),
+      onclick: () => { void selectGenre(c.id, false); } }, c.name)));
+  }
+}
+
+async function selectGenre(id: string, fromChip: boolean): Promise<void> {
+  discover.genre = id;
+  store.set("discoverGenre", id);       // per browser, also for family accounts
+  if (fromChip && discover.section !== "genre") { discover.section = "genre"; store.set("discoverSection", "genre"); }
   await loadDiscover();
 }
 
@@ -172,7 +186,7 @@ async function refreshDiscover(): Promise<void> {
 
 async function showDiscover(): Promise<void> {
   await loadRequestKeys();
-  if (discover.section === "genre") await loadGenres();
+  if (discover.section === "genre" || discover.section === "foryou") await loadGenres();
   await loadDiscover();
 }
 
@@ -194,7 +208,6 @@ function initDiscover(): void {
       showDiscover();
     });
   }
-  $("#discoverGenre").addEventListener("change", chooseGenre);
   $("#discoverRefresh").addEventListener("click", refreshDiscover);
   document.addEventListener("viewchange", (e) => {
     if ((e as CustomEvent<string>).detail === "discover") showDiscover(); else clearTimeout(discover.timer);

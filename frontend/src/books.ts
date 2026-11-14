@@ -26,6 +26,7 @@ const books = {
   libQuery: "",                               // search in the library view
   trickle: null as Trickle | null,            // the gentle conversion of the whole library
   libSort: store.get("librarySort", "author"),  // order of the library view
+  libView: store.get("libraryView", "regal"),   // "regal" (covers on shelves) or "list"
   libShown: 100,                              // rows loaded so far
   libTotal: null as number | null,            // books in the library (for the filter chip)
   libTimer: undefined as number | undefined,
@@ -150,7 +151,7 @@ const LIBRARY_SORTS: [string, () => string][] = [
 function renderLibrary(list: HTMLElement): void {
   const q = el("input", { type: "search", value: books.libQuery, placeholder: t("Titel, Autor, Serie oder Ordner"),
     "aria-label": t("Bibliothek durchsuchen") });
-  const rows = el("ul", { class: "lib-rows", id: "libRows" }, el("li", { class: "empty" }, t("Lade …")));
+  const rows = el("ul", { class: "lib-rows" + (books.libView === "regal" ? " regal" : ""), id: "libRows" }, el("li", { class: "empty" }, t("Lade …")));
   q.addEventListener("input", () => {
     books.libQuery = q.value;
     books.libShown = 100;
@@ -161,7 +162,15 @@ function renderLibrary(list: HTMLElement): void {
   sortBar(sort, LIBRARY_SORTS, () => books.libSort, (key) => {
     books.libSort = key; store.set("librarySort", key); books.libShown = 100; loadLibraryBooks();
   });
-  list.append(el("li", { class: "lib-search" }, icon("search"), q), el("li", { class: "lib-sort" }, sort), el("li", { class: "lib-wrap" }, rows));
+  const view = el("div", { class: "seg seg-buttons", role: "group", "aria-label": t("Ansicht") });
+  for (const [key, label] of [["regal", t("Regal")], ["list", t("Liste")]]) {
+    view.append(el("button", { type: "button", "aria-pressed": String(books.libView === key), onclick: () => {
+      books.libView = key; store.set("libraryView", key);
+      rows.classList.toggle("regal", key === "regal");
+      for (const b of view.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === view.children[key === "regal" ? 0 : 1]));
+    } }, label));
+  }
+  list.append(el("li", { class: "lib-search" }, icon("search"), q), el("li", { class: "lib-sort" }, sort, view), el("li", { class: "lib-wrap" }, rows));
   loadLibraryBooks();
 }
 
@@ -203,12 +212,12 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
       b.format === "m4b" ? el("span", { class: "tag" }, "M4B") : el("span", { class: "tag soft" }, plural(b.files, t("1 Datei"), t("{n} Dateien", { n: b.files }))),
       b.asin ? el("span", { class: "muted small" }, b.asin) : null),
     IS_ADMIN ? el("div", { class: "lib-actions" },
-      el("button", { type: "button", class: "btn small ghost", title: t("Erneut nach Releases suchen: ein besseres ersetzt dieses Buch"),
-        onclick: () => upgradeLibraryBook(b) }, icon("refresh"), t("Besseres Release")),
-      b.format === "m4b" ? el("button", { type: "button", class: "btn small ghost", title: t("Kapitelnamen nach den Regeln für neue Bücher aufräumen (Buchtitel und Track-Nummern weg)"),
-        onclick: (e: Event) => tidyLibraryChapters(b, e.currentTarget as HTMLButtonElement) }, t("Kapitel aufräumen")) : null,
+      el("button", { type: "button", class: "btn small ghost", title: t("Erneut nach Releases suchen: ein besseres ersetzt dieses Hörbuch"),
+        onclick: () => upgradeLibraryBook(b) }, icon("refresh"), el("span", { class: "lbl" }, t("Besser"))),
+      b.format === "m4b" ? el("button", { type: "button", class: "btn small ghost", title: t("Kapitelnamen nach den Regeln für neue Hörbücher aufräumen (Buchtitel und Track-Nummern weg)"),
+        onclick: (e: Event) => tidyLibraryChapters(b, e.currentTarget as HTMLButtonElement) }, icon("chapters"), el("span", { class: "lbl" }, t("Kapitel"))) : null,
       el("button", { type: "button", class: "btn small ghost", title: t("Falsch erkannt oder falsche Fassung? Neu zuordnen"),
-        onclick: () => correctLibraryBook(b) }, t("Korrigieren"))) : null);
+        onclick: () => correctLibraryBook(b) }, icon("pencil"), el("span", { class: "lbl" }, t("Korrigieren")))) : null);
 }
 
 // ------------------------------------------------------------------------- //
@@ -239,7 +248,7 @@ function renderUnconverted(list: HTMLElement): void {
     el("label", { class: "check" }, all, t("Alle ({n})", { n: free.length })),
     el("span", { class: "muted small" }, items.length
       ? t("Die Auswahl wird zu M4B mit Kapiteln. Alte Dateien werden erst entfernt, wenn die neue M4B in der Bibliothek liegt.")
-      : t("Alle Bücher der Bibliothek liegen schon als M4B vor.")),
+      : t("Alle Hörbücher der Bibliothek liegen schon als M4B vor.")),
     settingSelect("ab_library_originals", t("Alte Dateien danach:"), [
       ["archive", t("Nach _ersetzt im Eingang verschieben")], ["delete", t("Löschen")]]),
     el("button", {
@@ -253,15 +262,15 @@ function renderUnconverted(list: HTMLElement): void {
     onclick: async () => {
       try {
         books.trickle = await api<Trickle>("POST", "/api/library/trickle", { on: !tr?.on });
-        toast(books.trickle.on ? t("Schonende Umwandlung läuft – ein Buch nach dem anderen") : t("Schonende Umwandlung angehalten"));
+        toast(books.trickle.on ? t("Schonende Umwandlung läuft – ein Hörbuch nach dem anderen") : t("Schonende Umwandlung angehalten"));
         renderBooks();
       } catch (e) { toast(errMsg(e), true); }
     } }, tr?.on ? t("Anhalten") : t("Alle nach und nach umwandeln"));
   list.append(el("li", { class: "uc-bar trickle" },
     el("span", { class: "muted small" }, tr?.on
-      ? plural(tr.left, t("Schonende Umwandlung läuft: noch 1 Buch."), t("Schonende Umwandlung läuft: noch {n} Bücher.", { n: tr.left }))
-        + " " + t("Ein Buch nach dem anderen, mit einem CPU-Kern und niedrigster Priorität; neue Bücher und Downloads gehen vor.")
-      : t("Schonend im Hintergrund: ein Buch nach dem anderen, mit einem CPU-Kern und niedrigster Priorität – der Server bleibt nutzbar, auch wenn es Tage dauert. Was unklar ist, bleibt unter „Zu prüfen“ liegen.")),
+      ? plural(tr.left, t("Schonende Umwandlung läuft: noch 1 Hörbuch."), t("Schonende Umwandlung läuft: noch {n} Hörbücher.", { n: tr.left }))
+        + " " + t("Ein Hörbuch nach dem anderen, mit einem CPU-Kern und niedrigster Priorität; neue Hörbücher und Downloads gehen vor.")
+      : t("Schonend im Hintergrund: ein Hörbuch nach dem anderen, mit einem CPU-Kern und niedrigster Priorität – der Server bleibt nutzbar, auch wenn es Tage dauert. Was unklar ist, bleibt unter „Zu prüfen“ liegen.")),
     toggle));
   for (const b of items) {
     const cb = el("input", { type: "checkbox", checked: books.picked.has(b.path), disabled: !!b.job });
@@ -289,8 +298,8 @@ async function convertLibrary(items: ConvertItem[]): Promise<void> {
   try {
     const res = await api<{ jobs: AudiobookJob[] }>("POST", "/api/library/convert", { items });
     for (const job of res.jobs) follow(job.id, job.name);
-    toast(plural(res.jobs.length, t("1 Buch in Arbeit – Fortschritt unter „Laufend“"),
-      t("{n} Bücher in Arbeit – Fortschritt unter „Laufend“", { n: res.jobs.length })), "info");
+    toast(plural(res.jobs.length, t("1 Hörbuch in Arbeit – Fortschritt unter „Laufend“"),
+      t("{n} Hörbücher in Arbeit – Fortschritt unter „Laufend“", { n: res.jobs.length })), "info");
     for (const it of items) books.picked.delete(it.path);
     await loadUnconverted();
     pollBooks(true);
@@ -355,7 +364,7 @@ function renderLibraryStats(st: LibraryStats): void {
     if (books.filter === "library" && !$("#viewBooks").hidden && !st.scanning) loadLibraryBooks();
   }
   $("#libraryInfo").replaceChildren(
-    el("div", { class: "kv" }, el("span", {}, t("Bücher")),
+    el("div", { class: "kv" }, el("span", {}, t("Hörbücher")),
       el("span", {}, st.scanning ? t("Wird eingelesen …") : `${st.books}` + (st.other ? " " + t("(davon {n} als MP3 & Co.)", { n: st.other }) : "")), el("span", {})),
     el("div", { class: "kv" }, el("span", {}, t("Eingelesen")), el("span", {}, fmtAgo(st.last_scan)), el("span", {})),
     el("div", { class: "muted small" }, t("Neue Funde werden mit der Bibliothek abgeglichen – in der Suche und vor dem Ablegen.")));
@@ -438,7 +447,7 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
   const li = el("li", { class: "book " + j.status });
   const m = j.match;
   const head = el("div", { class: "book-head" },
-    m?.cover_url ? el("img", { class: "thumb", src: m.cover_url, alt: "", loading: "lazy" }) : coverArt(...jobCoverText(j)),
+    m?.cover_url ? coverFor(m.cover_url, ...jobCoverText(j)) : coverArt(...jobCoverText(j)),
     el("div", { class: "book-main" },
       el("div", { class: "book-title" },
         el("span", { class: "name", title: j.source }, m?.title ? m.title : j.rel),
@@ -465,7 +474,7 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
   }
   if (j.status === "done" && j.dest) {
     tools.append(el("button", {
-      class: "btn small", title: t("Falsch erkannt? Buch aus der Bibliothek zurückholen und neu zuordnen"),
+      class: "btn small", title: t("Falsch erkannt? Hörbuch aus der Bibliothek zurückholen und neu zuordnen"),
       onclick: () => reopenBook(j),
     }, t("Korrigieren")),
     el("button", {
@@ -603,7 +612,7 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
   const score = Math.round((c.match?.score || 0) * 100);
   const narrators = c.narrators || [];
   return el("li", { class: "cand" },
-    c.cover_url ? el("img", { class: "thumb", src: c.cover_url, alt: "", loading: "lazy" }) : coverArt(c.title, (c.authors || [])[0]),
+    coverFor(c.cover_url, c.title, (c.authors || [])[0]),
     el("div", { class: "cand-main" },
       el("div", { class: "cand-title" }, c.title, c.subtitle ? el("span", { class: "muted" }, " – " + c.subtitle) : null),
       el("div", { class: "cand-sub" }, [
@@ -613,7 +622,7 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
       c.mismatch ? el("div", { class: "cand-warn" }, icon("alert"), t("Passt vermutlich nicht: {why}", { why: c.mismatch })) : null,
       el("div", { class: "cand-meta" },
         langTag(c),
-        c.request_id ? el("span", { class: "rtag req-pending", title: t("Dieses Buch wurde angefragt – Übernehmen erfüllt die Anfrage") }, t("Anfrage von {name}", { name: c.request_user || "–" })) : null,
+        c.request_id ? el("span", { class: "rtag req-pending", title: t("Dieses Hörbuch wurde angefragt – Übernehmen erfüllt die Anfrage") }, t("Anfrage von {name}", { name: c.request_user || "–" })) : null,
         c.series ? el("span", { class: "tag" }, `${c.series}${c.series_position ? " #" + c.series_position : ""}`) : null,
         c.format_type && c.format_type !== "unabridged" ? el("span", { class: "tag soft" }, c.format_type === "abridged" ? t("Gekürzt") : c.format_type) : null,
         el("span", { class: diff === null ? "" : diff <= 0.03 ? "ok" : diff > 0.15 ? "err" : "" },
@@ -651,7 +660,7 @@ function fillManual(c: Book): void {
   $("#manualDialog").dataset.baseId = c.id || c.asin || "";
   const source = $("#manualSource");
   source.replaceChildren(
-    ...(c.cover_url ? [el("img", { class: "thumb", src: c.cover_url, alt: "" })] : []),
+    ...(c.cover_url ? [coverFor(c.cover_url, c.title, (c.authors || [])[0])] : []),
     el("span", {}, t("Vorlage: {source}", { source: SOURCE_NAMES[c.source || "audible"] || "Audible" })
       + (c.runtime_min ? " · " + fmtDuration(c.runtime_min * 60) : "") + " – "
       + (c.asin ? t("Cover, ASIN und Kapitel kommen von dort, alles hier Eingetragene gilt.")
@@ -705,7 +714,7 @@ async function saveManual(): Promise<void> {
 }
 
 async function reopenBook(j: AudiobookJob): Promise<void> {
-  if (!(await confirmBox(t("Buch aus der Bibliothek zurückholen und neu zuordnen? Die M4B kommt zurück unter „Zu prüfen“, desc.txt, reader.txt und cover.jpg werden entfernt."), t("Korrigieren")))) return;
+  if (!(await confirmBox(t("Hörbuch aus der Bibliothek zurückholen und neu zuordnen? Die M4B kommt zurück unter „Zu prüfen“, desc.txt, reader.txt und cover.jpg werden entfernt."), t("Korrigieren")))) return;
   try {
     await api("POST", `/api/audiobooks/${j.id}/reopen`);
     books.filter = "review"; store.set("bookFilter", "review");
@@ -714,7 +723,7 @@ async function reopenBook(j: AudiobookJob): Promise<void> {
 }
 
 async function wrongEdition(j: AudiobookJob): Promise<void> {
-  if (!(await confirmBox(t("„{name}“ ist eine andere Fassung als gewünscht? Das Buch kommt zurück unter „Zu prüfen“ und wird dort richtig zugeordnet. Gehört es zu einer Anfrage, wird dieses Release gesperrt und die Anfrage sucht weiter.", { name: j.match?.title || j.name }), t("Falsche Fassung")))) return;
+  if (!(await confirmBox(t("„{name}“ ist eine andere Fassung als gewünscht? Das Hörbuch kommt zurück unter „Zu prüfen“ und wird dort richtig zugeordnet. Gehört es zu einer Anfrage, wird dieses Release gesperrt und die Anfrage sucht weiter.", { name: j.match?.title || j.name }), t("Falsche Fassung")))) return;
   try {
     await api("POST", `/api/audiobooks/${j.id}/wrong-edition`);
     books.filter = "review"; store.set("bookFilter", "review");
@@ -724,7 +733,7 @@ async function wrongEdition(j: AudiobookJob): Promise<void> {
 
 /** Look again for releases of a book that is there: a better one (or the one picked by hand) replaces it. */
 async function upgradeLibraryBook(b: LibraryBook): Promise<void> {
-  if (!(await confirmBox(t("Für „{title}“ erneut nach Releases suchen? Automatisch wird nur ein klar besseres Release geladen (besseres Format oder deutlich mehr Bitrate); unter „Anfragen“ kannst du auch selbst eins wählen. Das neue ersetzt dann dieses Buch, die alte Datei wird archiviert.", { title: b.title || b.path }), t("Suchen")))) return;
+  if (!(await confirmBox(t("Für „{title}“ erneut nach Releases suchen? Automatisch wird nur ein klar besseres Release geladen (besseres Format oder deutlich mehr Bitrate); unter „Anfragen“ kannst du auch selbst eins wählen. Das neue ersetzt dann dieses Hörbuch, die alte Datei wird archiviert.", { title: b.title || b.path }), t("Suchen")))) return;
   try {
     await api("POST", "/api/library/upgrade", { path: b.path });
     toast(t("Sucht nach einem besseren Release – zu sehen unter „Anfragen“"));
@@ -745,7 +754,7 @@ async function tidyLibraryChapters(b: LibraryBook, btn: HTMLButtonElement): Prom
 
 /** Any book of the library back for a correction – also when its import is long gone from the list. */
 async function correctLibraryBook(b: LibraryBook): Promise<void> {
-  if (!(await confirmBox(t("„{title}“ neu zuordnen? Das Buch wird neu erkannt und wartet unter „Zu prüfen“ auf deine Wahl. Die alte Ablage bleibt, bis das korrigierte Buch abgelegt ist.", { title: b.title || b.path }), t("Korrigieren")))) return;
+  if (!(await confirmBox(t("„{title}“ neu zuordnen? Das Hörbuch wird neu erkannt und wartet unter „Zu prüfen“ auf deine Wahl. Die alte Ablage bleibt, bis das korrigierte Hörbuch abgelegt ist.", { title: b.title || b.path }), t("Korrigieren")))) return;
   try {
     await api("POST", "/api/library/correct", { path: b.path });
     books.filter = "review"; store.set("bookFilter", "review");

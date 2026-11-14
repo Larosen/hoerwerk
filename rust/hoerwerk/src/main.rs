@@ -209,10 +209,10 @@ fn request_worker(app: &Arc<App>) {
     let n = app.requests.import_wanted(app);
     if n > 0 {
         let msg = if n == 1 {
-            t("1 Buch aus „Gesucht“ als Anfrage übernommen", &[])
+            t("1 Hörbuch aus „Gesucht“ als Anfrage übernommen", &[])
         } else {
             t(
-                "{n} Bücher aus „Gesucht“ als Anfragen übernommen",
+                "{n} Hörbücher aus „Gesucht“ als Anfragen übernommen",
                 &[("n", &n.to_string())],
             )
         };

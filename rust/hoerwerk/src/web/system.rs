@@ -36,7 +36,7 @@ fn explain(checks: &mut [Value], sandbox: &Value, blocked: usize) {
 
 fn sandbox_help(sb: &Value) -> Value {
     let why = t(
-        "ffmpeg läuft auch so in einem eigenen Prozess mit Seccomp-Filter und Grenzen für Speicher und Dateigröße. Landlock verbietet ihm zusätzlich jeden Dateizugriff außer auf das Buch, das gerade umgewandelt wird – eine zweite Wand, falls eine präparierte Audiodatei eine Lücke in ffmpeg ausnutzt.",
+        "ffmpeg läuft auch so in einem eigenen Prozess mit Seccomp-Filter und Grenzen für Speicher und Dateigröße. Landlock verbietet ihm zusätzlich jeden Dateizugriff außer auf das Hörbuch, das gerade umgewandelt wird – eine zweite Wand, falls eine präparierte Audiodatei eine Lücke in ffmpeg ausnutzt.",
         &[],
     );
     let (cause, steps): (String, Vec<String>) = match (sb["mode"].as_str(), sb["reason"].as_str()) {
@@ -454,9 +454,9 @@ pub async fn diagnostics(app: Arc<App>, req: Req, _: Params) -> Reply {
         let (status, title, detail) = if err.is_empty() {
             (
                 "warn",
-                t("Bibliothek wird eingelesen – Bücher werden danach verarbeitet", &[]),
+                t("Bibliothek wird eingelesen – Hörbücher werden danach verarbeitet", &[]),
                 t(
-                    "Erst wenn Hörwerk die Bibliothek kennt, prüft es neue Bücher auf Doppelte.",
+                    "Erst wenn Hörwerk die Bibliothek kennt, prüft es neue Hörbücher auf Doppelte.",
                     &[],
                 ),
             )

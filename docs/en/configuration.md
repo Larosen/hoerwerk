@@ -104,7 +104,7 @@ Settings, presets, history, the audiobook list, the library index and all creden
 `hoerwerk.db`.
 
 **Backup, pinning a version, going back:** `/config` is all Hörwerk needs backed up (your audiobooks live in your own
-library share). Every version is its own image – `ghcr.io/larosen/hoerwerk:7.20.0` instead of `:latest` stays on that
+library share). Every version is its own image – `ghcr.io/larosen/hoerwerk:1.0.0` instead of `:latest` stays on that
 version (it still gets the weekly security rebuild); what changed is in the [changelog](../../CHANGELOG.md). To go back, set
 the older tag and start the container again; if the database was changed by the newer version, put a backup copy from
 before the update in place. Books that Hörwerk replaced are not deleted but moved to `_ersetzt` in the inbox – move the

@@ -70,13 +70,13 @@ function periodLabel(): string {
 /** Four tiles in plain words: asked for, became available, heard, waiting time. */
 function userTiles(u: UserStats, listen: ListenTotal | ListenSummary | null | undefined, listenNote: string): HTMLElement[] {
   return [
-    statTile(String(u.books || 0), plural(u.books, t("Buch angefragt"), t("Bücher angefragt")),
+    statTile(String(u.books || 0), plural(u.books, t("Hörbuch angefragt"), t("Hörbücher angefragt")),
       u.minutes ? t("{h} Spielzeit", { h: fmtHours(u.minutes) }) : ""),
     statTile(String(u.available || 0), t("davon schon da"), u.open ? t("{n} noch offen", { n: u.open }) : ""),
-    listen ? statTile(fmtListen(listen.seconds), t("gehört"), [plural(listen.books, t("1 Buch"), t("{n} Bücher", { n: listen.books })),
+    listen ? statTile(fmtListen(listen.seconds), t("gehört"), [plural(listen.books, t("1 Hörbuch"), t("{n} Hörbücher", { n: listen.books })),
       listenNote].filter(Boolean).join(" · "))
       : statTile("–", t("gehört"), t("nicht verknüpft")),
-    statTile(fmtWait(u.wait_median), t("Wartezeit"), t("bis ein Buch da ist")),
+    statTile(fmtWait(u.wait_median), t("Wartezeit"), t("bis ein Hörbuch da ist")),
   ];
 }
 
@@ -86,12 +86,12 @@ function moreFacts(u: UserStats, libraryBooks: number | null): void {
     [t("Anfragen"), u.requests ? String(u.requests) + (u.series ? ` (${t("davon Reihen")}: ${u.series})` : "") : "–"],
     [t("Abgelehnt"), String(u.declined || 0)],
     [t("Fehlgeschlagen"), String(u.failed || 0)],
-    [t("Speicher der angefragten Bücher"), u.bytes ? fmtSize(u.bytes) : "–"],
+    [t("Speicher der angefragten Hörbücher"), u.bytes ? fmtSize(u.bytes) : "–"],
     [t("Englisch"), u.books ? `${Math.round((u.english / u.books) * 100)} %` : "–"],
     [t("Häufigste Genres"), u.top_genres.join(", ") || "–"],
     [t("Zuletzt angefragt"), fmtDay(u.last)],
     ...(u.listen ? [[t("Zuletzt gehört"), fmtDay(u.listen.last)] as [string, string]] : []),
-    ...(libraryBooks !== null ? [[t("Bücher in der Bibliothek"), String(libraryBooks)] as [string, string]] : []),
+    ...(libraryBooks !== null ? [[t("Hörbücher in der Bibliothek"), String(libraryBooks)] as [string, string]] : []),
   ];
   $("#statsFacts").replaceChildren(...facts.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v)]));
   $("#statsMore").hidden = false;
@@ -121,15 +121,15 @@ function personCard(u: UserStats, scale: number): HTMLElement {
       el("span", { class: "muted small person-when" }, active ? t("aktiv {when}", { when: fmtDay(active) }) : t("noch nicht aktiv")),
       u.id !== null ? icon("chevron") : null),
     el("div", { class: "person-row" }, el("span", { class: "plabel" }, t("angefragt")), bar("req", reqH),
-      el("span", { class: "pval" }, u.books ? `${plural(u.books, t("1 Buch"), t("{n} Bücher", { n: u.books }))} · ${fmtHours(u.minutes)}` : "–")),
+      el("span", { class: "pval" }, u.books ? `${plural(u.books, t("1 Hörbuch"), t("{n} Hörbücher", { n: u.books }))} · ${fmtHours(u.minutes)}` : "–")),
     el("div", { class: "person-row" }, el("span", { class: "plabel" }, t("gehört")), bar("heard", heardH),
       el("span", { class: "pval" + (u.listen ? "" : " muted") }, u.listen
-        ? (u.listen.seconds ? `${fmtListen(u.listen.seconds)} · ${plural(u.listen.books, t("1 Buch"), t("{n} Bücher", { n: u.listen.books }))}` : "–")
+        ? (u.listen.seconds ? `${fmtListen(u.listen.seconds)} · ${plural(u.listen.books, t("1 Hörbuch"), t("{n} Hörbücher", { n: u.listen.books }))}` : "–")
         : t("nicht verknüpft"))),
   ];
   return el("li", { class: "person" + (u.books || u.listen?.seconds ? "" : " quiet") },
-    u.id !== null ? el("a", { href: `/stats/${u.id}`, class: "person-link", title: t("Anfragen und Gehörtes von {name}", { name: u.name }) }, ...body)
-      : el("div", { class: "person-link" }, ...body));
+    u.id !== null ? el("a", { href: `/stats/${u.id}`, class: "person-card", title: t("Anfragen und Gehörtes von {name}", { name: u.name }) }, ...body)
+      : el("div", { class: "person-card" }, ...body));
 }
 
 function renderAll(s: StatsAll): void {
@@ -145,7 +145,7 @@ function renderAll(s: StatsAll): void {
   $("#statsPeople").replaceChildren(...(people.length ? people.map((u) => personCard(u, scale))
     : [el("li", { class: "empty" }, t("Noch keine Konten."))]));
   moreFacts(s.total, s.library_books);
-  renderMonthChart(s.months, t("Angefragte Bücher je Monat"), t("letzte 12 Monate, alle Konten"));
+  renderMonthChart(s.months, t("Angefragte Hörbücher je Monat"), t("letzte 12 Monate, alle Konten"));
 }
 
 // -- a family member: themselves and everyone together -------------------------------------
@@ -158,7 +158,7 @@ function renderOwn(s: StatsOwn): void {
   $("#statsTotalBox").hidden = false;
   $("#statsTotalNote").textContent = plural(s.accounts, t("1 Konto"), t("{n} Konten", { n: s.accounts }));
   $("#statsTotalTiles").replaceChildren(...userTiles(s.total, s.listen?.linked ? s.listen : null, ""));
-  renderMonthChart(s.months, t("Angefragte Bücher je Monat"), t("letzte 12 Monate – dunkel: deine"), true);
+  renderMonthChart(s.months, t("Angefragte Hörbücher je Monat"), t("letzte 12 Monate – dunkel: deine"), true);
 }
 
 // -- one account in detail -----------------------------------------------------------------
@@ -196,15 +196,15 @@ function renderAccount(d: StatsAccount, own: boolean): void {
     setStatsHead(t("Statistik: {name}", { name: u.name }), true);
     $("#statsTiles").replaceChildren(...userTiles(u, u.listen, ""));
     moreFacts(u, null);
-    renderMonthChart(d.months, t("Angefragte Bücher je Monat"), t("letzte 12 Monate, nur {name}", { name: u.name }));
+    renderMonthChart(d.months, t("Angefragte Hörbücher je Monat"), t("letzte 12 Monate, nur {name}", { name: u.name }));
   }
   $("#statsDetail").hidden = false;
   const span = d.period === "all" ? t("insgesamt") : t("im Zeitraum: {period}", { period: periodLabel() });
-  $("#statsReqNote").textContent = `${plural(d.requests.length, t("1 Buch"), t("{n} Bücher", { n: d.requests.length }))} ${span}`;
+  $("#statsReqNote").textContent = `${plural(d.requests.length, t("1 Hörbuch"), t("{n} Hörbücher", { n: d.requests.length }))} ${span}`;
   $("#statsRequests").replaceChildren(...(d.requests.length ? d.requests.map(requestItem)
     : [el("li", { class: "empty" }, t("Nichts angefragt in diesem Zeitraum."))]));
   const linked = !!u.listen;
-  $("#statsHeardNote").textContent = linked ? `${plural(d.heard.length, t("1 Buch"), t("{n} Bücher", { n: d.heard.length }))} ${span}` : "";
+  $("#statsHeardNote").textContent = linked ? `${plural(d.heard.length, t("1 Hörbuch"), t("{n} Hörbücher", { n: d.heard.length }))} ${span}` : "";
   $("#statsHeard").replaceChildren(...(d.heard.length ? d.heard.map(heardItem)
     : [el("li", { class: "empty" }, linked ? t("Nichts gehört in diesem Zeitraum.")
       : own ? t("Noch nicht mit Audiobookshelf oder Plex verbunden – das geht unter „Konto“.")
@@ -222,7 +222,7 @@ function renderMonthChart(months: MonthRow[], head: string, note: string, mine =
   const tip = el("div", { class: "chart-tip", hidden: true });
   const show = (m: MonthRow, bar: HTMLElement): void => {
     tip.replaceChildren(el("b", {}, monthName(m.month, true)),
-      el("span", {}, plural(m.books, t("1 Buch"), t("{n} Bücher", { n: m.books }))),
+      el("span", {}, plural(m.books, t("1 Hörbuch"), t("{n} Hörbücher", { n: m.books }))),
       ...(mine ? [el("span", {}, t("davon deine: {n}", { n: m.mine || 0 }))] : []),
       el("span", { class: "muted" }, fmtHours(m.minutes)));
     tip.hidden = false;
@@ -230,7 +230,7 @@ function renderMonthChart(months: MonthRow[], head: string, note: string, mine =
     const x = Math.min(Math.max(r.left - box.left + r.width / 2, 60), box.width - 60);
     tip.style.left = `${x}px`;
   };
-  chart.setAttribute("aria-label", t("Angefragte Bücher je Monat, höchstens {n}", { n: peak?.books || 0 }));
+  chart.setAttribute("aria-label", t("Angefragte Hörbücher je Monat, höchstens {n}", { n: peak?.books || 0 }));
   chart.replaceChildren(...months.map((m) => {
     // the peak's number sits above its bar (inside it, positioned) – it must not squeeze the bar
     const bar = el("div", { class: "mbar" + (mine ? " shared" : ""), style: `height:${m.books ? Math.max(2, (m.books / max) * 100) : 0}%` },

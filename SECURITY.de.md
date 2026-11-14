@@ -2,7 +2,7 @@
 
 [English](SECURITY.md) · **Deutsch**
 
-Gilt für **Version 7.20** (letzte vollständige Sicherheitsprüfung: 30.10.2026; was sich seitdem geändert hat, steht im
+Gilt für **Version 1.0** (letzte vollständige Sicherheitsprüfung: 30.10.2026; was sich seitdem geändert hat, steht im
 [Changelog](CHANGELOG.md), und die Schutzmaßnahmen unten prüfen die Tests bei jeder Änderung). Hörwerk verarbeitet Dateien aus fremden Quellen
 (Downloads über SABnzbd), fragt externe Dienste ab (Audible, Audnexus, BookBeat, Thalia, optional ein Indexer, SABnzbd, Audiobookshelf, ntfy)
 und hat eine Weboberfläche mit Schreibzugriff auf deine Shares. Hier steht, wovor das Programm sich
@@ -48,6 +48,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 |---|---|
 | Freie Hörbücher (LibriVox) als Weg, beliebiges anderes zu laden | Nur HTTPS zu archive.org, auch nach Weiterleitungen. Geladen wird nur, was das Internet Archive in der LibriVox-Sammlung führt; nur dessen MP3-Dateien (einfache Namen, keine Pfade), einzeln und insgesamt größenbegrenzt und als MP3 geprüft, höchstens zwei Bücher gleichzeitig, nur für Admins. Sie landen wie jeder andere Download im Eingang und durchlaufen dieselben Prüfungen. |
 | Shop-Link oder Weiterleitung zu internen Adressen (Router, NAS, `169.254.169.254`) – SSRF | Links werden nur für Audible, BookBeat und Thalia abgerufen; jede Weiterleitung muss wieder dort hinführen. Cover werden nur von öffentlichen Adressen geladen (DNS-Auflösung, private/Loopback/Link-Local-Adressen werden abgelehnt). Nur `http(s)`. |
+| Cover-Zwischenspeicher (`/api/cover`) – der Server holt ein Bild für ein angemeldetes Konto | Nur angemeldete Konten, nur `https://`, und nur Hosts, die zu öffentlichen Adressen auflösen (jede Weiterleitung wird erneut geprüft; kein LAN, kein localhost, kein Link-Local). Höchstens 15 MB und nur echtes JPEG/PNG – alles andere wird abgelehnt, ausgeliefert wird nie etwas außer dem Bild. Abgelegt unter `/config/covers` (rund 3000 Dateien, die ältesten gehen zuerst). Der Browser fragt die Bild-Server der Shops nicht mehr selbst an; nur wenn der Zwischenspeicher ein Cover nicht holen kann, versucht er die Adresse des Shops einmal. |
 | Sehr große Antworten (Speicher) | Antworten max. 8 MB (Shops/Audible) bzw. 20 MB (Indexer). |
 | Indexer-XML mit DTD/Entities (Billion Laughs, XXE) | Antworten mit `<!DOCTYPE`/`<!ENTITY` werden abgelehnt; der XML-Parser (roxmltree) lädt ohnehin keine externen Entities. |
 | `javascript:`-Links aus fremden Daten (Indexer-Details, Shop-Seiten) | Server lässt nur `http(s)`-Links durch, die Oberfläche filtert `href`/`src` zusätzlich zentral. |
@@ -66,7 +67,7 @@ schützt, was dafür geprüft wurde und was du selbst tun solltest.
 |---|---|
 | **CSRF**: eine fremde Webseite im selben Browser schickt Anfragen an `http://tower:8080` (z. B. Einstellungen ändern oder Bücher aus der Bibliothek holen) | Alle ändernden Anfragen brauchen einen eigenen Header, den Browser nur nach einer (nie erlaubten) CORS-Freigabe senden; zusätzlich Prüfung von `Origin` und `Sec-Fetch-Site`. Getestet. |
 | Clickjacking | `X-Frame-Options: DENY`, `frame-ancestors 'none'`. |
-| Zugriff ohne Anmeldung | Ohne gültige Sitzung gibt es nur die Login-Seite, den Oberflächen-Code (`/static`, ohnehin Open Source), `/i18n.js`, das Logo und `/api/health`. Jede API-Route hat eine Zugriffsstufe (öffentlich / Nutzer / Admin, Standard Admin), geprüft im Server – nicht nur ausgeblendet. Getestet: unangemeldet 401, Familienkonto auf Admin-Funktionen 403 (wird protokolliert). |
+| Zugriff ohne Anmeldung | Ohne gültige Sitzung gibt es nur die Login-Seite, den Oberflächen-Code (`/static`, ohnehin im Quelltext einsehbar), `/i18n.js`, das Logo, Manifest und Symbole der Home-Bildschirm-App und `/api/health`. Jede API-Route hat eine Zugriffsstufe (öffentlich / Nutzer / Admin, Standard Admin), geprüft im Server – nicht nur ausgeblendet. Getestet: unangemeldet 401, Familienkonto auf Admin-Funktionen 403 (wird protokolliert). |
 | Erst-Einrichtung durch Fremde | Solange es kein Konto gibt, darf nur aus dem Heimnetz ohne Weiteres ein Admin angelegt werden; von außen braucht es den Einrichtungs-Code aus dem Container-Log. Danach ist die Einrichtung gesperrt. |
 | Passwort raten | scrypt (N=2¹⁵); Passwortregeln (Server und Browser gleich): mindestens 12 Zeichen, drei von vier Zeichenarten oder ein Satz ab 20 Zeichen, nicht der eigene Name, nicht „Hörwerk“/„Passwort“/„123456“, nicht ein einzelnes Wort mit Zahlen drumherum („Pudding2024!“), nicht immer dieselben Zeichen; je IP (bei IPv6 je /64-Netz, ein Anschluss hat ein ganzes /64) höchstens 5 Fehlversuche in 15 Minuten, danach 429 – eine Flut neuer Adressen verdrängt zuerst Einzelversuche, nie bestehende Sperren; je Konto wachsende Verzögerung (ein Fremder kann kein Familienkonto aussperren); unbekannte Namen kosten dieselbe Zeit wie bekannte. Jeder Fehlversuch mit IP in `auth.log` → CrowdSec sperrt am VPS. |
 | Gestohlene Sitzung | Token mit 256 Bit, in der DB nur als SHA-256; Cookie `HttpOnly`, `SameSite=Lax`, `Secure` hinter HTTPS. Passwortwechsel, Sperren eines Kontos und „Alle anderen Geräte abmelden“ beenden Sitzungen sofort. |

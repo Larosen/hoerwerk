@@ -452,7 +452,7 @@ pub fn pt_slug(name: &str) -> String {
     rx::sub(rx!(r"[^a-z0-9]+"), &x, "-").trim_matches('-').to_string()
 }
 
-/// An author page lists "3 Bücher" / "1 Buch"; an unknown author gets the general index instead.
+/// An author page lists "3 Bücher" / "1 Hörbuch"; an unknown author gets the general index instead.
 pub fn pt_has_books(page: &str) -> bool {
     !page.contains("Buchautor-Übersicht") && rx::is_match(rx!(r"\b\d+\s+B(?:ü|ue)ch(?:er)?\b"), page)
 }
@@ -1192,11 +1192,11 @@ fn recheck_waiting(env: &dyn Env, memory: &mut Map<String, Value>, region: &str,
             "Entdecken",
             &if found > 1 {
                 t(
-                    "Entdecken: {n} besprochene Bücher gibt es jetzt als Hörbuch",
+                    "Entdecken: {n} besprochene Hörbücher gibt es jetzt als Hörbuch",
                     &[("n", &found.to_string())],
                 )
             } else {
-                t("Entdecken: 1 besprochenes Buch gibt es jetzt als Hörbuch", &[])
+                t("Entdecken: 1 besprochenes Hörbuch gibt es jetzt als Hörbuch", &[])
             },
         );
     }

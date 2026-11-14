@@ -14,19 +14,20 @@ interface WorksAnswer { kind: PersonKind; name: string; language: string; follow
 const PERSON_CHUNK = 60;
 
 function personTitle(kind: PersonKind, name: string): string {
-  return kind === "narrator" ? t("Gelesen von {name}", { name }) : t("Bücher von {name}", { name });
+  return kind === "narrator" ? t("Gelesen von {name}", { name }) : t("Hörbücher von {name}", { name });
 }
 
 /** A name on a card that opens the person's books. */
 function personLink(name: string, kind: PersonKind, b?: Book): HTMLButtonElement {
   return el("button", { type: "button", class: "linkish person-link",
-    title: kind === "narrator" ? t("Alle Bücher, die {name} gelesen hat – und folgen", { name }) : t("Alle Bücher von {name} – und folgen", { name }),
+    title: kind === "narrator" ? t("Alle Hörbücher, die {name} gelesen hat – und folgen", { name }) : t("Alle Hörbücher von {name} – und folgen", { name }),
     onclick: (e: Event) => { e.stopPropagation(); openPerson(kind, name, b ? bookLangCode(b) : ""); } }, name);
 }
 
 function personLinks(names: string[] | undefined, kind: PersonKind, b?: Book, max = 3): (HTMLElement | string)[] {
   const out: (HTMLElement | string)[] = [];
   (names || []).slice(0, max).forEach((n, i) => { if (i) out.push(", "); out.push(personLink(n, kind, b)); });
+  if ((names || []).length > max) out.push(" ", t("u. a."));      // more names than fit: the person window lists them all
   return out;
 }
 
@@ -46,7 +47,7 @@ async function openPerson(kind: PersonKind, name: string, language: string): Pro
   const count = (): void => {
     const n = rows.filter((r) => r.cb.checked).length;
     ok.disabled = !n;
-    ok.textContent = plural(n, t("1 Buch anfragen"), t("{n} Bücher anfragen", { n }));
+    ok.textContent = plural(n, t("1 Hörbuch anfragen"), t("{n} Hörbücher anfragen", { n }));
   };
   const showFollow = (): void => {
     const f = res?.follow;
@@ -54,12 +55,12 @@ async function openPerson(kind: PersonKind, name: string, language: string): Pro
     follow.classList.toggle("primary", !f);
     auto.checked = f ? f.auto : auto.checked;
     $("#personFollowState").textContent = !f ? t("Nicht gefolgt.")
-      : f.auto ? t("Gefolgt seit {when}. Neue Bücher werden automatisch angefragt.", { when: fmtDay(f.since) })
-        : t("Gefolgt seit {when}. Neue Bücher werden nur unter Entdecken → Gefolgt angezeigt.", { when: fmtDay(f.since) });
+      : f.auto ? t("Gefolgt seit {when}. Neue Hörbücher werden automatisch angefragt.", { when: fmtDay(f.since) })
+        : t("Gefolgt seit {when}. Neue Hörbücher werden nur unter Entdecken → Gefolgt angezeigt.", { when: fmtDay(f.since) });
   };
   const load = async (): Promise<void> => {
     const lang = document.querySelector<HTMLInputElement>("#personLang input:checked")?.value || "";
-    $("#personInfo").textContent = t("Lade die Bücher …");
+    $("#personInfo").textContent = t("Lade die Hörbücher …");
     $("#personBooks").replaceChildren();
     ok.disabled = true;
     try { res = await api<WorksAnswer>("POST", "/api/follows/works", { kind, name, language: lang }); }
@@ -72,7 +73,7 @@ async function openPerson(kind: PersonKind, name: string, language: string): Pro
       return { v, cb: el("input", { type: "checkbox", disabled: !!taken }), taken };
     });
     $("#personBooks").replaceChildren(...rows.map(({ v, cb, taken }) => el("label", { class: "check series-vol" + (taken ? " is-taken" : "") }, cb,
-      v.cover_url ? el("img", { class: "thumb", src: v.cover_url, alt: "", loading: "lazy" }) : coverArt(v.title, (v.authors || [])[0]),
+      coverFor(v.cover_url, v.title, (v.authors || [])[0]),
       el("span", { class: "series-vol-text" },
         el("b", {}, v.title),
         el("span", { class: "muted small" }, [kind === "narrator" ? (v.authors || []).slice(0, 2).join(", ") : (v.narrators || []).slice(0, 2).join(", "),
@@ -81,7 +82,7 @@ async function openPerson(kind: PersonKind, name: string, language: string): Pro
         taken ? el("span", { class: v.owned ? "rtag ok" : "rtag" }, taken) : editionNote(v)))));
     const free = rows.filter((r) => !r.taken).length;
     $("#personInfo").textContent = !rows.length ? t("Bei Audible nichts gefunden – Schreibweise prüfen oder eine andere Sprache wählen.")
-      : plural(rows.length, t("1 Buch bei Audible, das neueste zuerst."), t("{n} Bücher bei Audible, das neueste zuerst.", { n: rows.length })) + " "
+      : plural(rows.length, t("1 Hörbuch bei Audible, das neueste zuerst."), t("{n} Hörbücher bei Audible, das neueste zuerst.", { n: rows.length })) + " "
         + (free ? t("Alles Angehakte geht als eine Anfrage los.") : t("Alle sind schon da oder angefragt."));
     rows.forEach((r) => r.cb.addEventListener("change", count));
     count();
@@ -99,7 +100,7 @@ async function openPerson(kind: PersonKind, name: string, language: string): Pro
         toast(t("Du folgst {name} nicht mehr", { name }));
       } else {
         res.follow = await api<Follow>("POST", "/api/follows", { kind, name, language: res.language, auto: auto.checked });
-        toast(auto.checked ? t("Du folgst {name} – neue Bücher werden automatisch angefragt", { name }) : t("Du folgst {name}", { name }));
+        toast(auto.checked ? t("Du folgst {name} – neue Hörbücher werden automatisch angefragt", { name }) : t("Du folgst {name}", { name }));
       }
       showFollow();
       if (discover.section === "follows" && !$("#viewDiscover").hidden) void renderFollows();
@@ -122,11 +123,11 @@ async function openPerson(kind: PersonKind, name: string, language: string): Pro
         for (const r of out.items) requests.keys[requestKey(r.book)] = r.status;
         made += out.items.length; status = out.status; skipped.push(...out.skipped);
       }
-      toast((status === "pending" ? plural(made, t("1 Buch angefragt – wartet auf Freigabe"), t("{n} Bücher angefragt – warten auf Freigabe", { n: made }))
-        : plural(made, t("1 Buch angefragt – Hörwerk sucht jetzt"), t("{n} Bücher angefragt – Hörwerk sucht jetzt", { n: made })))
+      toast((status === "pending" ? plural(made, t("1 Hörbuch angefragt – wartet auf Freigabe"), t("{n} Hörbücher angefragt – warten auf Freigabe", { n: made }))
+        : plural(made, t("1 Hörbuch angefragt – Hörwerk sucht jetzt"), t("{n} Hörbücher angefragt – Hörwerk sucht jetzt", { n: made })))
         + (skipped.length ? " · " + t("übersprungen: {list}", { list: skipped.join(", ") }) : ""));
       loadRequests();
-    } catch (e) { toast((made ? plural(made, t("1 Buch angefragt"), t("{n} Bücher angefragt", { n: made })) + " · " : "") + errMsg(e), true); }
+    } catch (e) { toast((made ? plural(made, t("1 Hörbuch angefragt"), t("{n} Hörbücher angefragt", { n: made })) + " · " : "") + errMsg(e), true); }
   }, { once: true });
   await load();
 }
@@ -139,7 +140,7 @@ async function renderFollows(): Promise<void> {
     const name = el("input", { type: "search", placeholder: t("Name, z. B. Theodor Fontane"), "aria-label": t("Name") });
     const kind = el("select", { "aria-label": t("Autor oder Sprecher") },
       el("option", { value: "author" }, t("Autor")), el("option", { value: "narrator" }, t("Sprecher")));
-    const add = el("form", { class: "follow-add" }, name, kind, el("button", { type: "submit", class: "btn primary" }, t("Bücher ansehen")));
+    const add = el("form", { class: "follow-add" }, name, kind, el("button", { type: "submit", class: "btn primary" }, t("Hörbücher ansehen")));
     add.addEventListener("submit", (e) => {
       e.preventDefault();
       // the language of the page – a German household follows the German editions
@@ -150,21 +151,21 @@ async function renderFollows(): Promise<void> {
         el("b", { class: "s-title" }, f.name),
         el("span", { class: "tag-row" }, el("span", { class: "tag" }, f.kind === "narrator" ? t("Sprecher") : t("Autor")),
           f.language ? el("span", { class: "lang-tag" + (f.language === "de" ? " de" : "") }, f.language === "de" ? t("Deutsch") : t("Englisch")) : null,
-          f.fresh.length ? el("span", { class: "tag ok" }, plural(f.fresh.length, t("1 neues Buch"), t("{n} neue Bücher", { n: f.fresh.length }))) : null),
-        el("span", { class: "muted small" }, f.auto ? t("Neue Bücher werden automatisch angefragt") : t("Neue Bücher werden nur angezeigt")),
-        f.added ? el("span", { class: "muted small" }, plural(f.added, t("Bisher 1 Buch angefragt"), t("Bisher {n} Bücher angefragt", { n: f.added }))
+          f.fresh.length ? el("span", { class: "tag ok" }, plural(f.fresh.length, t("1 neues Hörbuch"), t("{n} neue Hörbücher", { n: f.fresh.length }))) : null),
+        el("span", { class: "muted small" }, f.auto ? t("Neue Hörbücher werden automatisch angefragt") : t("Neue Hörbücher werden nur angezeigt")),
+        f.added ? el("span", { class: "muted small" }, plural(f.added, t("Bisher 1 Hörbuch angefragt"), t("Bisher {n} Hörbücher angefragt", { n: f.added }))
           + (f.recent.length ? ": " + f.recent.slice(0, 3).join(", ") : "")) : null,
         f.fresh.length ? el("span", { class: "small" }, t("Neu: {titles}", { titles: f.fresh.slice(0, 3).join(", ") })) : null,
         f.note ? el("span", { class: "err small" }, f.note) : null,
         el("span", { class: "muted small" }, f.checked ? t("Zuletzt nachgesehen {when}", { when: fmtAgo(f.checked) }) : t("Wird heute zum ersten Mal nachgesehen"))),
       el("div", { class: "s-actions" },
-        el("button", { type: "button", class: "btn small", onclick: () => openPerson(f.kind, f.name, f.language) }, t("Bücher ansehen")),
+        el("button", { type: "button", class: "btn small", onclick: () => openPerson(f.kind, f.name, f.language) }, t("Hörbücher ansehen")),
         el("button", { type: "button", class: "btn small ghost", onclick: async () => {
           try { await api("DELETE", `/api/follows/${f.id}`); toast(t("Du folgst {name} nicht mehr", { name: f.name })); void renderFollows(); }
           catch (e) { toast(errMsg(e), true); }
         } }, t("Nicht mehr folgen")))));
     list.replaceChildren(el("li", { class: "follow-intro" }, add,
-      el("p", { class: "muted small" }, t("Einmal am Tag sieht Hörwerk bei Audible nach. Ein neues Buch wird für dich angefragt – mit deinem Monatslimit und, wenn nötig, der Freigabe. Auf einer Karte führt ein Tipp auf den Namen von Autor oder Sprecher hierher."))),
+      el("p", { class: "muted small" }, t("Einmal am Tag sieht Hörwerk bei Audible nach. Ein neues Hörbuch wird für dich angefragt – mit deinem Monatslimit und, wenn nötig, der Freigabe. Auf einer Karte führt ein Tipp auf den Namen von Autor oder Sprecher hierher."))),
     ...(cards.length ? cards : [el("li", { class: "empty" }, t("Du folgst noch niemandem."))]));
   }, { count: 3, kind: "card" });
 }

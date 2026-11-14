@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: Shown at the bottom of Settings → Health (e.g. "Hörwerk 7.19.0")
+      description: Shown at the bottom of Settings → Health (e.g. "Hörwerk 1.0.0")
     validations:
       required: true
   - type: dropdown

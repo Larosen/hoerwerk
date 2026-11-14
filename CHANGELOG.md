@@ -1,7 +1,36 @@
 # Changelog
 
-What changed in each version of Hörwerk. Every version is also a tag (`v7.19.0`), a GitHub release and an image
-(`ghcr.io/larosen/hoerwerk:7.19.0`); `latest` is always the newest one.
+What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
+(`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
+
+## 1.0.0 – 2026-11-14
+
+The first release. Hörwerk turns folders of MP3s, CD rips and downloads into one clean, tagged M4B per book – and lets the family
+request, follow and discover audiobooks. Earlier numbers (7.x) were development versions; their history is below.
+
+- **A new look – “Werkstatt & Regal”:** warm papers instead of neutral grey, covers on shelves, progress as a waveform.
+- **Three colour schemes:** Hell (Papier), Dunkel (Abend – warm espresso instead of grey) and OLED (Nacht – true black). Choose under
+  *Konto → Anzeige*: for all your devices (saved in the account) or only for this device. "Automatisch" follows the device.
+- **Navigation:** a sidebar on iPad and Mac, a tab bar on the iPhone (*Entdecken · Suchen · Anfragen · Hörbücher · Mehr*). *Mehr* holds
+  Protokoll, Statistik, Einstellungen and the account, with a red note when something failed lately.
+- **Entdecken:** one column with the tabs *Für dich · Nach Genre · Aus der Kritik · Gefolgt* and genres as chips. Several authors or narrators
+  stand as running text ("… u. a.").
+- **Hörbücher:** the library as a shelf (covers stand on a board) or as a list; *Besser*, *Kapitel* and *Korrigieren* are icon buttons.
+- **Protokoll:** choose the period – 15 min, 60 min (default), 24 h or everything.
+- **Progress as a waveform** – downloads, conversions and requests; the sign-in page carries the same track as a signature.
+- **Details of an audiobook:** on wide screens (Mac, iPad landscape) a column on the right, otherwise a sheet from below – cover, description,
+  facts, request and search, and *Weiterstöbern*: more by the author or narrator, the whole series, and **Ähnlich wie** (what listeners of the book also
+  listened to, from Audible). A tap on a similar audiobook opens it right there; *Zurück* leads back. In *Entdecken* and *Suchen*.
+- **The colour of a book:** cards, requests and the detail column take a tone from the cover – read from the picture, a cloth tone; without a cover
+  from the tone of the stand-in tile. Online covers go through a cache on the server (`/api/cover`, public https hosts only), so the browser no longer
+  asks the shops' image servers.
+- **iPhone app:** Hörwerk can be put on the home screen and then runs full screen ([guide](docs/en/iphone-app.md)); manifest and icons are
+  served without signing in, nothing else is.
+- **License:** [PolyForm Noncommercial 1.0.0](LICENSE) – free for personal and other noncommercial use. The licenses of all Rust libraries are in
+  `THIRD-PARTY-LICENSES.md` and in the image under `/licenses`.
+- Wording: "Hörbuch/Hörbücher" instead of "Buch/Bücher" throughout.
+
+## Development history (versions before 1.0)
 
 ## 7.20.0 – 2026-11-13
 

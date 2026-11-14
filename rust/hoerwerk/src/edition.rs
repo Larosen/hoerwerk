@@ -241,7 +241,7 @@ fn people_and_production(name: &str, book: &Value) -> Option<String> {
     let named = named_readers(name);
     if same_people(&named, &narrators) == Some(false) {
         return Some(t(
-            "Gelesen von {who} – das Buch liest {names}",
+            "Gelesen von {who} – das Hörbuch liest {names}",
             &[("who", &named.join(" ")), ("names", &short_list(&narrators))],
         ));
     }
@@ -307,7 +307,7 @@ pub fn narrator_doubt(tag_narrators: &[String], book: &Value) -> Option<String> 
         .collect();
     (same_people(&tag_narrators, &narrators) == Some(false)).then(|| {
         t(
-            "Sprecher in der Datei: {who} – das Buch liest {names}",
+            "Sprecher in der Datei: {who} – das Hörbuch liest {names}",
             &[("who", &short_list(&tag_narrators)), ("names", &short_list(&narrators))],
         )
     })

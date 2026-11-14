@@ -1,38 +1,62 @@
-// Colour scheme: "auto" follows the system, "light"/"dark" are fixed. Loaded in <head> so the page
-// never flashes in the wrong colours.
-(() => {
-  type Mode = "auto" | "light" | "dark";
-  // runs before core.js: its own lookup in the catalog of /i18n.js
-  const t = (text: string): string => (typeof I18N !== "undefined" && I18N.text[text]) || text;
-  const KEY = "br:theme";
-  const MODES: Record<Mode, [string, string]> = { auto: ["contrast", t("Automatisch (wie System)")], light: ["sun", t("Hell")], dark: ["moon", t("Dunkel")] };
-  const read = (): Mode => {
+"use strict";
+// Colour scheme: "auto" follows the device, "light" (Papier), "dark" (Abend) and "oled" (Nacht, true black) are fixed.
+// Where the choice is kept: in the account (works on every device) or – if the user wants – only on this device.
+// Loaded in <head> so the page never flashes in the wrong colours.
+type ThemeMode = "auto" | "light" | "dark" | "oled";
+const THEME_MODES: ThemeMode[] = ["auto", "light", "dark", "oled"];
+
+const hwTheme = (() => {
+  const KEY = "br:theme";                                        // a choice made for this device only
+  const isMode = (v: unknown): v is ThemeMode => typeof v === "string" && (THEME_MODES as string[]).includes(v);
+  const readDevice = (): ThemeMode | null => {
     try {
       const v: unknown = JSON.parse(localStorage.getItem(KEY) ?? "null");
-      return typeof v === "string" && v in MODES ? v as Mode : "auto";
-    } catch { return "auto"; }
+      return isMode(v) ? v : null;
+    } catch { return null; }
   };
-  const apply = (mode: Mode): void => {
+  const readAccount = (): ThemeMode => {
+    const v = typeof ME !== "undefined" && ME ? (ME as { theme?: unknown }).theme : undefined;
+    return isMode(v) ? v : "auto";
+  };
+  const apply = (mode: ThemeMode): void => {
     if (mode === "auto") document.documentElement.removeAttribute("data-theme");
     else document.documentElement.dataset.theme = mode;
-    const btn = document.getElementById("themeBtn");
-    if (btn) {
-      btn.querySelector("use")?.setAttribute("href", "#i-" + MODES[mode][0]);
-      btn.title = t("Darstellung: {mode} – zum Wechseln klicken").replace("{mode}", MODES[mode][1]);
-      btn.setAttribute("aria-label", btn.title);
+    // the colour of the browser bar (Safari, installed app) follows the page background
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]:not([media])');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      document.head.append(meta);
     }
+    const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+    if (bg) meta.content = bg;
   };
-  let current = read();
-  apply(current);
-  document.addEventListener("DOMContentLoaded", () => {
-    const btn = document.getElementById("themeBtn");
-    if (!btn) return;
-    apply(current);
-    btn.addEventListener("click", () => {
-      const order = Object.keys(MODES) as Mode[];
-      current = order[(order.indexOf(current) + 1) % order.length];
-      try { localStorage.setItem(KEY, JSON.stringify(current)); } catch { /* private mode: only this page view */ }
-      apply(current);
-    });
-  });
+  const current = (): ThemeMode => readDevice() ?? readAccount();
+  const refresh = (): void => apply(current());
+  refresh();
+  document.addEventListener("DOMContentLoaded", refresh);
+  window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener("change", refresh);
+  return {
+    /** the scheme in use right now */
+    mode: current,
+    /** where the choice is kept */
+    scope: (): "device" | "account" => (readDevice() ? "device" : "account"),
+    /** account = on every device (saved on the server), device = only here */
+    async set(mode: ThemeMode, scope: "device" | "account"): Promise<void> {
+      if (scope === "device") {
+        try { localStorage.setItem(KEY, JSON.stringify(mode)); } catch { /* private mode: only this page view */ }
+        apply(mode);
+        return;
+      }
+      await api("PUT", "/api/auth/prefs", { theme: mode });
+      if (typeof ME !== "undefined" && ME) (ME as { theme?: string }).theme = mode;
+      try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+      apply(mode);
+    },
+    /** a device-only choice is dropped; the account's scheme applies again */
+    forgetDevice(): void {
+      try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+      apply(readAccount());
+    },
+  };
 })();

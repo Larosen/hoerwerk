@@ -289,6 +289,56 @@ pub async fn books(app: Arc<App>, req: Req, _: Params) -> Reply {
     json_reply(json!({"books": for_browser(&app, &req, &books), "region": region}))
 }
 
+/// One book in detail: its description and what Audible's listeners connect with it ("Ähnlich wie …").
+pub async fn detail(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let asin = req.query.get("asin").map_or(String::new(), |a| a.trim().to_uppercase());
+    let region = match req.query.get("region").map(String::as_str).filter(|r| !r.is_empty()) {
+        Some(r) => r.to_string(),
+        None => app
+            .settings()
+            .get("ab_region")
+            .and_then(Value::as_str)
+            .unwrap_or("de")
+            .to_string(),
+    };
+    let valid = asin.len() == 10 && asin.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit());
+    if !valid || !audible::REGIONS.iter().any(|x| x.0 == region) {
+        return error(400, t("Ungültige Daten", &[]));
+    }
+    let (a, rg) = (app.clone(), region.clone());
+    let res = blocking(move || {
+        let book = a.providers.client.product(&asin, &rg)?;
+        let similar = a.providers.client.similar(&asin, &rg, 16).unwrap_or_default();
+        Ok::<_, audible::AudibleError>((book, similar))
+    })
+    .await;
+    match res {
+        Ok((book, similar)) => {
+            let lang = book["language"].as_str().unwrap_or("").to_lowercase();
+            let own = book["asin"].as_str().unwrap_or("").to_string();
+            // only the same language (a German listener does not want the English edition suggested), never the book itself
+            let similar: Vec<Value> = similar
+                .into_iter()
+                .filter(|b| b["asin"].as_str().unwrap_or("") != own)
+                .filter(|b| {
+                    lang.is_empty()
+                        || b["language"]
+                            .as_str()
+                            .is_none_or(|l| l.is_empty() || l.to_lowercase() == lang)
+                })
+                .take(10)
+                .collect();
+            let mut item = for_browser(&app, &req, std::slice::from_ref(&book))
+                .pop()
+                .unwrap_or(Value::Null);
+            let text: String = book["description"].as_str().unwrap_or("").chars().take(1500).collect();
+            item["description"] = json!(text);
+            json_reply(json!({"book": item, "similar": for_browser(&app, &req, &similar), "region": region}))
+        }
+        Err(e) => error(502, e.0),
+    }
+}
+
 /// All released volumes of a series, in order – for a series request.
 pub async fn series(app: Arc<App>, req: Req, _: Params) -> Reply {
     let asin = req.str("asin").trim().to_uppercase();

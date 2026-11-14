@@ -7,6 +7,7 @@ const logs = {
   entries: [] as LogEntry[],
   last: 0,
   level: "info",
+  window: 60,                                    // minutes shown (0 = everything the server still has)
   timer: undefined as number | undefined,
 };
 
@@ -33,7 +34,10 @@ function renderLogs(): void {
   const view = $("#logView");
   const atBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 40;
   const words = $<HTMLInputElement>("#logFilter").value.toLowerCase().split(/\s+/).filter(Boolean);
-  const shown = logs.entries.filter((e) => {
+  const cutoff = logs.window ? Date.now() / 1000 - logs.window * 60 : 0;
+  const inWindow = logs.entries.filter((e) => e.time >= cutoff);
+  const older = logs.entries.length - inWindow.length;
+  const shown = inWindow.filter((e) => {
     const text = `${e.source} ${e.text}`.toLowerCase();
     return words.every((w) => text.includes(w));
   });
@@ -42,14 +46,25 @@ function renderLogs(): void {
     e.level !== "info" ? el("span", { class: "log-level" }, LOG_LEVEL_NAMES[e.level]) : null,
     e.source ? el("span", { class: "log-source" }, e.source) : null,
     el("span", { class: "log-text" }, e.text))));
-  if (!shown.length) view.append(el("div", { class: "muted log-empty" }, words.length ? t("Nichts gefunden.") : t("Noch keine Einträge.")));
+  if (!shown.length) view.append(el("div", { class: "muted log-empty" }, words.length ? t("Nichts gefunden.") : older ? t("Nichts in diesem Zeitraum.") : t("Noch keine Einträge.")));
+  if (older) {
+    view.append(el("div", { class: "muted log-empty log-older" }, plural(older, t("1 älterer Eintrag ausgeblendet"), t("{n} ältere Einträge ausgeblendet", { n: older })), " ",
+      el("button", { type: "button", class: "linkish", onclick: () => setLogWindow(logs.window === 15 ? 60 : logs.window === 60 ? 1440 : 0) }, t("Zeitraum erweitern"))));
+  }
   if (atBottom || !view.dataset.seen) { view.scrollTop = view.scrollHeight; view.dataset.seen = "1"; }
+}
+
+function setLogWindow(minutes: number): void {
+  logs.window = minutes;
+  store.set("logWindow", minutes);
+  for (const b of document.querySelectorAll<HTMLElement>("#logWindow button")) b.setAttribute("aria-pressed", String(Number(b.dataset.min) === minutes));
+  renderLogs();
 }
 
 function followLogs(): void {
   clearTimeout(logs.timer);
   if (!logsVisible() || !$<HTMLInputElement>("#logFollow").checked) return;
-  logs.timer = setTimeout(async () => { await loadLogs(); followLogs(); }, 2000);
+  logs.timer = setTimeout(async () => { await loadLogs(); if (logs.window) renderLogs(); followLogs(); }, 2000);
 }
 
 function downloadLogs(): void {
@@ -74,6 +89,12 @@ async function showLogs(): Promise<void> {
 }
 
 function initLogs(): void {
+  const saved = store.get("logWindow", 60);
+  logs.window = [15, 60, 1440, 0].includes(saved) ? saved : 60;       // the last hour: what just happened
+  for (const b of document.querySelectorAll<HTMLElement>("#logWindow button")) {
+    b.setAttribute("aria-pressed", String(Number(b.dataset.min) === logs.window));
+    b.addEventListener("click", () => setLogWindow(Number(b.dataset.min)));
+  }
   $<HTMLSelectElement>("#logLevel").addEventListener("change", (e) => {
     logs.level = (e.target as HTMLSelectElement).value;
     loadLogs(true);
