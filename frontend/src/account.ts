@@ -17,7 +17,57 @@ function deviceName(agent: string): string {
   return [browser, os].filter(Boolean).join(" · ") || t("Unbekanntes Gerät");
 }
 
+const THEME_CARDS: { mode: ThemeMode; name: () => string; hint: () => string }[] = [
+  { mode: "auto", name: () => t("Automatisch"), hint: () => t("Folgt dem Gerät") },
+  { mode: "light", name: () => t("Hell"), hint: () => t("Papier") },
+  { mode: "dark", name: () => t("Dunkel"), hint: () => t("Abend") },
+  { mode: "oled", name: () => t("OLED"), hint: () => t("Nacht – echtes Schwarz") },
+];
+
+/** Colour world: four cards with a preview, and whether the choice counts for the account or only for this device. */
+function renderDisplay(): void {
+  const mode = hwTheme.mode(), scope = hwTheme.scope();
+  const save = async (m: ThemeMode, where: "device" | "account"): Promise<void> => {
+    try { await hwTheme.set(m, where); renderDisplay(); } catch (e) { toast(errMsg(e), true); }
+  };
+  $("#themeCards").replaceChildren(...THEME_CARDS.map((c) => el("button", {
+    type: "button", class: "themecard", "aria-pressed": String(c.mode === mode), onclick: () => { void save(c.mode, scope); },
+  }, el("span", { class: "pv pv-" + c.mode }, el("i"), el("i"), el("i")),
+  el("span", {}, el("b", {}, c.name()), el("small", {}, c.hint())))));
+  const radio = (where: "device" | "account", title: string, hint: string): HTMLElement => el("button", {
+    type: "button", class: "radio" + (scope === where ? " on" : ""), role: "radio", "aria-checked": String(scope === where),
+    onclick: () => { void save(mode, where); },
+  }, el("span", { class: "dot" }), el("span", {}, el("b", {}, title), el("span", { class: "d" }, hint)));
+  $("#themeScope").replaceChildren(
+    radio("account", t("Alle meine Geräte"), t("iPhone, iPad und Mac zeigen dieselbe Farbwelt – sie wird in deinem Konto gespeichert.")),
+    radio("device", t("Nur dieses Gerät"), t("Zum Beispiel OLED auf dem iPhone und Hell am Mac.")));
+}
+
+/** How to put Hörwerk on the iPhone home screen – the steps only where they help (iPhone/iPad, not yet installed). */
+function renderInstall(): void {
+  const box = $("#installBox");
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (standalone) { box.replaceChildren(el("p", { class: "install-done" }, icon("check"), t("Hörwerk läuft gerade als App."))); return; }
+  if (!ios) {
+    box.replaceChildren(el("p", { class: "muted small" }, t("Hörwerk lässt sich als App auf den Home-Bildschirm legen: auf dem iPhone und iPad in Safari über Teilen → Zum Home-Bildschirm, in Chrome über das Menü → App installieren.")));
+    return;
+  }
+  // **bold** marks the words to look for on screen – one sentence per step, so it translates as a whole
+  const rich = (text: string): (string | HTMLElement)[] => text.split("**").map((part, i) => (i % 2 ? el("b", {}, part) : part));
+  box.replaceChildren(
+    el("p", { class: "muted small" }, t("So liegt Hörwerk auf dem Home-Bildschirm – ohne Adressleiste, wie eine App:")),
+    el("ol", { class: "install-steps" },
+      el("li", {}, ...rich(t("Hörwerk in **Safari** öffnen (nicht in einer anderen App)."))),
+      el("li", {}, ...rich(t("Unten auf **Teilen** tippen – das Quadrat mit dem Pfeil nach oben."))),
+      el("li", {}, ...rich(t("Nach unten wischen und **Zum Home-Bildschirm** wählen."))),
+      el("li", {}, ...rich(t("Oben rechts auf **Hinzufügen** tippen.")))),
+    el("p", { class: "muted small" }, t("Danach startet Hörwerk mit eigenem Symbol im Vollbild.")));
+}
+
 async function openAccount(): Promise<void> {
+  renderDisplay();
+  renderInstall();
   try {
     const me = await api<{ name: string; role: string; sessions: SessionInfo[]; session: string;
       connection?: { ip: string; peer: string; proxied: boolean; trusted: boolean; https: boolean } }>("GET", "/api/auth/me");
@@ -302,9 +352,26 @@ async function createUser(): Promise<void> {
   } catch (e) { toast(errMsg(e), true); }
 }
 
+/** "Protokoll" in the phone menu shows how many errors the last 24 hours had. */
+async function refreshMoreBadge(): Promise<void> {
+  if (!IS_ADMIN) return;
+  const badge = $("#moreLogBadge");
+  try {
+    const res = await api<{ entries: { time: number }[] }>("GET", "/api/logs?after=0&level=error");
+    const since = Date.now() / 1000 - 86400;
+    const n = res.entries.filter((e) => e.time >= since).length;
+    badge.hidden = n === 0;
+    badge.textContent = plural(n, t("1 Fehler"), t("{n} Fehler", { n }));
+  } catch { badge.hidden = true; }
+}
+
 function initAccount(): void {
   if (typeof ME === "undefined" || !ME) return;
   $("#accountName").textContent = ME.name;
+  // phone menu "Mehr": who is signed in, sign out, and a red note when something failed lately
+  $("#moreAccount").replaceChildren(ME.name, el("small", {}, `${t("Konto")} · ${IS_ADMIN ? t("Admin") : t("Nutzer")}`));
+  $("#moreLogout").addEventListener("click", logout);
+  document.addEventListener("viewchange", (e) => { if ((e as CustomEvent<string>).detail === "more") void refreshMoreBadge(); });
   $("#pwSave").addEventListener("click", changePassword);
   attachPasswordRules($<HTMLInputElement>("#pwNew"), () => ME?.name || "");
   $("#endOthers").addEventListener("click", async () => {

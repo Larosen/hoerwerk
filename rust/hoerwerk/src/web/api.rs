@@ -661,7 +661,7 @@ async fn sessions_end(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Re
     json_reply(json!({"ok": true, "ended": n}))
 }
 
-fn prefs(app: &App, uid: i64) -> Map<String, Value> {
+pub fn prefs(app: &App, uid: i64) -> Map<String, Value> {
     app.db
         .lock()
         .query_row("SELECT prefs FROM users WHERE id=?", [uid], |r| r.get::<_, String>(0))
@@ -671,29 +671,53 @@ fn prefs(app: &App, uid: i64) -> Map<String, Value> {
         .unwrap_or_default()
 }
 
+const THEMES: [&str; 4] = ["auto", "light", "dark", "oled"];
+
 async fn prefs_get(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
     let p = prefs(&app, req.user_id());
     let server = app
         .db
         .get("ntfy")
         .is_some_and(|n| n["url"].as_str().is_some_and(|u| !u.is_empty()));
-    json_reply(json!({"ntfy_topic": p.get("ntfy_topic").cloned().unwrap_or(json!("")), "ntfy_server": server}))
+    json_reply(json!({
+        "ntfy_topic": p.get("ntfy_topic").cloned().unwrap_or(json!("")),
+        "ntfy_server": server,
+        "theme": theme_of(&p),
+    }))
 }
 
+/// The colour scheme saved for the account ("auto" until the user picks one).
+pub fn theme_of(p: &Map<String, Value>) -> &'static str {
+    let t = p.get("theme").and_then(Value::as_str).unwrap_or("auto");
+    THEMES.iter().copied().find(|x| *x == t).unwrap_or("auto")
+}
+
+/// Saves what was sent: the ntfy topic and/or the colour scheme – a key that is missing stays as it is.
 async fn prefs_put(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
-    let topic = req.str("ntfy_topic").trim().to_string();
-    if !topic.is_empty()
-        && (topic.len() > 64 || !topic.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
-    {
-        return error(400, t("Topic: nur Buchstaben, Ziffern, - und _ (max. 64 Zeichen)", &[]));
-    }
     let mut p = prefs(&app, req.user_id());
-    p.insert("ntfy_topic".into(), json!(topic));
+    if !req.get("ntfy_topic").is_null() {
+        let topic = req.str("ntfy_topic").trim().to_string();
+        if !topic.is_empty()
+            && (topic.len() > 64 || !topic.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+        {
+            return error(400, t("Topic: nur Buchstaben, Ziffern, - und _ (max. 64 Zeichen)", &[]));
+        }
+        p.insert("ntfy_topic".into(), json!(topic));
+    }
+    if !req.get("theme").is_null() {
+        let theme = req.str("theme");
+        if !THEMES.contains(&theme.as_str()) {
+            return error(400, t("Unbekannte Farbwelt", &[]));
+        }
+        p.insert("theme".into(), json!(theme));
+    }
     let _ = app.db.lock().execute(
         "UPDATE users SET prefs=? WHERE id=?",
-        rusqlite::params![Value::Object(p).to_string(), req.user_id()],
+        rusqlite::params![Value::Object(p.clone()).to_string(), req.user_id()],
     );
-    json_reply(json!({"ok": true, "ntfy_topic": topic}))
+    json_reply(
+        json!({"ok": true, "ntfy_topic": p.get("ntfy_topic").cloned().unwrap_or(json!("")), "theme": theme_of(&p)}),
+    )
 }
 
 async fn users_list(app: Arc<App>, _: Req, _: HashMap<String, String>) -> Reply {

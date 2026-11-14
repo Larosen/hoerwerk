@@ -2,7 +2,7 @@
 
 **English** · [Deutsch](SECURITY.de.md)
 
-Applies to **version 7.20** (last full security review: 30 Oct 2026; what changed since is in the
+Applies to **version 8.0** (last full security review: 30 Oct 2026; what changed since is in the
 [changelog](CHANGELOG.md), and the protections below are checked by the tests on every change). Hörwerk processes
 files from foreign sources (downloads via SABnzbd), queries external services (Audible, Audnexus, BookBeat, Thalia,
 optionally an indexer, SABnzbd, Audiobookshelf, ntfy) and has a web interface with write access to your shares.
@@ -65,7 +65,7 @@ This page explains what the program protects against, what was tested and what y
 |---|---|
 | **CSRF**: a foreign web page in the same browser sends requests to `http://tower:8080` (e.g. changing settings or taking books out of the library) | Every changing request needs a custom header that browsers only send after a CORS approval (never given); additionally `Origin` and `Sec-Fetch-Site` are checked. Tested. |
 | Clickjacking | `X-Frame-Options: DENY`, `frame-ancestors 'none'`. |
-| Access without signing in | Without a valid session there is only the login page, the UI code (`/static`, open source anyway), `/i18n.js`, the logo and `/api/health`. Every API route has an access level (public / user / admin, default admin), checked on the server – not just hidden. Tested: signed out 401, family account on admin functions 403 (logged). |
+| Access without signing in | Without a valid session there is only the login page, the UI code (`/static`, readable in the source anyway), `/i18n.js`, the logo, the manifest and icons of the home-screen app, and `/api/health`. Every API route has an access level (public / user / admin, default admin), checked on the server – not just hidden. Tested: signed out 401, family account on admin functions 403 (logged). |
 | First setup by strangers | While there is no account, an admin can only be created from the home network directly; from outside the setup code from the container log is needed. Afterwards setup is closed. |
 | Password guessing | scrypt (N=2¹⁵); password rules (same on server and in the browser): at least 12 characters, three of four character kinds or a sentence of 20+ characters, not your own name, not “Hörwerk”/“password”/“123456”, not a single word with numbers around it (“Pudding2024!”), not the same characters over and over; per IP (for IPv6 per /64 network – one connection gets a whole /64) at most 5 failures in 15 minutes, then 429 – a flood of new addresses pushes out single tries first, never existing blocks; per account a growing delay (a stranger can't lock out a family account); unknown names take as long as known ones. Every failure with its IP goes to `auth.log` → CrowdSec bans at the VPS. |
 | Stolen session | 256-bit token, stored only as SHA-256; cookie `HttpOnly`, `SameSite=Lax`, `Secure` behind HTTPS. Password change, locking an account and "sign out all other devices" end sessions immediately. |

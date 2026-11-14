@@ -124,12 +124,21 @@ test("Einstellungen: Übersicht, Systemprüfung mit ffmpeg und Proxy, Design ble
   await expect(page.locator("#healthList")).toBeVisible();
   await page.goBack();
   await expect(page.locator("#settingsHub")).toBeVisible();
-  await page.locator("#themeBtn").click();          // auto -> light
-  await page.locator("#themeBtn").click();          // light -> dark
+  // colour scheme: chosen under Konto → Anzeige, saved in the account – it stays after a reload
+  await page.locator("#accountBtn").click();
+  await expect(page).toHaveURL(/\/account$/);
+  await page.locator("#themeCards").getByRole("button", { name: /Dunkel/ }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bg).toBe("rgb(19, 20, 18)");
+  expect(bg).toBe("rgb(29, 25, 22)");
+  // OLED: true black, and only on this device when asked for
+  await page.locator("#themeScope").getByRole("radio", { name: /Nur dieses Gerät/ }).click();
+  await page.locator("#themeCards").getByRole("button", { name: /OLED/ }).click();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "oled");
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(0, 0, 0)");
   expect(errors).toEqual([]);
 });
 
@@ -253,13 +262,14 @@ test("Entdecken: Nach Genre startet mit einem Genre, Unterkategorien wie bei Aud
   const errors = await open(page);
   await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
   await page.locator("#discoverSections button[data-section=genre]").click();
-  const sel = page.locator("#discoverGenre");
-  await expect(sel).toHaveValue("2");                                   // no empty "–": fiction to start with
+  const chips = page.locator("#discoverGenres");
+  await expect(chips.locator("button[aria-pressed=true]")).toHaveText("Literatur & Belletristik");   // no empty list: fiction to start with
   await expect(page.locator(".suggestion")).toContainText("Buch aus 2");
-  await expect(sel.locator("optgroup")).toHaveCount(2);
-  await expect(sel.locator("option")).toHaveText(["Geschichte – alle", "Antike", "Literatur & Belletristik – alle", "Klassiker"]);
+  await expect(chips.locator("button")).toHaveText(["Geschichte · Sachbuch", "Literatur & Belletristik"]);
+  await expect(page.locator("#discoverSubGenres button")).toHaveText(["Alle", "Klassiker"]);        // subcategories as a second row
   await expect(page.locator("#discoverNote")).toBeHidden();
-  await sel.selectOption("11");
+  await chips.getByRole("button", { name: /Geschichte/ }).click();
+  await page.locator("#discoverSubGenres").getByRole("button", { name: "Antike" }).click();
   await expect(page.locator(".suggestion")).toContainText("Buch aus 11");
   await expect(page.locator("#discoverNote")).toBeVisible();            // non-fiction: stars are no fact check
   expect(asked).not.toContain("");
@@ -385,7 +395,7 @@ test("Statistik: je Konto, ein Konto im Detail, Zeitraum wählbar, Monate als Ba
   await page.locator(".stats-months summary").click();
   await expect(page.locator("#statsMonthRows tr")).toHaveCount(12);
   // a name opens that account: its requests and what it heard
-  await page.locator("#statsPeople .person-link", { hasText: "admin" }).click();
+  await page.locator("#statsPeople .person-card", { hasText: "admin" }).click();
   await expect(page).toHaveURL(/\/stats\/\d+$/);
   await expect(page.locator("#statsTitle")).toHaveText(/Statistik: admin/);
   await expect(page.locator("#statsAccounts")).toBeHidden();
@@ -424,7 +434,7 @@ test("Hörverlauf: Audiobookshelf im Konto verbinden, Für dich sagt, wie es per
   await box.getByLabel("Passwort in Audiobookshelf").fill("richtig");
   await box.getByLabel("Passwort in Audiobookshelf").press("Enter");
   await expect(box).toContainText("Verbunden mit dem Audiobookshelf-Konto „admin-abs“");
-  await expect(box).toContainText("5 h gehört, 2 Bücher");
+  await expect(box).toContainText("5 h gehört, 2 Hörbücher");
   expect(sent.map((x) => x.password)).toEqual(["falsch", "richtig"]);
   expect(errors.filter((e) => !e.includes("status of 400"))).toEqual([]);   // the wrong password on purpose
 });
@@ -679,5 +689,54 @@ test("Hochladen: CD-Hörbuch als Ordner hochladen, landet als M4B in der Bibliot
   // no waiting for "settled" files: the inbox takes the upload at once and files it
   await expect.poll(() => existsSync(join(ROOT, "library", "Clara Clever", "Die Funkenstadt", "Die Funkenstadt.m4b")),
     { timeout: 45_000, message: "M4B in der Bibliothek" }).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("App auf dem Home-Bildschirm: Manifest und Symbole ohne Anmeldung, sonst nichts", async ({ request }) => {
+  const manifest = await request.get("/manifest.webmanifest");
+  expect(manifest.status()).toBe(200);
+  expect(manifest.headers()["content-type"]).toContain("manifest+json");
+  const m = await manifest.json();
+  expect(m.name).toBe("Hörwerk");
+  expect(m.display).toBe("standalone");
+  for (const icon of [...m.icons.map((i: { src: string }) => i.src), "/apple-touch-icon.png"]) {
+    const r = await request.get(icon);
+    expect(r.status(), icon).toBe(200);
+    expect(r.headers()["content-type"]).toBe("image/png");
+  }
+  expect((await request.get("/api/settings")).status()).toBe(401);                 // the data stays behind the sign-in
+  expect((await request.get("/books", { maxRedirects: 0 })).status()).toBe(303);   // so does every page
+});
+
+test("Handy: Tab-Leiste unten, Mehr führt zu Statistik, Konto und Abmelden", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const errors = await open(page);
+  const tabs = page.locator("nav.tabs");
+  expect(await tabs.evaluate((e) => getComputedStyle(e).position)).toBe("fixed");
+  expect((await tabs.boundingBox())!.y).toBeGreaterThan(700);                       // at the bottom, where the thumb is
+  await tabs.getByRole("link", { name: "Mehr" }).click();
+  await expect(page).toHaveURL(/\/more$/);
+  const menu = page.locator("#viewMore");
+  await expect(menu.getByRole("link", { name: /Protokoll/ })).toBeVisible();
+  await expect(menu.getByRole("link", { name: /Einstellungen/ })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Abmelden" })).toBeVisible();
+  await menu.getByRole("link", { name: /Statistik/ }).click();
+  await expect(page).toHaveURL(/\/stats$/);
+  await expect(tabs.getByRole("link", { name: "Mehr" })).toHaveAttribute("aria-current", "page");   // still "behind Mehr"
+  expect(errors).toEqual([]);
+});
+
+test("Protokoll: Zeitraum wählbar, die letzte Stunde ist voreingestellt", async ({ page }) => {
+  const errors = await open(page);
+  await page.goto("/settings/logs");
+  const win = page.locator("#logWindow");
+  await expect(win.getByRole("button", { name: "60 Min." })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#logView .log-line").first()).toBeVisible();           // what happened in the last hour
+  await win.getByRole("button", { name: "15 Min." }).click();
+  await expect(win.getByRole("button", { name: "15 Min." })).toHaveAttribute("aria-pressed", "true");
+  await win.getByRole("button", { name: "Alles" }).click();
+  await expect(win.getByRole("button", { name: "Alles" })).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(win.getByRole("button", { name: "Alles" })).toHaveAttribute("aria-pressed", "true");   // remembered
   expect(errors).toEqual([]);
 });

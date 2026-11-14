@@ -242,18 +242,25 @@ fn audio_edition(d: &Value) -> bool {
 }
 
 fn bookbeat_link(url: &str) -> Res<Value> {
-    let id = bookbeat_id(url)
-        .ok_or_else(|| LinkError(t("Keine Buch-ID im BookBeat-Link gefunden (…/book/titel-123456)", &[])))?;
-    let n: u64 = id
-        .parse()
-        .map_err(|_| LinkError(t("Keine Buch-ID im BookBeat-Link gefunden (…/book/titel-123456)", &[])))?;
+    let id = bookbeat_id(url).ok_or_else(|| {
+        LinkError(t(
+            "Keine Hörbuch-ID im BookBeat-Link gefunden (…/book/titel-123456)",
+            &[],
+        ))
+    })?;
+    let n: u64 = id.parse().map_err(|_| {
+        LinkError(t(
+            "Keine Hörbuch-ID im BookBeat-Link gefunden (…/book/titel-123456)",
+            &[],
+        ))
+    })?;
     let data = audible::http_get(&format!("{BOOKBEAT_API}{n}"), 20, 3, true, 8 << 20, Some(&bookbeat_ok))
         .map_err(|e| e.0)
         .and_then(|raw| serde_json::from_slice::<Value>(&raw).map_err(|e| e.to_string()))
         .map_err(|e| LinkError(t("BookBeat-Daten nicht abrufbar: {error}", &[("error", &e)])))?;
     if !audio_edition(&data) {
         return Err(LinkError(t(
-            "Bei BookBeat gibt es dieses Buch nur als E-Book, nicht als Hörbuch",
+            "Bei BookBeat gibt es dieses Hörbuch nur als E-Book, nicht als Hörbuch",
             &[],
         )));
     }

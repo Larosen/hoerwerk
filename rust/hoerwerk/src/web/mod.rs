@@ -47,8 +47,19 @@ const SECURITY_HEADERS: [(&str, &str); 6] = [
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
     ),
 ];
-const PUBLIC_STATIC: [&str; 6] = ["style.css", "icon.svg", "icon.png", "theme.js", "core.js", "login.js"];
-const APP_PAGES: [(&str, &str); 7] = [
+const PUBLIC_STATIC: [&str; 10] = [
+    "style.css",
+    "icon.svg",
+    "icon.png",
+    "theme.js",
+    "core.js",
+    "login.js",
+    "manifest.webmanifest",
+    "apple-touch-icon.png",
+    "icon-192.png",
+    "icon-512.png",
+];
+const APP_PAGES: [(&str, &str); 8] = [
     ("books", "admin"),
     ("search", "user"),
     ("discover", "user"),
@@ -56,6 +67,7 @@ const APP_PAGES: [(&str, &str); 7] = [
     ("account", "user"),
     ("settings", "admin"),
     ("stats", "user"),
+    ("more", "user"),
 ];
 const SETTINGS_SECTIONS: [&str; 12] = [
     "health",
@@ -455,6 +467,9 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
     if reading {
         match path.as_str() {
             "/favicon.ico" => return static_file(&app, "icon.png"),
+            // the installed app (iPhone home screen): the browser asks for these before anyone is signed in
+            "/manifest.webmanifest" => return static_file(&app, "manifest.webmanifest"),
+            "/apple-touch-icon.png" => return static_file(&app, "apple-touch-icon.png"),
             "/i18n.js" => {
                 let data = json!({"lang": crate::text::language(), "text": crate::text::catalog_json()});
                 return respond(
@@ -472,6 +487,9 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
                     .map(|u| {
                         let mut me = crate::accounts::me(&u);
                         me["help"] = json!(help);
+                        // the colour scheme of the account – known before the page is painted
+                        let uid = u.get("id").and_then(Value::as_i64).unwrap_or(0);
+                        me["theme"] = json!(api::theme_of(&api::prefs(&app, uid)));
                         me
                     })
                     .unwrap_or(Value::Null);

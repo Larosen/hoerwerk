@@ -7,16 +7,16 @@
 // ------------------------------------------------------------------------- //
 interface Route { view: string; section: string }
 
-const VIEWS = ["books", "search", "discover", "requests", "settings", "account", "stats"];
+const VIEWS = ["books", "search", "discover", "requests", "settings", "account", "stats", "more"];
 const VIEW_ELEMENTS: Record<string, string> = {
   books: "#viewBooks", search: "#viewSearch", discover: "#viewDiscover", requests: "#viewRequests",
-  settings: "#viewSettings", account: "#viewAccount", stats: "#viewStats",
+  settings: "#viewSettings", account: "#viewAccount", stats: "#viewStats", more: "#viewMore",
 };
 /** The main tabs – the last one used is where "/" leads. */
 const MAIN_VIEWS = ["books", "search", "discover", "requests"];
 const VIEW_TITLES: Record<string, () => string> = {
   books: () => t("Hörbücher"), search: () => t("Suchen"), discover: () => t("Entdecken"), requests: () => t("Anfragen"),
-  settings: () => t("Einstellungen"), account: () => t("Konto"), stats: () => t("Statistik"),
+  settings: () => t("Einstellungen"), account: () => t("Konto"), stats: () => t("Statistik"), more: () => t("Mehr"),
 };
 
 const router = { current: null as Route | null, ready: false };
@@ -35,6 +35,8 @@ function parseRoute(path: string): Route {
   const [view = "", section = ""] = path.split("/").filter(Boolean);
   if (!VIEWS.includes(view)) return { view: defaultView(), section: "" };
   if (!IS_ADMIN && (view === "books" || view === "settings")) return { view: defaultView(), section: "" };
+  // "Mehr" is the phone's menu for what does not fit into the tab bar – the sidebar of wide screens shows all of it
+  if (view === "more" && window.matchMedia("(min-width: 780px)").matches) return { view: defaultView(), section: "" };
   if (view === "settings" && section === "stats") return { view: "stats", section: "" };    // where it used to be
   if (view === "settings") return { view, section: settingsSections().includes(section) ? section : "" };
   // /stats/7: one account in detail – admins only (everyone else has their own on /stats)
@@ -56,7 +58,11 @@ function showRoute(r: Route, push: boolean): void {
   router.current = r;
   for (const [view, sel] of Object.entries(VIEW_ELEMENTS)) $(sel).hidden = view !== r.view;
   for (const a of document.querySelectorAll<HTMLElement>(".topbar [data-view]")) {
-    if (a.dataset.view === r.view) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    // Protokoll lives inside the settings but has its own entry; "Mehr" stands for everything behind it on the phone
+    const here = a.dataset.view === r.view && (!a.dataset.section || a.dataset.section === r.section)
+      && (!a.dataset.notSection || a.dataset.notSection !== r.section);
+    const behindMore = a.classList.contains("more-tab") && ["more", "stats", "settings", "account"].includes(r.view);
+    if (here || behindMore) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }
   if (MAIN_VIEWS.includes(r.view)) store.set("view", r.view);
   document.title = `${VIEW_TITLES[r.view]()} · Hörwerk`;          // settings.ts names the area on top

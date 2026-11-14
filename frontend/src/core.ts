@@ -11,7 +11,7 @@ const LOCALE = LANG === "en" ? "en-GB" : "de-DE";
 
 // Who is signed in (/me.js; null on the login page). The server checks every right again –
 // this only decides what the page shows.
-interface Me { id: number; name: string; role: "admin" | "user"; perms: Record<string, boolean>; quota: number | null; help?: boolean }
+interface Me { id: number; name: string; role: "admin" | "user"; perms: Record<string, boolean>; quota: number | null; help?: boolean; theme?: string }
 declare const ME: Me | null | undefined;
 const IS_ADMIN = typeof ME !== "undefined" && !!ME && ME.role === "admin";
 if (typeof ME !== "undefined" && ME) document.documentElement.classList.add(IS_ADMIN ? "role-admin" : "role-user");

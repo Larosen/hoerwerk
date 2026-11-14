@@ -41,6 +41,8 @@ automatisieren möchten.
   ein vorhandenes Buch ein besseres Release – und löscht die alte Fassung nie ohne geprüfte neue.
 - **Empfehlungen.** *Entdecken* lernt aus dem Hörverlauf jedes Nutzers in Audiobookshelf oder Plex und schlägt dazu
   passende Bücher vor; dazu kommen Tipps von Kritikern (Perlentaucher, Deutschlandfunk Kultur).
+- **Drei Farbwelten und eine App auf dem Home-Bildschirm.** Hell (Papier), Dunkel (Abend) und OLED (echtes Schwarz); auf iPhone und iPad
+  läuft Hörwerk im Vollbild wie eine App ([Anleitung](docs/de/iphone-app.md)).
 - **Klein und abgesichert.** Ein Rust-Programm, eigenes schlankes ffmpeg in einer Sandbox, Zweitfaktor, signierte Images.
 
 | Anfragen mit Fortschritt | Entdecken |
@@ -63,7 +65,7 @@ curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.y
 docker compose up -d
 ```
 
-Image: `ghcr.io/larosen/hoerwerk:latest` (oder eine feste Version wie `:7.20.0`) – amd64, jede Woche für
+Image: `ghcr.io/larosen/hoerwerk:latest` (oder eine feste Version wie `:8.0.0`) – amd64, jede Woche für
 Sicherheitsupdates neu gebaut, mit cosign signiert.
 
 ## Was es nicht ist
@@ -80,6 +82,7 @@ Sicherheitsupdates neu gebaut, mit cosign signiert.
 | [Hörbücher](docs/de/guide.md) | Eingang, Hochladen, Zuordnung, Doppelte, Kapitel, Fassungen, Audiobookshelf und Plex |
 | [Downloads, Entdecken, Anfragen](docs/de/downloads.md) | SABnzbd und Indexer, LibriVox, Vorschläge, Anfragen der Familie |
 | [Konfiguration](docs/de/configuration.md) | Konten, Zugriff von außen, Benachrichtigungen, Variablen, Backup |
+| [Hörwerk als App](docs/de/iphone-app.md) | auf den Home-Bildschirm von iPhone und iPad legen, Schritt für Schritt |
 | [Sicherheit](SECURITY.de.md) | wovor Hörwerk schützt und wie das getestet wird |
 | [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Entwicklung](docs/de/development.md) | |
 

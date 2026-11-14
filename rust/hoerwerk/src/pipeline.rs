@@ -1015,7 +1015,7 @@ impl Pipeline {
             self.set_trickle(app, false);
             text::info(
                 "Bibliothek",
-                &t("Schonende Umwandlung fertig: kein Buch mehr übrig", &[]),
+                &t("Schonende Umwandlung fertig: kein Hörbuch mehr übrig", &[]),
             );
             return;
         };
@@ -1350,7 +1350,7 @@ impl Pipeline {
             let mut j = slot.lock();
             if j.status != "done" {
                 return Err(PipeError::Refused(t(
-                    "Nur abgelegte Bücher lassen sich korrigieren",
+                    "Nur abgelegte Hörbücher lassen sich korrigieren",
                     &[],
                 )));
             }
@@ -1379,7 +1379,7 @@ impl Pipeline {
             let mut j = slot.lock();
             if j.status != "done" {
                 return Err(PipeError::Refused(t(
-                    "Nur abgelegte Bücher lassen sich korrigieren",
+                    "Nur abgelegte Hörbücher lassen sich korrigieren",
                     &[],
                 )));
             }
@@ -1406,7 +1406,7 @@ impl Pipeline {
                 return match found {
                     Some(folder) => Ok(self.correct(app, &folder)),
                     None => Err(PipeError::Refused(t(
-                        "Die Datei liegt nicht mehr unter {path}, und in der Bibliothek ist das Buch nicht zu finden. Korrigieren geht auch direkt in der Bibliothek beim Buch.",
+                        "Die Datei liegt nicht mehr unter {path}, und in der Bibliothek ist das Hörbuch nicht zu finden. Korrigieren geht auch direkt in der Bibliothek beim Hörbuch.",
                         &[("path", &was)],
                     ))),
                 };
@@ -1467,7 +1467,7 @@ impl Pipeline {
         }
         let dup =
             slot.lock().duplicate.clone().ok_or_else(|| {
-                PipeError::Refused(t("Für dieses Buch gibt es keinen Treffer in der Bibliothek", &[]))
+                PipeError::Refused(t("Für dieses Hörbuch gibt es keinen Treffer in der Bibliothek", &[]))
             })?;
         if action == "discard" {
             self.dispose_source(&slot, &app.settings());
@@ -2744,7 +2744,7 @@ impl Pipeline {
             let mut j = slot.lock();
             j.duplicate = Some(Value::Object(dup));
             j.dup_decision = Some("replace".into());
-            j.info(&t("Ersetzt das vorhandene Buch: {path}", &[("path", up)]));
+            j.info(&t("Ersetzt das vorhandene Hörbuch: {path}", &[("path", up)]));
             dup_decision = Some("replace".into());
         }
         let mut book = matched;

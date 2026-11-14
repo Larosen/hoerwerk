@@ -164,7 +164,7 @@ pub async fn list(app: Arc<App>, req: Req, _: Params) -> Reply {
 pub async fn upgrade(app: Arc<App>, req: Req, _: Params) -> Reply {
     let rel = match &req.get("path") {
         Value::String(s) => s.clone(),
-        _ => return error(400, t("Kein Buch angegeben", &[])),
+        _ => return error(400, t("Kein Hörbuch angegeben", &[])),
     };
     if let Err(r) = super::library::library_path(&app, &rel) {
         return r;

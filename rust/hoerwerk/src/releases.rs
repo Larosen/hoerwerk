@@ -306,7 +306,7 @@ pub fn evaluate(
     }
     let title = title_words(s(book, "title"));
     if title.is_empty() {
-        return no(t("Buch ohne Titel", &[]), &notes);
+        return no(t("Hörbuch ohne Titel", &[]), &notes);
     }
     let share = title.iter().filter(|w| words.contains(*w)).count() as f64 / title.len() as f64;
     if share < 0.8 {

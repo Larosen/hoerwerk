@@ -2,7 +2,13 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Hörwerk">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Hörwerk – Anmelden</title>
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <meta name="color-scheme" content="light dark">
@@ -26,6 +32,7 @@
       <p class="muted small">Die Hörbuch-Werkstatt</p>
     </div>
   </div>
+  <svg class="login-wave" viewBox="0 0 240 24" preserveAspectRatio="none" aria-hidden="true"><path class="r" vector-effect="non-scaling-stroke" d="M136.1 8.3v7.3M141.5 10.2v3.5M146.8 6.4v11.1M152.2 6.7v10.6M157.5 3.3v17.4M162.9 6.1v11.7M168.3 5.2v13.6M173.6 6.5v11.1M179.0 5.3v13.5M184.4 7.0v10.0M189.7 8.4v7.1M195.1 3.3v17.4M200.5 3.6v16.8M205.8 4.9v14.1M211.2 6.0v11.9M216.5 8.6v6.7M221.9 9.2v5.5M227.3 9.1v5.9M232.6 10.2v3.6"/><path class="d" vector-effect="non-scaling-stroke" d="M2.0 8.5v6.9M7.4 7.7v8.6M12.7 5.4v13.2M18.1 7.7v8.5M23.5 7.3v9.4M28.8 6.6v10.8M34.2 9.2v5.6M39.5 6.8v10.4M44.9 5.8v12.4M50.3 4.4v15.2M55.6 9.8v4.5M61.0 8.0v7.9M66.4 9.8v4.5M71.7 3.7v16.6M77.1 4.6v14.8M82.5 10.1v3.7M87.8 1.9v20.2M93.2 2.0v20.0M98.5 4.7v14.6M103.9 5.0v14.0M109.3 9.1v5.8M114.6 10.4v3.3M120.0 5.7v12.5M125.4 10.0v4.1M130.7 8.8v6.4"/></svg>
 
   <form id="loginForm" class="login-form" hidden>
     <label>Name

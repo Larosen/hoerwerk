@@ -16,6 +16,25 @@ umgebaut.
 > **Wortwahl:** In der Oberfläche heißt es durchgehend **Hörbuch / Hörbücher**, nie „Buch / Bücher". Der Prototyp folgt dem schon;
 > in der App kommt es mit der Umsetzung (inklusive Übersetzung `static/i18n/en.json`).
 
+## Stand der Umsetzung (Version 8.0.0)
+
+Das Konzept ist in der App umgesetzt – mit diesen Abweichungen und Lücken:
+
+| Thema | Stand |
+|---|---|
+| Drei Farbwelten (Hell · Dunkel · OLED), Kontrast ≥ 4,5:1 | **umgesetzt** (`static/style.css`), Prüfung: `docs/design/check_contrast.py` |
+| Farbwelt je Konto oder je Gerät | **umgesetzt** unter **Konto → Anzeige** (nicht unter Einstellungen: die sind nur für Admins, die Farbwelt braucht aber jedes Familienkonto) |
+| Seitenleiste (iPad/Mac), Tab-Leiste und „Mehr" (iPhone) | **umgesetzt** |
+| Entdecken mit vier Reitern, Genre-Chips, Kritik-Karten, Namen als Fließtext | **umgesetzt**; die Regale und der „Vorschlag des Tages" aus dem Prototyp sind **nicht** übernommen (die Kartenliste bleibt) |
+| Hörbücher als Regal oder Liste, Aktionen als Symbole mit kurzen Namen | **umgesetzt** |
+| Protokoll mit Zeitraum (15 Min · 60 Min · 24 Std · Alles) | **umgesetzt**, Standard 60 Min |
+| Fortschritt als Tonspur (Downloads, Umwandlung, Anfragen), Anmeldung mit Tonspur | **umgesetzt** |
+| Texte gestrichen (Statuszeile in Kritik, „Was gezeigt wird", Quellenzeile in Suchen) | **umgesetzt**; „Hörbuch" statt „Buch" durchgehend |
+| iPhone-App (Home-Bildschirm) mit Anleitung | **umgesetzt**: Manifest, Symbole, Hinweis unter *Konto*, [Anleitung](../de/iphone-app.md) |
+| Buchfarbe aus dem Cover (Karten, Diagramme getönt) | **offen**: braucht die Farbberechnung im Server (siehe Abschnitt 9) |
+| Detailspalte am Mac | **offen** |
+| Messing als zweiter Akzent | umgesetzt für „neu" und Hinweise (Zähler, Spitzenwert in der Statistik) |
+
 ## 1. Befund: Was an der heutigen Oberfläche nicht trägt
 
 Grundlage sind die Screenshots der Version 7.20.0 und der Stylesheet `static/style.css`.

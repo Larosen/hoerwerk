@@ -56,7 +56,7 @@ const IMPORT_STATE: Record<string, () => string> = {
   inbox: () => t("Download fertig – wartet auf den Eingang"),
   review: () => IS_ADMIN ? t("Wartet auf deine Prüfung unter „Hörbücher“") : t("Wartet auf Prüfung durch einen Admin"),
   queued: () => t("Wartet auf die Umwandlung"),
-  matching: () => t("Erkennt das Buch"),
+  matching: () => t("Erkennt das Hörbuch"),
   converting: () => t("Wandelt in M4B um"),
   tagging: () => t("Schreibt Tags und Kapitel"),
 };

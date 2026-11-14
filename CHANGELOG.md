@@ -3,6 +3,24 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v7.19.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:7.19.0`); `latest` is always the newest one.
 
+## 8.0.0 – 2026-11-14
+
+A new look – “Werkstatt & Regal”: warm papers instead of neutral grey, covers on shelves, progress as a waveform.
+
+- **Three colour schemes:** Hell (Papier), Dunkel (Abend – warm espresso instead of grey) and OLED (Nacht – true black). Choose under
+  *Account → Anzeige*: for all your devices (saved in the account) or only for this device. "Automatisch" follows the device.
+- **Navigation:** a sidebar on iPad and Mac, a tab bar on the iPhone (*Entdecken · Suchen · Anfragen · Hörbücher · Mehr*). *Mehr* holds
+  Protokoll, Statistik, Einstellungen and the account, with a red note when something failed lately.
+- **Entdecken:** one column with the tabs *Für dich · Nach Genre · Aus der Kritik · Gefolgt* and genres as chips. Several authors or narrators
+  stand as running text ("… u. a.") – the boxes with huge gaps are gone (a CSS class used twice was the cause).
+- **Hörbücher:** the library as a shelf (covers stand on a board) or as a list; *Besser*, *Kapitel* and *Korrigieren* are icon buttons.
+- **Protokoll:** choose the period – 15 min, 60 min (default), 24 h or everything.
+- **Progress as a waveform** – downloads, conversions and requests; Anmeldung with the same track as a signature.
+- Wording: "Hörbuch/Hörbücher" instead of "Buch/Bücher" throughout; the status line in *Aus der Kritik*, the "Was gezeigt wird" box and the sources line in
+  *Suchen* are gone.
+- **iPhone app:** Hörwerk can be put on the home screen and then runs full screen ([guide](docs/en/iphone-app.md)); manifest and icons are served without
+  signing in, nothing else is.
+
 ## 7.20.0 – 2026-11-13
 
 - **New license:** Hörwerk is now under the [PolyForm Noncommercial License 1.0.0](LICENSE) – free for personal and

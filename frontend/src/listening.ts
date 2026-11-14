@@ -62,7 +62,7 @@ async function openListening(): Promise<void> {
   if (r) {
     parts.push(el("p", { class: "muted small" }, r.seconds || r.books
       ? t("Letzte 30 Tage: {time} gehört, {books} – Danke fürs Zuhören!", { time: fmtListen(r.seconds),
-        books: plural(r.books, t("1 Buch"), t("{n} Bücher", { n: r.books })) })
+        books: plural(r.books, t("1 Hörbuch"), t("{n} Hörbücher", { n: r.books })) })
       : t("In den letzten 30 Tagen noch nichts gehört.")));
     if (r.errors.length) parts.push(el("p", { class: "err small" }, r.errors.join(" · ")));
   }

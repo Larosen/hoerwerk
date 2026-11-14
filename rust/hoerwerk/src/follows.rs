@@ -272,7 +272,7 @@ pub fn check(app: &Arc<App>, f: &Value) -> Result<usize, String> {
         text::info(
             "Folgen",
             &t(
-                "{name}: {n} neue Bücher angefragt",
+                "{name}: {n} neue Hörbücher angefragt",
                 &[("name", name), ("n", &requested.to_string())],
             ),
         );
