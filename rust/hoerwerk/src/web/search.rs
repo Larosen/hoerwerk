@@ -175,6 +175,13 @@ pub async fn indexers(app: Arc<App>, req: Req, _: Params) -> Reply {
 }
 
 pub fn for_browser(app: &App, req: &Req, books: &[Value]) -> Vec<Value> {
+    super::covers::warm(
+        app,
+        books
+            .iter()
+            .filter_map(|b| b["cover_url"].as_str().map(str::to_string))
+            .collect(),
+    );
     let requested = app.requests.status_by_key(app);
     let admin = req.user.as_ref().is_some_and(|u| u["role"] == "admin");
     books

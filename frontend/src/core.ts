@@ -295,24 +295,28 @@ function pictureColour(img: HTMLImageElement): string | null {
     if (!g) return null;
     g.drawImage(img, 0, 0, n, n);
     const px = g.getImageData(0, 0, n, n).data;
-    let r = 0, gr = 0, b = 0, w = 0;
+    // the dominant hue (not the average: red and green average to mud) and how colourful the picture is
+    const bins = new Array<number>(36).fill(0);
+    let sum = 0, sat = 0, w = 0;
     for (let i = 0; i < px.length; i += 4) {
       const R = px[i] / 255, G = px[i + 1] / 255, B = px[i + 2] / 255;
       const mx = Math.max(R, G, B), mn = Math.min(R, G, B), l = (mx + mn) / 2, d = mx - mn;
-      if (l < 0.1 || l > 0.92) continue;                            // black and white borders say nothing about the book
-      const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
-      const wt = 0.05 + s * (1 - Math.abs(2 * l - 1));              // the colourful parts count most
-      r += R * wt; gr += G * wt; b += B * wt; w += wt;
+      if (l < 0.1 || l > 0.92 || d < 0.06) continue;                // black, white and grey say nothing about the book
+      const s = d / (1 - Math.abs(2 * l - 1));
+      const wt = s * (1 - Math.abs(2 * l - 1));
+      let h = mx === R ? ((G - B) / d) % 6 : mx === G ? (B - R) / d + 2 : (R - G) / d + 4;
+      h = (h * 60 + 360) % 360;
+      bins[Math.floor(h / 10) % 36] += wt;
+      sat += s * wt; sum += wt; w += 1;
     }
-    if (w <= 0) return null;
-    r /= w; gr /= w; b /= w;
-    const mx = Math.max(r, gr, b), mn = Math.min(r, gr, b), d = mx - mn;
-    let h = 0;
-    if (d > 0) h = mx === r ? ((gr - b) / d) % 6 : mx === gr ? (b - r) / d + 2 : (r - gr) / d + 4;
-    h = Math.round(((h * 60) + 360) % 360);
-    const sat = d === 0 ? 0 : d / (1 - Math.abs(mx + mn - 1));
-    const s = sat < 0.1 ? 8 : Math.round(Math.min(55, Math.max(24, sat * 100)));      // a grey cover stays calm
-    const colour = `hsl(${sat < 0.1 ? 30 : h} ${s}% 38%)`;
+    let colour: string;
+    if (sum <= 0 || w < 12) colour = "hsl(30 8% 38%)";               // a grey cover stays calm
+    else {
+      let best = 0;
+      for (let i = 1; i < 36; i++) if (bins[i] + 0.5 * (bins[(i + 35) % 36] + bins[(i + 1) % 36]) > bins[best] + 0.5 * (bins[(best + 35) % 36] + bins[(best + 1) % 36])) best = i;
+      const s = Math.round(Math.min(58, Math.max(28, (sat / sum) * 100)));
+      colour = `hsl(${best * 10 + 5} ${s}% 38%)`;
+    }
     bookColours.set(key, colour);
     return colour;
   } catch { return null; }                                           // a picture from another origin cannot be read

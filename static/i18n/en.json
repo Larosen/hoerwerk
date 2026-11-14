@@ -91,7 +91,6 @@
  "Das Cover kommt von dort, alles hier Eingetragene gilt.": "The cover comes from there; everything entered here wins.",
  "Datei": "File",
  "Dateien": "Files",
- "Dateien vorher auch so umbenennen („01 - Kapitelname.mp3“)": "Also rename the files like that first (“01 - Chapter name.mp3”)",
  "Dateiname": "File name",
  "Dateinamen": "File names",
  "Daten aus Link: {title} ({source})": "Data from link: {title} ({source})",
@@ -1544,5 +1543,7 @@
  "der angefragten Hörbücher": "of the requested audiobooks",
  "letzte 12 Monate, alle verknüpften Konten": "last 12 months, all linked accounts",
  "Die Indexer werden von oben nach unten gefragt. Sobald einer ein sehr gutes Release hat, ist die Suche zu Ende. Mit „Zuerst“ rückt ein Indexer an die erste Stelle.": "The indexers are asked from top to bottom. As soon as one has a very good release, the search is over. “First” moves an indexer to the front.",
- "Weiter nach oben – wird früher gefragt": "Move up – asked earlier"
+ "Weiter nach oben – wird früher gefragt": "Move up – asked earlier",
+ "Auch die alten Dateien so umbenennen („01 - Kapitelname.mp3“)": "Also rename the old files like that (“01 - Chapter name.mp3”)",
+ "Die Kapitelnamen oben gelten in jedem Fall für die neue M4B. Das Häkchen betrifft nur die alten Einzeldateien – sinnvoll, wenn sie aufbewahrt werden.": "The chapter names above always apply to the new M4B. The tick only concerns the old single files – useful if they are kept."
 }

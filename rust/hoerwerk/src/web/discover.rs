@@ -75,6 +75,13 @@ pub async fn suggestions(app: Arc<App>, req: Req, _: Params) -> Reply {
                 i
             })
             .collect();
+        super::covers::warm(
+            &a,
+            items
+                .iter()
+                .filter_map(|i| i["cover_url"].as_str().map(str::to_string))
+                .collect(),
+        );
         res["items"] = json!(items);
         if sec == "critics" {
             res["waiting"] = json!(discover::waiting(&a.db));

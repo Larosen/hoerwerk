@@ -3,6 +3,14 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.1 – 2026-11-14
+
+- **Details for every suggestion:** tips from critics now open with description and *Similar to* as well.
+- **Covers load in parallel:** the server fetches the covers of a list at once instead of one by one.
+- **Cover colours** follow the dominant colour of the cover instead of an average that turned most books brown.
+- **Critics' picks:** a review of a new edition (year in the review address) is matched to a recording from that year, not to an older one with the same title.
+- *Hörbücher → Nicht als M4B:* unticking *Alle* clears the selection again; the file-renaming tick says that it only concerns the old files.
+
 ## 1.0.0 – 2026-11-14
 
 The first release. Hörwerk turns folders of MP3s, CD rips and downloads into one clean, tagged M4B per book – and lets the family

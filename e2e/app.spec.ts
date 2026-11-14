@@ -92,6 +92,19 @@ test("Eingang → M4B → Bibliothek, Doppeltes wird erkannt", async ({ page }) 
   expect(errors).toEqual([]);
 });
 
+test("Nicht als M4B: „Alle“ wählt aus und wieder ab", async ({ page }) => {
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Nicht als M4B/ }).click();
+  const all = page.locator(".uc-bar input[type=checkbox]").first();
+  const rows = page.locator("#bookList .book.uc input[type=checkbox]");
+  await all.check();
+  await expect(rows.first()).toBeChecked();
+  await page.locator(".uc-bar input[type=checkbox]").first().uncheck();      // focus stays on the box: the list must still rebuild
+  await expect(rows.first()).not.toBeChecked();
+  expect(errors).toEqual([]);
+});
+
 test("Altes MP3-Buch mit eigenen Kapitelnamen zu M4B", async ({ page }) => {
   const errors = await open(page);
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
@@ -230,7 +243,7 @@ test("Entdecken: Vorschläge ansehen, Details öffnen, nichts wird von selbst ge
   const suggestion = {
     asin: "B0TEST0001", title: "Das stille Haus", authors: ["Anna Autorin"], narrators: ["Sam Sprecher"],
     rating: 4.7, ratings: 1234, runtime_min: 600, release_date: "2026-03-01", cover_url: null,
-    url: "https://www.audible.de/pd/B0TEST0001", because: ["Altes Buch"], source: "audible",
+    url: "https://www.audible.de/pd/B0TEST0001", because: ["Altes Buch"], source: "review",       // tips from critics carry an ASIN too: the details load for them
     genres: ["Krimis & Thriller", "Literatur & Belletristik"],
   };
   await page.route("**/api/discover?*", (r) => r.fulfill({ json: { items: [suggestion], updated: 1_700_000_000, error: null, running: false } }));

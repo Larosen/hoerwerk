@@ -3,8 +3,9 @@
 //! a book) because they come from the same origin.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use axum::http::StatusCode;
 use bytes::Bytes;
@@ -39,6 +40,49 @@ fn prune(dir: &Path) {
     }
 }
 
+/// Covers being fetched right now, so a request for the same one waits instead of fetching it a second time.
+static BUSY: Mutex<Option<HashSet<String>>> = Mutex::new(None);
+
+fn claim(k: &str) -> bool {
+    BUSY.lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .get_or_insert_with(HashSet::new)
+        .insert(k.to_string())
+}
+
+fn release(k: &str) {
+    if let Some(set) = BUSY.lock().unwrap_or_else(|p| p.into_inner()).as_mut() {
+        set.remove(k);
+    }
+}
+
+/// Fetch the covers of a list in the background, several at once, so the page finds them cached
+/// instead of the browser asking for them a few at a time.
+pub fn warm(app: &App, urls: Vec<String>) {
+    let dir = app.cfg.config_dir.join("covers");
+    let todo: Vec<String> = urls
+        .into_iter()
+        .filter(|u| u.len() <= MAX_URL && u.to_lowercase().starts_with("https://") && !dir.join(key(u)).exists())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .take(60)
+        .collect();
+    if todo.is_empty() {
+        return;
+    }
+    let queue = Arc::new(Mutex::new(todo));
+    for _ in 0..8 {
+        let (q, dir) = (queue.clone(), dir.clone());
+        std::thread::spawn(move || {
+            loop {
+                let next = q.lock().unwrap_or_else(|p| p.into_inner()).pop();
+                let Some(url) = next else { break };
+                let _ = cached_or_fetch(&dir, &url);
+            }
+        });
+    }
+}
+
 /// The cached picture, or fetched now (public hosts only, size-capped, it must really be a JPEG or PNG).
 fn cached_or_fetch(dir: &Path, url: &str) -> Option<Vec<u8>> {
     let path = dir.join(key(url));
@@ -47,7 +91,30 @@ fn cached_or_fetch(dir: &Path, url: &str) -> Option<Vec<u8>> {
     {
         return Some(data);
     }
-    let data = audible::fetch_image(url).ok().flatten()?;
+    let k = key(url);
+    if !claim(&k) {
+        // somebody else is fetching it: wait for the file
+        for _ in 0..300 {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            if let Ok(data) = std::fs::read(&path)
+                && media::image_type(&data).is_some()
+            {
+                return Some(data);
+            }
+            if !BUSY
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .as_ref()
+                .is_some_and(|s| s.contains(&k))
+            {
+                break;
+            }
+        }
+        return std::fs::read(&path).ok().filter(|d| media::image_type(d).is_some());
+    }
+    let fetched = audible::fetch_image(url).ok().flatten();
+    release(&k);
+    let data = fetched?;
     if std::fs::create_dir_all(dir).is_ok() {
         let tmp = path.with_extension("tmp");
         if std::fs::write(&tmp, &data).is_ok() {
