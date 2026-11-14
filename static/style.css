@@ -31,6 +31,7 @@
   --cover-edge: rgba(40, 25, 10, .28);
   --cover-shadow: 0 1px 1px rgba(60, 40, 10, .25), 0 8px 14px -8px rgba(60, 40, 10, .5);
   --tint: 9%;
+  --s1: #1B6454; --s2: #8A5A0B; --s3: #9A453F; --s4: #3D5A80; --s5: #7A5C8E; --s6: #6B7A3A;
   --radius: 12px;
   --shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 1px 2px rgba(60, 40, 10, .06);
   --shadow-pop: 0 18px 50px -12px rgba(60, 40, 10, .3), 0 2px 6px rgba(60, 40, 10, .06);
@@ -61,6 +62,7 @@
     --warn: #E8A04A; --warn-border: #8a6c2c; --warn-soft: #3A2B17; --brass: #E3AE55; --brass-soft: #3A2F1B; --backdrop: rgba(0, 0, 0, .6);
     --plank-a: #463C31; --plank-b: #3A3128; --plank-hi: rgba(255, 235, 200, .10);
     --cover-edge: rgba(255, 240, 215, .14); --cover-shadow: 0 1px 1px rgba(0, 0, 0, .5), 0 10px 16px -8px rgba(0, 0, 0, .75);
+    --s1: #63BDA6; --s2: #E3AE55; --s3: #DB7A70; --s4: #7DA3D6; --s5: #B592C9; --s6: #A9BD6A;
     --tint: 16%; --shadow: 0 1px 0 rgba(255, 240, 215, .04) inset; --shadow-pop: 0 18px 50px -12px rgba(0, 0, 0, .7); color-scheme: dark;
   }
 }
@@ -71,6 +73,7 @@
   --warn: #E8A04A; --warn-border: #8a6c2c; --warn-soft: #3A2B17; --brass: #E3AE55; --brass-soft: #3A2F1B; --backdrop: rgba(0, 0, 0, .6);
   --plank-a: #463C31; --plank-b: #3A3128; --plank-hi: rgba(255, 235, 200, .10);
   --cover-edge: rgba(255, 240, 215, .14); --cover-shadow: 0 1px 1px rgba(0, 0, 0, .5), 0 10px 16px -8px rgba(0, 0, 0, .75);
+  --s1: #63BDA6; --s2: #E3AE55; --s3: #DB7A70; --s4: #7DA3D6; --s5: #B592C9; --s6: #A9BD6A;
   --tint: 16%; --shadow: 0 1px 0 rgba(255, 240, 215, .04) inset; --shadow-pop: 0 18px 50px -12px rgba(0, 0, 0, .7); color-scheme: dark;
 }
 /* OLED ("Nacht"): true black, areas told apart by hairlines, no shadows, slightly dimmed text */
@@ -81,6 +84,7 @@
   --warn: #F0A94F; --warn-border: #7a5a1f; --warn-soft: #241705; --brass: #F0BC5E; --brass-soft: #241B0A; --backdrop: rgba(0, 0, 0, .75);
   --plank-a: #1F1A15; --plank-b: #17130F; --plank-hi: rgba(255, 235, 200, .12);
   --cover-edge: rgba(255, 240, 215, .20); --cover-shadow: 0 0 0 1px rgba(255, 240, 215, .06);
+  --s1: #6FCFB7; --s2: #F0BC5E; --s3: #E5857A; --s4: #86AEE3; --s5: #C09DD4; --s6: #B4C972;
   --tint: 12%; --shadow: none; --shadow-pop: 0 0 0 1px #2A2520, 0 18px 50px -12px rgba(0, 0, 0, .9); color-scheme: dark;
 }
 
@@ -429,7 +433,7 @@ table.results .c-act { width: 112px; text-align: right; }
 .rel-meta .tag { margin: 0; }
 .rel-meta a { color: var(--accent); }
 .indexer-rows { display: flex; flex-direction: column; gap: 6px; }
-.indexer-row { display: grid; grid-template-columns: 1fr 2fr 1.4fr 64px auto auto auto; gap: 6px; align-items: center; }
+.indexer-row { display: grid; grid-template-columns: 1fr 2fr 1.4fr 64px auto auto auto auto; gap: 6px; align-items: center; }
 .indexer-row .check.first { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 .indexer-row input { width: 100%; }
 dialog#sourcesDialog { width: min(760px, calc(100vw - 32px)); }
@@ -1200,3 +1204,23 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .detail-inner > * { flex-shrink: 0; }
 .sim-row { scroll-padding: 0 22px; }
 .detail-inner p { margin: 0; }
+
+/* Suchen: the shop hits as cards like in Entdecken */
+.search-panel .book-pick { padding-bottom: 14px; }
+.search-panel .discover-grid { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+.search-panel .series-row { margin-bottom: 4px; }
+
+.lib-open { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.lib-open:hover { text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 3px; }
+.lib-row { cursor: pointer; }
+.lib-row.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
+.page { padding-top: 14px; }
+.menu > .panel-head { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); }
+.more-layout { padding-top: 14px; }
+
+/* Statistics: genres as one ribbon, hours heard per month */
+.genre-ribbon { display: flex; height: 16px; border-radius: 8px; overflow: hidden; gap: 2px; margin: 8px 0 12px; }
+.genre-ribbon b { display: block; height: 100%; min-width: 4px; }
+.genre-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.genre-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; }
+.listen-chart .mbar { background: var(--s1); }

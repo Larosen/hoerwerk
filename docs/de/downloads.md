@@ -12,9 +12,11 @@ Du brauchst nur SABnzbd; die Suche ist optional.
    **Downloads** zeigt Fortschritt und Verlauf der Kategorie.
 
 **Suchen** (mit einem Newznab-Indexer): Du suchst ein **Hörbuch**, nicht ein Release – Treffer kommen von Audible und
-BookBeat. Erst wenn du eins auswählst, sucht Hörwerk bei den Indexern; den Suchbegriff dafür kannst du ändern, wenn
-nichts kommt (z. B. nur Titel oder nur Nachname). Releases werden zusammengeführt, sortiert (bevorzugte Sprache,
-ungekürzt vor gekürzt, M4B vor MP3) und mit deiner Bibliothek abgeglichen; Umlaute in allen Schreibweisen.
+BookBeat. Auf **Anfragen** tippen – den Rest erledigt Hörwerk: Es fragt die Indexer von oben nach unten in der
+Reihenfolge unter *Einstellungen → Downloads* und lädt das erste sehr gute Release, ohne die übrigen anzusehen. Releases
+werden zusammengeführt, sortiert (bevorzugte Sprache, ungekürzt vor gekürzt, M4B vor MP3) und mit deiner Bibliothek
+abgeglichen; Umlaute in allen Schreibweisen. Ein Tipp auf den Titel zeigt die Details: Beschreibung, Erscheinungsjahr, Dauer,
+Sprecher und „Ähnlich wie …“.
 **Kategorien:** Neben den eingetragenen (Standard `3030`) durchsucht Hörwerk automatisch den **ganzen Audio-Bereich**
 jedes Indexers – alte freie Lesungen (Goethe & Co.) liegen oft unter „Audio > Lossless“ oder „MP3“ – und dessen eigene
 Hörbuch-Kategorien (aus der Kategorienliste, z. B. „Hörbuch DE“, „Hörspiele“). Mitgefundene Musikalben sortiert die
@@ -22,14 +24,14 @@ Release-Bewertung über Autor und Titel aus. Findet sich dort nichts, sucht Hör
 nur Treffer aus dem Audio-Bereich. *Testen* beim Indexer zeigt,
 welche Kategorien gefunden wurden. Beim
 Download gehen ASIN bzw. Titel und Autor mit – so erkennt der Eingang das Buch sicher, egal wie das Release heißt.
-Für Bücher, die es in keinem Shop gibt: **Direkt bei den Indexern suchen**.
+Nichts bei den Shops gefunden? Dann (nur Admins) unter den Treffern: **Direkt bei den Indexern und LibriVox suchen** – selten nötig.
 
 Fertige SABnzbd-Downloads aus der Suche übernimmt der Eingang nach wenigen Sekunden; bis dahin stehen sie als
 „Im Eingang – startet in ca. … s“ oben in der Hörbuch-Liste und im Protokoll.
 
-**Bevorzugter Indexer:** unter *Einstellungen → Downloads* bei einem Indexer **zuerst** anhaken. Jede Suche (von
-Hand und für Anfragen) fragt dann nur diesen; die anderen erst, wenn er nichts Passendes zum Buch hat. Die Suche zeigt
-„nur bei X gesucht“ mit einem Knopf, um auch die anderen zu fragen.
+**Reihenfolge der Indexer:** unter *Einstellungen → Downloads* werden die Indexer von oben nach unten gefragt (der Pfeil ↑
+schiebt einen nach oben). Mit **zuerst** rückt einer an die erste Stelle. Eine Suche endet bei dem ersten Indexer, der etwas
+Passendes zum Buch hat; die übrigen werden nicht gefragt.
 
 **Die richtige Fassung:** Ein Release, das klar eine andere Aufnahme als das angefragte Buch ist, wird nicht geladen –
 eine Lesung („gesprochen von …“), wenn die Fassung mit voller Besetzung gesucht ist, ein anderer Sprecher oder (bei
@@ -86,8 +88,8 @@ Der Reiter **Entdecken** schlägt neue Hörbücher vor:
   nach. Ist das Hörbuch erschienen (oder bei Audible angekündigt), steht es oben – markiert mit „jetzt als Hörbuch“
   bzw. „erscheint <Datum>“. Das läuft täglich im Hintergrund, auch wenn niemand die Seite öffnet.
 
-**Suchen** auf einer Karte springt in den Reiter *Suchen*, mit dem Buch schon ausgewählt (Titel, Autor und ASIN helfen
-später beim Schreiben der Tags).
+Ein Tipp auf den Titel einer Karte öffnet die **Details** (rechts als Spalte, auf dem Handy von unten): Beschreibung, Dauer,
+Sprecher, „Ähnlich wie …“ – was Hörer dieses Hörbuchs auch gehört haben – und Anfragen. Dasselbe geht aus der Bibliothek.
 
 **Qualitätsregeln** (unter *Einstellungen → Entdecken*): Mindestbewertung (Standard 4,3 Sterne) und Mindestanzahl
 Bewertungen (50), nur ungekürzt, nur deutschsprachig, keine Erotik. **Immer ausgeschlossen** ist, was du schon hast:
