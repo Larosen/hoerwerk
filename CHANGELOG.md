@@ -8,7 +8,7 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 - **Werkbank:** the sidebar shows what is being worked on – downloading, unpacking, recognising, converting, tagging – with a progress bar.
   On the phone a slim bar above the tab bar, only while something is running. Admins see every job, family accounts their own requests.
 - **Statistik counts every listener:** Audiobookshelf accounts and Plex profiles without a Hörwerk account get a card too (asked for nothing,
-  heard X), and their hours count in the listening chart and the genres. The genre ribbon now shows what was heard when that is known.
+  heard X), and their hours count in the listening chart and the genres. Whoever neither asked for nor heard anything in the period has no card. The genre ribbon now shows what was heard when that is known.
 - **Merge listeners:** under *Statistik → Hörer zusammenführen* an admin joins an Audiobookshelf account and a Plex profile of the same person
   into one card (and splits them again).
 

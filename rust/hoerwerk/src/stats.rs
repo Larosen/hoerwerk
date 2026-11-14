@@ -326,6 +326,9 @@ impl Stats {
         // people who listen in Audiobookshelf or Plex but have no Hörwerk account: asked for nothing, heard something
         for l in app.listening.listeners(app) {
             let mut h = app.listening.summary_of(app, &l["links"], since);
+            if h["seconds"].as_f64().unwrap_or(0.0) <= 0.0 && h["books"].as_i64().unwrap_or(0) == 0 {
+                continue; // heard nothing in the period (and can ask for nothing): no card
+            }
             take(&mut h, &mut heard_total);
             heard_total["listeners"] = json!(heard_total["listeners"].as_i64().unwrap_or(0) + 1);
             let mut card = Acc::blank(Value::Null, l["name"].as_str().unwrap_or(""), "listener").finish();

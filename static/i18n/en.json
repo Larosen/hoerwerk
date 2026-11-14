@@ -882,7 +882,6 @@
  "Hörbücher angefragt": "Audiobooks requested",
  "Gesamt": "All time",
  "Monat": "Month",
- "Noch keine Konten.": "No accounts yet.",
  "Spielzeit": "Running time",
  "Statistik": "Statistics",
  "Wartezeit": "Waiting time",
@@ -1574,5 +1573,6 @@
  "{n} Hörer": "{n} listeners",
  "Gerade nichts in Arbeit": "Nothing in progress right now",
  "Werkbank": "Workbench",
- "und {n} weitere": "and {n} more"
+ "und {n} weitere": "and {n} more",
+ "In diesem Zeitraum hat niemand etwas angefragt oder gehört.": "Nobody asked for or heard anything in this period."
 }

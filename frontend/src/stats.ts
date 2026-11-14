@@ -185,10 +185,11 @@ function renderAll(s: StatsAll): void {
     heardBy ? plural(heardBy, t("1 Hörer"), t("{n} Hörer", { n: heardBy })) : ""));
   $("#statsAccounts").hidden = false;
   const scale = Math.max(1, ...s.users.map((u) => Math.max(u.minutes / 60, (u.listen?.seconds || 0) / 3600)));
-  const people = [...s.users].sort((a, b) =>
+  // whoever neither asked for nor heard anything in the period has no card
+  const people = s.users.filter((u) => u.books || u.listen?.seconds || u.listen?.books).sort((a, b) =>
     (b.minutes / 60 + (b.listen?.seconds || 0) / 3600) - (a.minutes / 60 + (a.listen?.seconds || 0) / 3600));
   $("#statsPeople").replaceChildren(...(people.length ? people.map((u) => personCard(u, scale))
-    : [el("li", { class: "empty" }, t("Noch keine Konten."))]));
+    : [el("li", { class: "empty" }, t("In diesem Zeitraum hat niemand etwas angefragt oder gehört."))]));
   moreFacts(s.total, s.library_books);
   renderListenChart(s.listen_months, t("letzte 12 Monate, alle Hörer"));
   void loadMerge();

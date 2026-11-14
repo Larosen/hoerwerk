@@ -460,7 +460,7 @@ test("Statistik: je Konto, ein Konto im Detail, Zeitraum wählbar, Monate als Ba
   await expect(page).toHaveURL(/\/stats$/);
   await expect(page.locator("#statsTitle")).toHaveText("Statistik");
   await expect(page.locator("#statsTiles .stat-tile")).toHaveCount(4);
-  await expect(page.locator("#statsPeople .person").first()).toContainText("admin");
+  await expect(page.locator("#statsPeople")).toContainText("niemand etwas angefragt oder gehört");   // nothing asked or heard yet: no cards
   await expect(page.locator("#statsChart .col")).toHaveCount(12);
   const asked: string[] = [];
   page.on("request", (r) => { if (r.url().includes("/api/stats")) asked.push(new URL(r.url()).searchParams.get("period") || ""); });
@@ -468,9 +468,8 @@ test("Statistik: je Konto, ein Konto im Detail, Zeitraum wählbar, Monate als Ba
   await expect.poll(() => asked).toContain("all");
   await page.locator(".stats-months summary").click();
   await expect(page.locator("#statsMonthRows tr")).toHaveCount(12);
-  // a name opens that account: its requests and what it heard
-  await page.locator("#statsPeople .person-card", { hasText: "admin" }).click();
-  await expect(page).toHaveURL(/\/stats\/\d+$/);
+  // an account's own page: its requests and what it heard (from a card, here directly)
+  await page.goto("/stats/1");
   await expect(page.locator("#statsTitle")).toHaveText(/Statistik: admin/);
   await expect(page.locator("#statsAccounts")).toBeHidden();
   await expect(page.locator("#statsDetail")).toBeVisible();
@@ -924,7 +923,7 @@ test("Statistik: Hörer ohne Hörwerk-Konto zählen mit, Audiobookshelf und Plex
     english: 0, wait_median: null, last: null, top_genres: [], genres: [] };
   const listen = (sec: number) => ({ seconds: sec, books: 2, finished: 1, last: 1_700_000_000, linked: [], errors: [], genres: [{ name: "Krimis & Thriller", books: 2 }] });
   await page.route(/\/api\/stats(\?|$)/, (r) => r.fulfill({ json: { scope: "all", period: "365", since: null,
-    users: [{ ...blank, id: 1, name: "admin", role: "admin", listen: null },
+    users: [{ ...blank, id: 1, name: "admin", role: "admin", listen: null }, { ...blank, id: 2, name: "Bob", role: "user", books: 1, minutes: 60, listen: null },
       { ...blank, id: null, name: "Oma", role: "listener", listen: listen(36000), listener: { key: "abs:o", person: null, abs: true, plex: false } }],
     total: { ...blank, id: null, name: "", role: "user" }, months: months.map((m) => ({ month: m, books: 0, minutes: 0 })), library_books: 3,
     listen: { seconds: 36000, books: 2, finished: 1, linked: 0, listeners: 1 }, listen_months: months.map((m) => ({ month: m, seconds: 3600 })),
@@ -939,6 +938,8 @@ test("Statistik: Hörer ohne Hörwerk-Konto zählen mit, Audiobookshelf und Plex
   await expect(oma).toContainText("Audiobookshelf");
   await expect(oma).toContainText("10 h");
   await expect(oma.locator("a")).toHaveCount(0);                                     // no account page for a listener
+  await expect(page.locator(".person", { hasText: "admin" })).toHaveCount(0);       // nothing asked, nothing heard: no card
+  await expect(page.locator(".person", { hasText: "Bob" })).toHaveCount(1);
   await expect(page.locator("#statsGenresNote")).toHaveText("der gehörten Hörbücher");
   await page.locator("#statsMerge summary").click();
   await page.locator("#mergeAbs").selectOption("o");
