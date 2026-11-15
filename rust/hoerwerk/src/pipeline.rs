@@ -1199,7 +1199,25 @@ impl Pipeline {
         Ok((slot, book))
     }
 
-    pub fn choose(&self, app: &Arc<App>, id: &str, cand_id: &str, asin: &str, region: &str) -> Res<JobRef> {
+    /// The book a download for a request was asked for, when `book` is another one: its title. Same ASIN, or same title
+    /// and author, counts as the same book.
+    pub fn other_than_requested(&self, app: &App, id: &str, book: &Value) -> Option<String> {
+        let rid = self.get(id)?.lock().hints["request_id"].as_i64()?;
+        let wanted = app.requests.get(app, rid)?["book"].clone();
+        let same_asin = !s(book, "asin").is_empty() && s(book, "asin").eq_ignore_ascii_case(s(&wanted, "asin"));
+        let key = |b: &Value| {
+            let first = b["authors"]
+                .as_array()
+                .and_then(|a| a.first())
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            (releases::title_words(s(b, "title")), releases::surname(first))
+        };
+        (!same_asin && key(book) != key(&wanted)).then(|| s(&wanted, "title").to_string())
+    }
+
+    /// The candidate a person picked (or the book of an ASIN they typed).
+    pub fn candidate(&self, app: &Arc<App>, id: &str, cand_id: &str, asin: &str, region: &str) -> Res<Value> {
         let slot = self.need(id)?;
         let mut book = if cand_id.is_empty() {
             None
@@ -1226,9 +1244,12 @@ impl Pipeline {
                 );
             }
         }
-        let Some(book) = book else {
-            return Err(PipeError::NotFound);
-        };
+        book.ok_or(PipeError::NotFound)
+    }
+
+    pub fn choose(&self, app: &Arc<App>, id: &str, cand_id: &str, asin: &str, region: &str) -> Res<JobRef> {
+        let book = self.candidate(app, id, cand_id, asin, region)?;
+        let slot = self.need(id)?;
         {
             let mut j = slot.lock();
             j.matched = Some(strip_match(&book));

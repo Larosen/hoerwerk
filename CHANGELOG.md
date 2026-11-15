@@ -9,6 +9,8 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
   a match was chosen.
 - **A wrong download for a request is deleted:** when the content turns out to be another book, the import stops, the download is deleted, the
   release is blocked and the request searches on. On a job from a request, *Falsches Release* does the same by hand.
+- **Picking another book than requested asks first:** on a download for a request, choosing a match that is not the requested book offers
+  *Löschen und weitersuchen* (the default) or, on purpose, *Trotzdem ablegen*.
 - **Short titles are not grabbed on a guess:** a release that names more than author and title ("Odyssee op Koelsch", "Odyssee – Ein Weltgedicht")
   is no longer downloaded automatically; the request says so and the release can still be chosen under *Releases*.
 - **Cancel means cancel:** *Abbrechen* during recognising no longer lets the job carry on into converting.

@@ -1594,5 +1594,10 @@
  "„{name}“ ist das falsche Release? Der Import stoppt, der Download wird gelöscht und die Anfrage sucht weiter.": "“{name}” is the wrong release? The import stops, the download is deleted and the request keeps searching.",
  "„{title}“ aus der Bibliothek löschen? Je nach Einstellung landet es unter _ersetzt im Eingang oder wird gelöscht.": "Delete “{title}” from the library? Depending on the setting it goes to _ersetzt in the inbox or is deleted.",
  "„{title}“: Download abbrechen und Anfrage löschen?": "“{title}”: cancel the download and delete the request?",
- "„{title}“: Import abbrechen, Download löschen und Anfrage löschen?": "“{title}”: cancel the import, delete the download and delete the request?"
+ "„{title}“: Import abbrechen, Download löschen und Anfrage löschen?": "“{title}”: cancel the import, delete the download and delete the request?",
+ "„{chosen}“ ist nicht das angefragte Hörbuch „{wanted}“.": "“{chosen}” is not the requested audiobook “{wanted}”.",
+ "Download löschen und die Anfrage weitersuchen lassen?": "Delete the download and let the request search on?",
+ "Löschen und weitersuchen": "Delete and search on",
+ "Trotzdem als „{title}“ in die Bibliothek legen?": "File it as “{title}” in the library anyway?",
+ "Trotzdem ablegen": "File anyway"
 }

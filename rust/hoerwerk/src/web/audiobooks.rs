@@ -289,7 +289,28 @@ pub async fn choose(app: Arc<App>, req: Req, p: Params) -> Reply {
         r
     };
     let (a, id) = (app.clone(), p["job_id"].clone());
-    match blocking(move || a.pipeline.choose(&a, &id, &cand, &asin, &r)).await {
+    let keep = req.get("keep") == &Value::Bool(true);
+    match blocking(move || {
+        // a download for a request, and the pick is another book: ask first – usually it should go, not be filed
+        if !keep {
+            let book = a.pipeline.candidate(&a, &id, &cand, &asin, &r)?;
+            if let Some(wanted) = a.pipeline.other_than_requested(&a, &id, &book) {
+                return Err(PipeError::Refused(format!(
+                    "OTHER\u{1f}{}",
+                    t(
+                        "„{chosen}“ ist nicht das angefragte Hörbuch „{wanted}“.",
+                        &[("chosen", s_of(&book, "title")), ("wanted", &wanted)]
+                    )
+                )));
+            }
+        }
+        a.pipeline.choose(&a, &id, &cand, &asin, &r)
+    })
+    .await
+    {
+        Err(PipeError::Refused(m)) if m.starts_with("OTHER\u{1f}") => {
+            error(409, m.trim_start_matches("OTHER\u{1f}").to_string())
+        }
         Ok(slot) => out(&slot),
         Err(PipeError::NotFound) => error(404, t("Treffer nicht gefunden – bitte neu suchen", &[])),
         Err(e) => pipe_error(e, 502, 502),
@@ -451,4 +472,8 @@ pub async fn wrong_release(app: Arc<App>, req: Req, p: Params) -> Reply {
         }
         Err(e) => pipe_error(e, 409, 400),
     }
+}
+
+fn s_of<'a>(v: &'a Value, k: &str) -> &'a str {
+    v[k].as_str().unwrap_or("")
 }

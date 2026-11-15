@@ -1011,6 +1011,30 @@ test("Löschen: Anfrage mit laufendem Download abbrechen, fertiges Hörbuch auch
   expect(errors).toEqual([]);
 });
 
+test("Prüfen: ein anderes Buch als angefragt wird nicht einfach abgelegt – löschen und weitersuchen", async ({ page }) => {
+  const job = { id: "job1", source: "/inbox/x", rel: "x", name: "Homer-De Odyssee op Koelsch-WALKMAN", origin: "inbox", status: "review", stage: "convert",
+    message: "1 mögliche Treffer, keiner eindeutig", progress: 0, files: ["01.mp3"], duration: 3600, hints: { request_id: 7 },
+    candidates: [{ id: "c1", asin: "B0KOELSCH1", title: "De Odyssee op Kölsch", authors: ["Homer"], region: "de", source: "audible", match: { score: 0.9 } }],
+    match: null, region: "de", dest: null, error: null, converted_info: {}, duplicate: null };
+  await page.route(/\/api\/audiobooks(\?.*)?$/, (r) => r.fulfill({ json: { enabled: true, inbox: "/inbox", library: "/library", inbox_ok: true, library_ok: true,
+    last_scan: 1, scan_note: "", waiting: [], jobs: [job], review: 1 } }));
+  await page.route("**/api/events*", (r) => r.abort());                              // no live updates over the mocked list
+  let chosen = 0, wrong = 0;
+  await page.route("**/api/audiobooks/job1/choose", (r) => { chosen++; return r.fulfill({ status: 409, json: { error: "„De Odyssee op Kölsch“ ist nicht das angefragte Hörbuch „Odyssee“." } }); });
+  await page.route("**/api/audiobooks/job1/wrong-release", (r) => { wrong++; return r.fulfill({ json: { ok: true } }); });
+  const errors = watchErrors(page);
+  const res = await page.request.post("/api/auth/login", { headers: OWN, data: { ...ADMIN, remember: false } });
+  expect(res.status()).toBe(200);
+  await page.goto("/books");
+  await page.locator("#bookFilter").getByRole("button", { name: /Zu prüfen/ }).click();
+  await page.locator("#bookList .book.review").getByRole("button", { name: "Übernehmen" }).click();
+  await expect(page.locator("#confirmText")).toContainText("ist nicht das angefragte Hörbuch „Odyssee“");
+  await page.locator("#confirmOk").click();
+  await expect.poll(() => wrong).toBe(1);
+  expect(chosen).toBe(1);
+  expect(errors.filter((e) => !e.includes("409") && !e.includes("ERR_FAILED"))).toEqual([]);
+});
+
 test("Hörbücher: Details aus der Bibliothek öffnen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockAnyDetail(page);

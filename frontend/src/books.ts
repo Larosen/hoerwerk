@@ -668,13 +668,22 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
         el("button", { class: best && !c.mismatch ? "btn small primary" : "btn small accent", onclick: () => chooseBook(j, c) }, t("Übernehmen")))));
 }
 
-async function chooseBook(j: AudiobookJob, c: Book): Promise<void> {
+async function chooseBook(j: AudiobookJob, c: Book, keep = false): Promise<void> {
   try {
-    await api("POST", `/api/audiobooks/${j.id}/choose`, { id: c.id || c.asin, asin: c.asin, region: c.region });
+    await api("POST", `/api/audiobooks/${j.id}/choose`, { id: c.id || c.asin, asin: c.asin, region: c.region, keep });
     follow(j.id, c.title);
     toast(t("„{title}“ wird abgelegt", { title: c.title }), "info");
     pollBooks(true);
-  } catch (e) { toast(errMsg(e), true); }
+  } catch (e) {
+    if (!(e instanceof ApiError && e.status === 409)) { toast(errMsg(e), true); return; }
+    // downloaded for a request, but it is another book: normally it goes and the request looks further
+    if (await confirmBox(`${errMsg(e)} ${t("Download löschen und die Anfrage weitersuchen lassen?")}`, t("Löschen und weitersuchen"))) {
+      try { await api("POST", `/api/audiobooks/${encodeURIComponent(j.id)}/wrong-release`); toast(t("Gelöscht – die Anfrage sucht weiter")); pollBooks(true); }
+      catch (e2) { toast(errMsg(e2), true); }
+    } else if (await confirmBox(t("Trotzdem als „{title}“ in die Bibliothek legen?", { title: c.title }), t("Trotzdem ablegen"))) {
+      await chooseBook(j, c, true);
+    }
+  }
 }
 
 const MANUAL_FIELDS = ["title", "subtitle", "authors", "narrators", "series", "series_position", "release_date", "publisher", "genres", "description"] as const;
