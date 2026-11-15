@@ -136,6 +136,141 @@ fn series_episode(name: &str, book: &Value, words: &BTreeSet<String>) -> bool {
     .is_ok_and(|re| re.is_match(&plain).unwrap_or(false))
 }
 
+/// Words in release names that say nothing about which work it is (format, language, edition, packaging).
+const NOISE: &[&str] = &[
+    "dolby",
+    "atmos",
+    "radio",
+    "drama",
+    "flac",
+    "mp3",
+    "m4b",
+    "m4a",
+    "aac",
+    "ogg",
+    "opus",
+    "web",
+    "webrip",
+    "khz",
+    "bit",
+    "audiobook",
+    "audiobooks",
+    "abook",
+    "audio",
+    "book",
+    "hoerbuch",
+    "horbuch",
+    "hoerbuecher",
+    "horbucher",
+    "hoerspiel",
+    "horspiel",
+    "lesung",
+    "ungekuerzt",
+    "ungekurzt",
+    "ungekuerzte",
+    "ungekurzte",
+    "gekuerzt",
+    "gekurzt",
+    "gekuerzte",
+    "gekurzte",
+    "unabridged",
+    "abridged",
+    "german",
+    "deutsch",
+    "english",
+    "proper",
+    "repack",
+    "retail",
+    "edition",
+    "complete",
+    "komplett",
+    "gesamtausgabe",
+    "original",
+    "remastered",
+    "limited",
+    "reissue",
+    "internal",
+    "digital",
+    "kbps",
+    "stereo",
+    "mono",
+    "read",
+    "liest",
+    "gelesen",
+    "sprecher",
+    "narrated",
+    "full",
+    "cast",
+    "dramatized",
+    "dramatisiert",
+    "staffel",
+    "kapitel",
+    "chapters",
+    "bonus",
+    "collection",
+    "sammlung",
+    "ebook",
+    "folge",
+    "teil",
+    "band",
+    "vol",
+    "volume",
+    "book",
+    "buch",
+    "special",
+    "fassung",
+    "version",
+];
+
+/// For a book with a very short title ("Odyssee"), a release that names more than author and title is often
+/// another work or another adaptation ("Odyssee op Kölsch", "Odyssee – ein Weltgedicht"): the first such word.
+fn other_work_word(name: &str, book: &Value, title: &[String]) -> Option<String> {
+    // the release group at the end of a scene name ("…-2023-WALKMAN") is no word of the title
+    let name = sub(rx!(r"-[A-Za-z0-9]{2,14}$"), name.trim(), "");
+    let mut known: BTreeSet<String> = title.iter().cloned().collect();
+    let mut add = |text: &str| known.extend(match_words(&searchable(&same_name(text))));
+    for a in strs_of(&book["authors"])
+        .iter()
+        .chain(strs_of(&book["narrators"]).iter())
+    {
+        add(a);
+    }
+    add(s(book, "title"));
+    add(s(book, "subtitle"));
+    add(s(book, "series"));
+    let found = match_words(&same_name(&name)).into_iter().find(|w| {
+        w.chars().count() >= 4
+            && !w.chars().any(|c| c.is_ascii_digit())
+            && !known.contains(w)
+            && !STOP.contains(&w.as_str())
+            && !NOISE.contains(&w.as_str())
+    })?;
+    // as the name writes it ("Koelsch", not the folded "kolsch")
+    Some(
+        name.split(|c: char| !c.is_alphanumeric())
+            .find(|raw| match_words(raw) == [found.clone()])
+            .map_or(found.clone(), str::to_string),
+    )
+}
+
+/// For automatic downloads: a release of a book with a short title that names more than author, narrator and
+/// title is not taken by itself – it may be another work or adaptation. The first such word, or None.
+pub fn name_doubt(name: &str, book: &Value) -> Option<String> {
+    let title = title_words(&same_name(s(book, "title")));
+    if title.is_empty() || title.len() > 2 {
+        return None;
+    }
+    other_work_word(name, book, &title)
+}
+
+fn strs_of(v: &Value) -> Vec<String> {
+    v.as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|x| x.as_str().map(str::to_string))
+        .collect()
+}
+
 pub fn search_stages(book: &Value) -> Vec<Vec<String>> {
     let author = first_author(book).split_whitespace().collect::<Vec<_>>().join(" ");
     let sur = name_surname(&author);
@@ -679,6 +814,27 @@ pub fn rank(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn short_titles_doubt_releases_of_other_works() {
+        let book = json!({"title": "Odyssee", "authors": ["Homer"], "narrators": ["Manfred Schradi"]});
+        let sure = |name: &str| name_doubt(name, &book).is_none();
+        assert_eq!(
+            name_doubt(
+                "Homer-De Odyssee op Koelsch ( De Odyssee op Koelsch)-16BIT-44.1KHZ-WEB-FLAC-2023-WALKMAN",
+                &book
+            )
+            .as_deref(),
+            Some("Koelsch")
+        );
+        assert!(!sure("Homer.-.Odyssee-Ein.Weltgedicht.DE.2009.ABook.MP3-PaZ"));
+        assert!(sure("Homer - Odyssee (Manfred Schradi) - Hoerbuch MP3"));
+        assert!(sure("Homer-Odyssee-DE-2013-WEB-FLAC-WALKMAN"));
+        let afrika = json!({"title": "Afrika", "authors": ["Daniel Kehlmann"]});
+        assert!(name_doubt("Daniel Kehlmann - Afrika (Ungekuerzt)", &afrika).is_none());
+        let long = json!({"title": "Die Woche danach. Ein Stundenbuch der Hoffnung", "authors": ["Helga Schubert"]});
+        assert!(name_doubt("Helga Schubert - Die Woche danach - Extra Wort", &long).is_none()); // long titles: no check
+    }
+
     #[test]
     fn radio_play_episodes_without_author() {
         let book = json!({"title": "Die drei ??? und der Karpatenhund", "authors": ["H.G. Francis"],

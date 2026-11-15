@@ -209,10 +209,18 @@ pub async fn one(app: Arc<App>, req: Req, p: Params) -> Reply {
 pub async fn withdraw(app: Arc<App>, req: Req, p: Params) -> Reply {
     let item = tryr!(visible(&app, &req, &p["rid"]));
     let whole = req.query.get("group").map(String::as_str) == Some("1");
-    let n = call!(
-        app.requests
-            .withdraw(&app, item["id"].as_i64().unwrap_or(0), &user(&req), whole)
-    );
+    let files = req.query.get("files").map(String::as_str) == Some("1");
+    let (a, id, u) = (app.clone(), item["id"].as_i64().unwrap_or(0), user(&req));
+    let res = tokio::task::spawn_blocking(move || a.requests.withdraw(&a, id, &u, whole, files))
+        .await
+        .expect("worker thread");
+    let n = call!(res);
+    if files {
+        let a = app.clone();
+        tokio::task::spawn_blocking(move || {
+            let _ = a.library.scan();
+        });
+    }
     if is_admin(&req) && item["user_id"] != user(&req)["id"] {
         let more = if n > 1 { format!(" (+{})", n - 1) } else { String::new() };
         app.audit(

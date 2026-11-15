@@ -104,6 +104,12 @@
    "raw_body": false
   },
   {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/wrong-release",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/audit",
    "access": "admin",
@@ -328,6 +334,12 @@
   {
    "method": "GET",
    "path": "/api/library",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/library/book",
    "access": "admin",
    "raw_body": false
   },

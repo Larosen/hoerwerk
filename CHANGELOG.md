@@ -3,8 +3,19 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
-## 1.0.4 – 2026-11-14
+## 1.0.4 – 2026-11-15
 
+- **Nothing is converted on a guess:** when Hörwerk is not sure which book a download is, it waits under *Zu prüfen* first and converts only after
+  a match was chosen.
+- **A wrong download for a request is deleted:** when the content turns out to be another book, the import stops, the download is deleted, the
+  release is blocked and the request searches on. On a job from a request, *Falsches Release* does the same by hand.
+- **Short titles are not grabbed on a guess:** a release that names more than author and title ("Odyssee op Koelsch", "Odyssee – Ein Weltgedicht")
+  is no longer downloaded automatically; the request says so and the release can still be chosen under *Releases*.
+- **Cancel means cancel:** *Abbrechen* during recognising no longer lets the job carry on into converting.
+- **Delete requests at any time:** a running download is stopped in SABnzbd (its files deleted), a running import cancelled and its download
+  deleted; for a book that arrived, Hörwerk asks whether it should leave the library too. Family accounts delete their own requests, admins all.
+- **Delete from the library (admins):** in the details of a library book – moved to `_ersetzt` or deleted, as set for replaced originals.
+- *Fertige ausblenden* only hides the finished jobs (a second click shows them again) instead of deleting them from the list for good.
 - **Werkbank:** the sidebar shows what is being worked on – downloading, unpacking, recognising, converting, tagging – with a progress bar.
   On the phone a slim bar above the tab bar, only while something is running. Admins see every job, family accounts their own requests.
 - **Statistik counts every listener:** Audiobookshelf accounts and Plex profiles without a Hörwerk account get a card too (asked for nothing,

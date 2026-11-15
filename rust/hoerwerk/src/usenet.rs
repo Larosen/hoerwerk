@@ -748,6 +748,23 @@ impl<'a> Sabnzbd<'a> {
             .unwrap_or_default())
     }
 
+    /// Stop a download and delete what it loaded: out of the queue, and out of the history if it finished already.
+    pub fn cancel(&self, nzo_id: &str) -> Result<()> {
+        self.call(&[
+            ("mode", "queue".into()),
+            ("name", "delete".into()),
+            ("value", nzo_id.into()),
+            ("del_files", "1".into()),
+        ])?;
+        self.call(&[
+            ("mode", "history".into()),
+            ("name", "delete".into()),
+            ("value", nzo_id.into()),
+            ("del_files", "1".into()),
+        ])?;
+        Ok(())
+    }
+
     /// Take finished downloads of our category out of SABnzbd's history – the files stay (del_files=0).
     pub fn remove_history(&self, ids: &[String]) -> Result<usize> {
         let ours = self.history_ids(500)?;
@@ -1045,6 +1062,14 @@ impl Usenet {
             &text_of(&s["category"]),
             &*self.get,
         ))
+    }
+
+    /// Stop a running download (a request that was deleted) – SABnzbd deletes its files.
+    pub fn cancel_download(&self, nzo_id: &str) -> Result<()> {
+        if nzo_id.is_empty() {
+            return Ok(());
+        }
+        self.sab()?.cancel(nzo_id)
     }
 
     pub fn test(&self, kind: &str, index_id: &str) -> Result<String> {

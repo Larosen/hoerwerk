@@ -30,6 +30,7 @@ const books = {
   libShown: 100,                              // rows loaded so far
   libTotal: null as number | null,            // books in the library (for the filter chip)
   libTimer: undefined as number | undefined,
+  hideDone: store.get("booksHideDone", false),   // "Aufträge" without the finished ones (only hidden, never deleted)
 };
 
 function isActive(status: BookStatus): boolean {
@@ -112,8 +113,11 @@ function renderBooks(): void {
   list.replaceChildren();
   if (books.filter === "unconverted") { renderUnconverted(list); return; }
   if (books.filter === "library") { renderLibrary(list); return; }
-  const jobs = d.jobs.filter((j) => books.filter === "all"
-    || (books.filter === "active" ? isActive(j.status)
+  const clear = $("#clearBooksBtn");
+  clear.hidden = books.filter !== "all" || !d.jobs.some((j) => j.status === "done");
+  clear.textContent = books.hideDone ? t("Fertige einblenden") : t("Fertige ausblenden");
+  const jobs = d.jobs.filter((j) => books.filter === "all" ? !(books.hideDone && j.status === "done")
+    : (books.filter === "active" ? isActive(j.status)
       : books.filter === "failed" ? ["failed", "cancelled"].includes(j.status) : j.status === books.filter));
   // new in the inbox, not started yet: visible right away, so nobody wonders whether the download arrived
   if (["all", "active"].includes(books.filter)) {
@@ -485,6 +489,17 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
   if (["failed", "cancelled"].includes(j.status)) {
     tools.append(el("button", { class: "btn small", onclick: () => bookAction(j, "retry") }, t("Erneut versuchen")));
   }
+  if (j.hints?.request_id && j.status !== "done" && j.origin === "inbox") {
+    // downloaded for a request, but not the book that was asked for: away with it, the request looks further
+    tools.append(el("button", {
+      class: "btn small ghost danger", title: t("Nicht das angefragte Hörbuch: Import stoppen, Download löschen, die Anfrage sucht weiter"),
+      onclick: async () => {
+        if (!(await confirmBox(t("„{name}“ ist das falsche Release? Der Import stoppt, der Download wird gelöscht und die Anfrage sucht weiter.", { name: j.name }), t("Falsches Release")))) return;
+        try { await api("POST", `/api/audiobooks/${encodeURIComponent(j.id)}/wrong-release`); toast(t("Gelöscht – die Anfrage sucht weiter")); pollBooks(true); }
+        catch (e) { toast(errMsg(e), true); }
+      },
+    }, t("Falsches Release")));
+  }
   if (j.status === "done" && j.dest) {
     tools.append(el("button", {
       class: "btn small", title: t("Falsch erkannt? Hörbuch aus der Bibliothek zurückholen und neu zuordnen"),
@@ -855,8 +870,11 @@ function initBooks(): void {
     catch (e) { toast(errMsg(e), true); }
   });
   $("#libraryCleanBtn").addEventListener("click", cleanLibrary);
-  $("#clearBooksBtn").addEventListener("click", async () => {
-    try { await api("DELETE", "/api/audiobooks"); pollBooks(true); } catch (e) { toast(errMsg(e), true); }
+  $("#clearBooksBtn").addEventListener("click", () => {
+    books.hideDone = !books.hideDone;                 // only a view: "Fertig" still lists them, a second click brings them back
+    store.set("booksHideDone", books.hideDone);
+    books.lastJson = "";
+    renderBooks();
   });
   $("#manualLinkBtn").addEventListener("click", fetchLinkIntoManual);
   $("#manualLink").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); fetchLinkIntoManual(); } });

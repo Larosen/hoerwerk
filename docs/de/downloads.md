@@ -51,6 +51,15 @@ lädt automatisch nur ein klar besseres Release (besseres Format oder deutlich m
 auch selbst eins wählen. Der neue Download ersetzt das Buch, die alte Datei wird archiviert. **Korrigieren** holt ein
 Buch zur Neuzuordnung zurück, **Falsche Fassung** an einem abgelegten Buch lässt außerdem seine Anfrage weitersuchen.
 
+**Abbrechen und löschen:** Ist Hörwerk unsicher, welches Buch ein Download ist, wartet er unter *Zu prüfen* – umgewandelt
+wird erst nach der Auswahl. Ein Download für eine Anfrage, der sich als anderes Buch herausstellt, wird gelöscht, das
+Release gesperrt und die Anfrage sucht weiter; **Falsches Release** am Auftrag macht das von Hand. Bei kurzen Titeln lädt
+Hörwerk ein Release nicht von selbst, wenn im Namen mehr steht als Autor und Titel („Odyssee op Kölsch“) – unter
+*Releases* lässt es sich trotzdem wählen. Eine Anfrage lässt sich jederzeit löschen: ein laufender Download wird in
+SABnzbd abgebrochen, ein laufender Import gestoppt, und bei einem fertigen Hörbuch fragt Hörwerk, ob es auch aus der
+Bibliothek soll. Familienkonten löschen ihre eigenen Anfragen, Admins alle; Admins löschen Hörbücher außerdem in den
+Details der Bibliothek (je nach Einstellung nach `_ersetzt` im Eingang oder endgültig).
+
 Tipp: In SABnzbd unter *Config → Switches → Unerwünschte Endungen* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
 auf **Abbrechen** stellen.
 

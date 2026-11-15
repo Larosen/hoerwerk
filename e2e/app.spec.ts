@@ -973,6 +973,44 @@ test("Werkbank: links was gerade läuft, auf dem Handy eine Leiste über den Tab
   expect(errors).toEqual([]);
 });
 
+test("Löschen: Anfrage mit laufendem Download abbrechen, fertiges Hörbuch auch aus der Bibliothek, Fertige nur ausblenden", async ({ page }) => {
+  const req = (id: number, title: string, status: string, live: object | null) => ({ id, book: { title, authors: ["A"] }, status, created: 1, updated: 1, mine: true, live });
+  const deleted: string[] = [];
+  await page.route("**/api/requests", (r) => r.fulfill({ json: { items: [
+    req(1, "Afrika", "downloading", { kind: "download", state: "Downloading", progress: 0.4 }),
+    req(2, "Krabat", "available", null)], may_search: true, sees_all: true, pending: 0, interval: 6,
+    quota: { limit: null, used: 0, left: null, period: "month" } } }));
+  await page.route(/\/api\/requests\/\d+/, (r) => { deleted.push(new URL(r.request().url()).pathname + new URL(r.request().url()).search); return r.fulfill({ json: { ok: true, deleted: 1 } }); });
+  const errors = await open(page);
+  await page.goto("/requests");
+  const afrika = page.locator("li.request", { hasText: "Afrika" });
+  await afrika.getByTitle("Abbrechen und löschen").click();
+  await expect(page.locator("#confirmText")).toContainText("Download abbrechen und Anfrage löschen?");
+  await page.locator("#confirmOk").click();
+  await expect.poll(() => deleted).toContain("/api/requests/1");
+  await page.getByRole("button", { name: /^Verfügbar/ }).click();                    // a book that arrived
+  const krabat = page.locator("li.request", { hasText: "Krabat" });
+  await krabat.getByTitle("Anfrage löschen").click();
+  await page.locator("#confirmOk").click();                                           // delete the request …
+  await expect(page.locator("#confirmText")).toContainText("Auch das Hörbuch „Krabat“ aus der Bibliothek löschen?");
+  await page.locator("#confirmOk").click();                                           // … and the book
+  await expect.poll(() => deleted).toContain("/api/requests/2?files=1");
+  // "Fertige ausblenden" only hides: a second click shows them again
+  await page.unroute("**/api/requests");
+  await page.goto("/books");
+  await page.locator("#bookFilter").getByRole("button", { name: /Aufträge/ }).click();
+  const done = page.locator("#bookList .book.done");
+  const before = await done.count();
+  if (before) {
+    await page.locator("#clearBooksBtn").click();
+    await expect(done).toHaveCount(0);
+    await expect(page.locator("#clearBooksBtn")).toHaveText("Fertige einblenden");
+    await page.locator("#clearBooksBtn").click();
+    await expect(done).toHaveCount(before);
+  }
+  expect(errors).toEqual([]);
+});
+
 test("Hörbücher: Details aus der Bibliothek öffnen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockAnyDetail(page);
