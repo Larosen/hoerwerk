@@ -18,6 +18,8 @@ use crate::text::{self, now, t};
 use crate::usenet::UsenetError;
 use crate::words::match_words;
 
+/// Finished in SABnzbd but no import after this long: it did not reach the inbox.
+const INBOX_TIMEOUT: f64 = 6.0 * 3600.0;
 pub const OPEN: [&str; 4] = ["pending", "searching", "downloading", "processing"];
 const BOOK_KEYS: [&str; 19] = [
     "asin",
@@ -1437,6 +1439,8 @@ impl Requests {
                         .to_string();
                     self.failed_release(app, req, &t("Download fehlgeschlagen: {error}", &[("error", &e)]));
                 } else {
+                    let mut req = req;
+                    req["done_at"] = json!(now());
                     self.save(
                         app,
                         &req,
@@ -1455,6 +1459,26 @@ impl Requests {
     /// The pipeline job of this request: done → available, failed → next release, review → note it.
     pub fn follow_job(&self, app: &Arc<App>, mut req: Value, job: Option<Value>) {
         let Some(job) = job.or_else(|| app.job_for_request(req["id"].as_i64().unwrap_or(0))) else {
+            // finished in SABnzbd, but no import shows up: in the library already (a pack, an import whose entry
+            // was removed)? Otherwise it never reached the inbox – after a while the next release is tried.
+            if req["status"] != "processing" {
+                return;
+            }
+            if req["upgrade"].is_null() && Self::owned(app, &req["book"]) {
+                self.arrived(app, req, "");
+                return;
+            }
+            let since = req["done_at"].as_f64().or(req["sent_at"].as_f64()).unwrap_or(0.0);
+            if since > 0.0 && now() - since > INBOX_TIMEOUT {
+                self.failed_release(
+                    app,
+                    req,
+                    &t(
+                        "Download kam nicht im Eingang an (Zielordner der Kategorie in SABnzbd prüfen)",
+                        &[],
+                    ),
+                );
+            }
             return;
         };
         match job["status"].as_str() {

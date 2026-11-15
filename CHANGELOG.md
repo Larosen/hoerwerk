@@ -5,6 +5,8 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 
 ## 1.0.5 – 2026-11-15
 
+- **No more endless "Download fertig – wartet auf den Eingang":** a request whose finished download never shows up as an import is marked
+  available when the book is in the library (a pack, an import whose entry was removed), otherwise after 6 hours the next release is tried.
 - **Hörwerk knows the other recordings of a requested book:** other narrators and years of the same title by the same author, from Audible
   and BookBeat. The *Releases* window lists them (the one asked for first), and a release that names the narrator or the year of another
   recording is not loaded – one naming the requested narrator ranks higher.
