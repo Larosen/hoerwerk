@@ -489,7 +489,14 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
   if (["failed", "cancelled"].includes(j.status)) {
     tools.append(el("button", { class: "btn small", onclick: () => bookAction(j, "retry") }, t("Erneut versuchen")));
   }
-  if (j.hints?.request_id && j.status !== "done" && j.origin === "inbox") {
+  if (j.hints?.request_conflict && j.status === "review") {
+    // downloaded for a request, but it does not fit: throw it away (deleted, blocked for this book) or keep it
+    li.append(el("div", { class: "conflict-box" },
+      el("p", {}, icon("alert"), " ", t("Passt nicht zur Anfrage: {why}", { why: j.hints.request_conflict })),
+      el("div", { class: "row gap wrap" },
+        el("button", { class: "btn small primary", onclick: () => decideConflict(j, "wrong-release") }, t("Verwerfen – löschen und sperren")),
+        el("button", { class: "btn small", onclick: () => decideConflict(j, "keep") }, t("Behalten – als das Hörbuch einordnen, das es ist")))));
+  } else if (j.hints?.request_id && j.status !== "done" && j.origin === "inbox") {
     // downloaded for a request, but not the book that was asked for: away with it, the request looks further
     tools.append(el("button", {
       class: "btn small ghost danger", title: t("Nicht das angefragte Hörbuch: Import stoppen, Download löschen, die Anfrage sucht weiter"),
@@ -668,13 +675,30 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
         el("button", { class: best && !c.mismatch ? "btn small primary" : "btn small accent", onclick: () => chooseBook(j, c) }, t("Übernehmen")))));
 }
 
-async function chooseBook(j: AudiobookJob, c: Book): Promise<void> {
+async function decideConflict(j: AudiobookJob, what: "wrong-release" | "keep"): Promise<void> {
   try {
-    await api("POST", `/api/audiobooks/${j.id}/choose`, { id: c.id || c.asin, asin: c.asin, region: c.region });
+    await api("POST", `/api/audiobooks/${encodeURIComponent(j.id)}/${what}`);
+    toast(what === "keep" ? t("Behalten – die Anfrage sucht weiter") : t("Gelöscht – die Anfrage sucht weiter"));
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+async function chooseBook(j: AudiobookJob, c: Book, keep = false): Promise<void> {
+  try {
+    await api("POST", `/api/audiobooks/${j.id}/choose`, { id: c.id || c.asin, asin: c.asin, region: c.region, keep });
     follow(j.id, c.title);
     toast(t("„{title}“ wird abgelegt", { title: c.title }), "info");
     pollBooks(true);
-  } catch (e) { toast(errMsg(e), true); }
+  } catch (e) {
+    if (!(e instanceof ApiError && e.status === 409)) { toast(errMsg(e), true); return; }
+    // downloaded for a request, but it is another book: normally it goes and the request looks further
+    if (await confirmBox(`${errMsg(e)} ${t("Download löschen und die Anfrage weitersuchen lassen?")}`, t("Löschen und weitersuchen"))) {
+      try { await api("POST", `/api/audiobooks/${encodeURIComponent(j.id)}/wrong-release`); toast(t("Gelöscht – die Anfrage sucht weiter")); pollBooks(true); }
+      catch (e2) { toast(errMsg(e2), true); }
+    } else if (await confirmBox(t("Trotzdem als „{title}“ in die Bibliothek legen?", { title: c.title }), t("Trotzdem ablegen"))) {
+      await chooseBook(j, c, true);
+    }
+  }
 }
 
 const MANUAL_FIELDS = ["title", "subtitle", "authors", "narrators", "series", "series_position", "release_date", "publisher", "genres", "description"] as const;

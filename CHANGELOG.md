@@ -3,6 +3,18 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.5 – 2026-11-15
+
+- **No more endless "Download fertig – wartet auf den Eingang":** a request whose finished download never shows up as an import is marked
+  available when the book is in the library (a pack, an import whose entry was removed), otherwise after 6 hours the next release is tried.
+- **Hörwerk knows the other recordings of a requested book:** other narrators and years of the same title by the same author, from Audible
+  and BookBeat. The *Releases* window lists them (the one asked for first), and a release that names the narrator or the year of another
+  recording is not loaded – one naming the requested narrator ranks higher.
+- **A download that does not fit a request asks what to do** (wrong length, another recording's length, another book) instead of deciding
+  alone: *Verwerfen* deletes it and blocks the release for this book, *Behalten* files it as the book it is; either way the request searches on.
+- **Picking another book than requested asks first:** on a download for a request, choosing a match that is not the requested book offers
+  *Löschen und weitersuchen* (the default) or, on purpose, *Trotzdem ablegen*.
+
 ## 1.0.4 – 2026-11-15
 
 - **Nothing is converted on a guess:** when Hörwerk is not sure which book a download is, it waits under *Zu prüfen* first and converts only after

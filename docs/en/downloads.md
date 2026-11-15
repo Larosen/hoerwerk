@@ -48,8 +48,10 @@ pick one yourself. The new download replaces the book, the old file is archived.
 a new assignment, and **Wrong edition** on a filed book also lets its request search on.
 
 **Cancel and delete:** when Hörwerk is not sure which book a download is, it waits under *To review* – it is converted only
-after a match was chosen. A download for a request that turns out to be another book is deleted, the release is blocked
-and the request searches on; **Wrong release** on the job does this by hand. For short titles Hörwerk does not grab a
+after a match was chosen. For every request Hörwerk knows the other recordings of the same title (other narrators and years, from Audible and
+BookBeat): the Releases window shows them, and a release with the narrator or year of another recording is not loaded.
+When a download does not fit the request (length, another recording's length, another book), Hörwerk asks: **Discard**
+deletes it and blocks the release for this book, **Keep** files it as the book it is – the request searches on; **Wrong release** on the job does this by hand; picking another book than the requested one while reviewing asks whether the download should be deleted. For short titles Hörwerk does not grab a
 release by itself when its name says more than author and title ("Odyssee op Kölsch") – it can still be chosen under
 *Releases*. A request can be deleted at any time: a running download is cancelled in SABnzbd, a running import stopped,
 and for a book that arrived Hörwerk asks whether it should leave the library too. Family accounts delete their own

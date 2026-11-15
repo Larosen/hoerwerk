@@ -18,6 +18,8 @@ use crate::text::{self, now, t};
 use crate::usenet::UsenetError;
 use crate::words::match_words;
 
+/// Finished in SABnzbd but no import after this long: it did not reach the inbox.
+const INBOX_TIMEOUT: f64 = 6.0 * 3600.0;
 pub const OPEN: [&str; 4] = ["pending", "searching", "downloading", "processing"];
 const BOOK_KEYS: [&str; 19] = [
     "asin",
@@ -844,6 +846,37 @@ impl Requests {
     }
 
     // -- searching and grabbing ---------------------------------------------------------------------
+    /// The other recordings of the requested book (Audible and BookBeat: other narrators, other years), kept with
+    /// the request for a week – they tell the releases and downloads of another recording apart.
+    pub fn editions_of(&self, app: &App, req: &mut Value) -> Vec<Value> {
+        if let Some(e) = req["editions"].as_array()
+            && now() - req["editions_at"].as_f64().unwrap_or(0.0) < 7.0 * 86400.0
+        {
+            return e.clone();
+        }
+        let book = &req["book"];
+        let region = s_or(book, "region", "de");
+        let title = releases::clean_title(book["title"].as_str().unwrap_or(""));
+        let author = book["authors"]
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        if title.is_empty() {
+            return Vec::new();
+        }
+        let mut hits = app
+            .providers
+            .client
+            .search(&region, "", &title, author, 25, false)
+            .unwrap_or_default();
+        hits.extend(crate::links::bookbeat_search(&format!("{title} {author}"), &region, 15));
+        let found = crate::edition::siblings(book, &hits);
+        req["editions"] = json!(found);
+        req["editions_at"] = json!(now());
+        found
+    }
+
     fn judge(app: &App, req: &Value, results: &[Value]) -> Vec<Value> {
         let unabridged = app
             .settings()
@@ -853,7 +886,34 @@ impl Requests {
         let lang = releases::book_language(&req["book"]);
         let lang = if lang.is_empty() { "de".to_string() } else { lang };
         let blocked: Vec<String> = req["blocked"].as_array().into_iter().flatten().map(text_of).collect();
-        releases::rank(results, &req["book"], &lang, unabridged, &blocked)
+        let mut ranked = releases::rank(results, &req["book"], &lang, unabridged, &blocked);
+        // the other recordings: a release naming another narrator or another recording's year is that one
+        let others = req["editions"].as_array().cloned().unwrap_or_default();
+        for r in ranked.iter_mut() {
+            let (other, own) = crate::edition::sibling_verdict(&text_of(&r["title"]), &req["book"], &others);
+            if let Some(why) = other.filter(|_| r["verdict"]["ok"] == true) {
+                r["verdict"]["ok"] = json!(false);
+                r["verdict"]["score"] = json!(0.0);
+                r["verdict"]["reason"] = json!(why);
+            } else if let Some(note) = own
+                && let Some(n) = r["verdict"]["notes"].as_array_mut()
+            {
+                n.insert(0, json!(note));
+                if r["verdict"]["ok"] == true {
+                    r["verdict"]["score"] = json!(r["verdict"]["score"].as_f64().unwrap_or(0.0) + 5.0);
+                }
+            }
+        }
+        ranked.sort_by(|a, b| {
+            let k = |r: &Value| {
+                (
+                    r["verdict"]["ok"] == true,
+                    r["verdict"]["score"].as_f64().unwrap_or(0.0),
+                )
+            };
+            k(b).partial_cmp(&k(a)).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        ranked
     }
 
     /// (judged releases, queries asked, errors). A typed query is searched as it is (in all spellings);
@@ -884,7 +944,11 @@ impl Requests {
 
     /// All releases for a request with the verdict on each (interactive search). Blocking.
     pub fn releases(&self, app: &App, rid: i64, query: &str) -> Res<Value> {
-        let req = self.need(app, rid)?;
+        let mut req = self.need(app, rid)?;
+        if req["editions_at"].is_null() || now() - req["editions_at"].as_f64().unwrap_or(0.0) >= 7.0 * 86400.0 {
+            self.editions_of(app, &mut req);
+            req = self.save(app, &req, None, "");
+        }
         if !app.usenet.has_indexers() {
             return err(t("Noch kein Indexer eingerichtet", &[]), 400);
         }
@@ -923,7 +987,7 @@ impl Requests {
         }
         Ok(
             json!({"request": req, "query": q, "queries": queries, "errors": errors, "resting": resting,
-                  "results": ranked}),
+                  "results": ranked, "editions": req["editions"]}),
         )
     }
 
@@ -979,6 +1043,10 @@ impl Requests {
             req["error"] = Value::Null;
             req["pack_noted"] = json!(release);
             return Some(self.save(app, &req, None, &note));
+        }
+        if req["editions_at"].is_null() || now() - req["editions_at"].as_f64().unwrap_or(0.0) >= 7.0 * 86400.0 {
+            self.editions_of(app, &mut req);
+            req = self.save(app, &req, None, "");
         }
         let (ranked, queries, errors, resting) = match Self::find(app, &req, None) {
             Ok(x) => x,
@@ -1371,6 +1439,8 @@ impl Requests {
                         .to_string();
                     self.failed_release(app, req, &t("Download fehlgeschlagen: {error}", &[("error", &e)]));
                 } else {
+                    let mut req = req;
+                    req["done_at"] = json!(now());
                     self.save(
                         app,
                         &req,
@@ -1389,6 +1459,26 @@ impl Requests {
     /// The pipeline job of this request: done → available, failed → next release, review → note it.
     pub fn follow_job(&self, app: &Arc<App>, mut req: Value, job: Option<Value>) {
         let Some(job) = job.or_else(|| app.job_for_request(req["id"].as_i64().unwrap_or(0))) else {
+            // finished in SABnzbd, but no import shows up: in the library already (a pack, an import whose entry
+            // was removed)? Otherwise it never reached the inbox – after a while the next release is tried.
+            if req["status"] != "processing" {
+                return;
+            }
+            if req["upgrade"].is_null() && Self::owned(app, &req["book"]) {
+                self.arrived(app, req, "");
+                return;
+            }
+            let since = req["done_at"].as_f64().or(req["sent_at"].as_f64()).unwrap_or(0.0);
+            if since > 0.0 && now() - since > INBOX_TIMEOUT {
+                self.failed_release(
+                    app,
+                    req,
+                    &t(
+                        "Download kam nicht im Eingang an (Zielordner der Kategorie in SABnzbd prüfen)",
+                        &[],
+                    ),
+                );
+            }
             return;
         };
         match job["status"].as_str() {
@@ -1596,4 +1686,8 @@ pub fn summary(req: &Value, user: &Value, sees_all: bool) -> Value {
         );
     }
     json!(out)
+}
+
+fn s_or(v: &Value, k: &str, d: &str) -> String {
+    v[k].as_str().filter(|x| !x.is_empty()).unwrap_or(d).to_string()
 }
