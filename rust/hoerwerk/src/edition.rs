@@ -322,6 +322,147 @@ pub fn tag_names(tag: &str) -> Vec<String> {
         .collect()
 }
 
+// -- other recordings of the same work ("Fassungen") -------------------------------------------------------------
+// A title often exists several times: other narrators, other years, abridged or not, reading or radio play. Knowing
+// them is what tells a release or a download of another recording apart from the one asked for.
+
+/// From shop hits (Audible, BookBeat …): the other recordings of the same work by the same author – not the book
+/// itself. Each {asin, title, narrators, year, runtime_min, format_type, source}; one per narrator and year.
+pub fn siblings(book: &Value, hits: &[Value]) -> Vec<Value> {
+    let words = |b: &Value| crate::releases::title_words(b["title"].as_str().unwrap_or(""));
+    let want = words(book);
+    if want.is_empty() {
+        return Vec::new();
+    }
+    let author = surnames(&strs(&book["authors"]));
+    let own_asin = book["asin"].as_str().unwrap_or("").to_uppercase();
+    let own_people = surnames(&strs(&book["narrators"]));
+    let mut out: Vec<Value> = Vec::new();
+    for h in hits {
+        let theirs = words(h);
+        // the same work: every word of the title is there, and not much more (not "Odyssee – Kommentar zu …")
+        let same_title = want.iter().all(|w| theirs.contains(w)) && theirs.len() <= want.len() + 2;
+        let same_author = author.is_empty() || same_people(&strs(&h["authors"]), &strs(&book["authors"])) == Some(true);
+        let asin = h["asin"].as_str().unwrap_or("").to_uppercase();
+        if !same_title || !same_author || (!asin.is_empty() && asin == own_asin) {
+            continue;
+        }
+        let people = surnames(&strs(&h["narrators"]));
+        let year = release_year(h);
+        // the requested recording listed again (another shop, another region): not another one
+        if !people.is_empty() && people == own_people && year == release_year(book) {
+            continue;
+        }
+        let key = (people.clone(), year);
+        if out
+            .iter()
+            .any(|o| (surnames(&strs(&o["narrators"])), o["year"].as_i64()) == key)
+        {
+            continue;
+        }
+        out.push(serde_json::json!({"asin": h["asin"], "title": h["title"], "narrators": h["narrators"], "year": year,
+                                     "runtime_min": h["runtime_min"], "format_type": h["format_type"], "source": h["source"]}));
+    }
+    out
+}
+
+fn who(edition: &Value) -> String {
+    let names = strs(&edition["narrators"]);
+    let year = edition["year"].as_i64().map(|y| y.to_string()).unwrap_or_default();
+    match (names.is_empty(), year.is_empty()) {
+        (false, false) => format!("{} ({year})", short_list(&names)),
+        (false, true) => short_list(&names),
+        (true, false) => year,
+        (true, true) => String::new(),
+    }
+}
+
+/// A release against the other recordings: (reason it is another one, or None; note when it names the book's own
+/// narrator). Only clear signals count – a narrator's surname or a year that belongs to another recording only.
+pub fn sibling_verdict(name: &str, book: &Value, others: &[Value]) -> (Option<String>, Option<String>) {
+    let words: Vec<String> = match_words(&plain(name));
+    let own = strs(&book["narrators"]);
+    let own_names = surnames(&own);
+    let named = |n: &str| {
+        words
+            .iter()
+            .any(|w| w == n || (n.chars().count() >= 5 && jaro_winkler(w, n) >= SAME_NAME))
+    };
+    if let Some(n) = own.iter().find(|n| {
+        surnames(std::slice::from_ref(n))
+            .first()
+            .is_some_and(|s| s.chars().count() >= 4 && named(s))
+    }) {
+        return (None, Some(t("Sprecher passt: {name}", &[("name", n)])));
+    }
+    for o in others {
+        for (full, sur) in strs(&o["narrators"])
+            .iter()
+            .map(|n| (n.clone(), surnames(std::slice::from_ref(n))))
+        {
+            let Some(sur) = sur.first() else { continue };
+            if sur.chars().count() >= 4 && !own_names.contains(sur) && named(sur) {
+                return (
+                    Some(
+                        t("Andere Fassung: gelesen von {name}", &[("name", &full)])
+                            + &o["year"].as_i64().map(|y| format!(" ({y})")).unwrap_or_default(),
+                    ),
+                    None,
+                );
+            }
+        }
+    }
+    let own_year = release_year(book);
+    let in_title: Vec<String> = findall(
+        rx!(r"(?<!\d)((?:19|20)\d\d)(?!\d)"),
+        &text_of(book, &["title", "subtitle"]),
+    );
+    for y in findall(rx!(r"(?<!\d)((?:19|20)\d\d)(?!\d)"), name)
+        .into_iter()
+        .filter(|y| !in_title.contains(y))
+        .filter_map(|y| y.parse::<i64>().ok())
+    {
+        if Some(y) == own_year {
+            break;
+        }
+        if let Some(o) = others.iter().find(|o| o["year"].as_i64() == Some(y)) {
+            return (
+                Some(t(
+                    "Andere Fassung: {year} erschien die von {who}",
+                    &[("year", &y.to_string()), ("who", &who(o))],
+                )),
+                None,
+            );
+        }
+    }
+    (None, None)
+}
+
+/// After the download: the length fits another recording clearly better than the requested one (reason) – else None.
+pub fn runtime_sibling(duration_sec: f64, book: &Value, others: &[Value]) -> Option<String> {
+    let mins = duration_sec / 60.0;
+    let own = book["runtime_min"].as_f64().filter(|m| *m > 0.0)?;
+    if mins <= 0.0 || (mins - own).abs() / own < 0.08 {
+        return None;
+    }
+    others
+        .iter()
+        .filter_map(|o| {
+            o["runtime_min"]
+                .as_f64()
+                .filter(|m| *m > 0.0)
+                .map(|m| (o, (mins - m).abs() / m))
+        })
+        .filter(|(_, off)| *off < 0.04)
+        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+        .map(|(o, _)| {
+            t(
+                "Die Länge passt zur Fassung von {who}, nicht zur angefragten",
+                &[("who", &who(o))],
+            )
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -437,5 +578,40 @@ mod tests {
         assert_eq!(narrator_doubt(&s(&["Nina Hoss"]), &full_cast()), None);
         assert_eq!(narrator_doubt(&[], &full_cast()), None);
         assert_eq!(narrator_doubt(&s(&["J.K. Rowling"]), &full_cast()), None); // the author in the tag
+    }
+    #[test]
+    fn other_recordings_tell_releases_and_downloads_apart() {
+        let book = json!({"asin": "B00CU7MW7U", "title": "Odyssee", "authors": ["Homer"], "narrators": ["Manfred Schradi"],
+                          "release_date": "2013-05-01", "runtime_min": 735});
+        let hits = vec![
+            json!({"asin": "B00CU7MW7U", "title": "Odyssee", "authors": ["Homer"], "narrators": ["Manfred Schradi"], "release_date": "2013-05-01"}),
+            json!({"asin": "B1", "title": "Odyssee", "authors": ["Homer"], "narrators": ["Christian Brückner"], "release_date": "2009-01-01", "runtime_min": 1014}),
+            json!({"asin": "B2", "title": "Die Odyssee", "authors": ["Homer"], "narrators": ["Rolf Boysen"], "release_date": "1998-01-01", "runtime_min": 900}),
+            json!({"asin": "B3", "title": "Odyssee", "authors": ["Anna Andere"], "narrators": ["X Y"], "release_date": "2020-01-01"}),
+            json!({"asin": "B4", "title": "Homers Odyssee – ein Kommentar für Schulen und Studium", "authors": ["Homer"], "narrators": ["Z Z"]}),
+        ];
+        let others = siblings(&book, &hits);
+        let asins: Vec<&str> = others.iter().map(|o| o["asin"].as_str().unwrap()).collect();
+        assert_eq!(asins, ["B1", "B2"]); // not itself, not another author's book, not a book about it
+        // releases
+        let (no, _) = sibling_verdict(
+            "Homer - Odyssee - gelesen von Christian Brueckner - MP3",
+            &book,
+            &others,
+        );
+        assert!(no.unwrap().contains("Brückner"));
+        let (no, _) = sibling_verdict("Homer.-.Odyssee.DE.2009.ABook.MP3-PaZ", &book, &others);
+        assert!(no.unwrap().contains("2009"));
+        let (no, yes) = sibling_verdict("Homer - Odyssee (Manfred Schradi) 2013", &book, &others);
+        assert!(no.is_none() && yes.unwrap().contains("Manfred Schradi"));
+        assert_eq!(sibling_verdict("Homer - Odyssee - MP3", &book, &others), (None, None)); // nothing says: no veto
+        // downloads: 16 h 54 is Brückner's length, not the 12 h 15 asked for
+        assert!(
+            runtime_sibling(1014.0 * 60.0, &book, &others)
+                .unwrap()
+                .contains("Brückner")
+        );
+        assert!(runtime_sibling(737.0 * 60.0, &book, &others).is_none());
+        assert!(runtime_sibling(1300.0 * 60.0, &book, &others).is_none()); // fits nothing known: no claim
     }
 }

@@ -69,6 +69,12 @@
   },
   {
    "method": "POST",
+   "path": "/api/audiobooks/{job_id}/keep",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
    "path": "/api/audiobooks/{job_id}/link",
    "access": "admin",
    "raw_body": false

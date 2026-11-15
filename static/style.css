@@ -1302,3 +1302,13 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 }
 .wb-plus { display: none; }
 @media (max-width: 779px) { .wb-plus { display: inline; color: var(--faint); } }
+
+/* Releases: the recordings of a title */
+.editions-box { border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; background: var(--panel-2); }
+.editions-box p { margin: 0 0 6px; }
+.editions { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+.editions li { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.editions li.wanted b { color: var(--accent); }
+/* a download for a request that does not fit */
+.conflict-box { margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--warn-soft, var(--panel-2)); border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--border)); }
+.conflict-box p { margin: 0 0 8px; display: flex; gap: 6px; align-items: center; }

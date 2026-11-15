@@ -489,7 +489,14 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
   if (["failed", "cancelled"].includes(j.status)) {
     tools.append(el("button", { class: "btn small", onclick: () => bookAction(j, "retry") }, t("Erneut versuchen")));
   }
-  if (j.hints?.request_id && j.status !== "done" && j.origin === "inbox") {
+  if (j.hints?.request_conflict && j.status === "review") {
+    // downloaded for a request, but it does not fit: throw it away (deleted, blocked for this book) or keep it
+    li.append(el("div", { class: "conflict-box" },
+      el("p", {}, icon("alert"), " ", t("Passt nicht zur Anfrage: {why}", { why: j.hints.request_conflict })),
+      el("div", { class: "row gap wrap" },
+        el("button", { class: "btn small primary", onclick: () => decideConflict(j, "wrong-release") }, t("Verwerfen – löschen und sperren")),
+        el("button", { class: "btn small", onclick: () => decideConflict(j, "keep") }, t("Behalten – als das Hörbuch einordnen, das es ist")))));
+  } else if (j.hints?.request_id && j.status !== "done" && j.origin === "inbox") {
     // downloaded for a request, but not the book that was asked for: away with it, the request looks further
     tools.append(el("button", {
       class: "btn small ghost danger", title: t("Nicht das angefragte Hörbuch: Import stoppen, Download löschen, die Anfrage sucht weiter"),
@@ -666,6 +673,14 @@ function candidate(j: AudiobookJob, c: Book, best = false): HTMLLIElement {
       el("div", { class: "row gap" },
         el("button", { class: "btn small ghost", title: t("Angaben vor dem Übernehmen ändern"), onclick: () => manualBook(j, c) }, t("Bearbeiten …")),
         el("button", { class: best && !c.mismatch ? "btn small primary" : "btn small accent", onclick: () => chooseBook(j, c) }, t("Übernehmen")))));
+}
+
+async function decideConflict(j: AudiobookJob, what: "wrong-release" | "keep"): Promise<void> {
+  try {
+    await api("POST", `/api/audiobooks/${encodeURIComponent(j.id)}/${what}`);
+    toast(what === "keep" ? t("Behalten – die Anfrage sucht weiter") : t("Gelöscht – die Anfrage sucht weiter"));
+    pollBooks(true);
+  } catch (e) { toast(errMsg(e), true); }
 }
 
 async function chooseBook(j: AudiobookJob, c: Book, keep = false): Promise<void> {

@@ -5,6 +5,11 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 
 ## 1.0.5 – 2026-11-15
 
+- **Hörwerk knows the other recordings of a requested book:** other narrators and years of the same title by the same author, from Audible
+  and BookBeat. The *Releases* window lists them (the one asked for first), and a release that names the narrator or the year of another
+  recording is not loaded – one naming the requested narrator ranks higher.
+- **A download that does not fit a request asks what to do** (wrong length, another recording's length, another book) instead of deciding
+  alone: *Verwerfen* deletes it and blocks the release for this book, *Behalten* files it as the book it is; either way the request searches on.
 - **Picking another book than requested asks first:** on a download for a request, choosing a match that is not the requested book offers
   *Löschen und weitersuchen* (the default) or, on purpose, *Trotzdem ablegen*.
 

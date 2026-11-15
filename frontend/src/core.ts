@@ -84,7 +84,7 @@ function editionNote(b: { other_edition?: OtherEdition | null; owned?: unknown }
   return el("span", { class: "muted small edition-note", title: e.path || "" },
     who ? t("Andere Fassung in der Bibliothek (gelesen von {names})", { names: who }) : t("Andere Fassung in der Bibliothek"));
 }
-interface Hints { query?: string; title?: string; author?: string; narrator?: string; folder?: string; request_id?: number }
+interface Hints { query?: string; title?: string; author?: string; narrator?: string; folder?: string; request_id?: number; request_conflict?: string }
 interface Quality { kbps: number; duration: number; size: number; files: number }
 interface Duplicate {
   path: string; title: string; authors: string[]; asin: string | null; format: string; why: string;

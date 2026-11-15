@@ -52,8 +52,10 @@ auch selbst eins wählen. Der neue Download ersetzt das Buch, die alte Datei wir
 Buch zur Neuzuordnung zurück, **Falsche Fassung** an einem abgelegten Buch lässt außerdem seine Anfrage weitersuchen.
 
 **Abbrechen und löschen:** Ist Hörwerk unsicher, welches Buch ein Download ist, wartet er unter *Zu prüfen* – umgewandelt
-wird erst nach der Auswahl. Ein Download für eine Anfrage, der sich als anderes Buch herausstellt, wird gelöscht, das
-Release gesperrt und die Anfrage sucht weiter; **Falsches Release** am Auftrag macht das von Hand; wer beim Prüfen ein anderes Buch als das angefragte wählt, wird gefragt, ob der Download gelöscht werden soll. Bei kurzen Titeln lädt
+wird erst nach der Auswahl. Zu jeder Anfrage kennt Hörwerk die anderen Fassungen desselben Titels (andere Sprecher und Jahre, aus Audible und
+BookBeat): Das Releases-Fenster zeigt sie, und ein Release mit Sprecher oder Jahr einer anderen Fassung wird nicht geladen.
+Passt ein Download nicht zur Anfrage (Länge, Länge einer anderen Fassung, anderes Buch), fragt Hörwerk: **Verwerfen**
+löscht ihn und sperrt das Release für dieses Hörbuch, **Behalten** legt ihn als das Buch ab, das er ist – die Anfrage sucht weiter; **Falsches Release** am Auftrag macht das von Hand; wer beim Prüfen ein anderes Buch als das angefragte wählt, wird gefragt, ob der Download gelöscht werden soll. Bei kurzen Titeln lädt
 Hörwerk ein Release nicht von selbst, wenn im Namen mehr steht als Autor und Titel („Odyssee op Kölsch“) – unter
 *Releases* lässt es sich trotzdem wählen. Eine Anfrage lässt sich jederzeit löschen: ein laufender Download wird in
 SABnzbd abgebrochen, ein laufender Import gestoppt, und bei einem fertigen Hörbuch fragt Hörwerk, ob es auch aus der

@@ -1035,6 +1035,42 @@ test("Prüfen: ein anderes Buch als angefragt wird nicht einfach abgelegt – l�
   expect(errors.filter((e) => !e.includes("409") && !e.includes("ERR_FAILED"))).toEqual([]);
 });
 
+test("Fassungen: das Releases-Fenster zeigt die anderen Aufnahmen, ein unpassender Download fragt – verwerfen oder behalten", async ({ page }) => {
+  await page.route("**/api/events*", (r) => r.abort());
+  const request = { id: 9, book: { title: "Odyssee", authors: ["Homer"], narrators: ["Manfred Schradi"], release_date: "2013-05-01", runtime_min: 735 },
+    status: "searching", created: 1, updated: 1, mine: true, live: null };
+  await page.route("**/api/requests", (r) => r.fulfill({ json: { items: [request], may_search: true, sees_all: true, pending: 0, interval: 6,
+    quota: { limit: null, used: 0, left: null } } }));
+  await page.route("**/api/requests/9/releases", (r) => r.fulfill({ json: { query: "Homer Odyssee", queries: ["Homer Odyssee"], errors: [],
+    editions: [{ title: "Odyssee", narrators: ["Christian Brückner"], year: 2009, runtime_min: 1014 }],
+    results: [{ id: "r1", title: "Homer.-.Odyssee.DE.2009.ABook.MP3-PaZ", size: 1, indexer: "x",
+      verdict: { ok: false, score: 0, reason: "Andere Fassung: 2009 erschien die von Christian Brückner (2009)", notes: [], kbps: null } }] } }));
+  const job = { id: "job2", source: "/inbox/y", rel: "y", name: "Homer.-.Odyssee.DE.2009", origin: "inbox", status: "review", stage: "convert",
+    message: "", progress: 0, files: ["01.mp3"], duration: 60840, hints: { request_id: 9, request_conflict: "Die Länge passt zur Fassung von Christian Brückner (2009), nicht zur angefragten" },
+    candidates: [], match: null, region: "de", dest: null, error: null, converted_info: {}, duplicate: null };
+  await page.route(/\/api\/audiobooks(\?.*)?$/, (r) => r.fulfill({ json: { enabled: true, inbox: "/inbox", library: "/library", inbox_ok: true, library_ok: true,
+    last_scan: 1, scan_note: "", waiting: [], jobs: [job], review: 1 } }));
+  let kept = 0;
+  await page.route("**/api/audiobooks/job2/keep", (r) => { kept++; return r.fulfill({ json: job }); });
+  const errors = watchErrors(page);
+  expect((await page.request.post("/api/auth/login", { headers: OWN, data: { ...ADMIN, remember: false } })).status()).toBe(200);
+  await page.goto("/requests");
+  await page.locator("li.request", { hasText: "Odyssee" }).getByRole("button", { name: "Releases" }).click();
+  const box = page.locator("#releasesEditions");
+  await expect(box).toContainText("2 Fassungen");
+  await expect(box.locator("li.wanted")).toContainText("Manfred Schradi");
+  await expect(box).toContainText("Christian Brückner");
+  await expect(page.locator("#releasesRows")).toContainText("Andere Fassung");
+  await page.keyboard.press("Escape");
+  await page.goto("/books");
+  await page.locator("#bookFilter").getByRole("button", { name: /Zu prüfen/ }).click();
+  const conflict = page.locator("#bookList .conflict-box");
+  await expect(conflict).toContainText("Passt nicht zur Anfrage: Die Länge passt zur Fassung von Christian Brückner");
+  await conflict.getByRole("button", { name: /Behalten/ }).click();
+  await expect.poll(() => kept).toBe(1);
+  expect(errors.filter((e) => !e.includes("ERR_FAILED"))).toEqual([]);
+});
+
 test("Hörbücher: Details aus der Bibliothek öffnen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockAnyDetail(page);

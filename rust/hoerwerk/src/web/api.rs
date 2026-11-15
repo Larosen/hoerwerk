@@ -120,6 +120,7 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("POST", "/api/audiobooks/{job_id}/delete-source") => h!(super::audiobooks::delete_source),
         ("POST", "/api/audiobooks/{job_id}/ignore") => h!(super::audiobooks::ignore),
         ("POST", "/api/audiobooks/{job_id}/wrong-release") => h!(super::audiobooks::wrong_release),
+        ("POST", "/api/audiobooks/{job_id}/keep") => h!(super::audiobooks::keep_other),
         ("POST", "/api/inbox/unignore") => h!(super::audiobooks::unignore),
         ("POST", "/api/library/convert") => h!(super::audiobooks::convert),
         ("POST", "/api/library/correct") => h!(super::audiobooks::correct),

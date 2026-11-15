@@ -2245,18 +2245,37 @@ impl Pipeline {
             let j = slot.lock();
             (j.name.clone(), j.duration)
         };
+        let request = hints["request_id"].as_i64().and_then(|rid| app.requests.get(app, rid));
+        let others = request
+            .as_ref()
+            .and_then(|r| r["editions"].as_array().cloned())
+            .unwrap_or_default();
         if !s(&hints, "asin").is_empty()
             && let Some(top) = ranked.first().cloned()
-            && let Some(why) = releases::mismatch(&name, &top, duration)
+            && let Some(why) = releases::mismatch(&name, &top, duration).or_else(|| {
+                request
+                    .as_ref()
+                    .and_then(|_| crate::edition::runtime_sibling(duration, &top, &others))
+            })
         {
             // the ASIN of the download (or of the requested book) – but is that really what came?
+            if request.is_some() {
+                // downloaded for a request, but it does not fit: a person decides – throw away (deleted and blocked
+                // for this book) or keep it as whatever book it is
+                let mut j = slot.lock();
+                j.hints["request_conflict"] = json!(why);
+                j.info(&t(
+                    "Passt nicht zur Anfrage „{title}“: {why} – verwerfen (löschen und sperren) oder behalten?",
+                    &[("title", s(&top, "title")), ("why", &why)],
+                ));
+                drop(j);
+                self.save(app);
+                return;
+            }
             slot.say(&t(
                 "Passt nicht zu „{title}“ (ASIN {asin}): {why} – suche nach dem Inhalt",
                 &[("title", s(&top, "title")), ("asin", s(&hints, "asin")), ("why", &why)],
             ));
-            if self.wrong_request_download(app, slot, &why) {
-                return; // downloaded for a request, but another book: it is deleted, the request searches on
-            }
             slot.lock().hints["asin"] = Value::Null;
             let hints = slot.lock().hints.clone();
             (ranked, notes) = app.providers.lookup(&hints, &region, fallback);
@@ -2397,27 +2416,30 @@ impl Pipeline {
         releases::doubt(book, duration, &narrator, agreement)
     }
 
-    /// Downloaded for a request, but it is another book: the request blocks this release and searches on, and the
-    /// download is stopped and deleted – nobody asked for it. True when it was a request download.
-    fn wrong_request_download(&self, app: &Arc<App>, slot: &JobRef, why: &str) -> bool {
-        let (rid, source) = {
+    /// A download for a request that does not fit, kept on purpose: the request blocks the release and searches on,
+    /// the download is recognised by its content and filed as the book it is.
+    pub fn keep_other(&self, app: &Arc<App>, id: &str) -> Res<JobRef> {
+        let slot = self.need(id)?;
+        let (rid, source, why) = {
             let mut j = slot.lock();
+            let why = j.hints["request_conflict"].as_str().unwrap_or("").to_string();
             let rid = j
                 .hints
                 .as_object_mut()
                 .and_then(|o| o.remove("request_id"))
                 .and_then(|v| v.as_i64());
-            (rid, base_name(&j.source))
+            if let Some(o) = j.hints.as_object_mut() {
+                o.remove("request_conflict");
+                o.remove("asin");
+            }
+            j.info(&t("Behalten – wird nach dem Inhalt eingeordnet", &[]));
+            (rid, base_name(&j.source), why)
         };
-        let Some(rid) = rid else { return false };
-        slot.say(&t(
-            "Anfrage sucht weiter, dieses Release ist gesperrt und wird gelöscht",
-            &[],
-        ));
-        app.requests.wrong_download(app, rid, &source, why);
-        slot.lock().hints["discard"] = json!(true);
-        slot.cancel.store(true, Ordering::SeqCst);
-        true
+        if let Some(rid) = rid {
+            app.requests.wrong_download(app, rid, &source, &why);
+        }
+        self.requeue_if_waiting(app, &slot);
+        Ok(slot)
     }
 
     /// The download of a job is not wanted (a wrong release for a request): delete it from the inbox.

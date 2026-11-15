@@ -431,8 +431,9 @@ async function openReleases(r: BookRequest, query = ""): Promise<void> {
   requests.releases = [];
   rows.replaceChildren(el("tr", {}, el("td", { colspan: "6", class: "empty-row" }, t("Suche …"))));
   try {
-    const res = await api<{ query: string; queries: string[]; errors: string[]; resting?: string[]; results: JudgedRelease[] }>(
+    const res = await api<{ query: string; queries: string[]; errors: string[]; resting?: string[]; results: JudgedRelease[]; editions?: Edition[] }>(
       "POST", `/api/requests/${r.id}/releases`, { query });
+    renderEditions(r, res.editions || []);
     $<HTMLInputElement>("#releasesQuery").value = res.query;
     const ok = res.results.filter((x) => x.verdict.ok).length;
     $("#releasesNote").textContent = t("{n} Releases, davon {ok} passend", { n: res.results.length, ok }) +
@@ -444,6 +445,26 @@ async function openReleases(r: BookRequest, query = ""): Promise<void> {
   } catch (e) {
     rows.replaceChildren(el("tr", {}, el("td", { colspan: "6", class: "empty-row" }, errMsg(e))));
   }
+}
+
+interface Edition { asin?: string; title: string; narrators?: string[]; year?: number | null; runtime_min?: number | null; format_type?: string | null; source?: string }
+
+/** The recordings of this title: the one asked for and the others – who reads, which year, how long. Whoever knows
+ *  them sees at a glance which release is another recording. */
+function renderEditions(r: BookRequest, others: Edition[]): void {
+  const box = $("#releasesEditions");
+  box.hidden = !others.length;
+  if (!others.length) return;
+  const b = r.book;
+  const line = (e: Edition, wanted: boolean): HTMLElement => el("li", { class: wanted ? "wanted" : "" },
+    el("b", {}, (e.narrators || []).slice(0, 3).join(", ") || t("Sprecher unbekannt")),
+    el("span", { class: "muted" }, [e.year ? String(e.year) : "", e.runtime_min ? fmtDuration(e.runtime_min * 60) : "",
+      e.format_type === "abridged" ? t("gekürzt") : "", e.source && e.source !== "audible" ? (SOURCE_NAMES[e.source] || e.source) : ""].filter(Boolean).join(" · ")),
+    wanted ? el("span", { class: "tag ok" }, t("gesucht")) : null);
+  box.replaceChildren(
+    el("p", { class: "small" }, t("Von „{title}“ gibt es {n} Fassungen – Releases mit dem Sprecher oder Jahr einer anderen werden nicht geladen:", { title: b.title, n: others.length + 1 })),
+    el("ul", { class: "editions" }, line({ title: b.title, narrators: b.narrators || [], year: Number((b.release_date || "").slice(0, 4)) || null,
+      runtime_min: b.runtime_min, format_type: b.format_type }, true), ...others.map((e) => line(e, false))));
 }
 
 function renderReleases(): void {

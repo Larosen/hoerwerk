@@ -477,3 +477,21 @@ pub async fn wrong_release(app: Arc<App>, req: Req, p: Params) -> Reply {
 fn s_of<'a>(v: &'a Value, k: &str) -> &'a str {
     v[k].as_str().unwrap_or("")
 }
+
+/// A download for a request that does not fit, kept on purpose: filed as the book it is, the request searches on.
+pub async fn keep_other(app: Arc<App>, req: Req, p: Params) -> Reply {
+    let id = p.get("job_id").cloned().unwrap_or_default();
+    let a = app.clone();
+    match blocking(move || a.pipeline.keep_other(&a, &id)).await {
+        Ok(slot) => {
+            app.audit(
+                &req.user_name(),
+                &req.ip,
+                "kept_other",
+                p.get("job_id").map_or("", String::as_str),
+            );
+            out(&slot)
+        }
+        Err(e) => pipe_error(e, 409, 400),
+    }
+}
