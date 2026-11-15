@@ -1224,6 +1224,8 @@ impl Requests {
         req["release"] = json!(title);
         req["nzo_id"] = sent["nzo_id"].clone();
         req["sent_at"] = json!(now());
+        req["done_at"] = Value::Null; // a manual grab starts the clock anew
+        req["review_noted"] = Value::Null;
         req["error"] = Value::Null;
         req["attempts"] = json!(req["attempts"].as_i64().unwrap_or(0) + 1);
         let who = by
@@ -1271,7 +1273,15 @@ impl Requests {
             blocked.drain(..skip);
             req["blocked"] = json!(blocked);
         }
-        for k in ["nzo_id", "job_id", "last_search", "pack_volumes"] {
+        // a fresh start for the next release: its review gets noted again, its download timed anew
+        for k in [
+            "nzo_id",
+            "job_id",
+            "last_search",
+            "pack_volumes",
+            "review_noted",
+            "done_at",
+        ] {
             req[k] = Value::Null;
         }
         let attempts = req["attempts"].as_i64().unwrap_or(0);
@@ -1394,7 +1404,7 @@ impl Requests {
                     let items = activity.get_or_insert_with(|| {
                         if app.usenet.has_sab() {
                             app.usenet
-                                .activity(15)
+                                .activity(60)
                                 .ok()
                                 .and_then(|a| a["items"].as_array().cloned())
                                 .unwrap_or_default()
@@ -1404,7 +1414,37 @@ impl Requests {
                     });
                     self.follow_download(app, req, &items.clone());
                 }
-                Some("processing") => self.follow_job(app, req, None),
+                Some("processing") => {
+                    // a download that failed in SABnzbd after it looked finished (repair, unpacking): the next release
+                    let watch = app.job_for_request(rid).is_none() && !text_of(&req["nzo_id"]).is_empty();
+                    let failed = if !watch {
+                        None
+                    } else {
+                        let items = activity.get_or_insert_with(|| {
+                            if app.usenet.has_sab() {
+                                app.usenet
+                                    .activity(60)
+                                    .ok()
+                                    .and_then(|a| a["items"].as_array().cloned())
+                                    .unwrap_or_default()
+                            } else {
+                                Vec::new()
+                            }
+                        });
+                        items.iter().find(|i| i["id"] == req["nzo_id"]).cloned()
+                    };
+                    match failed {
+                        Some(i) if i["status"] == "Failed" => {
+                            let e = i["error"]
+                                .as_str()
+                                .filter(|e| !e.is_empty())
+                                .unwrap_or("SABnzbd")
+                                .to_string();
+                            self.failed_release(app, req, &t("Download fehlgeschlagen: {error}", &[("error", &e)]));
+                        }
+                        _ => self.follow_job(app, req, None),
+                    }
+                }
                 _ => {}
             }
         }
@@ -1487,6 +1527,10 @@ impl Requests {
                 let e = text_of(&job["error"]);
                 self.failed_release(app, req, &t("Import fehlgeschlagen: {error}", &[("error", &e)]));
             }
+            // the import was stopped by hand: this release is off, the request looks for another one
+            Some("cancelled") => {
+                self.failed_release(app, req, &t("Import abgebrochen", &[]));
+            }
             Some("review") if req["review_noted"] != true => {
                 req["review_noted"] = json!(true);
                 self.save(
@@ -1521,7 +1565,7 @@ impl Requests {
             "Im Eingang gefunden: {name}",
             &[("name", job["name"].as_str().unwrap_or(""))],
         );
-        if matches!(job["status"].as_str(), Some("done" | "failed" | "review")) {
+        if matches!(job["status"].as_str(), Some("done" | "failed" | "review" | "cancelled")) {
             if req["status"] != "processing" {
                 req = self.save(app, &req, Some("processing"), &found);
             }

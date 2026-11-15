@@ -61,8 +61,12 @@ async function initInvite(token: string): Promise<void> {
 }
 
 async function initLogin(): Promise<void> {
-  const invite = location.pathname.match(/^\/invite\/([A-Za-z0-9_-]+)$/);
+  const invite = location.pathname.match(/^\/invite\/([A-Za-z0-9_-]{20,64})$/);
   if (invite) { initInvite(invite[1]); return; }
+  if (location.pathname.startsWith("/invite/")) {         // a broken or shortened link
+    showError(t("Diese Einladung gilt nicht (mehr). Bitte frag nach einem neuen Link."));
+    return;
+  }
   let st: AuthStatus;
   try { st = await api<AuthStatus>("GET", "/api/auth/status"); } catch (e) { showError(errMsg(e)); return; }
   if (st.user) { location.replace(nextPage()); return; }

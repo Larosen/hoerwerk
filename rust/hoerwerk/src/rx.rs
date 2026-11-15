@@ -20,14 +20,27 @@ pub fn search<'t>(re: &Regex, text: &'t str) -> Option<Captures<'t>> {
     re.captures(text).ok().flatten()
 }
 
-/// re.sub with a replacement template in Rust syntax ("$1", "${1}x").
+/// re.sub with a replacement template in Rust syntax ("$1", "${1}x"). A pattern that runs into the backtracking
+/// limit on a pathological text (thousands of characters) leaves the text as it is – `replace_all` would panic, and
+/// with `panic = "abort"` that ends the whole server.
 pub fn sub(re: &Regex, text: &str, rep: &str) -> String {
-    re.replace_all(text, rep).into_owned()
+    re.try_replacen(text, 0, rep)
+        .map(|c| c.into_owned())
+        .unwrap_or_else(|_| text.to_string())
 }
 
 /// re.sub, at most once.
 pub fn sub1(re: &Regex, text: &str, rep: &str) -> String {
-    re.replace(text, rep).into_owned()
+    re.try_replacen(text, 1, rep)
+        .map(|c| c.into_owned())
+        .unwrap_or_else(|_| text.to_string())
+}
+
+/// re.sub with a function for each match – the same safety as `sub`.
+pub fn sub_with(re: &Regex, text: &str, rep: impl FnMut(&Captures) -> String) -> String {
+    re.try_replacen(text, 0, rep)
+        .map(|c| c.into_owned())
+        .unwrap_or_else(|_| text.to_string())
 }
 
 /// re.findall with one group (or the whole match without groups).
@@ -61,4 +74,16 @@ pub fn split(re: &Regex, text: &str) -> Vec<String> {
 /// A literal inside a pattern (re.escape).
 pub fn escape(s: &str) -> String {
     fancy_regex::escape(s).into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn pathological_text_does_not_end_the_server() {
+        // thousands of word characters run some lookaround patterns into the backtracking limit: no panic
+        let long = "a".repeat(5000);
+        let _ = crate::audible::clean_query(&long);
+        let _ = crate::filing::sanitize(&long);
+        let _ = crate::releases::search_stages(&serde_json::json!({"title": long, "authors": [long]}));
+    }
 }

@@ -3,6 +3,23 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.6 – 2026-11-15
+
+- **Failed downloads are noticed:** a download still being checked, repaired or unpacked in SABnzbd no longer counts as finished; when it
+  fails there (e.g. too many missing blocks), the request blocks the release and tries the next one – also requests already waiting.
+- **A cancelled import no longer leaves its request hanging** on "Wird verarbeitet": the release is blocked and the request searches on.
+- A release that goes to review after an earlier one failed is noted on its request again; SABnzbd's history is read further back
+  (60 entries) so busy days don't hide a finished or failed download.
+- **A program error no longer stops Hörwerk:** it ends only the request (which answers with an error number) or the one thread; every such
+  error is written to the *Protokoll* ("Programmfehler in … – bitte melden") with where it happened.
+- **A very long search term no longer crashes the server:** some text rules gave up on pathological input with a panic, which ended the
+  whole process; they now leave such text unchanged, and search terms are cut to 300 characters.
+- A broken or shortened invitation link says that the invitation does not hold (instead of raw JSON); unknown addresses lead to the start.
+- *Indexer & SABnzbd* on the phone: each indexer is laid out in readable rows (name and categories, address, key, then *Aktiv*, *Zuerst*,
+  move up and remove) instead of a cramped row that ran off the screen.
+- **Library on the phone:** scrolling no longer jumps back to the top while something is being converted (live updates no longer rebuild
+  the list).
+
 ## 1.0.5 – 2026-11-15
 
 - **No more endless "Download fertig – wartet auf den Eingang":** a request whose finished download never shows up as an import is marked

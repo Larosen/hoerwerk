@@ -1613,5 +1613,7 @@
  "Von „{title}“ gibt es {n} Fassungen – Releases mit dem Sprecher oder Jahr einer anderen werden nicht geladen:": "“{title}” exists in {n} recordings – releases with the narrator or year of another one are not loaded:",
  "gekürzt": "abridged",
  "gesucht": "wanted",
- "Download kam nicht im Eingang an (Zielordner der Kategorie in SABnzbd prüfen)": "The download never reached the inbox (check the category's folder in SABnzbd)"
+ "Download kam nicht im Eingang an (Zielordner der Kategorie in SABnzbd prüfen)": "The download never reached the inbox (check the category's folder in SABnzbd)",
+ "Import abgebrochen": "Import cancelled",
+ "Programmfehler in {thread} ({at}): {what} – bitte melden": "Program error in {thread} ({at}): {what} – please report"
 }

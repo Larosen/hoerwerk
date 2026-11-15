@@ -97,7 +97,7 @@ async function deleteFromLibrary(b: DetailBook): Promise<void> {
     await api("DELETE", `/api/library/book?path=${encodeURIComponent(path)}`);
     toast(t("Aus der Bibliothek gelöscht"));
     closeDetail();
-    if (!$("#viewBooks").hidden && books.filter === "library") { books.libShown = 100; void loadLibraryStats(); renderBooks(); }
+    if (books.filter === "library") void loadLibraryBooks();
   } catch (e) { toast(errMsg(e), true); }
 }
 

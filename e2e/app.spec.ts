@@ -7,7 +7,9 @@ const ROOT = process.env.E2E_ROOT || "e2e/.run";   // prepared by e2e/setup.mjs
 
 declare const live: { ok: boolean };   // global of the page (frontend/src/live.ts)
 declare let versionChecked: number;
-declare function pollBench(): Promise<void>;   // global of the page (frontend/src/live.ts)
+declare function pollBench(): Promise<void>;
+declare const books: { data: unknown };
+declare function applyBooks(d: unknown): void;   // global of the page (frontend/src/live.ts)
 
 function tone(path: string, seconds: number, tags: Record<string, string> = {}): void {
   mkdirSync(dirname(path), { recursive: true });
@@ -1069,6 +1071,30 @@ test("Fassungen: das Releases-Fenster zeigt die anderen Aufnahmen, ein unpassend
   await conflict.getByRole("button", { name: /Behalten/ }).click();
   await expect.poll(() => kept).toBe(1);
   expect(errors.filter((e) => !e.includes("ERR_FAILED"))).toEqual([]);
+});
+
+test("Bibliothek: Live-Updates der Aufträge bauen die Liste nicht neu (kein Sprung nach oben beim Scrollen)", async ({ page }) => {
+  const errors = await open(page);
+  await page.goto("/books");
+  await page.locator("#bookFilter .chip").first().click();                                  // Bibliothek
+  await expect(page.locator(".lib-row").first()).toBeVisible();
+  await page.evaluate(() => { document.querySelector(".lib-row")!.setAttribute("data-mark", "1"); });
+  // a conversion's progress arrives: the jobs change, the library stays as it is
+  await page.evaluate(() => { const d = JSON.parse(JSON.stringify(books.data)); d.scan_note = String(Math.random()); applyBooks(d); });
+  await expect(page.locator(".lib-row[data-mark='1']")).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test("Robust: kaputter Einladungslink und unbekannte Adressen zeigen Seiten statt JSON, lange Suchbegriffe bringen den Server nicht zum Absturz", async ({ page, request }) => {
+  await page.goto("/invite/abc");
+  await expect(page.locator("body")).toContainText("Diese Einladung gilt nicht (mehr)");
+  await page.goto("/gibt-es-nicht");
+  await expect(page).toHaveURL(/\/login$/);                                         // the start (not signed in: the sign-in)
+  const errors = await open(page);
+  const res = await page.request.post("/api/search/books", { headers: OWN, data: { query: "a".repeat(5000) } });
+  expect(res.status()).toBeLessThan(500);
+  expect((await request.get("/api/health")).status()).toBe(200);                    // still there
+  expect(errors).toEqual([]);
 });
 
 test("Hörbücher: Details aus der Bibliothek öffnen", async ({ page }) => {

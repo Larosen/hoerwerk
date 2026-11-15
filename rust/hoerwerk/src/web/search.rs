@@ -88,7 +88,7 @@ fn region(app: &App, req: &Req) -> Result<String, Reply> {
 
 /// Releases at the indexers (admins): every result marked when the library has it already.
 pub async fn indexers(app: Arc<App>, req: Req, _: Params) -> Reply {
-    let query = req.str("query").trim().to_string();
+    let query: String = req.str("query").trim().chars().take(300).collect(); // a search term, not a novel
     if query.chars().count() < 2 {
         return error(400, t("Suchbegriff fehlt", &[]));
     }
@@ -221,7 +221,7 @@ pub fn for_browser(app: &App, req: &Req, books: &[Value]) -> Vec<Value> {
 
 /// Look the book up at Audible first (German title and author as the shop lists them), BookBeat second.
 pub async fn books(app: Arc<App>, req: Req, _: Params) -> Reply {
-    let query = req.str("query").trim().to_string();
+    let query: String = req.str("query").trim().chars().take(300).collect(); // a search term, not a novel
     if query.chars().count() < 2 {
         return error(400, t("Suchbegriff fehlt", &[]));
     }
@@ -435,7 +435,7 @@ pub async fn send(app: Arc<App>, req: Req, _: Params) -> Reply {
 
 /// Free, legal audiobooks (LibriVox): what matches the text, with what is in the library already.
 pub async fn free(app: Arc<App>, req: Req, _: Params) -> Reply {
-    let query = req.str("query").trim().to_string();
+    let query: String = req.str("query").trim().chars().take(300).collect(); // a search term, not a novel
     if query.chars().count() < 2 {
         return error(400, t("Suchbegriff fehlt", &[]));
     }
