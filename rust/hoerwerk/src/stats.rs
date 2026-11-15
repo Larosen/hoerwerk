@@ -285,25 +285,59 @@ impl Stats {
             .iter()
             .filter_map(|id| users.get(id).map(|a| (*id, a.clone().finish())))
             .collect();
-        let mut heard_total = json!({"seconds": 0, "books": 0, "finished": 0, "linked": 0});
+        let mut heard_total = json!({"seconds": 0, "books": 0, "finished": 0, "linked": 0, "listeners": 0});
         let mut errors: Vec<Value> = Vec::new();
+        let mut heard_months: HashMap<String, f64> = HashMap::new();
+        let mut heard_genres: Vec<(String, i64)> = Vec::new();
+        let mut take = |h: &mut Value, total: &mut Value| {
+            for k in ["seconds", "books", "finished"] {
+                total[k] = json!(total[k].as_i64().unwrap_or(0) + h[k].as_i64().unwrap_or(0));
+            }
+            for e in h["errors"].as_array().into_iter().flatten() {
+                if !errors.contains(e) {
+                    errors.push(e.clone());
+                }
+            }
+            // hours per month: the whole history (the chart shows twelve months whatever the period)
+            for (day, secs) in h["days"].as_object().into_iter().flatten() {
+                *heard_months.entry(day.chars().take(7).collect()).or_default() += secs.as_f64().unwrap_or(0.0);
+            }
+            for g in h["genres"].as_array().into_iter().flatten() {
+                let (name, n) = (g["name"].as_str().unwrap_or(""), g["books"].as_i64().unwrap_or(0));
+                match heard_genres.iter_mut().find(|x| x.0 == name) {
+                    Some(e) => e.1 += n,
+                    None => heard_genres.push((name.to_string(), n)),
+                }
+            }
+            if let Some(o) = h.as_object_mut() {
+                o.remove("days");
+            }
+        };
         for (id, s) in out.iter_mut() {
             s["listen"] = Value::Null;
             let Some(uid) = id else { continue };
-            let h = app.listening.summary(app, *uid, since);
+            let mut h = app.listening.summary(app, *uid, since);
             if h["linked"].as_array().is_some_and(|l| !l.is_empty()) {
                 heard_total["linked"] = json!(heard_total["linked"].as_i64().unwrap_or(0) + 1);
-                for k in ["seconds", "books", "finished"] {
-                    heard_total[k] = json!(heard_total[k].as_i64().unwrap_or(0) + h[k].as_i64().unwrap_or(0));
-                }
-                for e in h["errors"].as_array().into_iter().flatten() {
-                    if !errors.contains(e) {
-                        errors.push(e.clone());
-                    }
-                }
+                take(&mut h, &mut heard_total);
                 s["listen"] = h;
             }
         }
+        // people who listen in Audiobookshelf or Plex but have no Hörwerk account: asked for nothing, heard something
+        for l in app.listening.listeners(app) {
+            let mut h = app.listening.summary_of(app, &l["links"], since);
+            if h["seconds"].as_f64().unwrap_or(0.0) <= 0.0 && h["books"].as_i64().unwrap_or(0) == 0 {
+                continue; // heard nothing in the period (and can ask for nothing): no card
+            }
+            take(&mut h, &mut heard_total);
+            heard_total["listeners"] = json!(heard_total["listeners"].as_i64().unwrap_or(0) + 1);
+            let mut card = Acc::blank(Value::Null, l["name"].as_str().unwrap_or(""), "listener").finish();
+            card["listen"] = h;
+            card["listener"] = json!({"key": l["key"], "person": l["person"],
+                                      "abs": !l["links"]["abs"].is_null(), "plex": !l["links"]["plex"].is_null()});
+            out.push((None, card));
+        }
+        heard_genres.sort_by_key(|x| std::cmp::Reverse(x.1));
         out.sort_by(|a, b| {
             let k = |s: &Value| {
                 (
@@ -330,24 +364,7 @@ impl Stats {
                 s
             })
             .collect();
-        // hours heard per month, all linked accounts together
-        let mut heard_months: HashMap<String, f64> = HashMap::new();
-        for uid in users_out.iter().filter_map(|u| u["id"].as_i64()) {
-            if users_out
-                .iter()
-                .find(|u| u["id"] == json!(uid))
-                .is_some_and(|u| u["listen"].is_null())
-            {
-                continue;
-            }
-            for (day, secs) in app.listening.history(app, uid)["days"]
-                .as_object()
-                .into_iter()
-                .flatten()
-            {
-                *heard_months.entry(day.chars().take(7).collect()).or_default() += secs.as_f64().unwrap_or(0.0);
-            }
-        }
+        // hours heard per month: everyone together (collected above)
         let listen_months: Vec<Value> = month_keys
             .iter()
             .map(|k| json!({"month": k, "seconds": crate::releases::py_round(heard_months.get(k).copied().unwrap_or(0.0))}))
@@ -355,6 +372,7 @@ impl Stats {
         Some(json!({
             "period": period, "since": if since == 0.0 { Value::Null } else { json!(since) }, "users": users_out,
             "total": total.finish(), "listen": heard_total, "listen_months": listen_months,
+            "listen_genres": heard_genres.iter().take(6).map(|(name, books)| json!({"name": name, "books": books})).collect::<Vec<_>>(),
             "listen_errors": errors.into_iter().take(5).collect::<Vec<_>>(),
             "months": month_keys.iter().map(|k| { let (b, m) = month_rows[k]; json!({"month": k, "books": b, "minutes": m}) }).collect::<Vec<_>>(),
             "library_books": app.library.stats()["books"],
@@ -410,7 +428,8 @@ impl Stats {
             .collect();
         Some(
             json!({"scope": "own", "period": s["period"], "since": s["since"], "me": me, "total": s["total"],
-                    "accounts": s["users"].as_array().map_or(0, Vec::len), "listen": s["listen"], "listen_months": s["listen_months"], "months": months,
+                    "accounts": s["users"].as_array().map_or(0, |u| u.iter().filter(|x| x["listener"].is_null()).count()),
+                    "listen": s["listen"], "listen_months": s["listen_months"], "listen_genres": s["listen_genres"], "months": months,
                     "library_books": s["library_books"]}),
         )
     }

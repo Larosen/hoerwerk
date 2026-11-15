@@ -104,6 +104,12 @@
    "raw_body": false
   },
   {
+   "method": "POST",
+   "path": "/api/audiobooks/{job_id}/wrong-release",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/audit",
    "access": "admin",
@@ -332,6 +338,12 @@
    "raw_body": false
   },
   {
+   "method": "DELETE",
+   "path": "/api/library/book",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/library/books",
    "access": "user",
@@ -412,6 +424,18 @@
   {
    "method": "PUT",
    "path": "/api/listening/link",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "PUT",
+   "path": "/api/listening/people",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/listening/people/{id}",
    "access": "admin",
    "raw_body": false
   },

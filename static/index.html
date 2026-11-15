@@ -55,6 +55,10 @@
     <a class="tab admin-only" href="/books" data-view="books" title="Eingang, Verarbeitung und Bibliothek – nur für Admins"><svg class="ico" aria-hidden="true"><use href="#i-books"/></svg><span>Hörbücher</span> <span id="reviewBadge" class="pill" hidden></span></a>
     <a class="tab more-tab" href="/more" data-view="more"><svg class="ico" aria-hidden="true"><use href="#i-more"/></svg><span>Mehr</span></a>
   </nav>
+  <section id="workbench" class="workbench" aria-label="Werkbank" hidden>
+    <a class="wb-head" id="workbenchHead" href="/requests"><span>Werkbank</span> <span id="workbenchCount" class="muted"></span></a>
+    <ul id="workbenchList" class="wb-list"></ul>
+  </section>
   <div class="topbar-actions">
     <a id="logBtn" class="btn ghost admin-only" href="/settings/logs" data-view="settings" data-section="logs" title="Protokoll"><svg class="ico" aria-hidden="true"><use href="#i-log"/></svg><span class="lbl">Protokoll</span></a>
     <a id="settingsBtn" class="btn ghost admin-only" href="/settings" data-view="settings" data-not-section="logs" title="Einstellungen"><svg class="ico" aria-hidden="true"><use href="#i-settings"/></svg><span class="lbl">Einstellungen</span></a>
@@ -75,7 +79,7 @@
     <div class="inbox-line" id="inboxInfo"></div>
     <div class="panel-head wrap sub-head">
       <div id="bookFilter" class="chips" role="group" aria-label="Status-Filter"></div>
-      <button id="clearBooksBtn" class="btn small ghost" title="Fertige aus der Liste entfernen">Fertige ausblenden</button>
+      <button id="clearBooksBtn" class="btn small ghost" title="Fertige aus dieser Ansicht aus- oder wieder einblenden – unter „Fertig“ bleiben sie">Fertige ausblenden</button>
     </div>
     <ul id="bookList" class="book-list"></ul>
   </section>
@@ -638,6 +642,17 @@
       <h3 class="stats-h">Wer fragt an, wer hört</h3>
       <div class="people-legend muted small"><span class="key req"></span> angefragt (Spielzeit) <span class="key heard"></span> gehört</div>
       <ul id="statsPeople" class="people-list"></ul>
+      <details id="statsMerge" class="stats-merge">
+        <summary>Hörer zusammenführen</summary>
+        <p class="muted small">Ein Audiobookshelf-Konto und ein Plex-Profil derselben Person werden zu einer Karte. Gehört jemand zu einem Hörwerk-Konto, verknüpfst du es dort (Einstellungen → Konten).</p>
+        <div class="merge-form">
+          <label>Audiobookshelf <select id="mergeAbs"></select></label>
+          <label>Plex <select id="mergePlex"></select></label>
+          <label>Name <input id="mergeName" type="text" maxlength="100" placeholder="wie auf der Karte"></label>
+          <button type="button" class="btn small primary" id="mergeGo">Zusammenführen</button>
+        </div>
+        <ul id="mergePeople" class="merge-people"></ul>
+      </details>
     </div>
     <div id="statsDetail" class="stats-detail" hidden>
       <div class="stats-col">
@@ -654,7 +669,7 @@
       <div id="statsListenChart" class="month-chart listen-chart" role="img"></div>
     </div>
     <div id="statsGenresBox" hidden>
-      <h3 class="stats-h">Genres <small class="muted">der angefragten Hörbücher</small></h3>
+      <h3 class="stats-h">Genres <small class="muted" id="statsGenresNote">der angefragten Hörbücher</small></h3>
       <div id="statsGenres"></div>
     </div>
     <h3 class="stats-h"><span id="statsChartHead">Angefragte Hörbücher je Monat</span> <small class="muted" id="statsChartNote">letzte 12 Monate, alle Konten</small></h3>
@@ -864,5 +879,6 @@
 <script src="/static/account.js"></script>
 <script src="/static/upload.js"></script>
 <script src="/static/settings.js"></script>
+<script src="/static/workbench.js"></script>
 </body>
 </html>

@@ -763,7 +763,10 @@ impl Requests {
     }
 
     /// Delete the request (with `whole_group`: every volume of its series that may be withdrawn).
-    pub fn withdraw(&self, app: &App, rid: i64, user: &Value, whole_group: bool) -> Res<usize> {
+    /// Delete a request – one's own, or any as admin. A running download is stopped (SABnzbd deletes its files), a
+    /// running import is cancelled and its download deleted; with `files`, a book that arrived is deleted from the
+    /// library as well (only by whoever asked for it, or an admin).
+    pub fn withdraw(&self, app: &Arc<App>, rid: i64, user: &Value, whole_group: bool, files: bool) -> Res<usize> {
         let req = self.need(app, rid)?;
         let mut items = if whole_group {
             self.group(app, &req)
@@ -774,21 +777,54 @@ impl Requests {
             if req["user_id"] != user["id"] {
                 return err(t("Nicht gefunden", &[]), 404);
             }
-            let may = ["pending", "searching", "failed", "declined"];
-            let running = || err(t("Der Download läuft schon – zurückziehen geht nicht mehr", &[]), 409);
-            if !whole_group && !may.contains(&req["status"].as_str().unwrap_or("")) {
-                return running();
-            }
-            items.retain(|i| may.contains(&i["status"].as_str().unwrap_or("")) && i["user_id"] == user["id"]);
-            if items.is_empty() {
-                return running();
-            }
+            items.retain(|i| i["user_id"] == user["id"]);
         }
+        let mut problems: Vec<String> = Vec::new();
         for i in &items {
+            match i["status"].as_str().unwrap_or("") {
+                "downloading" => {
+                    if let Err(e) = app.usenet.cancel_download(&text_of(&i["nzo_id"])) {
+                        problems.push(e.to_string());
+                    }
+                }
+                "processing" => {
+                    let jid = text_of(&i["job_id"]);
+                    if !jid.is_empty()
+                        && let Some(job) = app.pipeline.get(&jid)
+                    {
+                        job.lock().hints["discard"] = json!(true);
+                        let _ = app.pipeline.cancel(app, &jid);
+                    }
+                }
+                "available" if files => {
+                    let path = text_of(&i["path"]);
+                    let rel = if path.is_empty() {
+                        app.library
+                            .find(&i["book"])
+                            .first()
+                            .map(|e| text_of(&e["path"]))
+                            .unwrap_or_default()
+                    } else {
+                        path.strip_prefix(&app.library.root.display().to_string())
+                            .unwrap_or(&path)
+                            .trim_start_matches('/')
+                            .to_string()
+                    };
+                    if !rel.is_empty()
+                        && let Err(e) = app.pipeline.delete_from_library(app, &rel)
+                    {
+                        problems.push(e.to_string());
+                    }
+                }
+                _ => {}
+            }
             let _ = app
                 .db
                 .lock()
                 .execute("DELETE FROM requests WHERE id=?", [i["id"].as_i64()]);
+        }
+        if let Some(p) = problems.first() {
+            text::warn("Anfragen", &t("Anfrage gelöscht, aber: {error}", &[("error", p)]));
         }
         Ok(items.len())
     }
@@ -867,6 +903,13 @@ impl Requests {
                 .unwrap_or_default()
         });
         let queries = if queries.is_empty() { vec![q.clone()] } else { queries };
+        for r in ranked.iter_mut().filter(|r| r["verdict"]["ok"] == true) {
+            if let Some(word) = releases::name_doubt(&text_of(&r["title"]), &req["book"])
+                && let Some(n) = r["verdict"]["notes"].as_array_mut()
+            {
+                n.insert(0, json!(t("nicht automatisch: „{word}“ im Namen", &[("word", &word)])));
+            }
+        }
         let have = &req["upgrade"]["have"];
         if !have.is_null() {
             // a better release for a book that is there: say which ones would be an improvement
@@ -1026,7 +1069,21 @@ impl Requests {
             };
             return Some(self.save(app, &req, None, &note));
         }
-        let best = good[0].clone();
+        // a short title and more in the release name ("Odyssee op Kölsch"): maybe another work – a person chooses
+        let sure: Vec<&Value> = good
+            .iter()
+            .copied()
+            .filter(|r| releases::name_doubt(&text_of(&r["title"]), &req["book"]).is_none())
+            .collect();
+        if sure.is_empty() {
+            let word = releases::name_doubt(&text_of(&good[0]["title"]), &req["book"]).unwrap_or_default();
+            let note = t(
+                "{n} mögliche Releases, keines eindeutig („{word}“ im Namen) – bitte unter „Releases“ wählen",
+                &[("n", &good.len().to_string()), ("word", &word)],
+            );
+            return Some(self.save(app, &req, None, &note));
+        }
+        let best = sure[0].clone();
         // what the search found is kept (found/seen/queries) before the grab reads the request again
         self.save(app, &req, None, "");
         match self.grab(app, rid, best["id"].as_str().unwrap_or(""), None, Some(&best)) {

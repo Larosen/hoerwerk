@@ -6,7 +6,8 @@ import { dirname, join } from "node:path";
 const ROOT = process.env.E2E_ROOT || "e2e/.run";   // prepared by e2e/setup.mjs
 
 declare const live: { ok: boolean };   // global of the page (frontend/src/live.ts)
-declare let versionChecked: number;   // global of the page (frontend/src/live.ts)
+declare let versionChecked: number;
+declare function pollBench(): Promise<void>;   // global of the page (frontend/src/live.ts)
 
 function tone(path: string, seconds: number, tags: Record<string, string> = {}): void {
   mkdirSync(dirname(path), { recursive: true });
@@ -459,7 +460,7 @@ test("Statistik: je Konto, ein Konto im Detail, Zeitraum wählbar, Monate als Ba
   await expect(page).toHaveURL(/\/stats$/);
   await expect(page.locator("#statsTitle")).toHaveText("Statistik");
   await expect(page.locator("#statsTiles .stat-tile")).toHaveCount(4);
-  await expect(page.locator("#statsPeople .person").first()).toContainText("admin");
+  await expect(page.locator("#statsPeople")).toContainText("niemand etwas angefragt oder gehört");   // nothing asked or heard yet: no cards
   await expect(page.locator("#statsChart .col")).toHaveCount(12);
   const asked: string[] = [];
   page.on("request", (r) => { if (r.url().includes("/api/stats")) asked.push(new URL(r.url()).searchParams.get("period") || ""); });
@@ -467,9 +468,8 @@ test("Statistik: je Konto, ein Konto im Detail, Zeitraum wählbar, Monate als Ba
   await expect.poll(() => asked).toContain("all");
   await page.locator(".stats-months summary").click();
   await expect(page.locator("#statsMonthRows tr")).toHaveCount(12);
-  // a name opens that account: its requests and what it heard
-  await page.locator("#statsPeople .person-card", { hasText: "admin" }).click();
-  await expect(page).toHaveURL(/\/stats\/\d+$/);
+  // an account's own page: its requests and what it heard (from a card, here directly)
+  await page.goto("/stats/1");
   await expect(page.locator("#statsTitle")).toHaveText(/Statistik: admin/);
   await expect(page.locator("#statsAccounts")).toBeHidden();
   await expect(page.locator("#statsDetail")).toBeVisible();
@@ -914,6 +914,100 @@ test("Neue Version auf dem Server: ein offener Tab bietet einmal das Neuladen an
   await expect(bar).toContainText("Hörwerk wurde aktualisiert (99.0.0).");
   await bar.getByRole("button", { name: "Schließen" }).click();
   await expect(bar).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("Statistik: Hörer ohne Hörwerk-Konto zählen mit, Audiobookshelf und Plex lassen sich zusammenführen", async ({ page }) => {
+  const months = Array.from({ length: 12 }, (_, i) => `2026-${String(i + 1).padStart(2, "0")}`);
+  const blank = { requests: 0, books: 0, available: 0, open: 0, declined: 0, failed: 0, series: 0, minutes: 0, minutes_available: 0, bytes: 0,
+    english: 0, wait_median: null, last: null, top_genres: [], genres: [] };
+  const listen = (sec: number) => ({ seconds: sec, books: 2, finished: 1, last: 1_700_000_000, linked: [], errors: [], genres: [{ name: "Krimis & Thriller", books: 2 }] });
+  await page.route(/\/api\/stats(\?|$)/, (r) => r.fulfill({ json: { scope: "all", period: "365", since: null,
+    users: [{ ...blank, id: 1, name: "admin", role: "admin", listen: null }, { ...blank, id: 2, name: "Bob", role: "user", books: 1, minutes: 60, listen: null },
+      { ...blank, id: null, name: "Oma", role: "listener", listen: listen(36000), listener: { key: "abs:o", person: null, abs: true, plex: false } }],
+    total: { ...blank, id: null, name: "", role: "user" }, months: months.map((m) => ({ month: m, books: 0, minutes: 0 })), library_books: 3,
+    listen: { seconds: 36000, books: 2, finished: 1, linked: 0, listeners: 1 }, listen_months: months.map((m) => ({ month: m, seconds: 3600 })),
+    listen_genres: [{ name: "Krimis & Thriller", books: 2 }] } }));
+  let merged: unknown = null;
+  await page.route("**/api/listening/accounts", (r) => r.fulfill({ json: { available: { abs: true, plex: true }, errors: [],
+    abs: [{ id: "o", name: "oma" }], plex: [{ id: "9", name: "Oma Plex" }], users: [{ id: 1, name: "admin", links: { abs: null, plex: null } }], people: [] } }));
+  await page.route("**/api/listening/people", (r) => { merged = r.request().postDataJSON(); return r.fulfill({ json: { people: [] } }); });
+  const errors = await open(page);
+  await page.goto("/stats");
+  const oma = page.locator(".person", { hasText: "Oma" });
+  await expect(oma).toContainText("Audiobookshelf");
+  await expect(oma).toContainText("10 h");
+  await expect(oma.locator("a")).toHaveCount(0);                                     // no account page for a listener
+  await expect(page.locator(".person", { hasText: "admin" })).toHaveCount(0);       // nothing asked, nothing heard: no card
+  await expect(page.locator(".person", { hasText: "Bob" })).toHaveCount(1);
+  await expect(page.locator("#statsGenresNote")).toHaveText("der gehörten Hörbücher");
+  await page.locator("#statsMerge summary").click();
+  await page.locator("#mergeAbs").selectOption("o");
+  await page.locator("#mergePlex").selectOption("9");
+  await page.locator("#mergeName").fill("Oma");
+  await page.locator("#mergeGo").click();
+  await expect.poll(() => merged).toEqual({ abs: "o", plex: "9", name: "Oma" });
+  expect(errors).toEqual([]);
+});
+
+test("Werkbank: links was gerade läuft, auf dem Handy eine Leiste über den Tabs", async ({ page }) => {
+  const req = (id: number, title: string, status: string, live: object) => ({ id, book: { title, authors: ["A"] }, status, created: 1, updated: 1, mine: true, live });
+  let items = [req(1, "Afrika", "downloading", { kind: "download", state: "Downloading", progress: 0.42, mb: 1000, mbleft: 580 }),
+    req(2, "Krabat", "processing", { kind: "import", state: "converting", progress: 0.71 })];
+  await page.route("**/api/requests", (r) => r.fulfill({ json: { items, may_search: true } }));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const errors = await open(page);
+  const bench = page.locator("#workbench");
+  await expect(bench.locator(".wb-item")).toHaveCount(2);
+  await expect(bench.locator(".wb-item").first()).toContainText("Afrika");
+  await expect(bench.locator(".wb-item").first()).toContainText("Lädt · 42 %");
+  await expect(bench.locator(".wb-item").nth(1)).toContainText("Wandelt in M4B um · 71 %");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(bench).toBeVisible();
+  await expect(bench.locator(".wb-plus")).toHaveText(" · +1");
+  items = [];
+  await page.evaluate(() => pollBench());
+  await expect(bench).toBeHidden();                                                  // phone: nothing on the bench, no bar
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(bench).toContainText("Gerade nichts in Arbeit");
+  expect(errors).toEqual([]);
+});
+
+test("Löschen: Anfrage mit laufendem Download abbrechen, fertiges Hörbuch auch aus der Bibliothek, Fertige nur ausblenden", async ({ page }) => {
+  const req = (id: number, title: string, status: string, live: object | null) => ({ id, book: { title, authors: ["A"] }, status, created: 1, updated: 1, mine: true, live });
+  const deleted: string[] = [];
+  await page.route("**/api/requests", (r) => r.fulfill({ json: { items: [
+    req(1, "Afrika", "downloading", { kind: "download", state: "Downloading", progress: 0.4 }),
+    req(2, "Krabat", "available", null)], may_search: true, sees_all: true, pending: 0, interval: 6,
+    quota: { limit: null, used: 0, left: null, period: "month" } } }));
+  await page.route(/\/api\/requests\/\d+/, (r) => { deleted.push(new URL(r.request().url()).pathname + new URL(r.request().url()).search); return r.fulfill({ json: { ok: true, deleted: 1 } }); });
+  const errors = await open(page);
+  await page.goto("/requests");
+  const afrika = page.locator("li.request", { hasText: "Afrika" });
+  await afrika.getByTitle("Abbrechen und löschen").click();
+  await expect(page.locator("#confirmText")).toContainText("Download abbrechen und Anfrage löschen?");
+  await page.locator("#confirmOk").click();
+  await expect.poll(() => deleted).toContain("/api/requests/1");
+  await page.getByRole("button", { name: /^Verfügbar/ }).click();                    // a book that arrived
+  const krabat = page.locator("li.request", { hasText: "Krabat" });
+  await krabat.getByTitle("Anfrage löschen").click();
+  await page.locator("#confirmOk").click();                                           // delete the request …
+  await expect(page.locator("#confirmText")).toContainText("Auch das Hörbuch „Krabat“ aus der Bibliothek löschen?");
+  await page.locator("#confirmOk").click();                                           // … and the book
+  await expect.poll(() => deleted).toContain("/api/requests/2?files=1");
+  // "Fertige ausblenden" only hides: a second click shows them again
+  await page.unroute("**/api/requests");
+  await page.goto("/books");
+  await page.locator("#bookFilter").getByRole("button", { name: /Aufträge/ }).click();
+  const done = page.locator("#bookList .book.done");
+  const before = await done.count();
+  if (before) {
+    await page.locator("#clearBooksBtn").click();
+    await expect(done).toHaveCount(0);
+    await expect(page.locator("#clearBooksBtn")).toHaveText("Fertige einblenden");
+    await page.locator("#clearBooksBtn").click();
+    await expect(done).toHaveCount(before);
+  }
   expect(errors).toEqual([]);
 });
 

@@ -431,3 +431,24 @@ pub async fn convert(app: Arc<App>, req: Req, _: Params) -> Reply {
     }
     json_reply(json!({"jobs": jobs}))
 }
+
+/// The download of a request is the wrong book: stop the import, delete the download, the request searches on.
+pub async fn wrong_release(app: Arc<App>, req: Req, p: Params) -> Reply {
+    let id = p.get("job_id").cloned().unwrap_or_default();
+    let a = app.clone();
+    match tokio::task::spawn_blocking(move || a.pipeline.wrong_release(&a, &id).map(|_| ()))
+        .await
+        .expect("worker thread")
+    {
+        Ok(()) => {
+            app.audit(
+                &req.user_name(),
+                &req.ip,
+                "wrong_release",
+                p.get("job_id").map_or("", String::as_str),
+            );
+            json_reply(json!({"ok": true}))
+        }
+        Err(e) => pipe_error(e, 409, 400),
+    }
+}

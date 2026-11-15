@@ -82,6 +82,24 @@ function fmtMB(mb: number): string {
   return mb >= 1024 ? `${num(mb / 1024)} GB` : `${Math.round(mb)} MB`;
 }
 
+/** Delete a request – a running download is stopped, a running import cancelled; a book that is there can go too. */
+async function deleteRequest(r: BookRequest): Promise<void> {
+  const title = r.book.title;
+  const q = r.status === "downloading" ? t("„{title}“: Download abbrechen und Anfrage löschen?", { title })
+    : r.status === "processing" ? t("„{title}“: Import abbrechen, Download löschen und Anfrage löschen?", { title })
+      : t("Anfrage „{title}“ löschen?", { title });
+  if (!(await confirmBox(q, t("Löschen")))) return;
+  let files = false;
+  if (r.status === "available") {
+    files = await confirmBox(t("Auch das Hörbuch „{title}“ aus der Bibliothek löschen?", { title }), t("Aus der Bibliothek löschen"));
+  }
+  try {
+    await api("DELETE", `/api/requests/${r.id}${files ? "?files=1" : ""}`);
+    toast(files ? t("Anfrage und Hörbuch gelöscht") : t("Anfrage gelöscht"));
+    loadRequests();
+  } catch (e) { toast(errMsg(e), true); }
+}
+
 /** Progress, size, time left and speed while it loads; the step while it becomes an M4B. */
 function liveInfo(r: BookRequest, prefix = ""): HTMLElement | null {
   const l = r.live;
@@ -254,11 +272,9 @@ function requestCard(r: BookRequest): HTMLLIElement {
   if (IS_ADMIN && ["failed", "searching"].includes(r.status)) {
     actions.push(el("button", { type: "button", class: "btn small ghost", onclick: () => decide(r, "retry") }, icon("refresh"), t("Jetzt suchen")));
   }
-  if ((r.mine && ["pending", "searching", "failed", "declined"].includes(r.status)) || IS_ADMIN) {
-    actions.push(el("button", { type: "button", class: "icon-btn", title: t("Anfrage zurückziehen / löschen"), onclick: async () => {
-      if (!(await confirmBox(t("Anfrage „{title}“ löschen?", { title: b.title }), t("Löschen")))) return;
-      try { await api("DELETE", `/api/requests/${r.id}`); loadRequests(); } catch (e) { toast(errMsg(e), true); }
-    } }, icon("x")));
+  if (r.mine || IS_ADMIN) {
+    actions.push(el("button", { type: "button", class: "icon-btn", title: ["downloading", "processing"].includes(r.status)
+      ? t("Abbrechen und löschen") : t("Anfrage löschen"), onclick: () => deleteRequest(r) }, icon("x")));
   }
   const detail = r.status === "declined" && r.reason ? t("Grund: {reason}", { reason: r.reason })
     : r.status === "searching" && r.last_search ? t("Zuletzt gesucht {when} – nichts Passendes ({checked})", { when: fmtAgo(r.last_search),
@@ -307,14 +323,14 @@ function groupCard(members: BookRequest[]): HTMLLIElement {
     actions.push(el("button", { type: "button", class: "btn small primary", onclick: () => decide(pending, "approve") }, icon("check"), t("Reihe freigeben")));
     actions.push(el("button", { type: "button", class: "btn small", onclick: () => decide(pending, "decline") }, t("Ablehnen")));
   }
-  const removable = IS_ADMIN || members.some((m) => m.mine && ["pending", "searching", "failed", "declined"].includes(m.status));
+  const removable = IS_ADMIN || members.some((m) => m.mine);
   if (removable) {
     actions.push(el("button", { type: "button", class: "btn small ghost", title: t("Reihen-Anfrage zurückziehen / löschen"), onclick: async () => {
-      const q = IS_ADMIN ? t("Reihe „{title}“ löschen – alle {n} Bände?", { title: g.title, n: members.length })
-        : t("Reihe „{title}“ zurückziehen? Bände, die schon laden, bleiben.", { title: g.title });
+      const q = t("Reihe „{title}“ löschen – alle {n} Bände? Laufende Downloads werden abgebrochen, fertige Hörbücher bleiben in der Bibliothek.",
+        { title: g.title, n: members.length });
       if (!(await confirmBox(q, t("Löschen")))) return;
       try { await api("DELETE", `/api/requests/${first.id}?group=1`); loadRequests(); } catch (e) { toast(errMsg(e), true); }
-    } }, icon("x"), IS_ADMIN ? t("Reihe löschen") : t("Reihe zurückziehen")));
+    } }, icon("x"), t("Reihe löschen")));
   }
   const vols = el("details", { class: "group-vols" },
     el("summary", {}, plural(members.length, t("1 Band anzeigen"), t("{n} Bände anzeigen", { n: members.length }))),
@@ -353,11 +369,8 @@ function volumeRow(r: BookRequest): HTMLLIElement {
       ? el("button", { type: "button", class: "icon-btn", title: t("Releases"), onclick: () => openReleases(r) }, icon("search")) : null,
     IS_ADMIN && ["failed", "searching"].includes(r.status)
       ? el("button", { type: "button", class: "icon-btn", title: t("Jetzt suchen"), onclick: () => decide(r, "retry") }, icon("refresh")) : null,
-    (r.mine && ["pending", "searching", "failed", "declined"].includes(r.status)) || IS_ADMIN
-      ? el("button", { type: "button", class: "icon-btn", title: t("Diesen Band löschen"), onclick: async () => {
-        if (!(await confirmBox(t("Anfrage „{title}“ löschen?", { title: b.title }), t("Löschen")))) return;
-        try { await api("DELETE", `/api/requests/${r.id}`); loadRequests(); } catch (e) { toast(errMsg(e), true); }
-      } }, icon("x")) : null);
+    r.mine || IS_ADMIN
+      ? el("button", { type: "button", class: "icon-btn", title: t("Diesen Band löschen"), onclick: () => deleteRequest(r) }, icon("x")) : null);
 }
 
 function renderRequests(): void {

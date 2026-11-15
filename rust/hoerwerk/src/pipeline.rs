@@ -1550,13 +1550,19 @@ impl Pipeline {
         if let Some(r) = slot.runner.lock().unwrap_or_else(|p| p.into_inner()).as_ref() {
             r.kill();
         }
-        {
+        let discard = {
             let mut j = slot.lock();
             if matches!(j.status.as_str(), "queued" | "review") {
                 j.status = "cancelled".into();
                 j.info(&t("Abgebrochen", &[]));
                 self.cleanup_work(&j.id);
+                j.hints["discard"] == true
+            } else {
+                false
             }
+        };
+        if discard {
+            self.discard_source(app, &slot);
         }
         app.engine.discard(id);
         self.save(app);
@@ -1907,10 +1913,24 @@ impl Pipeline {
                 if slot.lock().matched.is_none() {
                     self.do_match(app, slot);
                 }
+                if slot.cancel.load(Ordering::SeqCst) {
+                    return Err(PipeError::Cancelled); // stopped (or a wrong download) while it was being recognised
+                }
                 if !self.skip_owned_volume(app, slot) {
                     let mut j = slot.lock();
                     j.stage = "convert".into();
-                    j.status = "queued".into();
+                    if j.matched.is_none() {
+                        // not sure what it is: a person decides first – nothing is converted for a book nobody wants
+                        j.status = "review".into();
+                        let msg = if j.candidates.is_empty() {
+                            t("Kein Treffer – bitte suchen oder Angaben eintragen", &[])
+                        } else {
+                            t("Bitte Treffer auswählen – umgewandelt wird erst danach", &[])
+                        };
+                        j.info(&msg);
+                    } else {
+                        j.status = "queued".into();
+                    }
                 }
                 Ok(())
             })(),
@@ -1937,6 +1957,11 @@ impl Pipeline {
             }
         };
         let stopping = self.stopping.load(Ordering::SeqCst) && !slot.cancel.load(Ordering::SeqCst);
+        // "Abbrechen" while a stage ran that cannot be interrupted: it ends, but nothing comes after it
+        let result = match result {
+            Ok(()) if slot.cancel.load(Ordering::SeqCst) => Err(PipeError::Cancelled),
+            other => other,
+        };
         match result {
             Ok(()) => {}
             Err(_) if stopping => {
@@ -1949,10 +1974,16 @@ impl Pipeline {
                 ));
             }
             Err(e) if matches!(e, PipeError::Cancelled) || slot.cancel.load(Ordering::SeqCst) => {
-                let mut j = slot.lock();
-                j.status = "cancelled".into();
-                j.info(&t("Abgebrochen", &[]));
-                self.cleanup_work(&j.id);
+                let discard = {
+                    let mut j = slot.lock();
+                    j.status = "cancelled".into();
+                    j.info(&t("Abgebrochen", &[]));
+                    self.cleanup_work(&j.id);
+                    j.hints["discard"] == true
+                };
+                if discard {
+                    self.discard_source(app, slot);
+                }
             }
             Err(e) => self.fail(slot, &e.to_string()),
         }
@@ -2202,7 +2233,9 @@ impl Pipeline {
                 "Passt nicht zu „{title}“ (ASIN {asin}): {why} – suche nach dem Inhalt",
                 &[("title", s(&top, "title")), ("asin", s(&hints, "asin")), ("why", &why)],
             ));
-            self.wrong_request_download(app, slot, &why);
+            if self.wrong_request_download(app, slot, &why) {
+                return; // downloaded for a request, but another book: it is deleted, the request searches on
+            }
             slot.lock().hints["asin"] = Value::Null;
             let hints = slot.lock().hints.clone();
             (ranked, notes) = app.providers.lookup(&hints, &region, fallback);
@@ -2343,8 +2376,9 @@ impl Pipeline {
         releases::doubt(book, duration, &narrator, agreement)
     }
 
-    /// Downloaded for a request, but it is another book: the request blocks this release and searches on.
-    fn wrong_request_download(&self, app: &Arc<App>, slot: &JobRef, why: &str) {
+    /// Downloaded for a request, but it is another book: the request blocks this release and searches on, and the
+    /// download is stopped and deleted – nobody asked for it. True when it was a request download.
+    fn wrong_request_download(&self, app: &Arc<App>, slot: &JobRef, why: &str) -> bool {
         let (rid, source) = {
             let mut j = slot.lock();
             let rid = j
@@ -2354,9 +2388,96 @@ impl Pipeline {
                 .and_then(|v| v.as_i64());
             (rid, base_name(&j.source))
         };
-        let Some(rid) = rid else { return };
-        slot.say(&t("Anfrage sucht weiter, dieses Release ist gesperrt", &[]));
+        let Some(rid) = rid else { return false };
+        slot.say(&t(
+            "Anfrage sucht weiter, dieses Release ist gesperrt und wird gelöscht",
+            &[],
+        ));
         app.requests.wrong_download(app, rid, &source, why);
+        slot.lock().hints["discard"] = json!(true);
+        slot.cancel.store(true, Ordering::SeqCst);
+        true
+    }
+
+    /// The download of a job is not wanted (a wrong release for a request): delete it from the inbox.
+    fn discard_source(&self, app: &Arc<App>, slot: &JobRef) {
+        let entry = {
+            let j = slot.lock();
+            self.inbox_entry(&j)
+        };
+        let Ok(path) = entry else { return };
+        let gone = if path.is_dir() {
+            std::fs::remove_dir_all(&path).is_ok()
+        } else {
+            std::fs::remove_file(&path).is_ok()
+        };
+        if gone {
+            let name = base_name(&path.display().to_string());
+            self.watch.lock().unwrap_or_else(|p| p.into_inner()).seen.remove(&path);
+            slot.say(&t("Download gelöscht: {name}", &[("name", &name)]));
+            self.save(app);
+        }
+    }
+
+    /// Marked by hand as the wrong release of a request: stop the import, delete the download, the request blocks
+    /// the release and searches on.
+    pub fn wrong_release(&self, app: &Arc<App>, id: &str) -> Res<JobRef> {
+        let slot = self.need(id)?;
+        let (rid, source) = {
+            let j = slot.lock();
+            (j.hints["request_id"].as_i64(), base_name(&j.source))
+        };
+        let Some(rid) = rid else {
+            return Err(PipeError::Refused(t("Kein Download für eine Anfrage", &[])));
+        };
+        app.requests
+            .wrong_download(app, rid, &source, &t("von Hand als falsch markiert", &[]));
+        slot.lock().hints["discard"] = json!(true);
+        let slot = self.cancel(app, id)?; // waiting: deleted now; running: deleted when the step stops
+        if matches!(slot.lock().status.as_str(), "cancelled" | "failed") {
+            self.discard_source(app, &slot);
+        }
+        Ok(slot)
+    }
+
+    /// Delete a book from the library (admin, or whoever asked for it): moved to `_ersetzt` in the inbox or deleted,
+    /// as set for replaced originals. `rel` is the book's folder (or file) relative to the library.
+    pub fn delete_from_library(&self, app: &Arc<App>, rel: &str) -> Res<String> {
+        if self.library.as_os_str().is_empty() || rel.trim().is_empty() {
+            return Err(PipeError::Refused(t("Ungültige Daten", &[])));
+        }
+        let root = real(&self.library);
+        let path = real(&self.library.join(rel.trim_start_matches('/')));
+        if !path.starts_with(&root) || path == root || !path.exists() {
+            return Err(PipeError::Refused(t("Nicht in der Bibliothek", &[])));
+        }
+        if self.all().iter().any(|x| {
+            let j = x.lock();
+            ACTIVE.contains(&j.status.as_str()) && Path::new(&j.source).starts_with(&path)
+        }) {
+            return Err(PipeError::Refused(t("Wird gerade bearbeitet – erst abbrechen", &[])));
+        }
+        let _g = self.file_lock.lock().unwrap_or_else(|p| p.into_inner());
+        let shown = rel_to(&path.display().to_string(), &root);
+        let mode = sval(&app.settings(), "ab_library_originals", "archive");
+        if mode == "delete" {
+            if path.is_dir() {
+                std::fs::remove_dir_all(&path)?;
+            } else {
+                std::fs::remove_file(&path)?;
+            }
+        } else {
+            let base = if self.inbox.as_os_str().is_empty() {
+                self.work_dir.parent().unwrap_or(Path::new("")).to_path_buf()
+            } else {
+                self.inbox.clone()
+            };
+            let target = filing::free_path(&base.join("_ersetzt").join(&shown));
+            move_path(&path, &target)?;
+        }
+        remove_empty_parents(path.parent().unwrap_or(Path::new("")), &root);
+        text::info(&shown, &t("Aus der Bibliothek gelöscht", &[]));
+        Ok(shown)
     }
 
     /// The author from the tags – or from a folder called "Stephenie Meyer-Twilight-Saga 5 - …".

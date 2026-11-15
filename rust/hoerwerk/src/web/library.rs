@@ -291,3 +291,25 @@ pub async fn cleanup_run(app: Arc<App>, _: Req, _: HashMap<String, String>) -> R
     }
     json_reply(json!({"removed": removed, "errors": &errors[..errors.len().min(20)]}))
 }
+
+/// Delete a book from the library (admins) – moved to `_ersetzt` or deleted, as set for replaced originals.
+pub async fn delete_book(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let rel = req.query.get("path").cloned().unwrap_or_default();
+    let a = app.clone();
+    let res = tokio::task::spawn_blocking(move || {
+        let r = a.pipeline.delete_from_library(&a, &rel);
+        if r.is_ok() {
+            let _ = a.library.scan();
+        }
+        r
+    })
+    .await
+    .expect("worker thread");
+    match res {
+        Ok(shown) => {
+            app.audit(&req.user_name(), &req.ip, "library_deleted", &shown);
+            json_reply(json!({"ok": true, "path": shown}))
+        }
+        Err(e) => error(400, e.to_string()),
+    }
+}

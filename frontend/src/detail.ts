@@ -72,7 +72,9 @@ function renderDetail(book: DetailBook, extra: DetailAnswer | null | "loading"):
       : extra === null && knownAtAudible(b) ? el("p", { class: "muted small" }, t("Die Beschreibung konnte gerade nicht geladen werden.")) : null,
     detailFacts(b),
     el("div", { class: "detail-acts" }, requestButton(b),
-      b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null),
+      b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null,
+      IS_ADMIN && b.owned?.path ? el("button", { type: "button", class: "btn small ghost danger", onclick: () => deleteFromLibrary(b) },
+        t("Aus der Bibliothek löschen")) : null),
     el("div", { class: "detail-more" },
       el("h3", {}, t("Weiterstöbern")),
       el("div", { class: "chips" },
@@ -83,6 +85,20 @@ function renderDetail(book: DetailBook, extra: DetailAnswer | null | "loading"):
   $("#bookDetail").replaceChildren(inner);
   $("#bookDetail").scrollTop = 0;
   for (const card of document.querySelectorAll<HTMLElement>("[data-asin]")) card.classList.toggle("selected", !!b.asin && card.dataset.asin === b.asin);
+}
+
+/** Admins: a wrong or finished book goes – moved to `_ersetzt` or deleted, as set for replaced originals. */
+async function deleteFromLibrary(b: DetailBook): Promise<void> {
+  const path = b.owned?.path;
+  if (!path) return;
+  if (!(await confirmBox(t("„{title}“ aus der Bibliothek löschen? Je nach Einstellung landet es unter _ersetzt im Eingang oder wird gelöscht.", { title: b.title }),
+    t("Löschen")))) return;
+  try {
+    await api("DELETE", `/api/library/book?path=${encodeURIComponent(path)}`);
+    toast(t("Aus der Bibliothek gelöscht"));
+    closeDetail();
+    if (!$("#viewBooks").hidden && books.filter === "library") { books.libShown = 100; void loadLibraryStats(); renderBooks(); }
+  } catch (e) { toast(errMsg(e), true); }
 }
 
 async function loadDetail(b: DetailBook): Promise<void> {

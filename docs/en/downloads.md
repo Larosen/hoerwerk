@@ -47,6 +47,15 @@ automatically only a clearly better release (better format, or clearly more bitr
 pick one yourself. The new download replaces the book, the old file is archived. **Correct** brings a book back for
 a new assignment, and **Wrong edition** on a filed book also lets its request search on.
 
+**Cancel and delete:** when Hörwerk is not sure which book a download is, it waits under *To review* – it is converted only
+after a match was chosen. A download for a request that turns out to be another book is deleted, the release is blocked
+and the request searches on; **Wrong release** on the job does this by hand. For short titles Hörwerk does not grab a
+release by itself when its name says more than author and title ("Odyssee op Kölsch") – it can still be chosen under
+*Releases*. A request can be deleted at any time: a running download is cancelled in SABnzbd, a running import stopped,
+and for a book that arrived Hörwerk asks whether it should leave the library too. Family accounts delete their own
+requests, admins all; admins also delete audiobooks in the details of the library (to `_ersetzt` in the inbox or for good,
+as set).
+
 Tip: in SABnzbd set *Config → Switches → Unwanted extensions* (`exe, bat, cmd, scr, lnk, js, vbs, ps1, msi, com`)
 to **Abort**.
 
