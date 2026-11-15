@@ -10,6 +10,8 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 - **A cancelled import no longer leaves its request hanging** on "Wird verarbeitet": the release is blocked and the request searches on.
 - A release that goes to review after an earlier one failed is noted on its request again; SABnzbd's history is read further back
   (60 entries) so busy days don't hide a finished or failed download.
+- **A program error no longer stops Hörwerk:** it ends only the request (which answers with an error number) or the one thread; every such
+  error is written to the *Protokoll* ("Programmfehler in … – bitte melden") with where it happened.
 - **A very long search term no longer crashes the server:** some text rules gave up on pathological input with a panic, which ended the
   whole process; they now leave such text unchanged, and search terms are cut to 300 characters.
 - A broken or shortened invitation link says that the invitation does not hold (instead of raw JSON); unknown addresses lead to the start.

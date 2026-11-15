@@ -12,5 +12,6 @@ rust-version = "1.90"
 [profile.release]
 lto = true
 codegen-units = 1
-panic = "abort"
+# a panic ends the one request or thread, not the server – and lands in the log (see log_panics in main.rs)
+panic = "unwind"
 strip = true

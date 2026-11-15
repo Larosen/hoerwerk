@@ -1614,5 +1614,6 @@
  "gekürzt": "abridged",
  "gesucht": "wanted",
  "Download kam nicht im Eingang an (Zielordner der Kategorie in SABnzbd prüfen)": "The download never reached the inbox (check the category's folder in SABnzbd)",
- "Import abgebrochen": "Import cancelled"
+ "Import abgebrochen": "Import cancelled",
+ "Programmfehler in {thread} ({at}): {what} – bitte melden": "Program error in {thread} ({at}): {what} – please report"
 }

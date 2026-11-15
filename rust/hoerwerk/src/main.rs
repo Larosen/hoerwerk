@@ -255,11 +255,40 @@ fn health_check() -> ! {
     std::process::exit(if ok { 0 } else { 1 });
 }
 
+/// Every panic – in a request, a worker, a background loop – goes into the log the admin sees (Protokoll), with
+/// where it happened, so it can be fixed. The server goes on: a request answers with an error number, only that
+/// thread ends (release builds unwind instead of aborting).
+fn log_panics() {
+    let default = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let what = info
+            .payload()
+            .downcast_ref::<&str>()
+            .map(|s| s.to_string())
+            .or_else(|| info.payload().downcast_ref::<String>().cloned())
+            .unwrap_or_else(|| "panic".into());
+        let at = info
+            .location()
+            .map(|l| format!("{}:{}", l.file(), l.line()))
+            .unwrap_or_default();
+        let thread = std::thread::current().name().unwrap_or("?").to_string();
+        text::error(
+            "Absturz",
+            &text::t(
+                "Programmfehler in {thread} ({at}): {what} – bitte melden",
+                &[("thread", &thread), ("at", &at), ("what", &what)],
+            ),
+        );
+        default(info);
+    }));
+}
+
 #[tokio::main]
 async fn main() {
     if std::env::args().nth(1).as_deref() == Some("health") {
         health_check();
     }
+    log_panics();
     if let Some(mask) = std::env::var("UMASK")
         .ok()
         .and_then(|m| u32::from_str_radix(m.trim(), 8).ok())
