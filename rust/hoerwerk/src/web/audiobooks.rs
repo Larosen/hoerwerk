@@ -93,7 +93,7 @@ pub async fn search(app: Arc<App>, req: Req, p: Params) -> Reply {
     if let Err(r) = job_or_404(&app, &p) {
         return r;
     }
-    let query = req.str("query").trim().to_string();
+    let query: String = req.str("query").trim().chars().take(300).collect(); // a search term, not a novel
     if query.is_empty() {
         return error(400, t("Suchbegriff fehlt", &[]));
     }

@@ -10,6 +10,11 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 - **A cancelled import no longer leaves its request hanging** on "Wird verarbeitet": the release is blocked and the request searches on.
 - A release that goes to review after an earlier one failed is noted on its request again; SABnzbd's history is read further back
   (60 entries) so busy days don't hide a finished or failed download.
+- **A very long search term no longer crashes the server:** some text rules gave up on pathological input with a panic, which ended the
+  whole process; they now leave such text unchanged, and search terms are cut to 300 characters.
+- A broken or shortened invitation link says that the invitation does not hold (instead of raw JSON); unknown addresses lead to the start.
+- *Indexer & SABnzbd* on the phone: each indexer is laid out in readable rows (name and categories, address, key, then *Aktiv*, *Zuerst*,
+  move up and remove) instead of a cramped row that ran off the screen.
 - **Library on the phone:** scrolling no longer jumps back to the top while something is being converted (live updates no longer rebuild
   the list).
 

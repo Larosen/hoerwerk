@@ -517,10 +517,8 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
             }
             return static_file(&app, rel);
         }
-        if let Some(tok) = path.strip_prefix("/invite/") {
-            if !crate::invites::valid_token_format(tok) {
-                return simple(404, &t("Nicht gefunden", &[]));
-            }
+        if path.starts_with("/invite/") {
+            // a broken or shortened link opens the page too – it says the invitation does not hold, not raw JSON
             return static_file(&app, "login.html");
         }
         if path == "/" || path == "/login" {
@@ -557,6 +555,10 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
         },
     };
     let Some((route, params)) = api::find(&method, &path) else {
+        // a browser opening an address that does not exist (an old bookmark, a typo) lands on the start page
+        if reading && !path.starts_with("/api/") && header_str(h, "accept").contains("text/html") {
+            return redirect("/");
+        }
         return simple(404, &t("Nicht gefunden", &[]));
     };
     // who is asking is checked before a single byte of the body is read (uploads can be large)

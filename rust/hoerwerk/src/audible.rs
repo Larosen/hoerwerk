@@ -838,16 +838,14 @@ pub fn clean_query(text: &str) -> String {
     let s = sub(rx!(r"(?<=\w)(\w*)\((\w{1,3})\)(?=[\s\-:,.!?]|$)"), &s, "$1$2");
     let s = s.replace('_', " ");
     let s = sub(rx!(r"(?<=\w)\.(?=\w{2,})"), &s, " ");
-    let s = rx!(r"[\[({]([^\])}]*)[\])}]")
-        .replace_all(&s, |c: &fancy_regex::Captures| {
-            let inner = &c[1];
-            if is_match(noise, inner) || is_match(rx!(r"^[\s\d.,:/-]*$"), inner) {
-                " ".to_string()
-            } else {
-                format!(" {inner} ")
-            }
-        })
-        .into_owned();
+    let s = crate::rx::sub_with(rx!(r"[\[({]([^\])}]*)[\])}]"), &s, |c: &fancy_regex::Captures| {
+        let inner = &c[1];
+        if is_match(noise, inner) || is_match(rx!(r"^[\s\d.,:/-]*$"), inner) {
+            " ".to_string()
+        } else {
+            format!(" {inner} ")
+        }
+    });
     let s = sub(rx!(r"(?i)\b(?:cd|disc|disk|dvd)\s*\d+\b"), &s, " ");
     let s = sub(noise, &s, " ");
     let s = sub(rx!(r"\b(?:19|20)\d{2}\b"), &s, " ");

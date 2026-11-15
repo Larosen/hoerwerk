@@ -48,7 +48,8 @@ function indexerRow(i: Indexer = {}): HTMLDivElement {
     el("input", { name: "url", type: "text", placeholder: "https://indexer.example/api", value: i.url || "", spellcheck: "false" }),
     el("input", { name: "apikey", type: "password", autocomplete: "off", placeholder: i.apikey_set ? t("Gespeichert – leer lassen") : "API-Key" }),
     el("input", { name: "categories", type: "text", value: i.categories || "3030", title: t("Newznab-Kategorien, kommagetrennt"), class: "cat" }),
-    el("label", { class: "check", title: t("Aktiv") }, el("input", { name: "enabled", type: "checkbox", checked: i.enabled !== false })),
+    el("div", { class: "row-tools" },
+    el("label", { class: "check", title: t("Aktiv") }, el("input", { name: "enabled", type: "checkbox", checked: i.enabled !== false }), " ", t("Aktiv")),
     el("label", { class: "check first", title: t("Diesen Indexer zuerst fragen – die anderen nur, wenn er nichts Passendes hat") },
       el("input", { name: "preferred", type: "checkbox", checked: !!i.preferred, onchange: (e: Event) => {
         // only one can be first
@@ -58,7 +59,7 @@ function indexerRow(i: Indexer = {}): HTMLDivElement {
         }
       } }), " ", t("Zuerst")),
     el("button", { type: "button", class: "icon-btn", title: t("Weiter nach oben – wird früher gefragt"), onclick: () => row.previousElementSibling?.before(row) }, "↑"),
-    el("button", { type: "button", class: "icon-btn", title: t("Entfernen"), onclick: () => row.remove() }, icon("x")));
+    el("button", { type: "button", class: "icon-btn", title: t("Entfernen"), onclick: () => row.remove() }, icon("x"))));
   row.dataset.id = i.id || "";
   return row;
 }

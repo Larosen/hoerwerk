@@ -1085,6 +1085,18 @@ test("Bibliothek: Live-Updates der Aufträge bauen die Liste nicht neu (kein Spr
   expect(errors).toEqual([]);
 });
 
+test("Robust: kaputter Einladungslink und unbekannte Adressen zeigen Seiten statt JSON, lange Suchbegriffe bringen den Server nicht zum Absturz", async ({ page, request }) => {
+  await page.goto("/invite/abc");
+  await expect(page.locator("body")).toContainText("Diese Einladung gilt nicht (mehr)");
+  await page.goto("/gibt-es-nicht");
+  await expect(page).toHaveURL(/\/login$/);                                         // the start (not signed in: the sign-in)
+  const errors = await open(page);
+  const res = await page.request.post("/api/search/books", { headers: OWN, data: { query: "a".repeat(5000) } });
+  expect(res.status()).toBeLessThan(500);
+  expect((await request.get("/api/health")).status()).toBe(200);                    // still there
+  expect(errors).toEqual([]);
+});
+
 test("Hörbücher: Details aus der Bibliothek öffnen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockAnyDetail(page);
