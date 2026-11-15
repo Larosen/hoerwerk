@@ -22,6 +22,7 @@ const books = {
   lastJson: "",
   unconverted: null as UnconvertedBook[] | null,   // library books that are not one M4B yet
   picked: new Set<string>(),                  // selected paths in that list
+  ucShown: 200,                               // cards shown in that list (thousands would make the page sluggish)
   tracks: null as Track[] | null,             // tracks of the book in the "Kapitel & Namen" dialog
   libQuery: "",                               // search in the library view
   trickle: null as Trickle | null,            // the gentle conversion of the whole library
@@ -297,7 +298,7 @@ function renderUnconverted(list: HTMLElement): void {
         + " " + t("Ein Hörbuch nach dem anderen, mit einem CPU-Kern und niedrigster Priorität; neue Hörbücher und Downloads gehen vor.")
       : t("Schonend im Hintergrund: ein Hörbuch nach dem anderen, mit einem CPU-Kern und niedrigster Priorität – der Server bleibt nutzbar, auch wenn es Tage dauert. Was unklar ist, bleibt unter „Zu prüfen“ liegen.")),
     toggle));
-  for (const b of items) {
+  for (const b of items.slice(0, books.ucShown)) {
     const cb = el("input", { type: "checkbox", checked: books.picked.has(b.path), disabled: !!b.job });
     cb.addEventListener("change", () => { pick(b.path, cb.checked); renderBooks(); });
     list.append(el("li", { class: "book uc" },
@@ -314,6 +315,11 @@ function renderUnconverted(list: HTMLElement): void {
       b.job ? null : el("div", { class: "book-tools" },
         el("button", { class: "btn small", onclick: () => openTracks(b) }, t("Kapitel & Namen …")),
         el("button", { class: "btn small ghost", onclick: () => convertLibrary([{ path: b.path }]) }, t("Direkt zu M4B")))));
+  }
+  if (items.length > books.ucShown) {
+    list.append(el("li", { class: "lib-more" },
+      el("span", { class: "muted small" }, t("{shown} von {total}", { shown: books.ucShown, total: items.length })),
+      el("button", { class: "btn small", onclick: () => { books.ucShown += 200; books.lastJson = ""; renderBooks(); } }, t("Mehr anzeigen"))));
   }
 }
 

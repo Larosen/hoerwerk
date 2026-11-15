@@ -3,6 +3,13 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.7 – 2026-11-15
+
+- **Large libraries start fast:** the library index now keeps every book's full details in the database, so a restart no longer reads
+  all audio files again (5000 books: about 4 minutes before, 2 seconds now). After the update the library is read once more.
+- Checking search results and requests against the library is faster with thousands of books (match keys are cached per book).
+- "Nicht als M4B" shows 200 books at a time with "Mehr anzeigen" instead of rendering the whole library at once.
+
 ## 1.0.6 – 2026-11-15
 
 - **Failed downloads are noticed:** a download still being checked, repaired or unpacked in SABnzbd no longer counts as finished; when it

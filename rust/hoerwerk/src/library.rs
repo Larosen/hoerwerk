@@ -66,6 +66,30 @@ pub struct LibraryIndex {
     db: Db,
     state: Mutex<State>,
     notify: OnceLock<Box<dyn Fn() + Send + Sync>>,
+    /// what the comparisons need of each entry, worked out once per version of the entry (title words and
+    /// surnames are regex work – redone for every entry on every lookup, a big library made searches slow)
+    keys: Mutex<HashMap<String, (u64, std::sync::Arc<Key>)>>,
+}
+
+/// The parts of an entry the lookups compare.
+struct Key {
+    asin: String,
+    names: BTreeSet<String>,
+    words: Vec<String>,
+    series: String,
+    pos: String,
+}
+
+fn fingerprint(e: &Value) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    for k in ["asin", "title", "series"] {
+        s(e, k).hash(&mut h);
+    }
+    py_str(&e["series_position"]).hash(&mut h);
+    e["authors"].to_string().hash(&mut h);
+    e["names"].to_string().hash(&mut h);
+    h.finish()
 }
 
 fn s<'a>(e: &'a Value, k: &str) -> &'a str {
@@ -109,6 +133,7 @@ impl LibraryIndex {
             std::fs::canonicalize(root).unwrap_or(root.to_path_buf())
         };
         let idx = LibraryIndex {
+            keys: Mutex::new(HashMap::new()),
             root,
             db,
             state: Mutex::new(State::default()),
@@ -137,9 +162,17 @@ impl LibraryIndex {
         {
             let c = self.db.lock();
             if let Ok(mut st) = c.prepare(
-                "SELECT path, title, authors, asin, series, series_position, format, files, mtime FROM library",
+                "SELECT path, title, authors, asin, series, series_position, format, files, mtime, data FROM library",
             ) {
                 let rows = st.query_map([], |r| {
+                    // The full entry (names, narrators, cover, version …) – rows of older versions only have the columns.
+                    if let Some(full) = r
+                        .get::<_, Option<String>>(9)?
+                        .and_then(|d| serde_json::from_str::<Value>(&d).ok())
+                        .filter(|d| d.get("path").is_some())
+                    {
+                        return Ok(full);
+                    }
                     Ok(json!({
                         "path": r.get::<_, String>(0)?, "title": r.get::<_, Option<String>>(1)?.unwrap_or_default(),
                         "authors": serde_json::from_str::<Value>(&r.get::<_, Option<String>>(2)?.unwrap_or_default()).unwrap_or(json!([])),
@@ -169,8 +202,8 @@ impl LibraryIndex {
         }
         for e in changed {
             tx.execute(
-                "INSERT OR REPLACE INTO library(path, title, authors, asin, series, series_position, format, files, mtime) \
-                 VALUES(?,?,?,?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO library(path, title, authors, asin, series, series_position, format, files, mtime, data) \
+                 VALUES(?,?,?,?,?,?,?,?,?,?)",
                 rusqlite::params![
                     s(e, "path"),
                     s(e, "title"),
@@ -185,6 +218,7 @@ impl LibraryIndex {
                     e["format"].as_str(),
                     e["files"].as_i64().unwrap_or(0),
                     e["mtime"].as_f64().unwrap_or(0.0),
+                    compact(e),
                 ],
             )?;
         }
@@ -400,6 +434,28 @@ impl LibraryIndex {
             .collect()
     }
 
+    /// The comparison key of an entry – computed once per version of the entry.
+    fn key_of(keys: &mut HashMap<String, (u64, std::sync::Arc<Key>)>, rel: &str, e: &Value) -> std::sync::Arc<Key> {
+        let fp = fingerprint(e);
+        if let Some((f, k)) = keys.get(rel)
+            && *f == fp
+        {
+            return k.clone();
+        }
+        let k = std::sync::Arc::new(Key {
+            asin: s(e, "asin").to_uppercase(),
+            names: Self::names(e),
+            words: title_words(s(e, "title")),
+            series: s(e, "series").trim().to_lowercase(),
+            pos: py_str(&e["series_position"]),
+        });
+        if keys.len() > 50_000 {
+            keys.clear(); // removed books pile up only slowly – start over now and then
+        }
+        keys.insert(rel.to_string(), (fp, k.clone()));
+        k
+    }
+
     fn matches(&self, book: &Value) -> Vec<Value> {
         let asin = s(book, "asin").to_uppercase();
         let authors = strs(&book["authors"]);
@@ -407,29 +463,26 @@ impl LibraryIndex {
         let words = title_words(s(book, "title"));
         let series = s(book, "series").trim().to_lowercase();
         let pos = py_str(&book["series_position"]);
+        let st = self.lock();
+        let mut keys = self.keys.lock().unwrap_or_else(|p| p.into_inner());
         let mut out = Vec::new();
-        for e in self.entries() {
-            if !asin.is_empty() && s(&e, "asin") == asin {
-                out.push(with_why(e, "asin"));
+        for (rel, e) in st.entries.iter() {
+            let k = Self::key_of(&mut keys, rel, e);
+            if !asin.is_empty() && k.asin == asin {
+                out.push(with_why(e.clone(), "asin"));
                 continue;
             }
-            let names = Self::names(&e);
-            let shared = !want.is_disjoint(&names);
-            let why = if !words.is_empty() && shared && title_words(s(&e, "title")) == words {
+            let shared = !want.is_disjoint(&k.names);
+            let why = if !words.is_empty() && shared && k.words == words {
                 "title"
-            } else if !series.is_empty()
-                && !pos.is_empty()
-                && shared
-                && s(&e, "series").trim().to_lowercase() == series
-                && py_str(&e["series_position"]) == pos
-            {
+            } else if !series.is_empty() && !pos.is_empty() && shared && k.series == series && k.pos == pos {
                 "series"
             } else {
                 continue;
             };
             out.push(with_why(
                 e.clone(),
-                if other_edition(book, &e) { "edition" } else { why },
+                if other_edition(book, e) { "edition" } else { why },
             ));
         }
         out
@@ -441,15 +494,20 @@ impl LibraryIndex {
     pub fn match_release(&self, release: &str, lenient: bool) -> Vec<Value> {
         let words: BTreeSet<String> = match_words(release).into_iter().collect();
         let mut hits = Vec::new();
-        for e in self.entries() {
-            let tw = title_words(s(&e, "title"));
-            if tw.is_empty() || !tw.iter().all(|w| words.contains(w)) {
-                continue;
-            }
-            if !Self::names(&e).is_disjoint(&words) {
-                hits.push(with_why(e, "title"));
-            } else if lenient || tw.len() >= 2 {
-                hits.push(with_why(e, "similar"));
+        {
+            let st = self.lock();
+            let mut keys = self.keys.lock().unwrap_or_else(|p| p.into_inner());
+            for (rel, e) in st.entries.iter() {
+                let k = Self::key_of(&mut keys, rel, e);
+                let tw = &k.words;
+                if tw.is_empty() || !tw.iter().all(|w| words.contains(w)) {
+                    continue;
+                }
+                if !k.names.is_disjoint(&words) {
+                    hits.push(with_why(e.clone(), "title"));
+                } else if lenient || tw.len() >= 2 {
+                    hits.push(with_why(e.clone(), "similar"));
+                }
             }
         }
         hits.sort_by_key(|e| {
@@ -750,5 +808,19 @@ mod tests {
             &json!({"title": "Der Stein", "subtitle": "Das Hörspiel"}),
             &both
         ));
+    }
+
+    #[test]
+    fn stored_entries_come_back_whole() {
+        // after a restart the scan must find the full entry, or it reads every book again (minutes for thousands)
+        let db = Db::memory();
+        let idx = LibraryIndex::new(Path::new(""), db.clone());
+        let e = json!({"v": ENTRY_VERSION, "path": "A/B", "title": "B", "authors": ["A"], "names": ["a"],
+            "narrators": ["N"], "files": 3, "mtime": 1.5, "format": "mp3", "cover": true});
+        idx.store(std::slice::from_ref(&e), &[], Some(2.0)).unwrap();
+        let again = LibraryIndex::new(Path::new(""), db);
+        let st = again.lock();
+        assert_eq!(st.entries["A/B"], e);
+        assert_eq!(st.last_scan, Some(2.0));
     }
 }
