@@ -304,6 +304,7 @@ async fn main() {
         }
     };
     text::load_catalog(&cfg.static_dir);
+    text::setup_log(&cfg.config_dir);
     authlog::setup(&cfg.config_dir);
     let _ = std::fs::create_dir_all(&cfg.config_dir);
     let db = match Db::open(&cfg.config_dir.join("hoerwerk.db")) {

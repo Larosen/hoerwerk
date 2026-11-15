@@ -621,14 +621,34 @@ function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
     better === "old" ? t("Vorhandene behalten") : t("Verwerfen"));
   const replace = el("button", { class: "btn small" + (better === "new" ? " primary" : ""), onclick: () => act("replace", t("Wird ersetzt")) },
     better === "new" ? t("Durch die bessere ersetzen") : t("Altes ersetzen"));
+  const keep = el("button", { class: "btn small ghost", onclick: () => act("keep", t("Wird zusätzlich abgelegt")) }, t("Trotzdem zusätzlich ablegen"));
+  // probably another work under the same short title: filing it as a book of its own is the suggestion
+  const own = d.own_title ? el("button", { class: "btn small primary", onclick: () => act("keep_named", t("Wird als eigenes Hörbuch abgelegt")) },
+    t("Als „{title}“ ablegen", { title: d.own_title })) : null;
+  if (d.other_work) { discard.classList.remove("primary"); replace.classList.remove("primary"); if (!own) keep.classList.replace("ghost", "primary"); }
+  // what exactly is in the library – so nobody replaces a book without knowing which one it is
+  const existing: LibraryBook = { path: d.path, title: d.title, authors: d.authors || [], series: d.series ?? null,
+    series_position: d.series_position ?? null, asin: d.asin, format: d.format, files: d.quality?.old?.files || 0, cover: !!d.cover };
+  const narrators = d.narrators || [];
+  const buttons = d.other_work ? [own || keep, discard, replace, own ? keep : null] : [...(better === "new" ? [replace, discard] : [discard, replace]), keep];
   return el("div", { class: "dup-box" },
-    el("div", {}, el("b", {}, t("Schon in der Bibliothek:"), " "), el("code", {}, d.path),
-      el("span", { class: "muted" }, ` – ${DUP_WHY[d.why] || t("ähnlich")}${d.format && d.format !== "m4b" ? ", " + t("dort als {format}", { format: d.format.toUpperCase() }) : ""}`)),
+    el("div", {}, el("b", {}, t("Schon in der Bibliothek:"), " "),
+      el("span", { class: "muted" }, `${DUP_WHY[d.why] || t("ähnlich")}${d.format && d.format !== "m4b" ? ", " + t("dort als {format}", { format: d.format.toUpperCase() }) : ""}`)),
+    el("div", { class: "dup-existing" },
+      libraryCover(d.path, d.title || d.path, (d.authors || [])[0], (d.format || "").toUpperCase(), "", !!d.cover),
+      el("div", { class: "dup-existing-main" },
+        el("b", {}, d.title || d.path),
+        el("span", { class: "muted small" }, [(d.authors || []).join(", "),
+          narrators.length ? t("gelesen von {names}", { names: narrators.slice(0, 3).join(", ") }) : "",
+          d.series ? `${d.series}${d.series_position ? " " + d.series_position : ""}` : ""].filter(Boolean).join(" · ")),
+        el("code", {}, d.path),
+        d.origin ? el("span", { class: "muted small" }, t("Abgelegt aus: {name}", { name: d.origin })) : null,
+        el("button", { type: "button", class: "btn small ghost", onclick: () => showDetail(libraryAsBook(existing)) }, t("Ansehen")))),
+    d.other_work ? el("div", { class: "dup-other" }, icon("alert"), t("Wahrscheinlich ein anderes Werk: {why}", { why: d.other_work })) : null,
     d.quality ? el("div", { class: "dup-compare" },
       qualityCard(t("In der Bibliothek"), d.quality.old, better === "old"),
       qualityCard(t("Neu"), d.quality.new, better === "new")) : null,
-    el("div", { class: "row gap wrap" }, ...(better === "new" ? [replace, discard] : [discard, replace]),
-      el("button", { class: "btn small ghost", onclick: () => act("keep", t("Wird zusätzlich abgelegt")) }, t("Trotzdem zusätzlich ablegen"))),
+    el("div", { class: "row gap wrap" }, ...buttons),
     el("div", { class: "muted small" }, t("Falscher Treffer? Unten einen anderen wählen – dann wird erneut geprüft.")));
 }
 

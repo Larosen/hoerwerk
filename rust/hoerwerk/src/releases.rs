@@ -253,6 +253,48 @@ fn other_work_word(name: &str, book: &Value, title: &[String]) -> Option<String>
     )
 }
 
+/// Like `name_doubt`, but only when the name contains the whole title and says more ("… - Stenkelfeld - Zugabe"
+/// for "Stenkelfeld") – a folder name that says nothing about the title ("Unbekannt - Eigenes") is no reason.
+pub fn name_adds_to_title(name: &str, book: &Value) -> Option<String> {
+    let title = title_words(&same_name(s(book, "title")));
+    let have: BTreeSet<String> = match_words(&same_name(name)).into_iter().collect();
+    if title.is_empty() || !title.iter().all(|w| have.contains(w)) {
+        return None;
+    }
+    name_doubt(name, book)
+}
+
+/// The part of a folder name that the book's title leaves out ("Harald Wehmeier & Detlev Gröning - Stenkelfeld -
+/// Zugabe" for "Stenkelfeld": "Zugabe") – for filing it under a title of its own. Pieces that only name the author,
+/// narrator, title or series, or say "Hörbuch"/"ungekürzt", are left out; None when nothing is left.
+pub fn folder_rest(name: &str, book: &Value) -> Option<String> {
+    let mut known: BTreeSet<String> = BTreeSet::new();
+    let mut add = |text: &str| known.extend(match_words(&searchable(&same_name(text))));
+    for a in strs_of(&book["authors"])
+        .iter()
+        .chain(strs_of(&book["narrators"]).iter())
+    {
+        add(a);
+    }
+    add(s(book, "title"));
+    add(s(book, "subtitle"));
+    add(s(book, "series"));
+    let name = sub(rx!(r"-[A-Za-z0-9]{2,14}$"), name.trim(), "");
+    let rest: Vec<String> = rx::split(rx!(r"\s+[-–—]\s+"), &name)
+        .into_iter()
+        .map(|p| p.trim().to_string())
+        .filter(|p| {
+            match_words(&same_name(p)).iter().any(|w| {
+                !known.contains(w)
+                    && !w.chars().all(|c| c.is_ascii_digit())
+                    && !STOP.contains(&w.as_str())
+                    && !NOISE.contains(&w.as_str())
+            })
+        })
+        .collect();
+    (!rest.is_empty()).then(|| rest.join(" – "))
+}
+
 /// For automatic downloads: a release of a book with a short title that names more than author, narrator and
 /// title is not taken by itself – it may be another work or adaptation. The first such word, or None.
 pub fn name_doubt(name: &str, book: &Value) -> Option<String> {
@@ -718,6 +760,11 @@ pub fn mismatch(name: &str, book: &Value, duration: f64) -> Option<String> {
     if let Some(why) = crate::edition::content_conflict(name, book) {
         return Some(why);
     }
+    runtime_conflict(book, duration)
+}
+
+/// The files are clearly longer or shorter than the shop's book: another book or edition.
+pub fn runtime_conflict(book: &Value, duration: f64) -> Option<String> {
     if runtime_deviation(book, duration).is_some_and(|d| d > RUNTIME_OTHER) {
         return Some(t(
             "Laufzeit passt nicht ({have} statt {want} min)",
@@ -831,6 +878,19 @@ mod tests {
         assert!(sure("Homer-Odyssee-DE-2013-WEB-FLAC-WALKMAN"));
         let afrika = json!({"title": "Afrika", "authors": ["Daniel Kehlmann"]});
         assert!(name_doubt("Daniel Kehlmann - Afrika (Ungekuerzt)", &afrika).is_none());
+        let stenkelfeld = json!({"title": "Stenkelfeld", "authors": ["Harald Wehmeier", "Detlev Gröning"]});
+        let folder = "Harald Wehmeier & Detlev Gröning - Stenkelfeld - Zugabe";
+        assert_eq!(name_doubt(folder, &stenkelfeld).as_deref(), Some("Zugabe"));
+        assert_eq!(folder_rest(folder, &stenkelfeld).as_deref(), Some("Zugabe"));
+        assert_eq!(
+            folder_rest(
+                "Harald Wehmeier & Detlev Gröning - Stenkelfeld - Ihr Merkts Doch Selbst",
+                &stenkelfeld
+            )
+            .as_deref(),
+            Some("Ihr Merkts Doch Selbst")
+        );
+        assert!(folder_rest("Daniel Kehlmann - Afrika (Ungekuerzt)", &afrika).is_none());
         let long = json!({"title": "Die Woche danach. Ein Stundenbuch der Hoffnung", "authors": ["Helga Schubert"]});
         assert!(name_doubt("Helga Schubert - Die Woche danach - Extra Wort", &long).is_none()); // long titles: no check
     }

@@ -848,6 +848,19 @@ impl Pipeline {
                     j.status = "queued".into();
                     j.info(&t("Nach Neustart erneut eingereiht", &[]));
                 }
+                // a conflict noted by an older version (without what is known about the book in the library now):
+                // checked again, so it can tell another work under the same title from the same book
+                let stale = j.duplicate.as_ref().is_some_and(|d| d.get("narrators").is_none());
+                if j.status == "review"
+                    && stale
+                    && j.dup_decision.is_none()
+                    && j.m4b.as_deref().is_some_and(|m| Path::new(m).exists())
+                {
+                    j.duplicate = None;
+                    j.status = "queued".into();
+                    j.stage = "finish".into();
+                    j.info(&t("Konflikt mit der Bibliothek wird neu geprüft", &[]));
+                }
             }
             self.list().push(slot);
         }
@@ -1483,7 +1496,7 @@ impl Pipeline {
     /// The book is already in the library: keep both, replace the old one, or drop the new one.
     pub fn resolve_duplicate(&self, app: &Arc<App>, id: &str, action: &str) -> Res<JobRef> {
         let slot = self.need(id)?;
-        if !matches!(action, "keep" | "replace" | "discard") {
+        if !matches!(action, "keep" | "keep_named" | "replace" | "discard") {
             return Err(PipeError::Refused(t("Unbekannte Aktion", &[])));
         }
         let dup =
@@ -1503,6 +1516,24 @@ impl Pipeline {
                 ));
             }
             self.save(app);
+            return Ok(slot);
+        }
+        if action == "keep_named" {
+            // another work under the same short title: filed under the title with the folder's missing part
+            let title = s(&dup, "own_title").to_string();
+            if title.is_empty() {
+                return Err(PipeError::Refused(t("Kein eigener Titel bekannt", &[])));
+            }
+            let mut j = slot.lock();
+            if let Some(m) = j.matched.as_mut() {
+                m["title"] = json!(title);
+                m["asin"] = Value::Null; // the shop's book is the other one
+            }
+            j.duplicate = None;
+            j.dup_decision = None;
+            j.info(&t("Als eigenes Hörbuch: „{title}“", &[("title", &title)]));
+            drop(j);
+            self.requeue_if_waiting(app, &slot);
             return Ok(slot);
         }
         {
@@ -1931,6 +1962,20 @@ impl Pipeline {
         let result: Res<()> = match stage.as_str() {
             "prepare" => (|| {
                 self.prepare(app, slot)?;
+                if let Some(why) = self.manual_doubt(app, slot) {
+                    // a metadata.json beside the files (Audiobookshelf's, or an old one) that describes another book
+                    let mut j = slot.lock();
+                    let src = j
+                        .matched
+                        .as_ref()
+                        .map(|m| s(m, "source").to_string())
+                        .unwrap_or_default();
+                    j.matched = None;
+                    j.info(&t(
+                        "Angaben aus {source} passen nicht zu den Dateien: {why} – suche selbst",
+                        &[("source", &src), ("why", &why)],
+                    ));
+                }
                 if slot.lock().matched.is_none() {
                     self.do_match(app, slot);
                 }
@@ -2202,8 +2247,13 @@ impl Pipeline {
             j.info(&n);
         }
         // a correction: the metadata.json beside a filed book is what Hörwerk wrote – the data in question
-        if let Some(m) = manual.filter(|_| !j.review_first) {
+        // … but never over what a person picked or entered already (review happens before the conversion)
+        if let Some(mut m) = manual.filter(|_| !j.review_first && j.matched.is_none()) {
             let src = s(&m, "source").to_string();
+            let folder = Self::folder_author(&j);
+            if m["authors"].as_array().is_none_or(|a| a.is_empty()) && !folder.is_empty() {
+                m["authors"] = json!([folder]); // only translators listed there: the folder knows the author
+            }
             j.matched = Some(m);
             j.info(&t("Angaben aus {source}", &[("source", &src)]));
         }
@@ -2377,6 +2427,58 @@ impl Pipeline {
         self.save(app);
     }
 
+    /// Why the book details of a metadata.json beside the files are not to be trusted – or None: the shop's runtime
+    /// of its ASIN does not fit the files, the folder names another author, or a short title leaves out a word of
+    /// the folder name ("Stenkelfeld" for "… - Stenkelfeld - Zugabe").
+    fn manual_doubt(&self, app: &Arc<App>, slot: &JobRef) -> Option<String> {
+        let (book, name, duration, author, region) = {
+            let j = slot.lock();
+            let m = j.matched.clone()?;
+            if !tagger::is_manual_source(s(&m, "source")) {
+                return None;
+            }
+            let split = rx::is_match(rx!(r"\s[-–]\s"), &j.name);
+            let author = if split {
+                Self::name_author(&j.name)
+            } else {
+                String::new()
+            };
+            (m, j.name.clone(), j.duration, author, j.region.clone())
+        };
+        if !author.is_empty() {
+            let want = crate::words::surname(&author);
+            let names: Vec<&str> = book["authors"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .collect();
+            if !want.is_empty() && !names.is_empty() && !names.iter().any(|n| crate::words::surname(n) == want) {
+                return Some(t(
+                    "der Ordner nennt {author} als Autor, dort steht {names}",
+                    &[("author", &author), ("names", &names.join(", "))],
+                ));
+            }
+        }
+        if let Some(word) = releases::name_adds_to_title(&name, &book) {
+            return Some(t(
+                "der Ordnername nennt „{word}“, der Titel „{title}“ nicht",
+                &[("word", &word), ("title", s(&book, "title"))],
+            ));
+        }
+        if !s(&book, "asin").is_empty() && duration > 0.0 {
+            let region = region.unwrap_or_else(|| sval(&app.settings(), "ab_region", "de"));
+            let shop = app.providers.client.chapters(s(&book, "asin"), &region)?;
+            let ms = shop["runtime_ms"].as_f64().unwrap_or(0.0);
+            if ms > 0.0 {
+                let mut b = book.clone();
+                b["runtime_min"] = json!((ms / 60_000.0).round());
+                return releases::runtime_conflict(&b, duration);
+            }
+        }
+        None
+    }
+
     /// Why a match should not be filed without a look (runtime a bit off, another narrator in the tags, the
     /// chapters of a single M4B not lining up with the shop's) – or None.
     fn doubt(&self, app: &Arc<App>, slot: &JobRef, book: &Value, region: &str) -> Option<String> {
@@ -2413,7 +2515,16 @@ impl Pipeline {
                 let mine: Vec<f64> = mine.iter().map(|c| c.start).collect();
                 releases::chapter_agreement(&mine, &starts, duration, shop_len)
             });
-        releases::doubt(book, duration, &narrator, agreement)
+        releases::doubt(book, duration, &narrator, agreement).or_else(|| {
+            // a short title, and the folder names a word it doesn't have: perhaps another work of a series or brand
+            let name = slot.lock().name.clone();
+            releases::name_doubt(&name, book).map(|word| {
+                t(
+                    "der Ordnername nennt „{word}“, der Titel „{title}“ nicht – vielleicht ein anderes Werk",
+                    &[("word", &word), ("title", s(book, "title"))],
+                )
+            })
+        })
     }
 
     /// A download for a request that does not fit, kept on purpose: the request blocks the release and searches on,
@@ -2528,18 +2639,25 @@ impl Pipeline {
         if !job.hint("author").is_empty() {
             return job.hint("author");
         }
-        let first = rx::split(rx!(r"\s+[-–]\s+|(?<=[a-zäöüß])-(?=[A-ZÄÖÜ])"), &job.name)
+        Self::name_author(&job.name)
+    }
+
+    /// The author a folder name starts with ("Anna Muster - Titel") – or "".
+    fn name_author(name: &str) -> String {
+        let first = rx::split(rx!(r"\s+[-–]\s+|(?<=[a-zäöüß])-(?=[A-ZÄÖÜ])"), name)
             .into_iter()
             .next()
             .unwrap_or_default()
             .trim()
             .to_string();
-        let words: Vec<String> = first
-            .replace('.', ". ")
-            .split_whitespace()
-            .map(str::to_string)
-            .collect();
-        if (2..=4).contains(&words.len()) && words.iter().all(|w| rx::is_match(rx!(r"^[A-ZÄÖÜ][\wäöüß'.]*$"), w))
+        // "Anna Muster" – or two of them: "Harald Wehmeier & Detlev Gröning", "A. Muster und B. Beispiel"
+        let is_name = |part: &str| {
+            let words: Vec<String> = part.replace('.', ". ").split_whitespace().map(str::to_string).collect();
+            (2..=4).contains(&words.len()) && words.iter().all(|w| rx::is_match(rx!(r"^[A-ZÄÖÜ][\wäöüß'.]*$"), w))
+        };
+        if rx::split(rx!(r"\s*(?:&|,|\bund\b)\s*"), &first)
+            .iter()
+            .all(|p| is_name(p))
         {
             return first;
         }
@@ -2935,11 +3053,69 @@ impl Pipeline {
                 .filter(|d| Some(s(d, "path")) != own.as_deref())
                 .collect();
             if let Some(d) = found.first() {
-                let mut dup: Map<String, Value> = ["path", "title", "authors", "asin", "format", "why"]
-                    .iter()
-                    .map(|k| (k.to_string(), d.get(*k).cloned().unwrap_or(Value::Null)))
-                    .collect();
-                dup.insert("quality".into(), json!({"old": Self::quality_of(&self.library.join(s(d, "path"))), "new": Self::quality_of(&m4b_path)}));
+                let mut dup: Map<String, Value> = [
+                    "path",
+                    "title",
+                    "authors",
+                    "narrators",
+                    "series",
+                    "series_position",
+                    "asin",
+                    "format",
+                    "cover",
+                    "why",
+                ]
+                .iter()
+                .map(|k| (k.to_string(), d.get(*k).cloned().unwrap_or(Value::Null)))
+                .collect();
+                let quality = json!({"old": Self::quality_of(&self.library.join(s(d, "path"))), "new": Self::quality_of(&m4b_path)});
+                // where the book in the library came from (the folder or download name it was filed from)
+                if let Some(o) = app.db.get(&format!("origin:{}", s(d, "path"))) {
+                    dup.insert("origin".into(), o["name"].clone());
+                }
+                if s(d, "why") == "title" {
+                    // only author and title are the same: perhaps another work under a short or brand title
+                    let name = slot.lock().name.clone();
+                    let (old_len, new_len) = (
+                        quality["old"]["duration"].as_f64().unwrap_or(0.0),
+                        quality["new"]["duration"].as_f64().unwrap_or(0.0),
+                    );
+                    // names of both (authors and narrators of either are no extra words of the folder name)
+                    let mut both = d.clone();
+                    let folder_author = Self::folder_author(&slot.lock());
+                    for k in ["authors", "narrators"] {
+                        let mut all: Vec<Value> = d[k].as_array().cloned().unwrap_or_default();
+                        all.extend(book[k].as_array().cloned().unwrap_or_default());
+                        if k == "authors" && !folder_author.is_empty() {
+                            all.push(json!(folder_author)); // as the folder writes it ("A & B")
+                        }
+                        both[k] = Value::Array(all);
+                    }
+                    let other = if let Some(word) = releases::name_doubt(&name, &both) {
+                        Some(t(
+                            "der Ordnername nennt „{word}“, das vorhandene heißt nur „{title}“",
+                            &[("word", &word), ("title", s(d, "title"))],
+                        ))
+                    } else if old_len > 0.0 && new_len > 0.0 && (old_len - new_len).abs() / old_len.max(new_len) > 0.15
+                    {
+                        Some(t(
+                            "Laufzeit {new} statt {old} min",
+                            &[
+                                ("new", &releases::py_round(new_len / 60.0).to_string()),
+                                ("old", &releases::py_round(old_len / 60.0).to_string()),
+                            ],
+                        ))
+                    } else {
+                        None
+                    };
+                    if let Some(why) = other {
+                        dup.insert("other_work".into(), json!(why));
+                        if let Some(rest) = releases::folder_rest(&name, &both) {
+                            dup.insert("own_title".into(), json!(format!("{} – {rest}", s(&book, "title"))));
+                        }
+                    }
+                }
+                dup.insert("quality".into(), quality);
                 let why = match s(d, "why") {
                     "asin" => t("gleiche ASIN", &[]),
                     "title" => t("gleicher Autor und Titel", &[]),
@@ -3086,6 +3262,14 @@ impl Pipeline {
             )?;
         }
         app.library.add(&dest, &book);
+        if let Some(folder) = dest.parent() {
+            // remembered, so a later conflict can say which download or folder this book came from
+            let name = slot.lock().name.clone();
+            let _ = app.db.put(
+                &format!("origin:{}", rel_to(&folder.display().to_string(), &root)),
+                &json!({"name": name, "time": now()}),
+            );
+        }
         {
             let mut j = slot.lock();
             j.m4b = None;

@@ -11,6 +11,11 @@ use crate::text::t;
 pub const METADATA_FILE: &str = "metadata.json";
 const MANUAL_FILES: [&str; 3] = ["metadata.yml", "metadata.yaml", "metadata.json"];
 
+/// The "source" of book details read from such a file beside the audio.
+pub fn is_manual_source(source: &str) -> bool {
+    MANUAL_FILES.contains(&source)
+}
+
 pub fn write_tags(path: &Path, book: &Value, settings: &Value, cover: Option<Vec<u8>>) -> Result<(), String> {
     hw_tags::write(path, book, settings, cover).map_err(|e| e.to_string())
 }
@@ -286,9 +291,16 @@ pub fn load_manual(folder: &Path) -> Result<Option<Value>, String> {
             }
         }
         let opt = |v: &Value| if v.is_null() { Value::Null } else { v.clone() };
+        // "Ursel Allenstein - Übersetzer" among the authors (Audiobookshelf keeps it like that): not the author
+        let (authors, mut translators) = crate::audible::split_authors(&lst(&first(&["authors", "author"])));
+        for t in lst(&data["translators"]) {
+            if !translators.contains(&t) {
+                translators.push(t);
+            }
+        }
         return Ok(Some(json!({
             "asin": opt(&data["asin"]), "title": py_str(&data["title"]), "subtitle": opt(&data["subtitle"]),
-            "authors": lst(&first(&["authors", "author"])), "narrators": lst(&first(&["narrators", "narrator"])),
+            "authors": authors, "translators": translators, "narrators": lst(&first(&["narrators", "narrator"])),
             "series": if truthy(&series) { series } else { Value::Null },
             "series_position": if position.is_null() { Value::Null } else { json!(py_str(&position)) },
             "publisher": opt(&data["publisher"]),
@@ -299,4 +311,24 @@ pub fn load_manual(folder: &Path) -> Result<Option<Value>, String> {
         })));
     }
     Ok(None)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn audiobookshelf_translators_are_no_authors() {
+        let dir = std::env::temp_dir().join(format!("hw-manual-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("metadata.json"),
+            r#"{"title": "Die Psychologin", "authors": ["Helene Flood", "Ursel Allenstein - Übersetzer"]}"#,
+        )
+        .unwrap();
+        let book = load_manual(&dir).unwrap().unwrap();
+        assert_eq!(book["authors"], json!(["Helene Flood"]));
+        assert_eq!(book["translators"], json!(["Ursel Allenstein"]));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }
