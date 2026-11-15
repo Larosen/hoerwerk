@@ -1615,5 +1615,19 @@
  "gesucht": "wanted",
  "Download kam nicht im Eingang an (Zielordner der Kategorie in SABnzbd prüfen)": "The download never reached the inbox (check the category's folder in SABnzbd)",
  "Import abgebrochen": "Import cancelled",
- "Programmfehler in {thread} ({at}): {what} – bitte melden": "Program error in {thread} ({at}): {what} – please report"
+ "Programmfehler in {thread} ({at}): {what} – bitte melden": "Program error in {thread} ({at}): {what} – please report",
+ "Abgelegt aus: {name}": "Filed from: {name}",
+ "Als eigenes Hörbuch: „{title}“": "As a book of its own: “{title}”",
+ "Als „{title}“ ablegen": "File as “{title}”",
+ "Angaben aus {source} passen nicht zu den Dateien: {why} – suche selbst": "Details from {source} don't fit the files: {why} – searching myself",
+ "Ansehen": "View",
+ "Kein eigener Titel bekannt": "No title of its own known",
+ "Laufzeit {new} statt {old} min": "runtime {new} instead of {old} min",
+ "Wahrscheinlich ein anderes Werk: {why}": "Probably another work: {why}",
+ "Wird als eigenes Hörbuch abgelegt": "Filed as a book of its own",
+ "der Ordner nennt {author} als Autor, dort steht {names}": "the folder names {author} as author, it says {names}",
+ "der Ordnername nennt „{word}“, das vorhandene heißt nur „{title}“": "the folder name says “{word}”, the existing one is only called “{title}”",
+ "der Ordnername nennt „{word}“, der Titel „{title}“ nicht": "the folder name says “{word}”, the title “{title}” doesn't",
+ "der Ordnername nennt „{word}“, der Titel „{title}“ nicht – vielleicht ein anderes Werk": "the folder name says “{word}”, the title “{title}” doesn't – perhaps another work",
+ "Konflikt mit der Bibliothek wird neu geprüft": "Checking the conflict with the library again"
 }

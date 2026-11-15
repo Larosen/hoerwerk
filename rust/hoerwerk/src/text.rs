@@ -74,6 +74,60 @@ static LOG: Mutex<Log> = Mutex::new(Log {
     entries: VecDeque::new(),
 });
 
+/// The log also goes to config/logs/hoerwerk.log (one JSON object per line), so a restart or an update keeps it.
+static LOG_FILE: Mutex<Option<std::path::PathBuf>> = Mutex::new(None);
+const LOG_MAX_BYTES: u64 = 5 << 20;
+
+/// Open the log file and bring back the newest entries of the earlier runs.
+pub fn setup_log(config_dir: &std::path::Path) {
+    let folder = config_dir.join("logs");
+    if std::fs::create_dir_all(&folder).is_err() {
+        return;
+    }
+    let path = folder.join("hoerwerk.log");
+    let mut old: VecDeque<Value> = VecDeque::new();
+    for file in [folder.join("hoerwerk.log.1"), path.clone()] {
+        for line in std::fs::read_to_string(&file).unwrap_or_default().lines() {
+            if let Ok(e) = serde_json::from_str::<Value>(line)
+                && e.get("time").is_some()
+            {
+                old.push_back(e);
+                if old.len() > SIZE {
+                    old.pop_front();
+                }
+            }
+        }
+    }
+    let mut l = LOG.lock().unwrap_or_else(|p| p.into_inner());
+    let earlier = std::mem::take(&mut l.entries); // lines written before the file was known (the start itself)
+    l.seq = 0;
+    for mut e in old.into_iter().chain(earlier) {
+        l.seq += 1;
+        e["id"] = json!(l.seq);
+        l.entries.push_back(e);
+    }
+    while l.entries.len() > SIZE {
+        l.entries.pop_front();
+    }
+    *LOG_FILE.lock().unwrap_or_else(|p| p.into_inner()) = Some(path);
+}
+
+fn append_log(entry: &Value) {
+    use std::io::Write;
+    let guard = LOG_FILE.lock().unwrap_or_else(|p| p.into_inner());
+    let Some(path) = guard.as_ref() else { return };
+    if std::fs::metadata(path).map_or(0, |m| m.len()) > LOG_MAX_BYTES {
+        let _ = std::fs::rename(path, path.with_extension("log.1"));
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        let mut e = entry.clone();
+        if let Some(o) = e.as_object_mut() {
+            o.remove("id");
+        }
+        let _ = writeln!(f, "{e}");
+    }
+}
+
 /// A text that was read as Windows-1252 although it is UTF-8 ("Philosopherâ€™s") gets its characters back; anything
 /// else is returned as it is.
 pub fn fix_mojibake(text: &str) -> String {
@@ -135,10 +189,12 @@ pub fn log_entry(level: &str, source: &str, text: &str, echo: bool) {
         let mut l = LOG.lock().unwrap_or_else(|p| p.into_inner());
         l.seq += 1;
         let entry = json!({"id": l.seq, "time": time, "level": level, "source": source, "text": text.trim_end()});
-        l.entries.push_back(entry);
+        l.entries.push_back(entry.clone());
         while l.entries.len() > SIZE {
             l.entries.pop_front();
         }
+        drop(l);
+        append_log(&entry);
     }
     if !echo {
         return;

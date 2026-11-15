@@ -354,6 +354,41 @@ fn split_role(name: &str) -> (String, String) {
     (name.trim().to_string(), String::new())
 }
 
+/// Author names as shops and Audiobookshelf write them ("Ursel Allenstein - Übersetzer"): the real authors, and the
+/// translators. Editors, illustrators, foreword writers … are neither – a book is never filed under them.
+pub fn split_authors(names: &[String]) -> (Vec<String>, Vec<String>) {
+    let (mut authors, mut translators) = (Vec::<String>::new(), Vec::<String>::new());
+    for raw in names {
+        let (mut name, mut role) = split_role(raw);
+        if role.is_empty()
+            && let Some(m) = rx::search(rx!(r"^(.*?)\s*\(([^()]+)\)\s*$"), raw)
+        {
+            // "Ursel Allenstein (Übersetzer)"
+            (name, role) = (m[1].trim().to_string(), m[2].trim().to_string());
+        }
+        if name.is_empty() {
+            continue;
+        }
+        if !role.is_empty()
+            && is_match(
+                rx!(
+                    r"(?i)(translator|übersetz|editor|herausgeb|hrsg|illustrat|foreword|vorwort|introduction|einleitung|adapt|bearbeit|contributor|afterword|nachwort)"
+                ),
+                &role,
+            )
+        {
+            if is_match(rx!(r"(?i)translator|übersetz"), &role) && !translators.contains(&name) {
+                translators.push(name);
+            }
+            continue;
+        }
+        if !authors.contains(&name) {
+            authors.push(name);
+        }
+    }
+    (authors, translators)
+}
+
 pub fn series_position(seq: &Value) -> Value {
     let text = match seq {
         Value::Null => return Value::Null,
@@ -381,29 +416,13 @@ fn opt_str(v: &str) -> Value {
 
 /// Audible catalog product -> flat book used everywhere else.
 pub fn normalize_product(p: &Value, region: &str) -> Value {
-    let (mut authors, mut translators) = (Vec::<String>::new(), Vec::<String>::new());
-    for a in p["authors"].as_array().into_iter().flatten() {
-        let (name, role) = split_role(s(a, "name"));
-        if name.is_empty() {
-            continue;
-        }
-        if !role.is_empty()
-            && is_match(
-                rx!(
-                    r"(?i)(translator|übersetz|editor|herausgeb|illustrat|foreword|vorwort|introduction|einleitung|adapt|bearbeit|contributor|afterword|nachwort)"
-                ),
-                &role,
-            )
-        {
-            if is_match(rx!(r"(?i)translator|übersetz"), &role) {
-                translators.push(name);
-            }
-            continue;
-        }
-        if !authors.contains(&name) {
-            authors.push(name);
-        }
-    }
+    let names: Vec<String> = p["authors"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|a| s(a, "name").to_string())
+        .collect();
+    let (authors, translators) = split_authors(&names);
     let mut narrators: Vec<String> = Vec::new();
     for n in p["narrators"].as_array().into_iter().flatten() {
         let name = split_role(s(n, "name")).0;
@@ -1518,6 +1537,22 @@ pub fn obj(v: &Value) -> Map<String, Value> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn translators_and_editors_are_no_authors() {
+        let names: Vec<String> = [
+            "Helene Flood",
+            "Ursel Allenstein - Übersetzer",
+            "Anna Muster (Hrsg.)",
+            "Max Bild (Illustrator)",
+        ]
+        .iter()
+        .map(|x| x.to_string())
+        .collect();
+        let (authors, translators) = split_authors(&names);
+        assert_eq!(authors, ["Helene Flood"]);
+        assert_eq!(translators, ["Ursel Allenstein"]);
+    }
+
     use super::*;
     use std::sync::Arc;
 

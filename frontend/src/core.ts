@@ -88,6 +88,10 @@ interface Hints { query?: string; title?: string; author?: string; narrator?: st
 interface Quality { kbps: number; duration: number; size: number; files: number }
 interface Duplicate {
   path: string; title: string; authors: string[]; asin: string | null; format: string; why: string;
+  narrators?: string[]; series?: string | null; series_position?: string | null; cover?: boolean;
+  origin?: string;          // the folder or download the book in the library was filed from
+  other_work?: string;      // why it is probably another work after all
+  own_title?: string;       // the title it would get as a book of its own
   quality?: { old: Quality | null; new: Quality | null };
 }
 type BookStatus = "queued" | "matching" | "converting" | "review" | "tagging" | "done" | "failed" | "cancelled";

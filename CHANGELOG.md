@@ -3,6 +3,24 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.8 – 2026-11-15
+
+- **The log survives restarts and updates:** it is also written to `config/logs/hoerwerk.log` (rotated at 5 MB) and the newest
+  entries are back after a start.
+- **A metadata.json beside the files is checked before it is trusted** (e.g. the one Audiobookshelf writes): if the folder names
+  another author, a short title leaves out a word of the folder name, or the shop's runtime of its ASIN does not fit, Hörwerk
+  searches itself instead of filing the book under the wrong title.
+- Translators, editors and illustrators in a metadata.json ("Name - Übersetzer", "Name (Hrsg.)") are no longer taken as authors;
+  with only a translator listed, the author comes from the folder name.
+- A match or details picked under "Zu prüfen" are no longer replaced by the metadata.json of the folder.
+- Folder names with two authors ("A & B - Titel") are recognised.
+- A short title that leaves out a word of the folder name ("Stenkelfeld" for "… - Stenkelfeld - Zugabe") is no longer filed
+  without a look – it may be another work of a series or brand.
+- **"Schon in der Bibliothek" shows which book it is:** cover, authors, narrators, path, the folder it was filed from (for books
+  filed from now on) and a button to view it. When only author and title are the same but the folder name says more or the
+  runtime differs a lot, the box says it is probably another work and suggests filing it under its own title
+  ("Stenkelfeld – Zugabe"). Conflicts noted by older versions are checked again after the update.
+
 ## 1.0.7 – 2026-11-15
 
 - **Large libraries start fast:** the library index now keeps every book's full details in the database, so a restart no longer reads
