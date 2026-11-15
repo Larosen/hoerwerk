@@ -3,6 +3,13 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.6 – 2026-11-15
+
+- **Failed downloads are noticed:** a download still being checked, repaired or unpacked in SABnzbd no longer counts as finished; when it
+  fails there (e.g. too many missing blocks), the request blocks the release and tries the next one – also requests already waiting.
+- **Library on the phone:** scrolling no longer jumps back to the top while something is being converted (live updates no longer rebuild
+  the list).
+
 ## 1.0.5 – 2026-11-15
 
 - **No more endless "Download fertig – wartet auf den Eingang":** a request whose finished download never shows up as an import is marked

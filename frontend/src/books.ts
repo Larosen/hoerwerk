@@ -110,7 +110,13 @@ function renderBooks(): void {
   if (!live.ok) loadLibraryStats();   // otherwise the live updates bring it
   renderFilter(d.jobs);
   const list = $("#bookList");
+  // the library does not depend on the jobs: a live update (a conversion's progress, every few seconds) must not
+  // rebuild and reload it – that threw a reader scrolling through it back to the top
+  if (books.filter === "library" && list.dataset.view === "library") return;
+  const y = window.scrollY;                          // a rebuild (live update) keeps the place on the page
+  queueMicrotask(() => { if (window.scrollY !== y) window.scrollTo(0, y); });
   list.replaceChildren();
+  list.dataset.view = books.filter;
   if (books.filter === "unconverted") { renderUnconverted(list); return; }
   if (books.filter === "library") { renderLibrary(list); return; }
   const clear = $("#clearBooksBtn");
@@ -188,6 +194,7 @@ async function loadLibraryBooks(): Promise<void> {
     if (!books.libQuery) books.libTotal = res.total;
     const rows = document.getElementById("libRows");
     if (!rows) return;
+    const y = window.scrollY;                       // a reload (new books filed) keeps the place in the list
     rows.replaceChildren(...res.books.map(libraryRow));
     if (!res.books.length) rows.append(el("li", { class: "empty" }, books.libQuery ? t("Nichts gefunden.") : t("Die Bibliothek ist leer.")));
     if (res.total > res.books.length) {
@@ -195,6 +202,7 @@ async function loadLibraryBooks(): Promise<void> {
         el("span", { class: "muted small" }, t("{shown} von {total}", { shown: res.books.length, total: res.total })),
         el("button", { class: "btn small", onclick: () => { books.libShown += 200; loadLibraryBooks(); } }, t("Mehr anzeigen"))));
     }
+    if (window.scrollY !== y) window.scrollTo(0, y);
   } catch (e) { toast(errMsg(e), true); }
 }
 

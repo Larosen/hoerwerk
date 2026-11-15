@@ -1404,7 +1404,37 @@ impl Requests {
                     });
                     self.follow_download(app, req, &items.clone());
                 }
-                Some("processing") => self.follow_job(app, req, None),
+                Some("processing") => {
+                    // a download that failed in SABnzbd after it looked finished (repair, unpacking): the next release
+                    let watch = app.job_for_request(rid).is_none() && !text_of(&req["nzo_id"]).is_empty();
+                    let failed = if !watch {
+                        None
+                    } else {
+                        let items = activity.get_or_insert_with(|| {
+                            if app.usenet.has_sab() {
+                                app.usenet
+                                    .activity(15)
+                                    .ok()
+                                    .and_then(|a| a["items"].as_array().cloned())
+                                    .unwrap_or_default()
+                            } else {
+                                Vec::new()
+                            }
+                        });
+                        items.iter().find(|i| i["id"] == req["nzo_id"]).cloned()
+                    };
+                    match failed {
+                        Some(i) if i["status"] == "Failed" => {
+                            let e = i["error"]
+                                .as_str()
+                                .filter(|e| !e.is_empty())
+                                .unwrap_or("SABnzbd")
+                                .to_string();
+                            self.failed_release(app, req, &t("Download fehlgeschlagen: {error}", &[("error", &e)]));
+                        }
+                        _ => self.follow_job(app, req, None),
+                    }
+                }
                 _ => {}
             }
         }

@@ -817,7 +817,11 @@ impl<'a> Sabnzbd<'a> {
                 .unwrap_or(Value::Null);
             items.push(json!({"id": s["nzo_id"], "name": s["name"], "status": s["status"],
                               "progress": if s["status"] == "Completed" { 1.0 } else { 0.0 }, "size": s["size"], "error": error,
-                              "path": s["storage"], "done": true, "finished": s["completed"]}));
+                              "path": s["storage"],
+                              // in the history but still being checked, repaired or unpacked: not finished yet –
+                              // only "Completed" and "Failed" are an outcome
+                              "done": matches!(s["status"].as_str(), Some("Completed" | "Failed")),
+                              "finished": s["completed"]}));
         }
         Ok(
             json!({"paused": queue["paused"].as_bool().unwrap_or(false), "speed": queue["speed"],
