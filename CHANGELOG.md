@@ -7,6 +7,9 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 
 - **Failed downloads are noticed:** a download still being checked, repaired or unpacked in SABnzbd no longer counts as finished; when it
   fails there (e.g. too many missing blocks), the request blocks the release and tries the next one – also requests already waiting.
+- **A cancelled import no longer leaves its request hanging** on "Wird verarbeitet": the release is blocked and the request searches on.
+- A release that goes to review after an earlier one failed is noted on its request again; SABnzbd's history is read further back
+  (60 entries) so busy days don't hide a finished or failed download.
 - **Library on the phone:** scrolling no longer jumps back to the top while something is being converted (live updates no longer rebuild
   the list).
 

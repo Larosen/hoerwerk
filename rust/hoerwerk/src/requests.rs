@@ -1224,6 +1224,8 @@ impl Requests {
         req["release"] = json!(title);
         req["nzo_id"] = sent["nzo_id"].clone();
         req["sent_at"] = json!(now());
+        req["done_at"] = Value::Null; // a manual grab starts the clock anew
+        req["review_noted"] = Value::Null;
         req["error"] = Value::Null;
         req["attempts"] = json!(req["attempts"].as_i64().unwrap_or(0) + 1);
         let who = by
@@ -1271,7 +1273,15 @@ impl Requests {
             blocked.drain(..skip);
             req["blocked"] = json!(blocked);
         }
-        for k in ["nzo_id", "job_id", "last_search", "pack_volumes"] {
+        // a fresh start for the next release: its review gets noted again, its download timed anew
+        for k in [
+            "nzo_id",
+            "job_id",
+            "last_search",
+            "pack_volumes",
+            "review_noted",
+            "done_at",
+        ] {
             req[k] = Value::Null;
         }
         let attempts = req["attempts"].as_i64().unwrap_or(0);
@@ -1394,7 +1404,7 @@ impl Requests {
                     let items = activity.get_or_insert_with(|| {
                         if app.usenet.has_sab() {
                             app.usenet
-                                .activity(15)
+                                .activity(60)
                                 .ok()
                                 .and_then(|a| a["items"].as_array().cloned())
                                 .unwrap_or_default()
@@ -1413,7 +1423,7 @@ impl Requests {
                         let items = activity.get_or_insert_with(|| {
                             if app.usenet.has_sab() {
                                 app.usenet
-                                    .activity(15)
+                                    .activity(60)
                                     .ok()
                                     .and_then(|a| a["items"].as_array().cloned())
                                     .unwrap_or_default()
@@ -1517,6 +1527,10 @@ impl Requests {
                 let e = text_of(&job["error"]);
                 self.failed_release(app, req, &t("Import fehlgeschlagen: {error}", &[("error", &e)]));
             }
+            // the import was stopped by hand: this release is off, the request looks for another one
+            Some("cancelled") => {
+                self.failed_release(app, req, &t("Import abgebrochen", &[]));
+            }
             Some("review") if req["review_noted"] != true => {
                 req["review_noted"] = json!(true);
                 self.save(
@@ -1551,7 +1565,7 @@ impl Requests {
             "Im Eingang gefunden: {name}",
             &[("name", job["name"].as_str().unwrap_or(""))],
         );
-        if matches!(job["status"].as_str(), Some("done" | "failed" | "review")) {
+        if matches!(job["status"].as_str(), Some("done" | "failed" | "review" | "cancelled")) {
             if req["status"] != "processing" {
                 req = self.save(app, &req, Some("processing"), &found);
             }
