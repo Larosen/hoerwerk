@@ -1177,6 +1177,46 @@ impl Requests {
         by: Option<&Value>,
         release: Option<&Value>,
     ) -> Res<Value> {
+        let name = release.map(|r| text_of(&r["title"])).unwrap_or_default();
+        self.start_download(app, rid, &name, by, false, |hints| app.usenet.send(release_id, hints))
+    }
+
+    /// An NZB file uploaded for this request (e.g. found by hand): to SABnzbd, and the request follows it like a
+    /// release it picked itself.
+    pub fn grab_nzb(&self, app: &App, rid: i64, file_name: &str, nzb: &[u8], by: Option<&Value>) -> Res<Value> {
+        let text = String::from_utf8_lossy(&nzb[..nzb.len().min(64 * 1024)]);
+        if !text.contains("<nzb") || !String::from_utf8_lossy(nzb).contains("<segment") {
+            return err(t("Das ist keine NZB-Datei", &[]), 400);
+        }
+        // the name SABnzbd gives the download: the file's own (without .nzb), or the title inside the NZB
+        let stem = file_name
+            .trim()
+            .trim_end_matches(".nzb")
+            .trim_end_matches(".NZB")
+            .trim();
+        let inner = crate::rx::search(crate::rx!(r#"<meta\s+type="name"\s*>([^<]+)</meta>"#), &text)
+            .map(|m| m[1].trim().to_string())
+            .unwrap_or_default();
+        let name = if !stem.is_empty() { stem.to_string() } else { inner };
+        let name = if name.is_empty() {
+            text_of(&self.need(app, rid)?["book"]["title"])
+        } else {
+            name
+        };
+        self.start_download(app, rid, &name, by, true, |hints| {
+            app.usenet.send_nzb(nzb, &name, hints)
+        })
+    }
+
+    fn start_download(
+        &self,
+        app: &App,
+        rid: i64,
+        name: &str,
+        by: Option<&Value>,
+        uploaded: bool,
+        send: impl FnOnce(&Value) -> crate::usenet::Result<Value>,
+    ) -> Res<Value> {
         let mut req = self.need(app, rid)?;
         if matches!(req["status"].as_str(), Some("downloading" | "processing" | "available")) {
             return err(t("Für diese Anfrage läuft schon ein Download", &[]), 409);
@@ -1188,11 +1228,10 @@ impl Requests {
             .unwrap_or_default();
         let mut hints = json!({"title": book["title"], "author": authors, "asin": book["asin"], "request_id": rid});
         let vol = releases::volumes(&book);
-        let name = release.map(|r| text_of(&r["title"])).unwrap_or_default();
         let pack = if name.is_empty() {
             None
         } else {
-            crate::packs::pack_info(&name)
+            crate::packs::pack_info(name)
         };
         req["pack_volumes"] = Value::Null;
         if let (Some(p), Some(v)) = (&pack, vol) {
@@ -1216,7 +1255,7 @@ impl Requests {
             hints["volumes"] = json!(wanted);
             req["pack_volumes"] = json!(wanted);
         }
-        let sent = app.usenet.send(release_id, &hints).map_err(|e| RequestError {
+        let sent = send(&hints).map_err(|e| RequestError {
             message: e.to_string(),
             status: 400,
         })?;
@@ -1228,9 +1267,11 @@ impl Requests {
         req["review_noted"] = Value::Null;
         req["error"] = Value::Null;
         req["attempts"] = json!(req["attempts"].as_i64().unwrap_or(0) + 1);
-        let who = by
-            .map(|u| t(" (von Hand: {name})", &[("name", &text_of(&u["name"]))]))
-            .unwrap_or_default();
+        let who = match by {
+            Some(u) if uploaded => t(" (NZB hochgeladen: {name})", &[("name", &text_of(&u["name"]))]),
+            Some(u) => t(" (von Hand: {name})", &[("name", &text_of(&u["name"]))]),
+            None => String::new(),
+        };
         let req = self.save(
             app,
             &req,

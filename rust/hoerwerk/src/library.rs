@@ -411,6 +411,32 @@ impl LibraryIndex {
         self.changed();
     }
 
+    /// A book folder (relative to the library) is gone: out of the index right away, with what is below it.
+    pub fn forget(&self, rel: &str) {
+        let prefix = format!("{}/", rel.trim_end_matches('/'));
+        {
+            let mut st = self.lock();
+            let gone: Vec<String> = st
+                .entries
+                .keys()
+                .filter(|k| *k == rel || k.starts_with(&prefix))
+                .cloned()
+                .collect();
+            if let Some(d) = st.during.as_mut() {
+                for g in &gone {
+                    d.insert(g.clone(), None);
+                }
+            }
+            for g in &gone {
+                st.entries.remove(g);
+            }
+            if !gone.is_empty() {
+                let _ = self.store(&[], &gone, None);
+            }
+        }
+        self.changed();
+    }
+
     // -- lookups -------------------------------------------------------------------------------------
     pub fn entries(&self) -> Vec<Value> {
         self.lock().entries.values().cloned().collect()

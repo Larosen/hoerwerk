@@ -482,6 +482,35 @@ class Requests(ContractTest):
             fake.close()
 
 
+    def test_an_uploaded_nzb_is_sent_for_the_request(self):
+        """An NZB file found by hand: uploaded for the request, it goes to SABnzbd and the request follows it."""
+        fake = FakeUsenet([])
+        nzb = ('<?xml version="1.0"?><nzb xmlns="http://www.newzbin.com/DTD/2003/nzb"><head>'
+               '<meta type="name">Anna Autorin - Die Datei</meta></head><file subject="x"><segments>'
+               '<segment bytes="1" number="1">abc@example</segment></segments></file></nzb>')
+        try:
+            self.admin.call("PUT", "/api/sources", {
+                "indexers": [], "sab": {"url": fake.url, "apikey": "sabkey123456", "category": "hoerbuecher"}})
+            item = self.admin.call("POST", "/api/requests", {"book": {**self.BOOK, "asin": "B0NZBDATEI", "title": "Die Datei"}})
+            status, body = self.admin.call("POST", f'/api/requests/{item["id"]}/nzb', {"name": "x.nzb", "nzb": "kein xml"}, expect=None)
+            self.assertEqual(status, 400, body)
+            status, _ = self.family().call("POST", f'/api/requests/{item["id"]}/nzb', {"name": "a.nzb", "nzb": nzb}, expect=None)
+            self.assertIn(status, (403, 404))                                 # only who may search
+            r = self.admin.call("POST", f'/api/requests/{item["id"]}/nzb', {"name": "Anna.Autorin-Die.Datei.German.nzb", "nzb": nzb})
+            self.assertEqual(r["status"], "downloading", r)
+            self.assertEqual(r["release"], "Anna.Autorin-Die.Datei.German")
+            self.assertEqual(len(fake.added), 1)
+            added = fake.added[0]
+            self.assertEqual((added["mode"], added["cat"], added["nzbname"]), ("addfile", "hoerbuecher", "Anna.Autorin-Die.Datei.German"))
+            self.assertIn("<segment", added["file"])
+            self.assertIn("NZB hochgeladen", r["history"][-1]["text"])
+            status, _ = self.admin.call("POST", f'/api/requests/{item["id"]}/nzb', {"name": "b.nzb", "nzb": nzb}, expect=None)
+            self.assertEqual(status, 409)                                     # one download per request
+            self.assertNotIn("sabkey123456", json.dumps(r))
+        finally:
+            self.admin.call("PUT", "/api/sources", {"indexers": [], "sab": {}})
+            fake.close()
+
     def test_better_release_replaces_a_book_that_is_there(self):
         """A book that is there can be searched again: automatically only a clearly better release is taken,
         in the release window any pick counts; the download replaces the book (the old copy is archived)."""

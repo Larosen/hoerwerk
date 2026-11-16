@@ -208,6 +208,22 @@ class FakeUsenet:
                 self.end_headers()
                 self.wfile.write(body)
 
+            def do_POST(self):                     # SABnzbd's addfile: the NZB as a multipart form
+                q = {k: v[0] for k, v in urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).items()}
+                data = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+                fake.calls.append(q)
+                if q.get("mode") == "addfile" and b'name="name"' in data and self.headers.get("Content-Type", "").startswith("multipart/form-data"):
+                    fake.added.append({**q, "file": data.decode("utf-8", "replace")})
+                    out = {"status": True, "nzo_ids": [f"SABnzbd_nzo_{len(fake.added)}"]}
+                else:
+                    out = {"status": False, "error": "unknown mode"}
+                body = json.dumps(out).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
         self.server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.url = f"http://127.0.0.1:{self.server.server_address[1]}"
         threading.Thread(target=self.server.serve_forever, daemon=True).start()

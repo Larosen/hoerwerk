@@ -1566,7 +1566,7 @@ impl Pipeline {
             })?;
         if action == "discard" {
             self.dispose_source(&slot, &app.settings());
-            {
+            let (origin, source) = {
                 let mut j = slot.lock();
                 self.cleanup_work(&j.id);
                 j.m4b = None;
@@ -1575,6 +1575,30 @@ impl Pipeline {
                     "Verworfen – schon in der Bibliothek: {path}",
                     &[("path", s(&dup, "path"))],
                 ));
+                (j.origin.clone(), j.source.clone())
+            };
+            if origin == "library" {
+                // a book of the library that is there a second time: its old copy (the MP3s) is what goes – else it
+                // stays "not an M4B" and comes back to the gentle conversion after every start
+                let rel = rel_to(&source, &real(&self.library));
+                let kept = s(&dup, "path");
+                let inside = kept == rel || kept.starts_with(&format!("{}/", rel.trim_end_matches('/')));
+                let result = if inside || rel.is_empty() {
+                    Err(PipeError::Refused(t(
+                        "das vorhandene Hörbuch liegt im selben Ordner",
+                        &[],
+                    )))
+                } else {
+                    self.delete_from_library(app, &rel)
+                };
+                let msg = match result {
+                    Ok(shown) => t("Alte Fassung aus der Bibliothek entfernt: {path}", &[("path", &shown)]),
+                    Err(e) => t(
+                        "Alte Fassung blieb in der Bibliothek: {error}",
+                        &[("error", &e.to_string())],
+                    ),
+                };
+                slot.say(&msg);
             }
             self.save(app);
             return Ok(slot);
@@ -2701,6 +2725,7 @@ impl Pipeline {
             move_path(&path, &target)?;
         }
         remove_empty_parents(path.parent().unwrap_or(Path::new("")), &root);
+        app.library.forget(&shown);
         text::info(&shown, &t("Aus der Bibliothek gelöscht", &[]));
         Ok(shown)
     }

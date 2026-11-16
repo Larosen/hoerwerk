@@ -84,6 +84,7 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("POST", "/api/requests/{rid}/retry") => h!(super::requests::retry),
         ("POST", "/api/requests/{rid}/releases") => h!(super::requests::releases),
         ("POST", "/api/requests/{rid}/grab") => h!(super::requests::grab),
+        ("POST", "/api/requests/{rid}/nzb") => h!(super::requests::nzb),
         ("POST", "/api/requests/{rid}/block") => h!(super::requests::block),
         ("GET", "/api/stats") => h!(super::requests::stats),
         ("GET", "/api/stats/accounts/{uid}") => h!(super::requests::stats_account),

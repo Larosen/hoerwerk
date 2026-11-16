@@ -549,6 +549,12 @@
   },
   {
    "method": "POST",
+   "path": "/api/requests/{rid}/nzb",
+   "access": "user",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
    "path": "/api/requests/{rid}/releases",
    "access": "user",
    "raw_body": false
