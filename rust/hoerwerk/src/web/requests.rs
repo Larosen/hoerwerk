@@ -448,6 +448,27 @@ pub async fn sources_get(app: Arc<App>, _: Req, _: Params) -> Reply {
     json_reply(with_servers(&app, app.usenet.public_config()))
 }
 
+/// Take the indexers of a Prowlarr (address and API key in the body; nothing is stored of them but the indexers).
+pub async fn sources_prowlarr(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let (a, url, key) = (app.clone(), req.str("url"), req.str("apikey"));
+    if url.trim().is_empty() {
+        return error(400, t("Die Adresse von Prowlarr fehlt", &[]));
+    }
+    let res = blocking(move || a.usenet.import_prowlarr(&url, &key)).await;
+    match res {
+        Ok(v) => {
+            app.audit(
+                &req.user_name(),
+                &req.ip,
+                "prowlarr_import",
+                &format!("{} added", v["added"]),
+            );
+            json_reply(json!({"result": v, "sources": with_servers(&app, app.usenet.public_config())}))
+        }
+        Err(e) => error(400, e.to_string()),
+    }
+}
+
 pub async fn sources_put(app: Arc<App>, req: Req, _: Params) -> Reply {
     if !req.body.is_object() {
         return error(400, t("Ungültige Daten", &[]));

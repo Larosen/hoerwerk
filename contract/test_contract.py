@@ -118,6 +118,29 @@ class Access(ContractTest):
                 self.assertIn(b"<html", data)
         self.assertEqual(self.family().call("GET", "/settings/general", expect=None)[0], 303)   # admins only: back to the start
 
+    def test_indexers_from_prowlarr(self):
+        """Prowlarr: its Usenet indexers become indexers of their own (Prowlarr's address and key); torrents and
+        switched-off ones stay out, known ones are not added twice."""
+        fake = FakeUsenet([])
+        try:
+            self.admin.call("PUT", "/api/sources", {"indexers": [], "sab": {}})
+            status, _ = self.admin.call("POST", "/api/sources/prowlarr", {"url": fake.url, "apikey": "falsch"}, expect=None)
+            self.assertEqual(status, 400)
+            self.assertEqual(self.family().call("POST", "/api/sources/prowlarr", {"url": fake.url, "apikey": "x"}, expect=None)[0], 403)
+            got = self.admin.call("POST", "/api/sources/prowlarr", {"url": fake.url, "apikey": "prowlarrkey12345"})
+            self.assertEqual(got["result"], {"added": 1, "known": 0, "skipped": 2})
+            idx = got["sources"]["indexers"]
+            self.assertEqual([i["name"] for i in idx], ["Prowlarr: Hörbuch-Index"])
+            self.assertEqual(idx[0]["url"], f"{fake.url}/1")
+            self.assertTrue(idx[0]["apikey_set"])
+            self.assertNotIn("prowlarrkey12345", json.dumps(got))
+            again = self.admin.call("POST", "/api/sources/prowlarr", {"url": fake.url, "apikey": "prowlarrkey12345"})
+            self.assertEqual(again["result"], {"added": 0, "known": 1, "skipped": 2})
+            self.assertEqual(len(again["sources"]["indexers"]), 1)
+        finally:
+            self.admin.call("PUT", "/api/sources", {"indexers": [], "sab": {}})
+            fake.close()
+
     def test_settings_export_and_import(self):
         """Moving: settings and sources go out as a file (keys only when asked for) and come in on another server."""
         fake = FakeUsenet([])

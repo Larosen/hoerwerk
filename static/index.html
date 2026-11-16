@@ -415,6 +415,15 @@
       <p class="muted small">Die Indexer werden von oben nach unten gefragt. Sobald einer ein sehr gutes Release hat, ist die Suche zu Ende. Mit „Zuerst“ rückt ein Indexer an die erste Stelle.</p>
       <div id="indexerRows" class="indexer-rows"></div>
       <button type="button" id="addIndexerBtn" class="btn small">+ Indexer</button>
+      <details class="prowlarr-box">
+        <summary>Indexer aus Prowlarr übernehmen</summary>
+        <p class="muted small">Adresse und API-Schlüssel von Prowlarr (Einstellungen → Allgemein). Die Usenet-Indexer werden hinzugefügt, schon vorhandene bleiben, nichts wird gelöscht. Hörwerk fragt sie über Prowlarr ab.</p>
+        <div class="row gap wrap">
+          <input id="prowlarrUrl" type="url" placeholder="http://prowlarr:9696" spellcheck="false" autocomplete="off" aria-label="Adresse von Prowlarr">
+          <input id="prowlarrKey" type="password" placeholder="API-Schlüssel von Prowlarr" spellcheck="false" autocomplete="off" aria-label="API-Schlüssel von Prowlarr">
+          <button type="button" id="prowlarrGo" class="btn small">Übernehmen</button>
+        </div>
+      </details>
     </fieldset>
     <fieldset data-section="downloads">
       <legend>SABnzbd</legend>

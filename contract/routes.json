@@ -650,6 +650,12 @@
    "raw_body": false
   },
   {
+   "method": "POST",
+   "path": "/api/sources/prowlarr",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "PUT",
    "path": "/api/sources",
    "access": "admin",

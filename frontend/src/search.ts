@@ -417,6 +417,19 @@ function initSearch(): void {
   $("#releaseForm").addEventListener("submit", (e) => runSearch(e));
   initReleaseSort($("#searchSort"), () => { if (search.results.length) renderResults(); });
   $("#addIndexerBtn").addEventListener("click", () => $("#indexerRows").append(indexerRow()));
+  // the indexers of a Prowlarr: added on the server, the list is redrawn from its answer
+  $("#prowlarrGo").addEventListener("click", async (e) => {
+    const go = e.currentTarget as HTMLButtonElement;
+    go.disabled = true;
+    try {
+      const res = await api<{ result: { added: number; known: number; skipped: number }; sources: Sources }>("POST", "/api/sources/prowlarr",
+        { url: $<HTMLInputElement>("#prowlarrUrl").value, apikey: $<HTMLInputElement>("#prowlarrKey").value });
+      search.sources = res.sources;
+      fillSources();
+      $<HTMLInputElement>("#prowlarrKey").value = "";
+      toast(t("Aus Prowlarr: {added} neu, {known} schon vorhanden, {skipped} übersprungen (Torrent oder aus)", res.result));
+    } catch (err) { toast(errMsg(err), true); } finally { go.disabled = false; }
+  });
   $("#sourcesForm").addEventListener("submit", (e) => { e.preventDefault(); saveSources(); });
   document.addEventListener("viewchange", (e) => {
     if ((e as CustomEvent<string>).detail === "search" && IS_ADMIN) loadSources();

@@ -1680,5 +1680,14 @@
  "Mit den API-Schlüsseln der Indexer und von SABnzbd – die Datei wie ein Passwort aufbewahren": "With the API keys of the indexers and SABnzbd – keep the file like a password",
  "Umzug auf einen neuen Server": "Moving to a new server",
  "Übernommen: {n} Einstellungen, {m} Indexer": "Applied: {n} settings, {m} indexers",
- "Das ist keine Hörwerk-Exportdatei": "That is not a Hörwerk export file"
+ "Das ist keine Hörwerk-Exportdatei": "That is not a Hörwerk export file",
+ "Adresse von Prowlarr": "Address of Prowlarr",
+ "Aus Prowlarr: {added} neu, {known} schon vorhanden, {skipped} übersprungen (Torrent oder aus)": "From Prowlarr: {added} new, {known} already there, {skipped} skipped (torrent or off)",
+ "Der API-Schlüssel von Prowlarr fehlt": "The API key of Prowlarr is missing",
+ "Die Adresse von Prowlarr fehlt": "The address of Prowlarr is missing",
+ "Indexer aus Prowlarr übernehmen": "Take indexers from Prowlarr",
+ "Prowlarr: unerwartete Antwort": "Prowlarr: unexpected answer",
+ "http://prowlarr:9696": "http://prowlarr:9696",
+ "API-Schlüssel von Prowlarr": "API key of Prowlarr",
+ "Adresse und API-Schlüssel von Prowlarr (Einstellungen → Allgemein). Die Usenet-Indexer werden hinzugefügt, schon vorhandene bleiben, nichts wird gelöscht. Hörwerk fragt sie über Prowlarr ab.": "Address and API key of Prowlarr (Settings → General). Its Usenet indexers are added, existing ones stay, nothing is deleted. Hörwerk asks them through Prowlarr."
 }

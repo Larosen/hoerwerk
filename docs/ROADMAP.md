@@ -36,7 +36,6 @@ Development versions before 1.0:
 
 | | What | Why |
 |---|---|---|
-| 1 | **Prowlarr sync** | Take indexers (and their categories) from Prowlarr instead of entering them twice. |
 | 2 | **More free and legal sources** | ARD Audiothek (public-broadcaster audio dramas and readings, downloadable while online), Vorleser.net (classics read by professional speakers, free for private use), more public-domain collections of the Internet Archive with a clear licence. Each source only if its terms allow downloading. |
 | 3 | **arm64 image** | Built on a native arm64 runner (Raspberry Pi, Apple-silicon NAS). |
 

@@ -67,6 +67,7 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("GET", "/api/invite/{token}") => h!(invite_check),
         ("POST", "/api/invite/{token}") => h!(invite_accept),
         ("GET", "/api/sources") => h!(super::requests::sources_get),
+        ("POST", "/api/sources/prowlarr") => h!(super::requests::sources_prowlarr),
         ("PUT", "/api/sources") => h!(super::requests::sources_put),
         ("POST", "/api/sources/test") => h!(super::requests::sources_test),
         ("GET", "/api/downloads") => h!(super::requests::downloads),

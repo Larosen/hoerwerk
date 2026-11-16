@@ -1334,3 +1334,6 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .nzb-upload label.busy { opacity: .6; pointer-events: none; }
 .transfer-box { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
 .transfer-box label.btn { cursor: pointer; }
+.prowlarr-box { margin-top: 10px; }
+.prowlarr-box summary { cursor: pointer; font-weight: 600; }
+.prowlarr-box input { flex: 1 1 200px; min-width: 0; }
