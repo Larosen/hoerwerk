@@ -36,6 +36,7 @@ macro_rules! h {
 fn handler_for(method: &str, path: &str) -> Handler {
     match (method, path) {
         ("GET", "/api/health") => h!(super::system::health),
+        ("GET", "/api/metrics") => h!(super::metrics::metrics),
         ("GET", "/api/auth/status") => h!(auth_status),
         ("POST", "/api/auth/setup") => h!(setup),
         ("POST", "/api/auth/login") => h!(login),

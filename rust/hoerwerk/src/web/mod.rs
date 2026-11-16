@@ -9,6 +9,7 @@ pub mod follows;
 pub mod hosts;
 pub mod library;
 pub mod listening;
+pub mod metrics;
 pub mod requests;
 pub mod search;
 pub mod system;
@@ -118,6 +119,8 @@ pub struct Req {
     pub token: String,
     pub agent: String,
     pub proxied: bool,
+    /// the token of an `Authorization: Bearer …` header (for the metrics page)
+    pub bearer: String,
     /// asked for under the own network's address (not a public name)
     pub home_host: bool,
     pub conn: Value,
@@ -672,6 +675,11 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
         token,
         agent: header_str(h, "user-agent").to_string(),
         proxied: conn.forwarded,
+        bearer: header_str(h, "authorization")
+            .strip_prefix("Bearer ")
+            .unwrap_or("")
+            .trim()
+            .to_string(),
         home_host: hosts::is_home_host(&host),
         conn: conn_info,
     };

@@ -112,6 +112,11 @@ impl Engine {
         }
     }
 
+    /// Steps finished since the start.
+    pub fn done(&self) -> u64 {
+        self.lock().done
+    }
+
     pub fn stats(&self) -> Value {
         let st = self.lock();
         let mut out = serde_json::Map::new();

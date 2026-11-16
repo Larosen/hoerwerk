@@ -44,7 +44,6 @@ Development versions before 1.0:
 
 - **Chapter editor** in the UI: rename, merge, split chapters before filing.
 - **Per-account libraries / age-appropriate views** for kids' accounts.
-- **Prometheus metrics** (`/metrics`) for queue length, conversions, failures.
 - **Settings export/import** for moving to a new server.
 - **PWA**: install the UI on the phone's home screen, push via ntfy already works.
 

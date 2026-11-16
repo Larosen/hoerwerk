@@ -118,6 +118,25 @@ class Access(ContractTest):
                 self.assertIn(b"<html", data)
         self.assertEqual(self.family().call("GET", "/settings/general", expect=None)[0], 303)   # admins only: back to the start
 
+    def test_metrics_only_with_the_token(self):
+        """Prometheus metrics: off without METRICS_TOKEN, with it only for the bearer token; counts only."""
+        self.assertEqual(self.server.request("GET", "/api/metrics")[0], 404)         # not switched on here
+        s = Server(env={"METRICS_TOKEN": "prom-token-12345"}).start()
+        try:
+            self.assertEqual(s.request("GET", "/api/metrics")[0], 401)
+            self.assertEqual(s.request("GET", "/api/metrics", headers={"Authorization": "Bearer falsch"})[0], 401)
+            status, headers, body = s.request("GET", "/api/metrics", headers={"Authorization": "Bearer prom-token-12345"})
+            self.assertEqual(status, 200)
+            self.assertIn("text/plain", headers["content-type"])
+            text = body.decode()
+            for name in ("hoerwerk_info{version=", "hoerwerk_uptime_seconds ", "hoerwerk_jobs{status=\"done\"} 0",
+                         "hoerwerk_queue_waiting{queue=", "hoerwerk_queue_steps_done_total ", "hoerwerk_library_books ",
+                         "hoerwerk_locks_held "):
+                self.assertIn(name, text)
+            self.assertNotIn("prom-token-12345", text)
+        finally:
+            s.cleanup()
+
     def test_health_tells_the_version_only_after_login(self):
         self.assertNotIn("version", json.loads(self.server.request("GET", "/api/health")[2]))
         self.assertRegex(self.admin.get("/api/health")["version"], r"^\d+\.\d+\.\d+$")

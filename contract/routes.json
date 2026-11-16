@@ -296,6 +296,12 @@
    "raw_body": false
   },
   {
+   "method": "GET",
+   "path": "/api/metrics",
+   "access": "public",
+   "raw_body": false
+  },
+  {
    "method": "POST",
    "path": "/api/inbox/unignore",
    "access": "admin",

@@ -160,6 +160,7 @@ Bibliothek schieben.
 | `REQUEST_QUOTA` | `5` | Buchanfragen pro Nutzer und Monat (je Konto änderbar) |
 | `AUTH_USER` / `AUTH_PASS` | – | Nur noch für den Umstieg: wird beim ersten Start zum Admin-Konto |
 | `ALLOWED_HOSTS` | – | Namen, unter denen Hörwerk antwortet (Schutz gegen DNS-Rebinding). Leer: IP-Adressen, `localhost`, Namen aus dem Heimnetz (`tower`, `*.local`, `*.lan`, `*.fritz.box` …) und die öffentliche Adresse aus den Einstellungen; über einen Proxy aus `TRUSTED_PROXIES` jeder Name, den der Proxy weiterleitet. Gesetzt: genau diese Namen, z. B. `hoerbuecher.example.de,*.example.de` (IPs und `localhost` gehen immer). `*` = jeder Name wie vor 7.13 (nicht empfohlen). Ungültige Werte (mit `https://` oder Pfad) stoppen den Start mit einer Meldung. `/api/health` antwortet unter jedem Namen – für die Health Checks von Docker und Pangolin |
+| `METRICS_TOKEN` | – | Schaltet `GET /api/metrics` ein (Prometheus-Textformat: Warteschlangen, Jobs nach Status, Anfragen, Bibliothek, Laufzeit, belegte Sperren – nur Zahlen). Nur mit `Authorization: Bearer <Token>`; ohne die Variable gibt es die Adresse nicht. Prometheus: `authorization: { credentials: <Token> }` im Scrape-Job |
 
 SABnzbd, der optionale Indexer, Audiobookshelf, Plex und ntfy werden in der Oberfläche eingerichtet, nicht über Variablen.
 
