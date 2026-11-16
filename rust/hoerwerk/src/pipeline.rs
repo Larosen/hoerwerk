@@ -873,6 +873,7 @@ impl Pipeline {
 
     /// Write the jobs that changed since the last save (one transaction).
     pub fn save(&self, app: &App) {
+        let started = std::time::Instant::now();
         {
             let _g = self.save_lock.lock().unwrap_or_else(|p| p.into_inner());
             let current: Vec<(String, String, String, String, f64, f64)> = self
@@ -917,6 +918,15 @@ impl Pipeline {
                 }
             }
         }
+        let ms = started.elapsed().as_millis();
+        if ms >= 2000 {
+            text::warn(
+                "Hörbücher",
+                &t("Speichern der Hörbücher dauerte {ms} ms", &[("ms", &ms.to_string())]),
+            );
+        } else if ms >= 100 {
+            text::debug("Hörbücher", &format!("Speichern dauerte {ms} ms"));
+        }
         app.publish("audiobooks");
     }
 
@@ -947,6 +957,21 @@ impl Pipeline {
 
     // -- public API --------------------------------------------------------------------------------
     pub fn status(&self, app: &App) -> Value {
+        let started = std::time::Instant::now();
+        let out = self.status_inner(app);
+        let ms = started.elapsed().as_millis();
+        if ms >= 2000 {
+            text::warn(
+                "Hörbücher",
+                &t("Die Hörbuch-Liste brauchte {ms} ms", &[("ms", &ms.to_string())]),
+            );
+        } else if ms >= 50 {
+            text::debug("Hörbücher", &format!("Liste berechnet in {ms} ms"));
+        }
+        out
+    }
+
+    fn status_inner(&self, app: &App) -> Value {
         let s = app.settings();
         let mut jobs: Vec<Value> = self.all().iter().map(|slot| slot.lock().to_dict(false)).collect();
         jobs.sort_by(|a, b| {
@@ -1531,6 +1556,7 @@ impl Pipeline {
     /// The book is already in the library: keep both, replace the old one, or drop the new one.
     pub fn resolve_duplicate(&self, app: &Arc<App>, id: &str, action: &str) -> Res<JobRef> {
         let slot = self.need(id)?;
+        text::debug("Hörbücher", &format!("Konflikt mit der Bibliothek: {action} für {id}"));
         if !matches!(action, "keep" | "keep_named" | "replace" | "discard") {
             return Err(PipeError::Refused(t("Unbekannte Aktion", &[])));
         }
@@ -1995,6 +2021,8 @@ impl Pipeline {
             j.stage.clone()
         };
         self.save(app);
+        let started = std::time::Instant::now();
+        text::debug(&slot.label, &format!("Schritt „{stage}“ beginnt"));
         let result: Res<()> = match stage.as_str() {
             "prepare" => (|| {
                 self.prepare(app, slot)?;
@@ -2092,6 +2120,13 @@ impl Pipeline {
         *slot.runner.lock().unwrap_or_else(|p| p.into_inner()) = None;
         self.save(app);
         let status = slot.lock().status.clone();
+        text::debug(
+            &slot.label,
+            &format!(
+                "Schritt „{stage}“ fertig nach {:.1} s – Status {status}",
+                started.elapsed().as_secs_f64()
+            ),
+        );
         if matches!(status.as_str(), "done" | "review" | "failed") {
             book_event(app, slot);
         }

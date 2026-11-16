@@ -104,8 +104,37 @@ impl<'a> Call<'a> {
             builder = builder.header("Content-Type", ctype);
         }
         let request = builder.body(data).map_err(|e| e.to_string())?;
-        let mut resp = agent.run(request).map_err(|e| reason(&e))?;
+        let started = std::time::Instant::now();
+        // where to, without query string or user info (both may hold keys)
+        let target = if crate::text::debug_on() {
+            let u = self.url.split(['?', '#']).next().unwrap_or("");
+            match u.split_once("://") {
+                Some((scheme, rest)) => format!("{scheme}://{}", rest.rsplit_once('@').map_or(rest, |x| x.1)),
+                None => u.to_string(),
+            }
+        } else {
+            String::new()
+        };
+        let method = self.method;
+        let mut resp = match agent.run(request) {
+            Ok(r) => r,
+            Err(e) => {
+                crate::text::debug(
+                    "http",
+                    &format!(
+                        "{method} {target} – keine Antwort nach {} ms: {}",
+                        started.elapsed().as_millis(),
+                        reason(&e)
+                    ),
+                );
+                return Err(reason(&e));
+            }
+        };
         let status = resp.status().as_u16();
+        crate::text::debug(
+            "http",
+            &format!("{method} {target} → {status} in {} ms", started.elapsed().as_millis()),
+        );
         let header = |k: &str| resp.headers().get(k).and_then(|v| v.to_str().ok()).map(str::to_string);
         let content_type = header("content-type").unwrap_or_default();
         let retry_after = header("retry-after");

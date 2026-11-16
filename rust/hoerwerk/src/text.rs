@@ -61,8 +61,26 @@ pub fn now() -> f64 {
 }
 
 // -- in-app log ---------------------------------------------------------------------
-const LEVELS: [&str; 3] = ["info", "warn", "error"];
-const SIZE: usize = 3000;
+const LEVELS: [&str; 4] = ["debug", "info", "warn", "error"];
+const SIZE: usize = 5000;
+
+/// Debug lines are only recorded while switched on (Protokoll page, setting log_debug).
+static DEBUG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_debug(on: bool) {
+    DEBUG.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn debug_on() -> bool {
+    DEBUG.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// A line for the debug log: costs nothing while debugging is off.
+pub fn debug(source: &str, text: &str) {
+    if debug_on() {
+        log("debug", source, text);
+    }
+}
 
 struct Log {
     seq: u64,

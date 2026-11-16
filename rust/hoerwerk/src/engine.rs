@@ -174,9 +174,18 @@ impl Engine {
                     st = self.wake.wait(st).unwrap_or_else(|p| p.into_inner());
                 }
             };
+            let started = std::time::Instant::now();
+            text::debug("Warteschlange", &format!("{q}: Schritt für {key} beginnt"));
             if std::panic::catch_unwind(std::panic::AssertUnwindSafe(step)).is_err() {
                 text::error("engine", &format!("Fehler in Warteschlange {q} ({key})"));
             }
+            text::debug(
+                "Warteschlange",
+                &format!(
+                    "{q}: Schritt für {key} fertig nach {:.1} s",
+                    started.elapsed().as_secs_f64()
+                ),
+            );
             {
                 let mut st = self.lock();
                 let running = st.running.get_mut(q).expect("queue");

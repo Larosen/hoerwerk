@@ -302,6 +302,9 @@ fn watch_locks(app: &Arc<App>) {
         for name in busy {
             let n = seen.entry(name.clone()).or_insert(0);
             *n += 1;
+            if *n == 2 {
+                text::debug("Wächter", &format!("„{name}“ ist seit über 10 s belegt"));
+            }
             if *n == 3 || *n == 30 {
                 let msg = t(
                     "Hängt: „{lock}“ ist seit über {s} s belegt – bitte dieses Protokoll melden",
@@ -350,6 +353,12 @@ async fn main() {
     };
     let mut app = App::new(cfg, db);
     text::set_language(app.settings().get("language").and_then(|v| v.as_str()).unwrap_or("de"));
+    text::set_debug(
+        app.settings()
+            .get("log_debug")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false),
+    );
     first_account(&mut app);
     let app = Arc::new(app);
     App::wire(&app);

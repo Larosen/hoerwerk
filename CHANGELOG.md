@@ -9,6 +9,10 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
   server's threads. If they wait too long, the page says so (with a hint to the log) instead of every page getting slow.
 - **Lock watchdog:** when a lock stays held for more than 30 seconds (a job, the job list, the inbox, the queues, the
   library index, the database or the log), the log says which one – so a hang can be found and fixed.
+- **Debug log:** "Debug aufzeichnen" on the Protokoll page (setting `log_debug`, stays on until switched off) also
+  records every request with its duration, every processing step and queue step, every outside fetch (without query
+  strings or keys), live connections, library scans and locks held for more than 10 s. "Alles mit Debug" shows them.
+  Slow answers (3 s and more), slow saving and a slow audiobook list are logged as warnings even without debug.
 - **"Als „…“ ablegen" works for books read from their tags:** the own title was lost when the details were read from the
   tags again, so the book came back with the same conflict instead of being filed. Picking another match or entering
   details drops the own title again.

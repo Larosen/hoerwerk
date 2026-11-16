@@ -1638,5 +1638,14 @@
  "Hörbuch „{name}“": "Audiobook “{name}”",
  "Warteschlangen": "Queues",
  "Bibliotheksindex": "Library index",
- "Datenbank": "Database"
+ "Datenbank": "Database",
+ "Alles mit Debug": "Everything with debug",
+ "Debug aufzeichnen": "Record debug",
+ "Debug-Protokoll ausgeschaltet": "Debug log switched off",
+ "Debug-Protokoll eingeschaltet": "Debug log switched on",
+ "Debug-Protokoll eingeschaltet – danach wieder ausschalten": "Debug log switched on – switch it off again afterwards",
+ "Die Hörbuch-Liste brauchte {ms} ms": "The audiobook list took {ms} ms",
+ "Langsame Antwort: {line}": "Slow response: {line}",
+ "Speichern der Hörbücher dauerte {ms} ms": "Saving the audiobooks took {ms} ms",
+ "Zeichnet zusätzlich jede Anfrage, jeden Verarbeitungsschritt und jeden Abruf mit Dauer auf – zum Eingrenzen von Fehlern; danach wieder ausschalten": "Also records every request, processing step and fetch with its duration – to narrow down errors; switch it off again afterwards"
 }

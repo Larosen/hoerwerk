@@ -353,10 +353,14 @@ impl App {
     }
 
     pub fn sse_open(&self) -> bool {
-        self.sse_clients.fetch_add(1, Ordering::SeqCst) < MAX_SSE || {
-            self.sse_clients.fetch_sub(1, Ordering::SeqCst);
-            false
+        let n = self.sse_clients.fetch_add(1, Ordering::SeqCst);
+        if n < MAX_SSE {
+            crate::text::debug("web", &format!("Live-Verbindung geöffnet ({} offen)", n + 1));
+            return true;
         }
+        self.sse_clients.fetch_sub(1, Ordering::SeqCst);
+        crate::text::warn("web", &format!("Live-Verbindung abgelehnt: schon {n} offen"));
+        false
     }
 }
 
