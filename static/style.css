@@ -517,7 +517,7 @@ dialog#logDialog { width: min(1000px, calc(100vw - 32px)); }
 .log-line::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--border-strong); }
 .log-line:hover { background: var(--panel-2); }
 .log-time { color: var(--faint); flex: none; font: 12.5px var(--mono); padding-top: 1px; }
-.log-level { flex: none; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.log-level { flex: none; width: 5.5ch; font: 700 12px var(--mono); padding-top: 1px; color: var(--muted); }
 .log-source { flex: none; color: var(--accent); font-weight: 600; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .log-text { flex: 1 1 280px; min-width: 0; }
 .log-line.warn::before { background: var(--warn); }
@@ -1329,4 +1329,4 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .conflict-box { margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--warn-soft, var(--panel-2)); border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--border)); }
 .conflict-box p { margin: 0 0 8px; display: flex; gap: 6px; align-items: center; }
 .log-line.debug { color: var(--muted); }
-.log-line.debug .log-level { color: var(--muted); font-weight: 400; }
+.log-line.debug .log-level { color: var(--faint); }

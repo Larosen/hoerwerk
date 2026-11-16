@@ -11,7 +11,8 @@ const logs = {
   timer: undefined as number | undefined,
 };
 
-const LOG_LEVEL_NAMES: Record<string, string> = { debug: "Debug", info: "", warn: t("Warnung"), error: t("Fehler") };
+/** The level in front of every line, as log files write it. */
+const LOG_LEVEL_NAMES: Record<string, string> = { debug: "DEBUG", info: "INFO", warn: "WARN", error: "ERROR" };
 
 function fmtLogTime(ts: number): string {
   const d = new Date(ts * 1000);
@@ -43,7 +44,7 @@ function renderLogs(): void {
   });
   view.replaceChildren(...shown.map((e) => el("div", { class: "log-line " + e.level },
     el("span", { class: "log-time" }, fmtLogTime(e.time)),
-    e.level !== "info" ? el("span", { class: "log-level" }, LOG_LEVEL_NAMES[e.level]) : null,
+    el("span", { class: "log-level" }, LOG_LEVEL_NAMES[e.level] || e.level.toUpperCase()),
     e.source ? el("span", { class: "log-source" }, e.source) : null,
     el("span", { class: "log-text" }, e.text))));
   if (!shown.length) view.append(el("div", { class: "muted log-empty" }, words.length ? t("Nichts gefunden.") : older ? t("Nichts in diesem Zeitraum.") : t("Noch keine Einträge.")));
