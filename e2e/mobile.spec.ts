@@ -26,7 +26,8 @@ test("iPhone: anmelden und mit der unteren Leiste zwischen den Seiten wechseln",
   await expect(page.locator("#viewBooks")).toBeVisible();
   await page.goto("/requests");
   await expect(page.locator("#viewRequests")).toBeVisible();
-  expect(errors).toEqual([]);
+  // WebKit reports a request that the page change cancelled ("… due to access control checks") – no app error
+  expect(errors.filter((e) => !/^Fetch API cannot load .* due to access control checks\.?$/.test(e))).toEqual([]);
 });
 
 test("iPhone: die NZB-Auswahl lässt jede Datei zu (iOS kennt .nzb nicht und graut sie sonst aus)", async ({ page }) => {
