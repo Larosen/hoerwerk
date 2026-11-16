@@ -734,20 +734,6 @@
   </form>
 </dialog>
 
-<dialog id="chaptersDialog" class="wide">
-  <form method="dialog" class="dialog-body" id="chaptersForm">
-    <h2>Kapitel von <span id="chaptersTitle"></span></h2>
-    <p class="muted small dialog-intro">Namen ändern, Kapitel mit dem vorigen zusammenführen, teilen oder den Beginn verschieben (Zeit als h:mm:ss oder mm:ss). Gespeichert wird in der M4B und in der metadata.json; die Audiodaten bleiben unverändert.</p>
-    <div class="row gap wrap chapters-tools">
-      <span id="chaptersNote" class="muted small grow"></span>
-      <button type="button" class="btn small" id="chaptersTidy" title="Kapitelnamen nach den Regeln für neue Hörbücher aufräumen">Namen aufräumen</button>
-    </div>
-    <ol id="chaptersList" class="chapter-list"></ol>
-    <div class="dialog-actions"><button value="cancel" class="btn">Abbrechen</button>
-      <button type="button" class="btn primary" id="chaptersSave">Speichern</button></div>
-  </form>
-</dialog>
-
 <dialog id="uploadDialog" class="wide">
   <form method="dialog" class="dialog-body">
     <h2>Hörbuch hochladen</h2>
@@ -920,7 +906,6 @@
 <script src="/static/upload.js"></script>
 <script src="/static/settings.js"></script>
 <script src="/static/transfer.js"></script>
-<script src="/static/chapters.js"></script>
 <script src="/static/workbench.js"></script>
 </body>
 </html>

@@ -369,18 +369,6 @@
   },
   {
    "method": "GET",
-   "path": "/api/library/chapters",
-   "access": "admin",
-   "raw_body": false
-  },
-  {
-   "method": "PUT",
-   "path": "/api/library/chapters",
-   "access": "admin",
-   "raw_body": false
-  },
-  {
-   "method": "GET",
    "path": "/api/library/cleanup",
    "access": "admin",
    "raw_body": false

@@ -785,42 +785,6 @@ class Processing(ContractTest):
         self.admin.call("DELETE", f'/api/audiobooks/{job["id"]}')
         self.assertNotIn(job["id"], [j["id"] for j in self.admin.get("/api/audiobooks")["jobs"]])
 
-    def test_chapter_editor_renames_merges_and_splits(self):
-        """The chapter editor of a library book: the edited list goes into the M4B and metadata.json; lists that do
-        not make sense are refused and change nothing."""
-        tags = {"artist": "Edda Editor", "album_artist": "Edda Editor", "album": "Das Editierbuch", "genre": "Hörbuch"}
-        deliver(self.server.inbox, "Edda Editor - Das Editierbuch",
-                {f"{i + 1:02d}.mp3": {**tags, "title": f"Teil {i + 1}", "track": str(i + 1)} for i in range(3)})
-        job = self.job("Edda Editor - Das Editierbuch")
-        self.assertEqual(job["status"], "done", job)
-        rel = os.path.relpath(os.path.dirname(job["dest"]), self.server.library)
-        got = self.admin.get(f"/api/library/chapters?path={urllib.parse.quote(rel)}")
-        self.assertEqual(len(got["chapters"]), 3)
-        self.assertGreater(got["duration"], 3.5)
-        starts = [c["start"] for c in got["chapters"]]
-
-        def probe():
-            out = json.loads(subprocess.run(["ffprobe", "-v", "error", "-print_format", "json", "-show_chapters", job["dest"]],
-                                            capture_output=True, text=True, check=True).stdout)
-            return [(round(float(c["start_time"]), 1), c["tags"]["title"]) for c in out["chapters"]]
-        # rename the first, merge the second into the first (drop its start), split the third in two
-        mid = round((starts[2] + got["duration"]) / 2, 1)
-        edited = [{"start": 0, "title": "Der Anfang"}, {"start": starts[2], "title": "Die Mitte"}, {"start": mid, "title": "Das Ende"}]
-        self.assertEqual(self.admin.call("PUT", "/api/library/chapters", {"path": rel, "chapters": edited}), {"ok": True, "count": 3})
-        self.assertEqual(probe(), [(0.0, "Der Anfang"), (round(starts[2], 1), "Die Mitte"), (mid, "Das Ende")])
-        side = json.load(open(os.path.join(os.path.dirname(job["dest"]), "metadata.json"), encoding="utf-8"))
-        self.assertEqual([c["title"] for c in side["chapters"]], ["Der Anfang", "Die Mitte", "Das Ende"])
-        self.assertEqual(side["title"], "Das Editierbuch")                      # the rest of the file stays
-        self.assertEqual(len(self.admin.get(f"/api/library/chapters?path={urllib.parse.quote(rel)}")["chapters"]), 3)
-        # refused: no chapters, an order that goes back, a start outside the book, a nameless chapter
-        for bad in ([], [{"start": 0, "title": "A"}, {"start": 2, "title": "B"}, {"start": 1, "title": "C"}],
-                    [{"start": 0, "title": "A"}, {"start": 999, "title": "B"}], [{"start": 0, "title": "  "}]):
-            status, _ = self.admin.call("PUT", "/api/library/chapters", {"path": rel, "chapters": bad}, expect=None)
-            self.assertEqual(status, 400, bad)
-        self.assertEqual(probe()[0], (0.0, "Der Anfang"))
-        status, _ = self.admin.call("PUT", "/api/library/chapters", {"path": "../etc", "chapters": edited}, expect=None)
-        self.assertIn(status, (400, 403, 404))
-
     def test_chapter_names_lose_what_every_track_repeats(self):
         """Track titles like "01 - Book (Edition): Chapter One - Name": the M4B's chapters keep only the name;
         the library button tidies a filed book; track numbers against the file order mean a look first."""

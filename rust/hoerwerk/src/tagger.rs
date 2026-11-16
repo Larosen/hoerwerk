@@ -162,23 +162,6 @@ pub fn rename_abs_chapters(folder: &Path, chapters: &[Chapter]) -> std::io::Resu
     Ok(true)
 }
 
-/// The chapters of the `metadata.json` beside an M4B replaced as a whole (number and times may differ from before);
-/// everything else in the file stays. Ok(false): there is no such file.
-pub fn set_abs_chapters(folder: &Path, chapters: &[Chapter], duration: f64) -> std::io::Result<bool> {
-    let path = folder.join(METADATA_FILE);
-    if !crate::media::is_regular(&path) {
-        return Ok(false);
-    }
-    let Ok(mut data) = serde_json::from_str::<Value>(&std::fs::read_to_string(&path)?) else {
-        return Ok(false);
-    };
-    data["chapters"] = abs_metadata(&json!({}), chapters, duration)["chapters"].clone();
-    let tmp = folder.join(format!(".{METADATA_FILE}.tmp"));
-    std::fs::write(&tmp, serde_json::to_string_pretty(&data).unwrap_or_default() + "\n")?;
-    std::fs::rename(&tmp, &path)?;
-    Ok(true)
-}
-
 pub fn write_abs_metadata(folder: &Path, book: &Value, chapters: &[Chapter], duration: f64) -> std::io::Result<()> {
     let text = serde_json::to_string_pretty(&abs_metadata(book, chapters, duration)).unwrap_or_default();
     std::fs::write(folder.join(METADATA_FILE), text + "\n")
