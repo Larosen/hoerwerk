@@ -9,6 +9,10 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
   downloads). The file goes to SABnzbd (as SABnzbd's own "Add NZB" does), and the request follows the download like a
   release it picked: "Lädt", the history notes who uploaded it, and the download is matched to the request when it
   arrives. Only who may search for requests can upload; files that are not NZBs are refused.
+- **A library book that is there twice no longer comes back:** "Alte Fassung entfernen" (formerly "Verwerfen") on a
+  conflict from the gentle conversion removes the old copy from the library – moved to `_ersetzt` or deleted, as set
+  under "Alte Dateien danach" – and from the index. Before, only the new M4B was thrown away; the old MP3s stayed "not an
+  M4B" and were converted again after every start. Nothing is removed when the kept book lies inside that folder.
 
 ## 1.0.9 – 2026-11-16
 

@@ -1654,5 +1654,10 @@
  "Keine NZB-Datei mitgeschickt": "No NZB file sent",
  "NZB an SABnzbd geschickt – „{title}“ wird geladen": "NZB sent to SABnzbd – “{title}” is downloading",
  "NZB-Datei hochladen …": "Upload NZB file …",
- "Selbst gefunden? Die NZB geht an SABnzbd, das Hörbuch wird dieser Anfrage zugeordnet.": "Found it yourself? The NZB goes to SABnzbd, the audiobook is linked to this request."
+ "Selbst gefunden? Die NZB geht an SABnzbd, das Hörbuch wird dieser Anfrage zugeordnet.": "Found it yourself? The NZB goes to SABnzbd, the audiobook is linked to this request.",
+ "Alte Fassung aus der Bibliothek entfernt: {path}": "Old copy removed from the library: {path}",
+ "Alte Fassung blieb in der Bibliothek: {error}": "Old copy stayed in the library: {error}",
+ "Alte Fassung entfernen": "Remove old copy",
+ "das vorhandene Hörbuch liegt im selben Ordner": "the existing audiobook is in the same folder",
+ "„{old}“ ist schon als „{path}“ in der Bibliothek. Die alte Fassung wird entfernt – wie unter „Alte Dateien danach“ eingestellt nach _ersetzt verschoben oder gelöscht.": "“{old}” is in the library already as “{path}”. The old copy is removed – moved to _ersetzt or deleted, as set under “Old files afterwards”."
 }
