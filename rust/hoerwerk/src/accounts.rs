@@ -7,7 +7,7 @@ use std::sync::Mutex;
 
 use base64::Engine;
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
-use rand::RngCore;
+use rand::Rng;
 use rusqlite::{OptionalExtension, Row, params};
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
@@ -62,7 +62,7 @@ fn random(n: usize) -> Vec<u8> {
 
 pub fn hash_password(password: &str) -> String {
     let salt = random(16);
-    let params = scrypt::Params::new(15, 8, 1, 32).expect("valid scrypt parameters");
+    let params = scrypt::Params::new(15, 8, 1).expect("valid scrypt parameters");
     let mut out = [0u8; 32];
     scrypt::scrypt(password.as_bytes(), &salt, &params, &mut out).expect("scrypt output length");
     format!("scrypt${}${}${}${}${}", 1 << 15, 8, 1, b64(&salt), b64(&out))
@@ -85,7 +85,7 @@ pub fn verify_password(password: &str, stored: &str) -> bool {
     if !n.is_power_of_two() || want.is_empty() || want.len() > 64 {
         return false;
     }
-    let Ok(params) = scrypt::Params::new(n.trailing_zeros() as u8, r, p, want.len()) else {
+    let Ok(params) = scrypt::Params::new(n.trailing_zeros() as u8, r, p) else {
         return false;
     };
     let mut got = vec![0u8; want.len()];

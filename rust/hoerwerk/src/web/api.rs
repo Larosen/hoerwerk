@@ -491,7 +491,7 @@ async fn login(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
 
 fn new_ticket(app: &App, uid: i64, persistent: bool) -> String {
     use base64::Engine;
-    use rand::RngCore;
+    use rand::Rng;
     let mut b = [0u8; 24];
     rand::rng().fill_bytes(&mut b);
     let ticket = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b);

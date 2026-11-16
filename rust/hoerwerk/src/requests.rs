@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::sync::{Arc, Mutex};
 
-use rand::RngCore;
+use rand::Rng;
 use rusqlite::OptionalExtension;
 use serde_json::{Map, Value, json};
 

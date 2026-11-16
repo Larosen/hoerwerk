@@ -857,7 +857,7 @@ pub fn clean_query(text: &str) -> String {
     let s = sub(rx!(r"(?<=\w)(\w*)\((\w{1,3})\)(?=[\s\-:,.!?]|$)"), &s, "$1$2");
     let s = s.replace('_', " ");
     let s = sub(rx!(r"(?<=\w)\.(?=\w{2,})"), &s, " ");
-    let s = crate::rx::sub_with(rx!(r"[\[({]([^\])}]*)[\])}]"), &s, |c: &fancy_regex::Captures| {
+    let s = crate::rx::sub_with(rx!(r"[\[({]([^\])}]*)[\])}]"), &s, |c: &fancy_regex::Captures<str>| {
         let inner = &c[1];
         if is_match(noise, inner) || is_match(rx!(r"^[\s\d.,:/-]*$"), inner) {
             " ".to_string()

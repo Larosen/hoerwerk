@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use axum::body::Body;
 use http_body_util::BodyExt;
-use rand::RngCore;
+use rand::Rng;
 use serde_json::{Value, json};
 use tokio::io::AsyncWriteExt;
 

@@ -1,8 +1,8 @@
 //! Second factor with an authenticator app: RFC 6238 codes (SHA-1, 6 digits, 30 s), one step of
 //! clock drift either way, and no code accepted twice.
 
-use hmac::{Hmac, Mac};
-use rand::RngCore;
+use hmac::{Hmac, KeyInit, Mac};
+use rand::Rng;
 use sha1::Sha1;
 
 use crate::app::App;
@@ -51,7 +51,7 @@ pub fn secret() -> String {
 
 pub fn code(secret: &str, step: i64) -> String {
     let key = unbase32(secret).unwrap_or_default();
-    let mut mac = <Hmac<Sha1> as Mac>::new_from_slice(&key).expect("any key length");
+    let mut mac = <Hmac<Sha1> as KeyInit>::new_from_slice(&key).expect("any key length");
     mac.update(&step.to_be_bytes());
     let d = mac.finalize().into_bytes();
     let off = (d[19] & 0x0f) as usize;
