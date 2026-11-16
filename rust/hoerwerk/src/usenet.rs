@@ -618,10 +618,6 @@ impl<'a> Newznab<'a> {
         results
     }
 
-    pub fn search(&self, query: &str, limit: usize) -> Result<Vec<Value>> {
-        self.search_with(query, limit, true)
-    }
-
     /// `fallback`: when the audiobook categories have nothing, ask once more in all categories (many
     /// indexers file German audiobooks elsewhere). That is a second search off the daily limit, so a
     /// search of several queries does it only for its first one.
@@ -985,6 +981,76 @@ impl Usenet {
         };
         let indexers: Vec<Value> = data["indexers"].as_array().into_iter().flatten().map(hide).collect();
         json!({"indexers": indexers, "sab": hide(&data["sab"]), "configured": self.configured()})
+    }
+
+    /// Take the Usenet indexers of a Prowlarr: each is added as an indexer of its own (Prowlarr answers as a Newznab
+    /// indexer under `<address>/<id>/api`, with Prowlarr's API key). Indexers already known by address stay as they
+    /// are; nothing is removed. Returns {added, known, skipped}.
+    pub fn import_prowlarr(&self, base: &str, key: &str) -> Result<Value> {
+        let base = base.trim().trim_end_matches('/');
+        let base = if is_match(rx!(r"(?i)^https?://"), base) {
+            base.to_string()
+        } else {
+            format!("http://{base}")
+        };
+        let key = key.trim();
+        if key.is_empty() {
+            return fail(t("Der API-Schlüssel von Prowlarr fehlt", &[]));
+        }
+        let raw = (self.get)(&format!(
+            "{base}/api/v1/indexer?{}",
+            encode(&[("apikey", key.to_string())])
+        ))
+        .map_err(|e| UsenetError::Failed(format!("Prowlarr: {}", redact(&e.to_string()))))?;
+        let list: Value =
+            serde_json::from_slice(&raw).map_err(|_| UsenetError::Failed(t("Prowlarr: unerwartete Antwort", &[])))?;
+        let Some(list) = list.as_array() else {
+            return fail(t("Prowlarr: unerwartete Antwort", &[]));
+        };
+        let _g = self.lock.lock().unwrap_or_else(|p| p.into_inner());
+        let mut data = self.load();
+        let mut indexers: Vec<Value> = data["indexers"].as_array().cloned().unwrap_or_default();
+        let known_urls: Vec<String> = indexers
+            .iter()
+            .map(|i| api_url(&text_of(&i["url"])).to_lowercase())
+            .collect();
+        let (mut added, mut known, mut skipped) = (0, 0, 0);
+        for p in list {
+            let id = p["id"].as_i64().unwrap_or(0);
+            if id <= 0 || p["protocol"].as_str() != Some("usenet") || p["enable"] == false {
+                skipped += 1; // torrents and switched-off indexers are not for Hörwerk
+                continue;
+            }
+            let url = format!("{base}/{id}");
+            if known_urls.contains(&api_url(&url).to_lowercase()) {
+                known += 1;
+                continue;
+            }
+            let name = text_of(&p["name"]);
+            indexers.push(
+                json!({"name": format!("Prowlarr: {}", if name.is_empty() { id.to_string() } else { name }),
+                                 "url": url, "categories": DEFAULT_CATEGORIES, "enabled": true, SECRET: key}),
+            );
+            added += 1;
+        }
+        data.insert("indexers".into(), Value::Array(indexers));
+        drop(_g);
+        self.update_config(&Value::Object(data));
+        Ok(json!({"added": added, "known": known, "skipped": skipped}))
+    }
+
+    /// Indexers and SABnzbd for the settings export – the API keys only when asked for.
+    pub fn export_config(&self, with_keys: bool) -> Value {
+        let data = self.load();
+        let strip = |v: &Value| {
+            let mut o = v.as_object().cloned().unwrap_or_default();
+            if !with_keys {
+                o.remove(SECRET);
+            }
+            Value::Object(o)
+        };
+        let indexers: Vec<Value> = data["indexers"].as_array().into_iter().flatten().map(strip).collect();
+        json!({"indexers": indexers, "sab": strip(&data["sab"])})
     }
 
     /// Empty or missing API keys keep the stored ones – but never for another server.

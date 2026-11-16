@@ -445,13 +445,6 @@ pub fn guess_language(name: &str) -> String {
     }
 }
 
-/// Author's surname and (nearly) all words of the title in the release name.
-pub fn fits(release: &str, book: &Value) -> bool {
-    evaluate(&json!({"title": release}), book, "de", true, &[], false)["ok"]
-        .as_bool()
-        .unwrap_or(false)
-}
-
 /// The volume number of a book (int(float(series_position))) – None when there is none.
 pub fn volumes(book: &Value) -> Option<i64> {
     let raw = match &book["series_position"] {

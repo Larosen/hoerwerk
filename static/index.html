@@ -238,6 +238,15 @@
         </select>
       </label>
       <label class="check"><input type="checkbox" name="show_help"> Erklärboxen „So funktioniert's“ zeigen <small class="muted">Für alle Konten. Aus: die Seiten zeigen nur noch das Nötige.</small></label>
+      <div class="transfer-box">
+        <b>Umzug auf einen neuen Server</b>
+        <p class="muted small">Einstellungen und Quellen (Indexer, SABnzbd) als Datei sichern oder einspielen. Konten, Anfragen und die Bibliothek gehören nicht dazu – dafür gibt es die tägliche Datenbanksicherung.</p>
+        <div class="row gap wrap">
+          <a class="btn small" id="exportPlain" href="/api/settings/export" download>Exportieren</a>
+          <a class="btn small" id="exportKeys" href="/api/settings/export?keys=1" download title="Mit den API-Schlüsseln der Indexer und von SABnzbd – die Datei wie ein Passwort aufbewahren">Exportieren mit Schlüsseln</a>
+          <label class="btn small"><input type="file" id="importFile" accept=".json,application/json" hidden> Importieren …</label>
+        </div>
+      </div>
     </fieldset>
     <fieldset data-section="convert">
       <legend>M4B-Konvertierung</legend>
@@ -406,6 +415,15 @@
       <p class="muted small">Die Indexer werden von oben nach unten gefragt. Sobald einer ein sehr gutes Release hat, ist die Suche zu Ende. Mit „Zuerst“ rückt ein Indexer an die erste Stelle.</p>
       <div id="indexerRows" class="indexer-rows"></div>
       <button type="button" id="addIndexerBtn" class="btn small">+ Indexer</button>
+      <details class="prowlarr-box">
+        <summary>Indexer aus Prowlarr übernehmen</summary>
+        <p class="muted small">Adresse und API-Schlüssel von Prowlarr (Einstellungen → Allgemein). Die Usenet-Indexer werden hinzugefügt, schon vorhandene bleiben, nichts wird gelöscht. Hörwerk fragt sie über Prowlarr ab.</p>
+        <div class="row gap wrap">
+          <input id="prowlarrUrl" type="url" placeholder="http://prowlarr:9696" spellcheck="false" autocomplete="off" aria-label="Adresse von Prowlarr">
+          <input id="prowlarrKey" type="password" placeholder="API-Schlüssel von Prowlarr" spellcheck="false" autocomplete="off" aria-label="API-Schlüssel von Prowlarr">
+          <button type="button" id="prowlarrGo" class="btn small">Übernehmen</button>
+        </div>
+      </details>
     </fieldset>
     <fieldset data-section="downloads">
       <legend>SABnzbd</legend>
@@ -887,6 +905,7 @@
 <script src="/static/account.js"></script>
 <script src="/static/upload.js"></script>
 <script src="/static/settings.js"></script>
+<script src="/static/transfer.js"></script>
 <script src="/static/workbench.js"></script>
 </body>
 </html>

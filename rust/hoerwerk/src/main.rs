@@ -1,6 +1,4 @@
-//! Hörwerk – the audiobook workshop, Rust backend. Same API (contract/), same database, same frontend as app/.
-// still being built: parts of the shared state are used by the pipeline that is not ported yet
-#![allow(dead_code)]
+//! Hörwerk – the audiobook workshop, Rust backend (API in contract/, frontend in static/).
 
 mod accounts;
 mod app;

@@ -3881,11 +3881,6 @@ fn book_event(app: &Arc<App>, slot: &JobRef) {
     }
 }
 
-/// Sorted like the inbox listing (natural order of the relative path).
-pub fn sort_paths(paths: &mut [String]) {
-    paths.sort_by(|a, b| natural_path_cmp(a, b));
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

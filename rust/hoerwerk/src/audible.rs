@@ -6,7 +6,7 @@ use std::net::{IpAddr, ToSocketAddrs};
 use std::sync::Mutex;
 use std::time::Duration;
 
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 use unicode_normalization::UnicodeNormalization;
 use unicode_normalization::char::canonical_combining_class;
 
@@ -1387,10 +1387,6 @@ impl Default for Providers {
 }
 
 impl Providers {
-    pub fn with(client: Client, get: Box<JsonGetter>, fallbacks: Vec<&'static str>) -> Self {
-        Providers { client, get, fallbacks }
-    }
-
     fn apple(&self, hints: &Value, region: &str) -> Result<Vec<Value>> {
         let ta = [s(hints, "title"), s(hints, "author")]
             .into_iter()
@@ -1529,10 +1525,6 @@ pub fn auto_match(ranked: &[Value], threshold: f64) -> Option<Value> {
         .cloned()
         .collect();
     best_match(&only, threshold)
-}
-
-pub fn obj(v: &Value) -> Map<String, Value> {
-    v.as_object().cloned().unwrap_or_default()
 }
 
 #[cfg(test)]

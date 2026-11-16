@@ -192,6 +192,9 @@ class FakeUsenet:
         import http.server
         import threading
         self.releases, self.calls, self.added = releases, [], []
+        self.prowlarr = [{"id": 1, "name": "Hörbuch-Index", "protocol": "usenet", "enable": True},
+                         {"id": 2, "name": "Ein Torrent", "protocol": "torrent", "enable": True},
+                         {"id": 3, "name": "Aus", "protocol": "usenet", "enable": False}]
         fake = self
 
         class Handler(http.server.BaseHTTPRequestHandler):
@@ -200,6 +203,15 @@ class FakeUsenet:
 
             def do_GET(self):
                 q = {k: v[0] for k, v in urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).items()}
+                if urllib.parse.urlparse(self.path).path == "/api/v1/indexer":      # Prowlarr's list of indexers
+                    ok = q.get("apikey") == "prowlarrkey12345"
+                    body = json.dumps(fake.prowlarr if ok else {"message": "Unauthorized"}).encode()
+                    self.send_response(200 if ok else 401)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
                 fake.calls.append(q)
                 body, ctype = fake.answer(q)
                 self.send_response(200)

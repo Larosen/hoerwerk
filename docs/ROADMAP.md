@@ -5,6 +5,8 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
 
 ## Recently done
 
+- **1.0.12** – security hardening of the first setup, login and two-factor codes; phone flows tested in WebKit; arm64 image checked in CI;
+  the image for arm64 as well (Raspberry Pi, Apple-silicon NAS); Prometheus metrics (`/api/metrics`); indexers from Prowlarr; settings export/import for moving to a new server.
 - **1.0** – the first release, with a new look, "Werkstatt & Regal": three colour schemes (light, dark, OLED – per account or per device), sidebar on iPad and
   Mac, tab bar on the iPhone, the library as a shelf, progress as a waveform, a log you can narrow to 15 or 60 minutes, and Hörwerk
   as an app on the iPhone home screen ([guide](en/iphone-app.md)). Design notes: [docs/design](design/KONZEPT.md).
@@ -36,19 +38,13 @@ Development versions before 1.0:
 
 | | What | Why |
 |---|---|---|
-| 1 | **Prowlarr sync** | Take indexers (and their categories) from Prowlarr instead of entering them twice. |
-| 2 | **More free and legal sources** | ARD Audiothek (public-broadcaster audio dramas and readings, downloadable while online), Vorleser.net (classics read by professional speakers, free for private use), more public-domain collections of the Internet Archive with a clear licence. Each source only if its terms allow downloading. |
-| 3 | **arm64 image** | Built on a native arm64 runner (Raspberry Pi, Apple-silicon NAS). |
-
-## Later
-
-- **Chapter editor** in the UI: rename, merge, split chapters before filing.
-- **Per-account libraries / age-appropriate views** for kids' accounts.
-- **Prometheus metrics** (`/metrics`) for queue length, conversions, failures.
-- **Settings export/import** for moving to a new server.
-- **PWA**: install the UI on the phone's home screen, push via ntfy already works.
+| 1 | **More free and legal sources** | ARD Audiothek (public-broadcaster audio dramas and readings, downloadable while online), Vorleser.net (classics read by professional speakers, free for private use), more public-domain collections of the Internet Archive with a clear licence. Each source only if its terms allow downloading. |
 
 ## Not planned
+
+- Chapter editor and per-account libraries / kids' accounts: the automatic chapter names are right nearly always, and every
+  book ends up in the same library. Kids' views would first need Audiobookshelf to recognise children's books by their
+  tags and mark them – nothing Hörwerk can do on its own.
 
 - Anything that removes copy protection (DRM).
 - Built-in torrent or download sources for copyrighted books. Hörwerk works with the downloader and indexers *you*

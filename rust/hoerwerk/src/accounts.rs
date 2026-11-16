@@ -558,30 +558,33 @@ impl Accounts {
         Ok(user)
     }
 
-    pub fn start_session(&self, db: &Db, uid: i64, persistent: bool, ip: &str, agent: &str) -> String {
+    /// A new session; None when it could not be stored (then no cookie must be handed out – the next request
+    /// would find no session).
+    pub fn start_session(&self, db: &Db, uid: i64, persistent: bool, ip: &str, agent: &str) -> Option<String> {
         let token = URL_SAFE_NO_PAD.encode(random(32));
         let ts = now();
         let life = if persistent { SESSION_LONG } else { SESSION_SHORT };
         let mut c = db.lock();
-        if let Ok(tx) = c.transaction() {
-            let _ = tx.execute("DELETE FROM sessions WHERE expires < ?", [ts]);
-            let _ = tx.execute(
-                "INSERT INTO sessions(token_hash, user_id, created, last_seen, expires, persistent, ip, agent) VALUES(?,?,?,?,?,?,?,?)",
-                params![
-                    token_hash(&token),
-                    uid,
-                    ts,
-                    ts,
-                    ts + life,
-                    i64::from(persistent),
-                    ip.chars().take(64).collect::<String>(),
-                    agent.chars().take(200).collect::<String>()
-                ],
-            );
-            let _ = tx.execute("UPDATE users SET last_seen=? WHERE id=?", params![ts, uid]);
-            let _ = tx.commit();
-        }
-        token
+        let tx = c.transaction().ok()?;
+        tx.execute("DELETE FROM sessions WHERE expires < ?", [ts]).ok()?;
+        tx.execute(
+            "INSERT INTO sessions(token_hash, user_id, created, last_seen, expires, persistent, ip, agent) VALUES(?,?,?,?,?,?,?,?)",
+            params![
+                token_hash(&token),
+                uid,
+                ts,
+                ts,
+                ts + life,
+                i64::from(persistent),
+                ip.chars().take(64).collect::<String>(),
+                agent.chars().take(200).collect::<String>()
+            ],
+        )
+        .ok()?;
+        tx.execute("UPDATE users SET last_seen=? WHERE id=?", params![ts, uid])
+            .ok()?;
+        tx.commit().ok()?;
+        Some(token)
     }
 
     /// The signed-in user for a cookie token (None if unknown, expired or locked); with ``session`` = id prefix.
@@ -720,10 +723,16 @@ mod tests {
             )
             .unwrap();
         let uid = u["id"].as_i64().unwrap();
-        let tok = a.start_session(&db, uid, false, "1.2.3.4", "test");
+        let tok = a
+            .start_session(&db, uid, false, "1.2.3.4", "test")
+            .expect("session stored");
         assert_eq!(a.session_user(&db, &tok, "").unwrap()["name"], "Eva");
         a.end_session(&db, &tok);
         assert!(a.session_user(&db, &tok, "").is_none());
+        // a session that cannot be stored gives no token (no cookie for a login that would not hold)
+        db.lock().execute("DROP TABLE sessions", []).unwrap();
+        assert!(a.start_session(&db, uid, false, "1.2.3.4", "test").is_none());
+        db.lock().execute_batch("CREATE TABLE sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER, created REAL, last_seen REAL, expires REAL, persistent INTEGER, ip TEXT, agent TEXT)").unwrap();
         for _ in 0..5 {
             assert!(a.authenticate(&db, "Eva", "falsch", "9.9.9.9").is_err());
         }

@@ -156,6 +156,7 @@ folder back into the library to restore one.
 | `REQUEST_QUOTA` | `5` | Book requests per user and month (adjustable per account) |
 | `AUTH_USER` / `AUTH_PASS` | – | Only for upgrading: becomes the admin account on first start |
 | `ALLOWED_HOSTS` | – | Names Hörwerk answers under (protection against DNS rebinding). Empty: IP addresses, `localhost`, home-network names (`tower`, `*.local`, `*.lan`, `*.fritz.box` …) and the public address from the settings; through a proxy in `TRUSTED_PROXIES` every name the proxy forwards. Set: exactly these names, e.g. `audiobooks.example.com,*.example.com` (IPs and `localhost` always work). `*` = any name as before 7.13 (not recommended). Invalid values (with `https://` or a path) stop the start with a message. `/api/health` answers under any name – for the Docker and Pangolin health checks |
+| `METRICS_TOKEN` | – | Switches on `GET /api/metrics` (Prometheus text format: queues, jobs by status, requests, library, uptime, held locks – counts only). Only with `Authorization: Bearer <token>`; without the variable the address does not exist. Prometheus: `authorization: { credentials: <token> }` in the scrape job |
 
 SABnzbd, the optional indexer, Audiobookshelf, Plex and ntfy are set up in the interface, not via variables.
 

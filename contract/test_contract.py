@@ -118,6 +118,85 @@ class Access(ContractTest):
                 self.assertIn(b"<html", data)
         self.assertEqual(self.family().call("GET", "/settings/general", expect=None)[0], 303)   # admins only: back to the start
 
+    def test_indexers_from_prowlarr(self):
+        """Prowlarr: its Usenet indexers become indexers of their own (Prowlarr's address and key); torrents and
+        switched-off ones stay out, known ones are not added twice."""
+        fake = FakeUsenet([])
+        try:
+            self.admin.call("PUT", "/api/sources", {"indexers": [], "sab": {}})
+            status, _ = self.admin.call("POST", "/api/sources/prowlarr", {"url": fake.url, "apikey": "falsch"}, expect=None)
+            self.assertEqual(status, 400)
+            self.assertEqual(self.family().call("POST", "/api/sources/prowlarr", {"url": fake.url, "apikey": "x"}, expect=None)[0], 403)
+            got = self.admin.call("POST", "/api/sources/prowlarr", {"url": fake.url, "apikey": "prowlarrkey12345"})
+            self.assertEqual(got["result"], {"added": 1, "known": 0, "skipped": 2})
+            idx = got["sources"]["indexers"]
+            self.assertEqual([i["name"] for i in idx], ["Prowlarr: Hörbuch-Index"])
+            self.assertEqual(idx[0]["url"], f"{fake.url}/1")
+            self.assertTrue(idx[0]["apikey_set"])
+            self.assertNotIn("prowlarrkey12345", json.dumps(got))
+            again = self.admin.call("POST", "/api/sources/prowlarr", {"url": fake.url, "apikey": "prowlarrkey12345"})
+            self.assertEqual(again["result"], {"added": 0, "known": 1, "skipped": 2})
+            self.assertEqual(len(again["sources"]["indexers"]), 1)
+        finally:
+            self.admin.call("PUT", "/api/sources", {"indexers": [], "sab": {}})
+            fake.close()
+
+    def test_settings_export_and_import(self):
+        """Moving: settings and sources go out as a file (keys only when asked for) and come in on another server."""
+        fake = FakeUsenet([])
+        try:
+            self.admin.call("PUT", "/api/sources", {
+                "indexers": [{"name": "Fake", "url": fake.url, "apikey": "indexerkey123"}],
+                "sab": {"url": fake.url, "apikey": "sabkey123456", "category": "hoerbuecher"}})
+            self.admin.call("PUT", "/api/settings", {"bitrate": "96k"})
+            plain = self.admin.get("/api/settings/export")
+            self.assertEqual(plain["hoerwerk_export"], 1)
+            self.assertEqual(plain["settings"]["bitrate"], "96k")
+            self.assertEqual(plain["sources"]["indexers"][0]["name"], "Fake")
+            self.assertNotIn("indexerkey123", json.dumps(plain))
+            self.assertNotIn("sabkey123456", json.dumps(plain))
+            full = self.admin.get("/api/settings/export?keys=1")
+            self.assertEqual(full["sources"]["indexers"][0]["apikey"], "indexerkey123")
+            self.assertEqual(full["sources"]["sab"]["apikey"], "sabkey123456")
+            self.assertEqual(self.family().call("GET", "/api/settings/export", expect=None)[0], 403)
+            # on another server (empty sources): the file with keys brings everything
+            s = Server().start()
+            try:
+                other = Client(s, **ADMIN)
+                self.assertEqual(other.call("POST", "/api/settings/import", {"nope": 1}, expect=None)[0], 400)
+                done = other.call("POST", "/api/settings/import", full)
+                self.assertEqual(done["indexers"], 1)
+                self.assertEqual(other.get("/api/settings")["bitrate"], "96k")
+                src = other.get("/api/sources")
+                self.assertEqual(src["indexers"][0]["name"], "Fake")
+                self.assertTrue(src["indexers"][0]["apikey_set"])
+                self.assertTrue(src["sab"]["apikey_set"])
+            finally:
+                s.cleanup()
+        finally:
+            self.admin.call("PUT", "/api/sources", {"indexers": [], "sab": {}})
+            self.admin.call("PUT", "/api/settings", {"bitrate": "auto"})
+            fake.close()
+
+    def test_metrics_only_with_the_token(self):
+        """Prometheus metrics: off without METRICS_TOKEN, with it only for the bearer token; counts only."""
+        self.assertEqual(self.server.request("GET", "/api/metrics")[0], 404)         # not switched on here
+        s = Server(env={"METRICS_TOKEN": "prom-token-12345"}).start()
+        try:
+            self.assertEqual(s.request("GET", "/api/metrics")[0], 401)
+            self.assertEqual(s.request("GET", "/api/metrics", headers={"Authorization": "Bearer falsch"})[0], 401)
+            status, headers, body = s.request("GET", "/api/metrics", headers={"Authorization": "Bearer prom-token-12345"})
+            self.assertEqual(status, 200)
+            self.assertIn("text/plain", headers["content-type"])
+            text = body.decode()
+            for name in ("hoerwerk_info{version=", "hoerwerk_uptime_seconds ", "hoerwerk_jobs{status=\"done\"} 0",
+                         "hoerwerk_queue_waiting{queue=", "hoerwerk_queue_steps_done_total ", "hoerwerk_library_books ",
+                         "hoerwerk_locks_held "):
+                self.assertIn(name, text)
+            self.assertNotIn("prom-token-12345", text)
+        finally:
+            s.cleanup()
+
     def test_health_tells_the_version_only_after_login(self):
         self.assertNotIn("version", json.loads(self.server.request("GET", "/api/health")[2]))
         self.assertRegex(self.admin.get("/api/health")["version"], r"^\d+\.\d+\.\d+$")

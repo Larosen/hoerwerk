@@ -3,6 +3,31 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.12 – 2026-11-16
+
+- **First setup behind a proxy:** the setup code is only skipped for visitors from the own network who also use the own
+  network's address (an IP, `localhost`, a name without a dot, `.local`/`.lan`). Under a public name it is always
+  required – even when a proxy in the home network hides the visitor's address and sends no forwarding headers.
+- **Login only succeeds when the session is stored:** a database error while saving the session no longer hands out a
+  cookie for a login that would not hold; the page says so and the log has the cause.
+- **A two-factor code cannot be used again after a restart:** the last accepted time step is stored per account.
+- **Prometheus metrics:** `GET /api/metrics` (set `METRICS_TOKEN`; only with `Authorization: Bearer <token>`): queues,
+  jobs by status, requests, library, uptime and held locks – counts only.
+- **Indexers from Prowlarr** (Settings → Downloads → "Take indexers from Prowlarr"): address and API key of Prowlarr; its
+  Usenet indexers are added as indexers of their own (asked through Prowlarr), known ones stay, torrents and switched-off
+  ones are skipped, nothing is deleted.
+- **Settings export/import** (Settings → General → "Moving to a new server"): settings and sources (indexers, SABnzbd) as
+  a JSON file, API keys only with "Export with keys"; the file can be loaded on another server. Accounts, requests and
+  the library are not part of it.
+- **Phone flows in real WebKit:** the CI runs the new iPhone tests (login, tab bar, NZB picker) in WebKit as well.
+- **arm64 image:** the release now builds the image for amd64 and arm64 (each on its own native runner) and publishes one multi-arch
+  tag; signature, SBOM and build provenance are bound to its digest. A CI job checks the arm64 image on every change.
+- Unused leftovers of the Rust port are removed (the crate-wide `allow(dead_code)` is gone).
+- **iPhone: the end of a long list is reachable:** the body had a fixed height on phones, so long pages overflowed it and Safari
+  left out the room for the work bar and tab bar – the last entry (e.g. its "Anfragen" button) sat under them. The body is
+  now as tall as its content. A new test (run in WebKit in CI) checks the last entry sits above both bars.
+- Docs: the security notes point to the tests that really exist; an outdated comment in `main.rs` is corrected.
+
 ## 1.0.11 – 2026-11-16
 
 - **NZB files can be picked on the iPhone:** the file picker no longer filters by type (iOS does not know ".nzb" and

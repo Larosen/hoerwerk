@@ -296,6 +296,12 @@
    "raw_body": false
   },
   {
+   "method": "GET",
+   "path": "/api/metrics",
+   "access": "public",
+   "raw_body": false
+  },
+  {
    "method": "POST",
    "path": "/api/inbox/unignore",
    "access": "admin",
@@ -627,7 +633,25 @@
   },
   {
    "method": "GET",
+   "path": "/api/settings/export",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/settings/import",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
    "path": "/api/sources",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/sources/prowlarr",
    "access": "admin",
    "raw_body": false
   },

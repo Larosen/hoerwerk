@@ -141,9 +141,11 @@ jobs:
       - name: TypeScript (strict, no implicit any)
         run: npm run check
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
-      - name: Click-through tests (real server, real ffmpeg)
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Click-through tests (real server, real ffmpeg; the phone flows also in real WebKit = Safari's engine)
         run: npx playwright test
+        env:
+          PW_WEBKIT: "1"
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
         with:
@@ -199,13 +201,114 @@ jobs:
       - if: failure()
         run: docker logs br || echo "(der Container wurde nicht gestartet)"
 
+  # The image on a native arm64 runner (Raspberry Pi, Apple-silicon NAS): builds, the ffmpeg jail works there
+  # (seccomp for aarch64) and the server answers. Publishing arm64 comes after this has been green.
+  image-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
+        with:
+          context: .
+          load: true
+          tags: hoerwerk:arm64
+          cache-from: type=gha,scope=ci-arm64
+          cache-to: type=gha,mode=max,scope=ci-arm64
+      - name: Architecture, jail and ffmpeg inside the image
+        run: |
+          docker run --rm --entrypoint /usr/local/bin/hw-run hoerwerk:arm64 --status
+          docker run --rm --entrypoint uname hoerwerk:arm64 -m | grep -x aarch64
+          docker run --rm --entrypoint /usr/local/bin/ffmpeg hoerwerk:arm64 -hide_banner -version | head -1
+      - name: The server starts and answers
+        run: |
+          mkdir -p "$RUNNER_TEMP/a/config" "$RUNNER_TEMP/a/inbox" "$RUNNER_TEMP/a/lib"
+          docker run -d --name arm --network host -e PORT=8096 -e PUID="$(id -u)" -e PGID="$(id -g)" \
+            -e AUTH_USER=admin -e AUTH_PASS=Arm-Kaffee-Garten-17 \
+            -v "$RUNNER_TEMP/a/config:/config" -v "$RUNNER_TEMP/a/inbox:/inbox" -v "$RUNNER_TEMP/a/lib:/audiobooks" hoerwerk:arm64
+          for i in $(seq 30); do curl -sf http://127.0.0.1:8096/api/health && break; sleep 1; done
+          curl -sf http://127.0.0.1:8096/api/health
+      - if: failure()
+        run: docker logs arm || echo "(der Container wurde nicht gestartet)"
+
   # Only after every check above passed. The published image is signed (cosign, keyless) and carries its
   # SBOM and build provenance – all bound to its digest:
   #   cosign verify ghcr.io/<owner>/hoerwerk@sha256:… --certificate-identity-regexp 'github.com/<owner>/.*' \
   #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   #   gh attestation verify oci://ghcr.io/<owner>/hoerwerk@sha256:… --owner <owner>
+  # Each architecture is built on its own native runner (no emulation: our ffmpeg and the Rust build would take
+  # hours under QEMU) and pushed by digest only; `image` below joins both into one multi-arch tag.
+  image-build:
+    needs: [rust, contract, jail, frontend, image-test, image-arm64]
+    if: github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        include:
+          - {platform: linux/amd64, runner: ubuntu-latest, pair: linux-amd64}
+          - {platform: linux/arm64, runner: ubuntu-24.04-arm, pair: linux-arm64}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image names (lower case, as the registry stores them)
+        id: names
+        run: |
+          echo "main=ghcr.io/${OWNER,,}/hoerwerk" >> "$GITHUB_OUTPUT"
+          echo "old=ghcr.io/${REPO,,}" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
+        with:
+          labels: |
+            org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0
+          images: |
+            ghcr.io/${{ github.repository_owner }}/hoerwerk
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
+        id: build
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          sbom: true
+          provenance: mode=max
+          pull: true
+          no-cache: ${{ github.event_name == 'schedule' }}
+          build-args: |
+            COMMIT=${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # pushed by digest only (no tag yet) to both image names
+          outputs: type=image,"name=${{ steps.names.outputs.main }},${{ steps.names.outputs.old }}",push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=release-${{ matrix.pair }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.pair }}
+      - name: Remember the digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
+        with:
+          name: digests-${{ matrix.pair }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Only after every check above passed. The published image is signed (cosign, keyless) and carries its
+  # SBOM and build provenance – all bound to its digest (of the multi-arch tag, which covers both architectures):
+  #   cosign verify ghcr.io/<owner>/hoerwerk@sha256:… --certificate-identity-regexp 'github.com/<owner>/.*' \
+  #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  #   gh attestation verify oci://ghcr.io/<owner>/hoerwerk@sha256:… --owner <owner>
   image:
-    needs: [rust, contract, jail, frontend, image-test]
+    needs: [image-build]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -215,6 +318,11 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4
         with:
@@ -224,6 +332,14 @@ jobs:
       - name: Version of this build (rust/hoerwerk/Cargo.toml)
         id: ver
         run: echo "version=$(sed -n 's/^version = "\(.*\)"/\1/p' rust/hoerwerk/Cargo.toml | head -1)" >> "$GITHUB_OUTPUT"
+      - name: Image names (lower case, as the registry stores them)
+        id: names
+        run: |
+          echo "main=ghcr.io/${OWNER,,}/hoerwerk" >> "$GITHUB_OUTPUT"
+          echo "old=ghcr.io/${REPO,,}" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
         with:
@@ -238,30 +354,24 @@ jobs:
             type=raw,value=${{ steps.ver.outputs.version }},enable={{is_default_branch}}
             type=semver,pattern={{version}}
             type=sha,format=short
-      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
+      - name: One multi-arch image from the two digests
         id: build
-        with:
-          context: .
-          platforms: linux/amd64        # arm64 is not built for now
-          sbom: true
-          provenance: mode=max
-          push: true
-          pull: true
-          no-cache: ${{ github.event_name == 'schedule' }}
-          build-args: |
-            COMMIT=${{ github.sha }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=release
-          cache-to: type=gha,mode=max,scope=release
-      - name: Image names (lower case, as the registry stores them)
-        id: names
-        run: |
-          echo "main=ghcr.io/${OWNER,,}/hoerwerk" >> "$GITHUB_OUTPUT"
-          echo "old=ghcr.io/${REPO,,}" >> "$GITHUB_OUTPUT"
+        working-directory: ${{ runner.temp }}/digests
         env:
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.repository }}
+          DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
+          MAIN: ${{ steps.names.outputs.main }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          test "$(ls | wc -l)" = 2 || { echo "expected one digest per architecture, found: $(ls)" >&2; exit 1; }
+          # shellcheck disable=SC2046
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf "$MAIN@sha256:%s " *)
+          first=$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools inspect "$first"
+          digest=$(docker buildx imagetools inspect "$first" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          # both architectures must be in it
+          docker buildx imagetools inspect "$first" --format '{{json .Manifest}}' | jq -e '[.manifests[].platform.architecture] | (index("amd64") != null) and (index("arm64") != null)'
       - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532  # v4.1.3
         with:
           cosign-release: v3.1.4
