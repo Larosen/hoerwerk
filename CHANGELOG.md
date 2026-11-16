@@ -9,6 +9,10 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
   server's threads. If they wait too long, the page says so (with a hint to the log) instead of every page getting slow.
 - **Lock watchdog:** when a lock stays held for more than 30 seconds (a job, the job list, the inbox, the queues, the
   library index, the database or the log), the log says which one – so a hang can be found and fixed.
+- **"Als „…“ ablegen" works for books read from their tags:** the own title was lost when the details were read from the
+  tags again, so the book came back with the same conflict instead of being filed. Picking another match or entering
+  details drops the own title again.
+- The own title no longer repeats the authors when the tags name only one of the folder's "A & B".
 
 ## 1.0.8 – 2026-11-15
 

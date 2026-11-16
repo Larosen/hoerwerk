@@ -891,6 +891,9 @@ mod tests {
             Some("Ihr Merkts Doch Selbst")
         );
         assert!(folder_rest("Daniel Kehlmann - Afrika (Ungekuerzt)", &afrika).is_none());
+        // only one author in the tags: the folder's "A & B" counts as known names too
+        let tags = json!({"title": "Stenkelfeld", "authors": ["Harald Wehmeier", "Harald Wehmeier & Detlev Gröning"]});
+        assert_eq!(folder_rest(folder, &tags).as_deref(), Some("Zugabe"));
         let long = json!({"title": "Die Woche danach. Ein Stundenbuch der Hoffnung", "authors": ["Helga Schubert"]});
         assert!(name_doubt("Helga Schubert - Die Woche danach - Extra Wort", &long).is_none()); // long titles: no check
     }

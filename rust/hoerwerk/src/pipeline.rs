@@ -1297,6 +1297,9 @@ impl Pipeline {
             j.matched = Some(strip_match(&book));
             j.duplicate = None;
             j.dup_decision = None;
+            if let Some(o) = j.hints.as_object_mut() {
+                o.remove("own_title");
+            }
             let source = if s(&book, "source").is_empty() {
                 "audible"
             } else {
@@ -1395,6 +1398,9 @@ impl Pipeline {
             j.matched = Some(book);
             j.duplicate = None;
             j.dup_decision = None;
+            if let Some(o) = j.hints.as_object_mut() {
+                o.remove("own_title");
+            }
             let msg = match &base {
                 Some(b) => t("Eigene Angaben (auf Basis von {source})", &[("source", s(b, "source"))]),
                 None => t("Eigene Angaben", &[]),
@@ -1558,6 +1564,7 @@ impl Pipeline {
                 m["title"] = json!(title);
                 m["asin"] = Value::Null; // the shop's book is the other one
             }
+            j.hints["own_title"] = json!(title); // also when the details are read from the tags again
             j.duplicate = None;
             j.dup_decision = None;
             j.info(&t("Als eigenes Hörbuch: „{title}“", &[("title", &title)]));
@@ -3071,6 +3078,11 @@ impl Pipeline {
             b["source"] = json!("tags");
             book = b;
         }
+        let own_title = slot.lock().hint("own_title");
+        if !own_title.is_empty() {
+            book["title"] = json!(own_title); // filed as a book of its own under that title
+            book["asin"] = Value::Null;
+        }
         // already in the library? ask (or follow the setting) instead of silently adding a "(2)"
         let dup_mode = sval(&s_, "ab_duplicates", "ask");
         if dup_mode != "keep" && dup_decision.is_none() {
@@ -3111,12 +3123,16 @@ impl Pipeline {
                     );
                     // names of both (authors and narrators of either are no extra words of the folder name)
                     let mut both = d.clone();
-                    let folder_author = Self::folder_author(&slot.lock());
+                    let folder_authors = {
+                        let j = slot.lock();
+                        [j.hint("author"), Self::name_author(&j.name)]
+                    };
                     for k in ["authors", "narrators"] {
                         let mut all: Vec<Value> = d[k].as_array().cloned().unwrap_or_default();
                         all.extend(book[k].as_array().cloned().unwrap_or_default());
-                        if k == "authors" && !folder_author.is_empty() {
-                            all.push(json!(folder_author)); // as the folder writes it ("A & B")
+                        if k == "authors" {
+                            // as the tags and the folder write them ("A & B")
+                            all.extend(folder_authors.iter().filter(|a| !a.is_empty()).map(|a| json!(a)));
                         }
                         both[k] = Value::Array(all);
                     }
