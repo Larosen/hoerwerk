@@ -7,7 +7,7 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 
 - **NZB files can be picked on the iPhone:** the file picker no longer filters by type (iOS does not know ".nzb" and
   greyed such files out); the name and the content are checked on upload instead.
-- **Clearer buttons for a book that is in the library twice:** "Vorhandenes behalten, Doppel entfernen" and
+- **Clearer buttons for a book that is in the library twice:** "Neues nicht übernehmen" (removes the second copy) and
   "Vorhandenes ersetzen"; the box says where the second copy lies and that the new M4B was made from it, the versions
   read "Vorhanden" and "Neu aus dem Doppel". For downloads "Altes ersetzen" is now "Vorhandenes ersetzen".
 

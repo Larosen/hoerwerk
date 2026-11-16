@@ -622,7 +622,7 @@ function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
   };
   // the better version is the suggestion: keep the old one (discard the new) – or replace it
   const discard = el("button", { class: "btn small" + (better !== "new" ? " primary" : ""), onclick: () => act("discard", t("Verworfen")) },
-    fromLibrary ? t("Vorhandenes behalten, Doppel entfernen") : better === "old" ? t("Vorhandene behalten") : t("Verwerfen"));
+    fromLibrary ? t("Neues nicht übernehmen") : better === "old" ? t("Vorhandene behalten") : t("Verwerfen"));
   const replace = el("button", { class: "btn small" + (better === "new" ? " primary" : ""), onclick: () => act("replace", t("Wird ersetzt")) },
     better === "new" ? t("Durch die bessere ersetzen") : t("Vorhandenes ersetzen"));
   const keep = el("button", { class: "btn small ghost", onclick: () => act("keep", t("Wird zusätzlich abgelegt")) }, t("Trotzdem zusätzlich ablegen"));
