@@ -117,7 +117,7 @@ pub fn create(db: &Db, by: &str, body: &Value) -> Result<Value, String> {
     let ts = now();
     let token = {
         use base64::Engine;
-        use rand::RngCore;
+        use rand::Rng;
         let mut b = [0u8; 24];
         rand::rng().fill_bytes(&mut b);
         base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b)

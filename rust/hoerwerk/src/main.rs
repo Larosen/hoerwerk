@@ -47,7 +47,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use rand::RngCore;
+use rand::Rng;
 
 use crate::app::App;
 use crate::config::Config;

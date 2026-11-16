@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::{LazyLock, Mutex};
 
-use rand::RngCore;
+use rand::Rng;
 use serde_json::{Map, Value, json};
 
 use crate::db::{Db, compact};

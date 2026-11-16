@@ -65,7 +65,7 @@ fn pad(value: &str, width: Option<&str>) -> String {
     else {
         return value.to_string();
     };
-    rx::sub_with(rx!(r"(?<![.\d])\d+"), value, |c: &fancy_regex::Captures| {
+    rx::sub_with(rx!(r"(?<![.\d])\d+"), value, |c: &fancy_regex::Captures<str>| {
         format!("{:0>w$}", &c[0])
     })
 }
@@ -88,7 +88,7 @@ pub fn sanitize(part: &str) -> String {
 pub fn render(template: &str, values: &HashMap<&'static str, String>) -> String {
     let expand = |text: &str| -> (String, bool) {
         let mut empty = false;
-        let out = rx::sub_with(rx!(r"\{(\w+)(?::(\d+))?\}"), text, |c: &fancy_regex::Captures| {
+        let out = rx::sub_with(rx!(r"\{(\w+)(?::(\d+))?\}"), text, |c: &fancy_regex::Captures<str>| {
             let v = values.get(&c[1]).cloned().unwrap_or_default();
             if v.is_empty() {
                 empty = true;

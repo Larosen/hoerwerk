@@ -16,7 +16,7 @@ pub fn is_match(re: &Regex, text: &str) -> bool {
     re.is_match(text).unwrap_or(false)
 }
 
-pub fn search<'t>(re: &Regex, text: &'t str) -> Option<Captures<'t>> {
+pub fn search<'t>(re: &Regex, text: &'t str) -> Option<Captures<'t, str>> {
     re.captures(text).ok().flatten()
 }
 
@@ -37,7 +37,7 @@ pub fn sub1(re: &Regex, text: &str, rep: &str) -> String {
 }
 
 /// re.sub with a function for each match – the same safety as `sub`.
-pub fn sub_with(re: &Regex, text: &str, rep: impl FnMut(&Captures) -> String) -> String {
+pub fn sub_with(re: &Regex, text: &str, rep: impl FnMut(&Captures<str>) -> String) -> String {
     re.try_replacen(text, 0, rep)
         .map(|c| c.into_owned())
         .unwrap_or_else(|_| text.to_string())

@@ -546,7 +546,7 @@ struct TempDir(PathBuf);
 
 impl TempDir {
     fn new(parent: &Path, prefix: &str) -> Result<Self> {
-        use rand::RngCore;
+        use rand::Rng;
         let mut b = [0u8; 6];
         rand::rng().fill_bytes(&mut b);
         let dir = parent.join(format!("{prefix}{}", hex::encode(b)));
