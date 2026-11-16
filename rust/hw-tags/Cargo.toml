@@ -1,6 +1,6 @@
 [package]
 name = "hw-tags"
-version = "1.0.9"
+version = "1.0.10"
 description = "Audiobook tags for M4B files – the same atoms as Hörwerk's Python tagger (contract/golden)"
 edition.workspace = true
 license.workspace = true

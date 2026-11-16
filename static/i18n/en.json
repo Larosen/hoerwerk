@@ -1646,5 +1646,13 @@
  "Die Hörbuch-Liste brauchte {ms} ms": "The audiobook list took {ms} ms",
  "Langsame Antwort: {line}": "Slow response: {line}",
  "Speichern der Hörbücher dauerte {ms} ms": "Saving the audiobooks took {ms} ms",
- "Zeichnet zusätzlich jede Anfrage, jeden Verarbeitungsschritt und jeden Abruf mit Dauer auf – zum Eingrenzen von Fehlern; danach wieder ausschalten": "Also records every request, processing step and fetch with its duration – to narrow down errors; switch it off again afterwards"
+ "Zeichnet zusätzlich jede Anfrage, jeden Verarbeitungsschritt und jeden Abruf mit Dauer auf – zum Eingrenzen von Fehlern; danach wieder ausschalten": "Also records every request, processing step and fetch with its duration – to narrow down errors; switch it off again afterwards",
+ " (NZB hochgeladen: {name})": " (NZB uploaded: {name})",
+ "Das ist keine NZB-Datei": "That is not an NZB file",
+ "Die NZB-Datei ist zu groß (höchstens 3,5 MB)": "The NZB file is too big (3.5 MB at most)",
+ "Eine selbst gefundene NZB-Datei für dieses Hörbuch an SABnzbd geben – Hörwerk verfolgt den Download wie ein selbst gewähltes Release": "Give an NZB file you found yourself to SABnzbd for this audiobook – Hörwerk follows the download like a release it picked",
+ "Keine NZB-Datei mitgeschickt": "No NZB file sent",
+ "NZB an SABnzbd geschickt – „{title}“ wird geladen": "NZB sent to SABnzbd – “{title}” is downloading",
+ "NZB-Datei hochladen …": "Upload NZB file …",
+ "Selbst gefunden? Die NZB geht an SABnzbd, das Hörbuch wird dieser Anfrage zugeordnet.": "Found it yourself? The NZB goes to SABnzbd, the audiobook is linked to this request."
 }

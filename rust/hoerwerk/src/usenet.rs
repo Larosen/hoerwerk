@@ -36,7 +36,7 @@ impl std::fmt::Display for UsenetError {
     }
 }
 
-type Result<T> = std::result::Result<T, UsenetError>;
+pub type Result<T> = std::result::Result<T, UsenetError>;
 
 fn fail<T>(m: impl Into<String>) -> Result<T> {
     Err(UsenetError::Failed(m.into()))
@@ -729,6 +729,48 @@ impl<'a> Sabnzbd<'a> {
         match id {
             Some(i) if data["status"].as_bool().unwrap_or(false) => Ok(i),
             _ => fail(t("SABnzbd hat den Download nicht angenommen", &[])),
+        }
+    }
+
+    /// An NZB file itself (uploaded, not a link): POSTed as a form, like SABnzbd's own "Add NZB".
+    pub fn add_file(&self, nzb: &[u8], name: &str) -> Result<String> {
+        let params = [
+            ("mode", "addfile".to_string()),
+            ("nzbname", name.to_string()),
+            ("cat", self.category.clone()),
+            ("apikey", self.apikey.clone()),
+            ("output", "json".into()),
+        ];
+        let boundary = format!("hoerwerk{}", hex::encode(rand::random::<[u8; 12]>()));
+        let file = format!("{}.nzb", name.replace(['"', '\\', '\r', '\n'], "_"));
+        let mut body = format!(
+            "--{boundary}\r\nContent-Disposition: form-data; name=\"name\"; filename=\"{file}\"\r\nContent-Type: application/x-nzb\r\n\r\n"
+        )
+        .into_bytes();
+        body.extend_from_slice(nzb);
+        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+        let r = http::post(&format!("{}?{}", self.url, encode(&params)))
+            .body(&format!("multipart/form-data; boundary={boundary}"), body)
+            .timeout(60)
+            .limit(MAX_RESPONSE)
+            .send()
+            .map_err(|e| UsenetError::Failed(format!("SABnzbd: {}", redact(&e))))?;
+        if !r.ok() {
+            return fail(format!("SABnzbd: HTTP {}", r.status));
+        }
+        let data: Value =
+            serde_json::from_slice(&r.body).map_err(|_| UsenetError::Failed(t("SABnzbd: unerwartete Antwort", &[])))?;
+        let id = data["nzo_ids"]
+            .as_array()
+            .and_then(|a| a.first())
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        match id {
+            Some(i) if data["status"].as_bool().unwrap_or(false) => Ok(i),
+            _ => fail(match data["error"].as_str().filter(|e| !e.is_empty()) {
+                Some(e) => format!("SABnzbd: {e}"),
+                None => t("SABnzbd hat den Download nicht angenommen", &[]),
+            }),
         }
     }
 
@@ -1443,6 +1485,21 @@ impl Usenet {
         let name = safe_release_name(r["title"].as_str().unwrap_or(""));
         let nzo = self.sab()?.add(r["link"].as_str().unwrap_or(""), &name)?;
         let mut info = json!({"query": r["query"]});
+        if let (Some(o), Some(h)) = (info.as_object_mut(), hints.as_object()) {
+            o.extend(h.clone());
+        }
+        info["nzo_id"] = json!(nzo);
+        info["time"] = json!(now());
+        self.remember(&name, &info);
+        Ok(json!({"nzo_id": nzo, "title": name}))
+    }
+
+    /// An NZB file uploaded by hand: to SABnzbd, remembered like a grab (so the download is recognised when it
+    /// arrives in the inbox, with the request it belongs to).
+    pub fn send_nzb(&self, nzb: &[u8], name: &str, hints: &Value) -> Result<Value> {
+        let name = safe_release_name(name);
+        let nzo = self.sab()?.add_file(nzb, &name)?;
+        let mut info = json!({"upload": true});
         if let (Some(o), Some(h)) = (info.as_object_mut(), hints.as_object()) {
             o.extend(h.clone());
         }

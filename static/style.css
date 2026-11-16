@@ -1330,3 +1330,5 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .conflict-box p { margin: 0 0 8px; display: flex; gap: 6px; align-items: center; }
 .log-line.debug { color: var(--muted); }
 .log-line.debug .log-level { color: var(--faint); }
+.nzb-upload { align-items: center; margin: 4px 0 2px; }
+.nzb-upload label.busy { opacity: .6; pointer-events: none; }

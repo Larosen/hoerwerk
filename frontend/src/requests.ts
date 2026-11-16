@@ -508,6 +508,23 @@ function initRequests(): void {
   requests.filter = store.get("requestFilter", "open");
   if (!(requests.filter in REQ_FILTERS)) requests.filter = "open";
   initReleaseSort($("#releasesSort"), renderReleases);
+  // an NZB found by hand (e.g. in the phone's downloads): to SABnzbd, the request follows the download
+  const nzb = $<HTMLInputElement>("#releasesNzb");
+  nzb.addEventListener("change", async () => {
+    const file = nzb.files?.[0];
+    const r = requests.current;
+    nzb.value = "";
+    if (!file || !r) return;
+    if (file.size > 3.5 * 1024 * 1024) { toast(t("Die NZB-Datei ist zu groß (höchstens 3,5 MB)"), true); return; }
+    const label = nzb.closest("label");
+    label?.classList.add("busy");
+    try {
+      await api("POST", `/api/requests/${r.id}/nzb`, { name: file.name, nzb: await file.text() });
+      toast(t("NZB an SABnzbd geschickt – „{title}“ wird geladen", { title: r.book.title }));
+      $<HTMLDialogElement>("#releasesDialog").close();
+      loadRequests();
+    } catch (e) { toast(errMsg(e), true); } finally { label?.classList.remove("busy"); }
+  });
   $("#releasesGo").addEventListener("click", () => { if (requests.current) openReleases(requests.current, $<HTMLInputElement>("#releasesQuery").value); });
   // Enter in the search field searches again – it must not submit (and so close) the window
   $("#releasesQuery").addEventListener("keydown", (e) => {

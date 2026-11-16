@@ -321,6 +321,29 @@ pub async fn grab(app: Arc<App>, req: Req, p: Params) -> Reply {
     json_reply(out(&req, &res))
 }
 
+/// An NZB file for this request, uploaded from the browser (its text in the JSON body).
+pub async fn nzb(app: Arc<App>, req: Req, p: Params) -> Reply {
+    let item = tryr!(searcher(&app, &req, &p["rid"]));
+    let nzb = req.str("nzb");
+    if nzb.trim().is_empty() {
+        return error(400, t("Keine NZB-Datei mitgeschickt", &[]));
+    }
+    let (a, id, name, u) = (
+        app.clone(),
+        item["id"].as_i64().unwrap_or(0),
+        req.str("name"),
+        user(&req),
+    );
+    let res = call!(blocking(move || a.requests.grab_nzb(&a, id, &name, nzb.as_bytes(), Some(&u))).await);
+    app.audit(
+        &req.user_name(),
+        &req.ip,
+        "request_nzb",
+        &format!("{} {}", item["id"], res["release"].as_str().unwrap_or("")),
+    );
+    json_reply(out(&req, &res))
+}
+
 pub async fn block(app: Arc<App>, req: Req, p: Params) -> Reply {
     let item = tryr!(searcher(&app, &req, &p["rid"]));
     let title: String = req.str("title").chars().take(300).collect();

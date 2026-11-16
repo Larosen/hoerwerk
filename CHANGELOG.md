@@ -3,6 +3,13 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.10 – 2026-11-16
+
+- **Upload an NZB file for a request:** "NZB-Datei hochladen …" in the request's Releases window (also from the phone's
+  downloads). The file goes to SABnzbd (as SABnzbd's own "Add NZB" does), and the request follows the download like a
+  release it picked: "Lädt", the history notes who uploaded it, and the download is matched to the request when it
+  arrives. Only who may search for requests can upload; files that are not NZBs are refused.
+
 ## 1.0.9 – 2026-11-16
 
 - **A hanging part no longer stalls the whole app:** the audiobook list and the live updates are worked out off the web
