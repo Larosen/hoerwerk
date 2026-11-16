@@ -1071,7 +1071,10 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
   .page-title { padding-top: 30px; }
 }
 @media (max-width: 779px) {
-  body { padding-bottom: calc(70px + var(--safe-b)); }
+  /* a body of fixed height lets long pages overflow it, and Safari then leaves out its bottom padding: the last
+     entry sat under the tab bar. A body as tall as its content keeps the room for the bars. */
+  html, body { height: auto; }
+  body { min-height: 100dvh; padding-bottom: calc(70px + var(--safe-b)); }
   .topbar { flex-wrap: nowrap; height: 52px; padding: 0 var(--gut); row-gap: 0; }
   .topbar-actions { display: none; }
   .more-tab { display: inline-flex; }

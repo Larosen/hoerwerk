@@ -23,6 +23,9 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 - **arm64 image:** the release now builds the image for amd64 and arm64 (each on its own native runner) and publishes one multi-arch
   tag; signature, SBOM and build provenance are bound to its digest. A CI job checks the arm64 image on every change.
 - Unused leftovers of the Rust port are removed (the crate-wide `allow(dead_code)` is gone).
+- **iPhone: the end of a long list is reachable:** the body had a fixed height on phones, so long pages overflowed it and Safari
+  left out the room for the work bar and tab bar – the last entry (e.g. its "Anfragen" button) sat under them. The body is
+  now as tall as its content. A new test (run in WebKit in CI) checks the last entry sits above both bars.
 - Docs: the security notes point to the tests that really exist; an outdated comment in `main.rs` is corrected.
 
 ## 1.0.11 – 2026-11-16

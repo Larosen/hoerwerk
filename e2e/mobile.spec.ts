@@ -30,6 +30,28 @@ test("iPhone: anmelden und mit der unteren Leiste zwischen den Seiten wechseln",
   expect(errors.filter((e) => !/^Fetch API cannot load .* due to access control checks\.?$/.test(e))).toEqual([]);
 });
 
+test("iPhone: das Ende einer langen Liste liegt über der Werkbank-Leiste und der Tab-Leiste", async ({ page }) => {
+  const req = (id: number, title: string, status: string, live: object | null) => ({ id, book: { title, authors: ["A"] }, status, created: 1, updated: 1, mine: true, live });
+  const items = [req(1, "Afrika", "downloading", { kind: "download", state: "Downloading", progress: 0.42, mb: 1000, mbleft: 580 })];
+  for (let i = 2; i < 40; i++) items.push(req(i, `Buch ${i}`, "searching", null));
+  items.push(req(99, "Fiasko", "searching", null));
+  await page.route("**/api/requests", (r) => r.fulfill({ json: { items, may_search: true, quota: { limit: null } } }));
+  await page.request.post("/api/auth/login", { headers: OWN, data: { ...ADMIN, remember: false } });
+  await page.goto("/requests");
+  const last = page.locator("#requestList > li", { hasText: "Fiasko" });
+  await expect(last).toHaveCount(1);
+  await expect(page.locator("#workbench")).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await page.waitForTimeout(500);
+  const edge = await page.evaluate(() => {
+    const top = (s: string) => document.querySelector(s)!.getBoundingClientRect().top;
+    const l = [...document.querySelectorAll("#requestList > li")].pop()!.getBoundingClientRect();
+    return { bottom: l.bottom, bench: top("#workbench"), tabs: top("nav.tabs") };
+  });
+  expect(edge.bottom, "last entry above the work bar").toBeLessThanOrEqual(edge.bench);
+  expect(edge.bottom).toBeLessThanOrEqual(edge.tabs);
+});
+
 test("iPhone: die NZB-Auswahl lässt jede Datei zu (iOS kennt .nzb nicht und graut sie sonst aus)", async ({ page }) => {
   await page.request.post("/api/auth/login", { headers: OWN, data: { ...ADMIN, remember: false } });
   const made = await page.request.post("/api/requests", {
