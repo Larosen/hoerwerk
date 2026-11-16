@@ -112,10 +112,6 @@ impl Engine {
         }
     }
 
-    pub fn is_waiting(&self, key: &str) -> bool {
-        self.lock().queues.values().any(|q| q.iter().any(|(k, _)| k == key))
-    }
-
     pub fn stats(&self) -> Value {
         let st = self.lock();
         let mut out = serde_json::Map::new();
@@ -126,11 +122,6 @@ impl Engine {
             );
         }
         Value::Object(out)
-    }
-
-    pub fn idle(&self) -> bool {
-        let st = self.lock();
-        st.queues.values().all(VecDeque::is_empty) && st.running.values().all(Vec::is_empty)
     }
 
     /// Shutting down: no new step starts; waits (up to `timeout`) for the running ones to end. Waiting steps
@@ -203,6 +194,13 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    impl Engine {
+        fn idle(&self) -> bool {
+            let st = self.lock();
+            st.queues.values().all(VecDeque::is_empty) && st.running.values().all(Vec::is_empty)
+        }
+    }
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]

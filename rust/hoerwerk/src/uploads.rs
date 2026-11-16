@@ -411,14 +411,6 @@ impl Uploads {
         Ok(())
     }
 
-    fn still_open(&self, uid: &str) -> Res<()> {
-        if self.lock().get(uid).is_some_and(|s| s.state == "open") {
-            Ok(())
-        } else {
-            err(t("Upload abgebrochen", &[]))
-        }
-    }
-
     async fn write(&self, uid: &str, parts: &[String], target: &Path, mut body: Body, length: u64) -> Res<Value> {
         let name = &parts[parts.len() - 1];
         {

@@ -1,6 +1,4 @@
 //! Hörwerk – the audiobook workshop, Rust backend (API in contract/, frontend in static/).
-// a few helpers and fields are no longer used (left over from the port): to be removed one by one
-#![allow(dead_code)]
 
 mod accounts;
 mod app;

@@ -74,7 +74,6 @@ pub struct Runner {
 
 pub struct Output {
     pub code: i32,
-    pub stdout: Vec<u8>,
     pub stderr: String,
 }
 
@@ -157,7 +156,8 @@ impl Runner {
             }
         };
         self.procs.lock().unwrap_or_else(|p| p.into_inner()).remove(&pid);
-        let (stdout, stderr) = (reader.join().unwrap_or_default(), ereader.join().unwrap_or_default());
+        let _ = reader.join(); // stdout is not used (ffmpeg writes to files)
+        let stderr = ereader.join().unwrap_or_default();
         if self.stop_now() {
             return Err(EncodeError::Cancelled);
         }
@@ -169,7 +169,6 @@ impl Runner {
         };
         Ok(Output {
             code: status.code().unwrap_or(-1),
-            stdout,
             stderr,
         })
     }
@@ -242,11 +241,7 @@ pub struct Chapter {
     pub title: String,
 }
 
-impl Chapter {
-    pub fn json(&self) -> Value {
-        json!({"start": self.start, "title": self.title})
-    }
-}
+impl Chapter {}
 
 fn seconds(h: Option<&str>, m: &str, s: &str) -> f64 {
     h.and_then(|h| h.parse::<f64>().ok()).unwrap_or(0.0) * 3600.0
@@ -571,7 +566,6 @@ fn move_file(from: &Path, to: &Path) -> Result<()> {
 }
 
 pub struct Merged {
-    pub duration: f64,
     pub chapters: Vec<Chapter>,
     pub bitrate: String,
     pub copied: bool,
@@ -794,7 +788,6 @@ pub fn merge_to_m4b(
     move_file(&part, out_path)?;
     progress(1.0, t("Fertig", &[]));
     Ok(Merged {
-        duration: total,
         chapters,
         bitrate: if copy { "copy".into() } else { br },
         copied: copy,
@@ -895,7 +888,6 @@ fn pack_as_is(
     move_file(&part, out_path)?;
     progress(1.0, t("Fertig", &[]));
     Ok(Merged {
-        duration: total,
         chapters,
         bitrate: "copy".into(),
         copied: true,

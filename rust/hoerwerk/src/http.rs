@@ -10,7 +10,6 @@ pub const USER_AGENT: &str = "Hoerwerk/7";
 pub struct Resp {
     pub status: u16,
     pub body: Vec<u8>,
-    pub content_type: String,
     pub retry_after: Option<String>,
     pub location: Option<String>,
 }
@@ -18,10 +17,6 @@ pub struct Resp {
 impl Resp {
     pub fn json(&self) -> Option<Value> {
         serde_json::from_slice(&self.body).ok()
-    }
-
-    pub fn text(&self) -> String {
-        String::from_utf8_lossy(&self.body).into_owned()
     }
 
     pub fn ok(&self) -> bool {
@@ -136,7 +131,6 @@ impl<'a> Call<'a> {
             &format!("{method} {target} → {status} in {} ms", started.elapsed().as_millis()),
         );
         let header = |k: &str| resp.headers().get(k).and_then(|v| v.to_str().ok()).map(str::to_string);
-        let content_type = header("content-type").unwrap_or_default();
         let retry_after = header("retry-after");
         let location = header("location");
         let body = resp
@@ -148,7 +142,6 @@ impl<'a> Call<'a> {
         Ok(Resp {
             status,
             body,
-            content_type,
             retry_after,
             location,
         })
@@ -217,11 +210,6 @@ pub fn valid_url(url: &str) -> bool {
             p.is_empty()
                 || (p.len() <= 5 && p.chars().all(|c| c.is_ascii_digit()) && p.parse::<u32>().is_ok_and(|n| n <= 65535))
         })
-}
-
-/// url-encode a query value
-pub fn quote(s: &str) -> String {
-    percent_encoding::utf8_percent_encode(s, percent_encoding::NON_ALPHANUMERIC).to_string()
 }
 
 #[cfg(test)]

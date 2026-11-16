@@ -76,63 +76,6 @@ pub fn chapter_title(rel_path: &str, tag_title: Option<&str>, mode: &str) -> Str
     clean
 }
 
-fn strip_sep(s: &str) -> &str {
-    s.trim_matches(|c: char| SEP.contains(c))
-}
-
-/// Text all names start (or end) with, cut at a separator so no word is split.
-fn common_affix(names: &[Vec<char>], suffix: bool) -> Vec<char> {
-    if names.len() < 2 {
-        return Vec::new();
-    }
-    let seqs: Vec<Vec<char>> = names
-        .iter()
-        .map(|n| {
-            if suffix {
-                n.iter().rev().copied().collect()
-            } else {
-                n.clone()
-            }
-        })
-        .collect();
-    let mut len = 0;
-    while seqs.iter().all(|s| len < s.len() && s[len] == seqs[0][len]) {
-        len += 1;
-    }
-    let mut common: Vec<char> = seqs[0][..len].to_vec();
-    if suffix {
-        common.reverse();
-    }
-    let shortest = names.iter().map(Vec::len).min().unwrap_or(0);
-    while !common.is_empty() && common.len() < shortest {
-        let edge = if suffix { common[0] } else { common[common.len() - 1] };
-        if SEP.contains(edge) {
-            break;
-        }
-        if suffix {
-            common.remove(0);
-        } else {
-            common.pop();
-        }
-    }
-    common
-}
-
-/// A pattern for `text` that ignores case also outside ASCII (Python's re.I).
-fn caseless(text: &str) -> String {
-    text.chars()
-        .map(|c| {
-            let lower: String = c.to_lowercase().collect();
-            let upper: String = c.to_uppercase().collect();
-            if lower.chars().count() == 1 && upper.chars().count() == 1 && lower != upper {
-                format!("[{}{}]", regex_lite::escape(&lower), regex_lite::escape(&upper))
-            } else {
-                regex_lite::escape(&c.to_string())
-            }
-        })
-        .collect()
-}
-
 /// Clean chapter names of one book together (only the book title known, language from the UI).
 pub fn chapter_titles<S: AsRef<str>>(names: &[S], book_title: &str) -> Vec<String> {
     let known: Vec<String> = Some(book_title.trim())

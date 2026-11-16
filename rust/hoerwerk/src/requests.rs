@@ -344,20 +344,6 @@ impl Requests {
             .unwrap_or(0)
     }
 
-    /// ASINs of books on their way (downloading or processing).
-    pub fn open_asins(&self, app: &App) -> HashSet<String> {
-        let c = app.db.lock();
-        let Ok(mut st) = c.prepare("SELECT book_key FROM requests WHERE status IN ('downloading','processing')") else {
-            return HashSet::new();
-        };
-        st.query_map([], |r| r.get::<_, String>(0))
-            .into_iter()
-            .flatten()
-            .flatten()
-            .filter_map(|k| k.strip_prefix("asin:").map(str::to_string))
-            .collect()
-    }
-
     // -- create / decide ------------------------------------------------------------------------
     fn owned(app: &App, book: &Value) -> bool {
         let asin = book["asin"].as_str().unwrap_or("").to_uppercase();

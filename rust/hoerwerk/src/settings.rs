@@ -13,7 +13,6 @@ pub const OLD_DEFAULT_FOLDER: &str = "{author}/[{series}/][{series_position} - ]
 pub struct Settings {
     pub defaults: Map<String, Value>,
     pub choices: BTreeMap<String, Vec<String>>,
-    pub version: String,
 }
 
 fn spec() -> Value {
@@ -78,11 +77,7 @@ impl Settings {
                 )
             })
             .collect();
-        Settings {
-            defaults,
-            choices,
-            version: version(),
-        }
+        Settings { defaults, choices }
     }
 
     pub fn get(&self, db: &Db) -> Map<String, Value> {

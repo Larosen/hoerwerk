@@ -618,10 +618,6 @@ impl<'a> Newznab<'a> {
         results
     }
 
-    pub fn search(&self, query: &str, limit: usize) -> Result<Vec<Value>> {
-        self.search_with(query, limit, true)
-    }
-
     /// `fallback`: when the audiobook categories have nothing, ask once more in all categories (many
     /// indexers file German audiobooks elsewhere). That is a second search off the daily limit, so a
     /// search of several queries does it only for its first one.

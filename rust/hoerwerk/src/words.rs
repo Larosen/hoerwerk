@@ -284,12 +284,6 @@ pub fn split_author_title(name: &str) -> Option<(String, String)> {
     None
 }
 
-pub fn book_key(authors: &[String], title: &str) -> Option<String> {
-    let s = surname(authors.first().map(String::as_str).unwrap_or(""));
-    let w = title_words(title);
-    (!s.is_empty() && !w.is_empty()).then(|| format!("{s}|{}", w.join(" ")))
-}
-
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 pub enum Part {
     Num(u128),
