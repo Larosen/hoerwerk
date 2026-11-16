@@ -153,6 +153,11 @@ impl LibraryIndex {
         }
     }
 
+    /// The index is locked right now (for the watchdog).
+    pub fn busy(&self) -> bool {
+        matches!(self.state.try_lock(), Err(std::sync::TryLockError::WouldBlock))
+    }
+
     fn lock(&self) -> std::sync::MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(|p| p.into_inner())
     }
@@ -246,7 +251,16 @@ impl LibraryIndex {
             st.during = Some(HashMap::new());
         }
         self.changed();
+        let started = std::time::Instant::now();
         let result = self.walk_and_store();
+        crate::text::debug(
+            "Bibliothek",
+            &format!(
+                "Einlesen fertig nach {:.1} s: {:?}",
+                started.elapsed().as_secs_f64(),
+                result
+            ),
+        );
         {
             let mut st = self.lock();
             st.scanning = false;

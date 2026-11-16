@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::time::Duration;
 
 use serde_json::{Map, Value};
 use tokio::sync::{Notify, watch};
@@ -233,6 +234,51 @@ impl App {
         }
     }
 
+    /// `snapshot` off the async threads: a topic that waits for a lock must not stall every other page. None
+    /// when it takes longer than `limit` (the caller answers "busy" instead of hanging).
+    pub async fn snapshot_off(self: &Arc<Self>, topic: &str, limit: Duration) -> Option<Value> {
+        // normally done in a millisecond; four still running means something hangs – no more threads for it
+        static RUNNING: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+        {
+            let mut r = RUNNING.lock().unwrap_or_else(|p| p.into_inner());
+            if r.iter().filter(|x| *x == topic).count() >= 4 {
+                return None;
+            }
+            r.push(topic.to_string());
+        }
+        let (app, name) = (self.clone(), topic.to_string());
+        let lang = crate::text::language();
+        let task = tokio::task::spawn_blocking(move || {
+            crate::text::set_language(&lang);
+            let v = app.snapshot(&name);
+            let mut r = RUNNING.lock().unwrap_or_else(|p| p.into_inner());
+            if let Some(i) = r.iter().position(|x| *x == name) {
+                r.remove(i);
+            }
+            v
+        });
+        tokio::time::timeout(limit, task).await.ok().and_then(Result::ok)
+    }
+
+    /// Every lock that is held right now (pipeline, queues, library index, database, log).
+    pub fn busy_locks(&self) -> Vec<String> {
+        let mut out = self.pipeline.busy_locks();
+        use crate::text::t;
+        if self.engine.busy() {
+            out.push(t("Warteschlangen", &[]));
+        }
+        if self.library.busy() {
+            out.push(t("Bibliotheksindex", &[]));
+        }
+        if self.db.busy() {
+            out.push(t("Datenbank", &[]));
+        }
+        if crate::text::log_busy() {
+            out.push(t("Protokoll", &[]));
+        }
+        out
+    }
+
     pub fn topics(&self) -> [&'static str; 2] {
         ["audiobooks", "library"]
     }
@@ -307,10 +353,14 @@ impl App {
     }
 
     pub fn sse_open(&self) -> bool {
-        self.sse_clients.fetch_add(1, Ordering::SeqCst) < MAX_SSE || {
-            self.sse_clients.fetch_sub(1, Ordering::SeqCst);
-            false
+        let n = self.sse_clients.fetch_add(1, Ordering::SeqCst);
+        if n < MAX_SSE {
+            crate::text::debug("web", &format!("Live-Verbindung geöffnet ({} offen)", n + 1));
+            return true;
         }
+        self.sse_clients.fetch_sub(1, Ordering::SeqCst);
+        crate::text::warn("web", &format!("Live-Verbindung abgelehnt: schon {n} offen"));
+        false
     }
 }
 
@@ -435,6 +485,12 @@ mod tests {
         assert_eq!(v, 7);
         assert!(app.maintain_db(t0 + 3600.0).is_none()); // once a day
         assert!(app.maintain_db(t0 + 23.0 * 3600.0).is_some());
+        // the watchdog sees a lock that is held – and nothing when all are free
+        assert!(app.busy_locks().is_empty());
+        {
+            let _held = app.db.lock();
+            assert_eq!(app.busy_locks(), ["Datenbank"]);
+        }
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

@@ -322,13 +322,17 @@ pub struct Slot {
     job: Mutex<Job>,
     pub cancel: Arc<AtomicBool>,
     runner: Mutex<Option<Arc<Runner>>>,
+    /// the job's name, readable while the job is locked (for the lock watchdog)
+    label: String,
 }
 
 pub type JobRef = Arc<Slot>;
 
 impl Slot {
     fn new(job: Job) -> JobRef {
+        let label = job.name.clone();
         Arc::new(Slot {
+            label,
             job: Mutex::new(job),
             cancel: Arc::new(AtomicBool::new(false)),
             runner: Mutex::new(None),
@@ -869,6 +873,7 @@ impl Pipeline {
 
     /// Write the jobs that changed since the last save (one transaction).
     pub fn save(&self, app: &App) {
+        let started = std::time::Instant::now();
         {
             let _g = self.save_lock.lock().unwrap_or_else(|p| p.into_inner());
             let current: Vec<(String, String, String, String, f64, f64)> = self
@@ -913,11 +918,60 @@ impl Pipeline {
                 }
             }
         }
+        let ms = started.elapsed().as_millis();
+        if ms >= 2000 {
+            text::warn(
+                "Hörbücher",
+                &t("Speichern der Hörbücher dauerte {ms} ms", &[("ms", &ms.to_string())]),
+            );
+        } else if ms >= 100 {
+            text::debug("Hörbücher", &format!("Speichern dauerte {ms} ms"));
+        }
         app.publish("audiobooks");
+    }
+
+    /// Locks that are held right now (for the watchdog): their names. A lock held for a moment is normal; one
+    /// that stays held is what makes pages hang.
+    pub fn busy_locks(&self) -> Vec<String> {
+        fn held<T>(m: &Mutex<T>) -> bool {
+            matches!(m.try_lock(), Err(std::sync::TryLockError::WouldBlock))
+        }
+        let mut out = Vec::new();
+        if held(&self.jobs) {
+            out.push(t("Hörbücher: Liste", &[]));
+            return out; // the jobs themselves cannot be looked at now
+        }
+        if held(&self.save_lock) {
+            out.push(t("Hörbücher: Speichern", &[]));
+        }
+        if held(&self.watch) {
+            out.push(t("Hörbücher: Eingang", &[]));
+        }
+        for slot in self.all() {
+            if held(&slot.job) {
+                out.push(t("Hörbuch „{name}“", &[("name", &slot.label)]));
+            }
+        }
+        out
     }
 
     // -- public API --------------------------------------------------------------------------------
     pub fn status(&self, app: &App) -> Value {
+        let started = std::time::Instant::now();
+        let out = self.status_inner(app);
+        let ms = started.elapsed().as_millis();
+        if ms >= 2000 {
+            text::warn(
+                "Hörbücher",
+                &t("Die Hörbuch-Liste brauchte {ms} ms", &[("ms", &ms.to_string())]),
+            );
+        } else if ms >= 50 {
+            text::debug("Hörbücher", &format!("Liste berechnet in {ms} ms"));
+        }
+        out
+    }
+
+    fn status_inner(&self, app: &App) -> Value {
         let s = app.settings();
         let mut jobs: Vec<Value> = self.all().iter().map(|slot| slot.lock().to_dict(false)).collect();
         jobs.sort_by(|a, b| {
@@ -1268,6 +1322,9 @@ impl Pipeline {
             j.matched = Some(strip_match(&book));
             j.duplicate = None;
             j.dup_decision = None;
+            if let Some(o) = j.hints.as_object_mut() {
+                o.remove("own_title");
+            }
             let source = if s(&book, "source").is_empty() {
                 "audible"
             } else {
@@ -1366,6 +1423,9 @@ impl Pipeline {
             j.matched = Some(book);
             j.duplicate = None;
             j.dup_decision = None;
+            if let Some(o) = j.hints.as_object_mut() {
+                o.remove("own_title");
+            }
             let msg = match &base {
                 Some(b) => t("Eigene Angaben (auf Basis von {source})", &[("source", s(b, "source"))]),
                 None => t("Eigene Angaben", &[]),
@@ -1496,6 +1556,7 @@ impl Pipeline {
     /// The book is already in the library: keep both, replace the old one, or drop the new one.
     pub fn resolve_duplicate(&self, app: &Arc<App>, id: &str, action: &str) -> Res<JobRef> {
         let slot = self.need(id)?;
+        text::debug("Hörbücher", &format!("Konflikt mit der Bibliothek: {action} für {id}"));
         if !matches!(action, "keep" | "keep_named" | "replace" | "discard") {
             return Err(PipeError::Refused(t("Unbekannte Aktion", &[])));
         }
@@ -1529,6 +1590,7 @@ impl Pipeline {
                 m["title"] = json!(title);
                 m["asin"] = Value::Null; // the shop's book is the other one
             }
+            j.hints["own_title"] = json!(title); // also when the details are read from the tags again
             j.duplicate = None;
             j.dup_decision = None;
             j.info(&t("Als eigenes Hörbuch: „{title}“", &[("title", &title)]));
@@ -1959,6 +2021,8 @@ impl Pipeline {
             j.stage.clone()
         };
         self.save(app);
+        let started = std::time::Instant::now();
+        text::debug(&slot.label, &format!("Schritt „{stage}“ beginnt"));
         let result: Res<()> = match stage.as_str() {
             "prepare" => (|| {
                 self.prepare(app, slot)?;
@@ -2056,6 +2120,13 @@ impl Pipeline {
         *slot.runner.lock().unwrap_or_else(|p| p.into_inner()) = None;
         self.save(app);
         let status = slot.lock().status.clone();
+        text::debug(
+            &slot.label,
+            &format!(
+                "Schritt „{stage}“ fertig nach {:.1} s – Status {status}",
+                started.elapsed().as_secs_f64()
+            ),
+        );
         if matches!(status.as_str(), "done" | "review" | "failed") {
             book_event(app, slot);
         }
@@ -3042,6 +3113,11 @@ impl Pipeline {
             b["source"] = json!("tags");
             book = b;
         }
+        let own_title = slot.lock().hint("own_title");
+        if !own_title.is_empty() {
+            book["title"] = json!(own_title); // filed as a book of its own under that title
+            book["asin"] = Value::Null;
+        }
         // already in the library? ask (or follow the setting) instead of silently adding a "(2)"
         let dup_mode = sval(&s_, "ab_duplicates", "ask");
         if dup_mode != "keep" && dup_decision.is_none() {
@@ -3082,12 +3158,16 @@ impl Pipeline {
                     );
                     // names of both (authors and narrators of either are no extra words of the folder name)
                     let mut both = d.clone();
-                    let folder_author = Self::folder_author(&slot.lock());
+                    let folder_authors = {
+                        let j = slot.lock();
+                        [j.hint("author"), Self::name_author(&j.name)]
+                    };
                     for k in ["authors", "narrators"] {
                         let mut all: Vec<Value> = d[k].as_array().cloned().unwrap_or_default();
                         all.extend(book[k].as_array().cloned().unwrap_or_default());
-                        if k == "authors" && !folder_author.is_empty() {
-                            all.push(json!(folder_author)); // as the folder writes it ("A & B")
+                        if k == "authors" {
+                            // as the tags and the folder write them ("A & B")
+                            all.extend(folder_authors.iter().filter(|a| !a.is_empty()).map(|a| json!(a)));
                         }
                         both[k] = Value::Array(all);
                     }

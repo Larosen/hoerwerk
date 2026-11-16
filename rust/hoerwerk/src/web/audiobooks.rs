@@ -54,7 +54,16 @@ fn region(app: &App, req: &Req) -> Result<String, Reply> {
 }
 
 pub async fn status(app: Arc<App>, _: Req, _: Params) -> Reply {
-    json_reply(app.snapshot("audiobooks"))
+    match app.snapshot_off("audiobooks", std::time::Duration::from_secs(10)).await {
+        Some(v) => json_reply(v),
+        None => error(
+            503,
+            t(
+                "Hörwerk ist gerade blockiert – Details im Protokoll; ein Neustart hilft",
+                &[],
+            ),
+        ),
+    }
 }
 
 pub async fn paths(app: Arc<App>, req: Req, _: Params) -> Reply {

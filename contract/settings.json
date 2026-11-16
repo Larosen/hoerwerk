@@ -5,6 +5,7 @@
   "public_url": "",
   "bitrate": "auto",
   "force_mono": false,
+  "log_debug": false,
   "audio_quality": "high",
   "chapter_titles": "auto",
   "ab_watch": true,
@@ -247,5 +248,5 @@
    "type": "bool"
   }
  },
- "version": "1.0.8"
+ "version": "1.0.9"
 }

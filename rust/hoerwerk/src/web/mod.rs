@@ -409,13 +409,25 @@ pub async fn dispatch(
     }
     let _slot = SlotGuard(&app.slots.0);
     let (method, path) = (req.method().clone(), req.uri().path().to_string());
-    match std::panic::AssertUnwindSafe(handle(app.clone(), peer, req))
+    let started = std::time::Instant::now();
+    let r = match std::panic::AssertUnwindSafe(handle(app.clone(), peer, req))
         .catch_unwind()
         .await
     {
         Ok(r) => r,
         Err(p) => internal_error(&method, &path, p.as_ref()),
+    };
+    if path.starts_with("/api/") && !matches!(path.as_str(), "/api/events" | "/api/logs" | "/api/health") {
+        // the path only: no query string (it may hold a key), no body
+        let ms = started.elapsed().as_millis();
+        let line = format!("{method} {path} → {} in {ms} ms", r.status().as_u16());
+        if ms >= 3000 && !path.starts_with("/api/upload") && !path.contains("/search") {
+            crate::text::warn("web", &t("Langsame Antwort: {line}", &[("line", &line)]));
+        } else {
+            crate::text::debug("web", &line);
+        }
     }
+    r
 }
 
 /// Unexpected errors: everything into the log, only a number to the browser – no error text, paths, SQL or keys

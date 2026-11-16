@@ -532,13 +532,15 @@
         <button type="button" data-min="0">Alles</button>
       </div>
       <select id="logLevel" aria-label="Was">
-        <option value="info">Alles</option>
+        <option value="debug">Alles mit Debug</option>
+        <option value="info" selected>Alles</option>
         <option value="warn">Warnungen und Fehler</option>
         <option value="error">Nur Fehler</option>
       </select>
       <input id="logFilter" type="search" placeholder="Filtern …" aria-label="Filtern">
       <label class="check"><input type="checkbox" id="logFollow" checked> Live</label>
       <button id="logDownload" class="btn small" type="button">Herunterladen</button>
+      <label class="check" title="Zeichnet zusätzlich jede Anfrage, jeden Verarbeitungsschritt und jeden Abruf mit Dauer auf – zum Eingrenzen von Fehlern; danach wieder ausschalten"><input type="checkbox" id="logDebug"> Debug aufzeichnen</label>
     </div>
     <div id="logView" class="log-view" role="log" aria-live="polite"></div>
     <p class="muted small">Die letzten 3000 Einträge seit dem Start. Alles steht zusätzlich im Container-Protokoll (<code>docker logs hoerwerk</code>).</p>

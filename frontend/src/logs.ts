@@ -1,7 +1,7 @@
 "use strict";
 // Protokoll (/settings/logs): the app log, live while the page is open.
 
-interface LogEntry { id: number; time: number; level: "info" | "warn" | "error"; source: string; text: string }
+interface LogEntry { id: number; time: number; level: "debug" | "info" | "warn" | "error"; source: string; text: string }
 
 const logs = {
   entries: [] as LogEntry[],
@@ -11,7 +11,8 @@ const logs = {
   timer: undefined as number | undefined,
 };
 
-const LOG_LEVEL_NAMES: Record<string, string> = { info: "", warn: t("Warnung"), error: t("Fehler") };
+/** The level in front of every line, as log files write it. */
+const LOG_LEVEL_NAMES: Record<string, string> = { debug: "DEBUG", info: "INFO", warn: "WARN", error: "ERROR" };
 
 function fmtLogTime(ts: number): string {
   const d = new Date(ts * 1000);
@@ -43,7 +44,7 @@ function renderLogs(): void {
   });
   view.replaceChildren(...shown.map((e) => el("div", { class: "log-line " + e.level },
     el("span", { class: "log-time" }, fmtLogTime(e.time)),
-    e.level !== "info" ? el("span", { class: "log-level" }, LOG_LEVEL_NAMES[e.level]) : null,
+    el("span", { class: "log-level" }, LOG_LEVEL_NAMES[e.level] || e.level.toUpperCase()),
     e.source ? el("span", { class: "log-source" }, e.source) : null,
     el("span", { class: "log-text" }, e.text))));
   if (!shown.length) view.append(el("div", { class: "muted log-empty" }, words.length ? t("Nichts gefunden.") : older ? t("Nichts in diesem Zeitraum.") : t("Noch keine Einträge.")));
@@ -84,6 +85,16 @@ function logsVisible(): boolean {
 /** The log page was opened: newest entries, then follow live. */
 async function showLogs(): Promise<void> {
   delete $("#logView").dataset.seen;
+  const debug = $<HTMLInputElement>("#logDebug");
+  debug.checked = !!state.settings?.log_debug;
+  api<Settings>("GET", "/api/settings").then((s) => {
+    debug.checked = !!s.log_debug;
+    if (debug.checked && logs.level === "info") {          // recording debug lines: show them too
+      logs.level = "debug";
+      $<HTMLSelectElement>("#logLevel").value = "debug";
+      loadLogs(true);
+    }
+  }).catch(() => { /* keeps the last state */ });
   await loadLogs(true);
   followLogs();
 }
@@ -98,6 +109,20 @@ function initLogs(): void {
   $<HTMLSelectElement>("#logLevel").addEventListener("change", (e) => {
     logs.level = (e.target as HTMLSelectElement).value;
     loadLogs(true);
+  });
+  // debug lines are only recorded while this is on (a setting: it stays on across restarts until switched off)
+  const debug = $<HTMLInputElement>("#logDebug");
+  debug.addEventListener("change", async () => {
+    try {
+      await api("PUT", "/api/settings", { log_debug: debug.checked });
+      state.settings.log_debug = debug.checked;
+      if (debug.checked && logs.level !== "debug") {
+        logs.level = "debug";
+        $<HTMLSelectElement>("#logLevel").value = "debug";
+      }
+      toast(debug.checked ? t("Debug-Protokoll eingeschaltet – danach wieder ausschalten") : t("Debug-Protokoll ausgeschaltet"), "info");
+      loadLogs(true);
+    } catch (e) { debug.checked = !debug.checked; toast(errMsg(e), true); }
   });
   $("#logFilter").addEventListener("input", renderLogs);
   $("#logFollow").addEventListener("change", followLogs);

@@ -254,6 +254,15 @@ async fn settings_get(app: Arc<App>, _: Req, _: HashMap<String, String>) -> Repl
 
 async fn settings_put(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
     let data = req.body.as_object().cloned().unwrap_or_default();
+    if let Some(on) = data.get("log_debug").and_then(Value::as_bool) {
+        text::set_debug(on);
+        let msg = if on {
+            t("Debug-Protokoll eingeschaltet", &[])
+        } else {
+            t("Debug-Protokoll ausgeschaltet", &[])
+        };
+        text::info("Protokoll", &msg);
+    }
     let mut clean = match app.settings.clean(&data) {
         Ok(c) => c,
         Err(key) => return error(400, t("Ungültiger Wert für {key}", &[("key", &key)])),
@@ -306,7 +315,8 @@ struct SseGuard(Arc<App>);
 
 impl Drop for SseGuard {
     fn drop(&mut self) {
-        self.0.sse_clients.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+        let left = self.0.sse_clients.fetch_sub(1, std::sync::atomic::Ordering::SeqCst) - 1;
+        text::debug("web", &format!("Live-Verbindung beendet ({left} offen)"));
     }
 }
 
@@ -331,7 +341,12 @@ fn live_stream(
                     let mut out = String::from("retry: 3000\n\n");
                     for topic in &topics {
                         seen.insert(topic.clone(), app.version(topic));
-                        out.push_str(&format!("event: {topic}\ndata: {}\n\n", app.snapshot(topic)));
+                        match app.snapshot_off(topic, Duration::from_secs(20)).await {
+                            Some(v) => out.push_str(&format!("event: {topic}\ndata: {v}\n\n")),
+                            None => {
+                                seen.remove(topic); // not ready: sent with the next round
+                            }
+                        }
                     }
                     return Some((Ok(Bytes::from(out)), (app, topics, seen, false, guard)));
                 }
@@ -355,7 +370,12 @@ fn live_stream(
                     let v = app.version(topic);
                     if seen.get(topic) != Some(&v) {
                         seen.insert(topic.clone(), v);
-                        out.push_str(&format!("event: {topic}\ndata: {}\n\n", app.snapshot(topic)));
+                        match app.snapshot_off(topic, Duration::from_secs(20)).await {
+                            Some(v) => out.push_str(&format!("event: {topic}\ndata: {v}\n\n")),
+                            None => {
+                                seen.remove(topic); // not ready: sent with the next round
+                            }
+                        }
                     }
                 }
                 Some((
