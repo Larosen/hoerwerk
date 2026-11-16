@@ -3,6 +3,14 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.11 – 2026-11-16
+
+- **NZB files can be picked on the iPhone:** the file picker no longer filters by type (iOS does not know ".nzb" and
+  greyed such files out); the name and the content are checked on upload instead.
+- **Clearer buttons for a book that is in the library twice:** "Neues nicht übernehmen" (removes the second copy) and
+  "Vorhandenes ersetzen"; the box says where the second copy lies and that the new M4B was made from it, the versions
+  read "Vorhanden" and "Neu aus dem Doppel". For downloads "Altes ersetzen" is now "Vorhandenes ersetzen".
+
 ## 1.0.10 – 2026-11-16
 
 - **Upload an NZB file for a request:** "NZB-Datei hochladen …" in the request's Releases window (also from the phone's

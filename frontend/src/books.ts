@@ -609,8 +609,8 @@ function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
   const fromLibrary = j.origin === "library";     // the gentle conversion of a book that is in the library twice
   const act = async (action: string, label: string): Promise<void> => {
     if (action === "discard" && fromLibrary
-      && !(await confirmBox(t("„{old}“ ist schon als „{path}“ in der Bibliothek. Die alte Fassung wird entfernt – wie unter „Alte Dateien danach“ eingestellt nach _ersetzt verschoben oder gelöscht.", { old: j.rel, path: d.path }),
-        t("Alte Fassung entfernen")))) return;
+      && !(await confirmBox(t("„{path}“ bleibt. Das Doppel „{old}“ wird entfernt – wie unter „Alte Dateien danach“ eingestellt nach _ersetzt verschoben oder gelöscht.", { old: j.rel, path: d.path }),
+        t("Doppel entfernen")))) return;
     if (action === "replace") {
       const worse = better === "old" ? " " + t("Achtung: Die neue Fassung klingt deutlich schlechter ({new} statt {old} kbit/s).",
         { new: d.quality?.new?.kbps ?? "?", old: d.quality?.old?.kbps ?? "?" }) : "";
@@ -622,9 +622,9 @@ function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
   };
   // the better version is the suggestion: keep the old one (discard the new) – or replace it
   const discard = el("button", { class: "btn small" + (better !== "new" ? " primary" : ""), onclick: () => act("discard", t("Verworfen")) },
-    fromLibrary ? t("Alte Fassung entfernen") : better === "old" ? t("Vorhandene behalten") : t("Verwerfen"));
+    fromLibrary ? t("Neues nicht übernehmen") : better === "old" ? t("Vorhandene behalten") : t("Verwerfen"));
   const replace = el("button", { class: "btn small" + (better === "new" ? " primary" : ""), onclick: () => act("replace", t("Wird ersetzt")) },
-    better === "new" ? t("Durch die bessere ersetzen") : t("Altes ersetzen"));
+    better === "new" ? t("Durch die bessere ersetzen") : t("Vorhandenes ersetzen"));
   const keep = el("button", { class: "btn small ghost", onclick: () => act("keep", t("Wird zusätzlich abgelegt")) }, t("Trotzdem zusätzlich ablegen"));
   // probably another work under the same short title: filing it as a book of its own is the suggestion
   const own = d.own_title ? el("button", { class: "btn small primary", onclick: () => act("keep_named", t("Wird als eigenes Hörbuch abgelegt")) },
@@ -648,10 +648,13 @@ function duplicateBox(j: AudiobookJob, d: Duplicate): HTMLDivElement {
         el("code", {}, d.path),
         d.origin ? el("span", { class: "muted small" }, t("Abgelegt aus: {name}", { name: d.origin })) : null,
         el("button", { type: "button", class: "btn small ghost", onclick: () => showDetail(libraryAsBook(existing)) }, t("Ansehen")))),
+    // the book came from the library itself: the second copy there is where the new M4B was made from
+    fromLibrary ? el("div", { class: "muted small" }, t("Doppel in der Bibliothek:"), " ", el("code", {}, j.rel),
+      " – " + t("daraus wurde die neue M4B umgewandelt")) : null,
     d.other_work ? el("div", { class: "dup-other" }, icon("alert"), t("Wahrscheinlich ein anderes Werk: {why}", { why: d.other_work })) : null,
     d.quality ? el("div", { class: "dup-compare" },
-      qualityCard(t("In der Bibliothek"), d.quality.old, better === "old"),
-      qualityCard(t("Neu"), d.quality.new, better === "new")) : null,
+      qualityCard(fromLibrary ? t("Vorhanden") : t("In der Bibliothek"), d.quality.old, better === "old"),
+      qualityCard(fromLibrary ? t("Neu aus dem Doppel") : t("Neu"), d.quality.new, better === "new")) : null,
     el("div", { class: "row gap wrap" }, ...buttons),
     el("div", { class: "muted small" }, t("Falscher Treffer? Unten einen anderen wählen – dann wird erneut geprüft.")));
 }

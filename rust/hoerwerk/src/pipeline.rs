@@ -1592,11 +1592,8 @@ impl Pipeline {
                     self.delete_from_library(app, &rel)
                 };
                 let msg = match result {
-                    Ok(shown) => t("Alte Fassung aus der Bibliothek entfernt: {path}", &[("path", &shown)]),
-                    Err(e) => t(
-                        "Alte Fassung blieb in der Bibliothek: {error}",
-                        &[("error", &e.to_string())],
-                    ),
+                    Ok(shown) => t("Doppel aus der Bibliothek entfernt: {path}", &[("path", &shown)]),
+                    Err(e) => t("Doppel blieb in der Bibliothek: {error}", &[("error", &e.to_string())]),
                 };
                 slot.say(&msg);
             }
