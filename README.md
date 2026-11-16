@@ -65,7 +65,7 @@ curl -O https://raw.githubusercontent.com/Larosen/hoerwerk/main/docker-compose.y
 docker compose up -d
 ```
 
-Image: `ghcr.io/larosen/hoerwerk:latest` (or a fixed version such as `:1.0.0`) – amd64, rebuilt every week for
+Image: `ghcr.io/larosen/hoerwerk:latest` (or a fixed version such as `:1.0.0`) – amd64 and arm64, rebuilt every week for
 security updates, signed with cosign.
 
 ## What it is not
@@ -73,7 +73,7 @@ security updates, signed with cosign.
 - **No player.** Hörwerk fills the library; you listen with Audiobookshelf, Plex or any app that plays M4B.
 - **No source of books.** It works with *your* files, *your* SABnzbd and *your* indexers. The only built-in source
   is LibriVox. It removes no copy protection.
-- **amd64 only** for now; arm64 is on the [roadmap](docs/ROADMAP.md).
+- **amd64 and arm64** (Raspberry Pi, Apple-silicon NAS): one tag, Docker picks the right one. Only amd64 was tested on real hardware so far; arm64 is checked in CI on every change.
 
 ## Documentation
 

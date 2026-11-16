@@ -20,7 +20,8 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
   a JSON file, API keys only with "Export with keys"; the file can be loaded on another server. Accounts, requests and
   the library are not part of it.
 - **Phone flows in real WebKit:** the CI runs the new iPhone tests (login, tab bar, NZB picker) in WebKit as well.
-- **arm64 check:** a CI job builds the image on a native arm64 runner and starts it (publishing arm64 comes next).
+- **arm64 image:** the release now builds the image for amd64 and arm64 (each on its own native runner) and publishes one multi-arch
+  tag; signature, SBOM and build provenance are bound to its digest. A CI job checks the arm64 image on every change.
 - Unused leftovers of the Rust port are removed (the crate-wide `allow(dead_code)` is gone).
 - Docs: the security notes point to the tests that really exist; an outdated comment in `main.rs` is corrected.
 
