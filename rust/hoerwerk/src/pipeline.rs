@@ -3646,6 +3646,74 @@ impl Pipeline {
         Ok(())
     }
 
+    /// The chapters of a book of the library as the person edited them (rename, merge, split): checked, then written
+    /// into the M4B. Needs one M4B in the folder and no job working on it. Returns the chapters as written.
+    pub fn set_chapters(&self, app: &App, rel: &str, wanted: &[Chapter]) -> Res<Vec<Chapter>> {
+        let root = real(&self.library);
+        let folder = real(&self.library.join(rel.trim_matches('/')));
+        if !folder.starts_with(&root) || folder == root || !folder.is_dir() {
+            return Err(PipeError::Refused(t("Nicht in der Bibliothek", &[])));
+        }
+        let audio = media::collect_audio(&folder);
+        let [file] = audio.as_slice() else {
+            return Err(PipeError::Refused(t(
+                "Kapitel bearbeiten geht nur bei einer einzelnen M4B",
+                &[],
+            )));
+        };
+        let m4b = folder.join(file);
+        if self.all().iter().any(|x| {
+            let j = x.lock();
+            ACTIVE.contains(&j.status.as_str()) && Path::new(&j.source).starts_with(&folder)
+        }) {
+            return Err(PipeError::Refused(t("Wird gerade bearbeitet – erst abbrechen", &[])));
+        }
+        let duration = probe_cached(&m4b)["duration"].as_f64().unwrap_or(0.0);
+        let chapters = Self::check_chapters(wanted, duration).map_err(PipeError::Refused)?;
+        let _g = self.file_lock.lock().unwrap_or_else(|p| p.into_inner());
+        self.rechapter(app, &m4b, &chapters)?;
+        let _ = tagger::set_abs_chapters(&folder, &chapters, duration);
+        Ok(chapters)
+    }
+
+    /// A chapter list that can be written: 1 to 2000 chapters, the first at 0, then strictly rising and inside the
+    /// book, every name 1 to 200 characters (control characters out).
+    pub fn check_chapters(wanted: &[Chapter], duration: f64) -> Result<Vec<Chapter>, String> {
+        if wanted.is_empty() || wanted.len() > 2000 {
+            return Err(t("Ein Hörbuch braucht 1 bis 2000 Kapitel", &[]));
+        }
+        let mut out: Vec<Chapter> = Vec::with_capacity(wanted.len());
+        for (i, c) in wanted.iter().enumerate() {
+            let start = if i == 0 { 0.0 } else { c.start };
+            if !start.is_finite() || start < 0.0 || (duration > 0.0 && start >= duration) {
+                return Err(t(
+                    "Kapitel {n}: der Beginn liegt außerhalb des Hörbuchs",
+                    &[("n", &(i + 1).to_string())],
+                ));
+            }
+            if out.last().is_some_and(|p| start <= p.start) {
+                return Err(t(
+                    "Kapitel {n}: der Beginn muss nach dem vorigen liegen",
+                    &[("n", &(i + 1).to_string())],
+                ));
+            }
+            let title: String = c
+                .title
+                .chars()
+                .filter(|ch| !ch.is_control())
+                .collect::<String>()
+                .trim()
+                .chars()
+                .take(200)
+                .collect();
+            if title.is_empty() {
+                return Err(t("Kapitel {n} hat keinen Namen", &[("n", &(i + 1).to_string())]));
+            }
+            out.push(Chapter { start, title });
+        }
+        Ok(out)
+    }
+
     /// What a book is called – these go from its chapter names: title, series, authors.
     fn known_names(book: &Value) -> Vec<String> {
         let mut out: Vec<String> = ["title", "series"]
@@ -3884,6 +3952,22 @@ fn book_event(app: &Arc<App>, slot: &JobRef) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn edited_chapter_lists_are_checked() {
+        let c = |start: f64, title: &str| Chapter {
+            start,
+            title: title.into(),
+        };
+        let ok = Pipeline::check_chapters(&[c(5.0, " Anfang "), c(60.0, "Mitte")], 100.0).unwrap();
+        assert_eq!((ok[0].start, ok[0].title.as_str()), (0.0, "Anfang")); // the first starts at 0, names are trimmed
+        assert!(Pipeline::check_chapters(&[], 100.0).is_err());
+        assert!(Pipeline::check_chapters(&[c(0.0, "A"), c(50.0, "B"), c(40.0, "C")], 100.0).is_err()); // goes back
+        assert!(Pipeline::check_chapters(&[c(0.0, "A"), c(50.0, "B"), c(50.0, "C")], 100.0).is_err()); // same start
+        assert!(Pipeline::check_chapters(&[c(0.0, "A"), c(100.0, "B")], 100.0).is_err()); // not inside the book
+        assert!(Pipeline::check_chapters(&[c(0.0, "A"), c(f64::NAN, "B")], 100.0).is_err());
+        assert!(Pipeline::check_chapters(&[c(0.0, "  \u{7} ")], 100.0).is_err()); // no name left
+    }
 
     #[test]
     fn track_numbers_that_contradict_the_file_order() {

@@ -41,7 +41,6 @@ Development versions before 1.0:
 
 ## Later
 
-- **Chapter editor** in the UI: rename, merge, split chapters before filing.
 - **Per-account libraries / age-appropriate views** for kids' accounts.
 - **PWA**: install the UI on the phone's home screen, push via ntfy already works.
 

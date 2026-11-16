@@ -199,6 +199,59 @@ pub async fn wrong_edition(app: Arc<App>, req: Req, p: Params) -> Reply {
 }
 
 /// Clean the chapter names of a book in the library (one M4B): the same rules as for new books.
+/// The chapters of a library book's M4B for the chapter editor.
+pub async fn chapters_get(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let rel = req.query.get("path").cloned().unwrap_or_default();
+    let folder = match super::library::library_path(&app, &rel) {
+        Ok(f) => f,
+        Err(r) => return r,
+    };
+    let audio = crate::media::collect_audio(&folder);
+    let [file] = audio.as_slice() else {
+        return error(409, t("Kapitel bearbeiten geht nur bei einer einzelnen M4B", &[]));
+    };
+    let file = folder.join(file);
+    let chapters = blocking(move || {
+        let duration = crate::media::probe_cached(&file)["duration"].as_f64().unwrap_or(0.0);
+        let list: Vec<Value> = crate::encoder::file_chapters(&file)
+            .into_iter()
+            .map(|c| json!({"start": c.start, "title": c.title}))
+            .collect();
+        json!({"duration": duration, "chapters": list})
+    })
+    .await;
+    json_reply(chapters)
+}
+
+/// The chapters of a library book as edited (rename, merge, split): written into the M4B and metadata.json.
+pub async fn chapters_put(app: Arc<App>, req: Req, _: Params) -> Reply {
+    let rel = req.str("path");
+    let wanted: Vec<crate::encoder::Chapter> = req
+        .get("chapters")
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|c| crate::encoder::Chapter {
+            start: c["start"].as_f64().unwrap_or(f64::NAN),
+            title: c["title"].as_str().unwrap_or("").to_string(),
+        })
+        .collect();
+    let (a, r) = (app.clone(), rel.clone());
+    match blocking(move || a.pipeline.set_chapters(&a, &r, &wanted)).await {
+        Ok(done) => {
+            crate::mediaservers::request_scans(&app);
+            app.audit(
+                &req.user_name(),
+                &req.ip,
+                "library_chapters_edit",
+                &format!("{rel} ({})", done.len()),
+            );
+            json_reply(json!({"ok": true, "count": done.len()}))
+        }
+        Err(e) => pipe_error(e, 400, 500),
+    }
+}
+
 pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
     let rel = match &req.get("path") {
         Value::String(s) => s.clone(),

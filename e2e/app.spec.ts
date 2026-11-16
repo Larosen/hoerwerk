@@ -129,6 +129,28 @@ test("Altes MP3-Buch mit eigenen Kapitelnamen zu M4B", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("Kapitel-Editor: zusammenführen, speichern, beim Öffnen ist die Änderung da", async ({ page }) => {
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
+  const row = page.locator("#bookList .lib-row", { hasText: "Altes Buch" });
+  await row.getByRole("button", { name: /Kapitel/ }).click();
+  const rows = page.locator("#chaptersList .chapter-row");
+  await expect(rows).toHaveCount(2);
+  await expect(page.locator("#chaptersSave")).toBeDisabled();              // nothing changed yet
+  await rows.nth(1).getByRole("button", { name: "Zusammenführen" }).click();
+  await expect(rows).toHaveCount(1);
+  await rows.first().locator(".chapter-name").fill("");
+  await expect(page.locator("#chaptersSave")).toBeDisabled();              // a chapter without a name can not be saved
+  await rows.first().locator(".chapter-name").fill("Alles in einem");
+  await page.locator("#chaptersSave").click();
+  await expect(page.locator("#chaptersDialog")).not.toBeVisible();
+  await row.getByRole("button", { name: /Kapitel/ }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first().locator(".chapter-name")).toHaveValue("Alles in einem");
+  expect(errors).toEqual([]);
+});
+
 test("Einstellungen: Übersicht, Systemprüfung mit ffmpeg und Proxy, Design bleibt nach Neuladen", async ({ page }) => {
   const errors = await open(page);
   await page.locator("#settingsBtn").click();

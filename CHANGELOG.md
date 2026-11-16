@@ -13,6 +13,9 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 - **A two-factor code cannot be used again after a restart:** the last accepted time step is stored per account.
 - **Prometheus metrics:** `GET /api/metrics` (set `METRICS_TOKEN`; only with `Authorization: Bearer <token>`): queues,
   jobs by status, requests, library, uptime and held locks – counts only.
+- **Chapter editor** (Books → Library → "Kapitel" on an M4B): rename chapters, merge a chapter with the previous one, split
+  it (then adjust the start) or move a start. Saved into the M4B and `metadata.json`; the audio is not touched. Lists that
+  make no sense (no chapters, starts out of order or outside the book, a chapter without a name) are refused.
 - **Indexers from Prowlarr** (Settings → Downloads → "Take indexers from Prowlarr"): address and API key of Prowlarr; its
   Usenet indexers are added as indexers of their own (asked through Prowlarr), known ones stay, torrents and switched-off
   ones are skipped, nothing is deleted.
