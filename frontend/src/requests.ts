@@ -515,6 +515,8 @@ function initRequests(): void {
     const r = requests.current;
     nzb.value = "";
     if (!file || !r) return;
+    // no file filter on the input (iOS does not know .nzb and greys such files out) – so it is checked here
+    if (!/\.nzb$/i.test(file.name)) { toast(t("Bitte eine .nzb-Datei wählen"), true); return; }
     if (file.size > 3.5 * 1024 * 1024) { toast(t("Die NZB-Datei ist zu groß (höchstens 3,5 MB)"), true); return; }
     const label = nzb.closest("label");
     label?.classList.add("busy");

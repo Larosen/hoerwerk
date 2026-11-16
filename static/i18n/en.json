@@ -31,7 +31,6 @@
  "Alte Fassung beim Umwandeln der Bibliothek": "Old version when converting the library",
  "Alte Fassung verschoben nach {path}": "Old version moved to {path}",
  "Alter": "Age",
- "Altes ersetzen": "Replace old",
  "Anfrage von fremder Seite abgelehnt": "Request from a foreign page refused",
  "Anfrage zu groß": "Request too large",
  "Angaben aus {source}": "Details from {source}",
@@ -1655,9 +1654,16 @@
  "NZB an SABnzbd geschickt – „{title}“ wird geladen": "NZB sent to SABnzbd – “{title}” is downloading",
  "NZB-Datei hochladen …": "Upload NZB file …",
  "Selbst gefunden? Die NZB geht an SABnzbd, das Hörbuch wird dieser Anfrage zugeordnet.": "Found it yourself? The NZB goes to SABnzbd, the audiobook is linked to this request.",
- "Alte Fassung aus der Bibliothek entfernt: {path}": "Old copy removed from the library: {path}",
- "Alte Fassung blieb in der Bibliothek: {error}": "Old copy stayed in the library: {error}",
- "Alte Fassung entfernen": "Remove old copy",
  "das vorhandene Hörbuch liegt im selben Ordner": "the existing audiobook is in the same folder",
- "„{old}“ ist schon als „{path}“ in der Bibliothek. Die alte Fassung wird entfernt – wie unter „Alte Dateien danach“ eingestellt nach _ersetzt verschoben oder gelöscht.": "“{old}” is in the library already as “{path}”. The old copy is removed – moved to _ersetzt or deleted, as set under “Old files afterwards”."
+ "Bitte eine .nzb-Datei wählen": "Please choose a .nzb file",
+ "Doppel aus der Bibliothek entfernt: {path}": "Second copy removed from the library: {path}",
+ "Doppel blieb in der Bibliothek: {error}": "Second copy stayed in the library: {error}",
+ "Doppel entfernen": "Remove second copy",
+ "Doppel in der Bibliothek:": "Second copy in the library:",
+ "Neu aus dem Doppel": "New, from the second copy",
+ "Vorhanden": "Existing",
+ "Vorhandenes behalten, Doppel entfernen": "Keep existing, remove second copy",
+ "Vorhandenes ersetzen": "Replace existing",
+ "daraus wurde die neue M4B umgewandelt": "the new M4B was made from it",
+ "„{path}“ bleibt. Das Doppel „{old}“ wird entfernt – wie unter „Alte Dateien danach“ eingestellt nach _ersetzt verschoben oder gelöscht.": "“{path}” stays. The second copy “{old}” is removed – moved to _ersetzt or deleted, as set under “Old files afterwards”."
 }
