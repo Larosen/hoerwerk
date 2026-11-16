@@ -137,11 +137,11 @@ pub fn render(app: &App) -> String {
     let mut reqs: BTreeMap<String, f64> = BTreeMap::new();
     {
         let c = app.db.lock();
-        if let Ok(mut st) = c.prepare("SELECT status, COUNT(*) FROM requests GROUP BY status") {
-            if let Ok(rows) = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))) {
-                for (s, n) in rows.flatten() {
-                    reqs.insert(s, n as f64);
-                }
+        if let Ok(mut st) = c.prepare("SELECT status, COUNT(*) FROM requests GROUP BY status")
+            && let Ok(rows) = st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))
+        {
+            for (s, n) in rows.flatten() {
+                reqs.insert(s, n as f64);
             }
         }
     }
