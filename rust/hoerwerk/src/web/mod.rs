@@ -13,6 +13,7 @@ pub mod metrics;
 pub mod requests;
 pub mod search;
 pub mod system;
+pub mod transfer;
 pub mod upload;
 
 use std::collections::HashMap;

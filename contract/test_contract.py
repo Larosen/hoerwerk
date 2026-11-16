@@ -118,6 +118,43 @@ class Access(ContractTest):
                 self.assertIn(b"<html", data)
         self.assertEqual(self.family().call("GET", "/settings/general", expect=None)[0], 303)   # admins only: back to the start
 
+    def test_settings_export_and_import(self):
+        """Moving: settings and sources go out as a file (keys only when asked for) and come in on another server."""
+        fake = FakeUsenet([])
+        try:
+            self.admin.call("PUT", "/api/sources", {
+                "indexers": [{"name": "Fake", "url": fake.url, "apikey": "indexerkey123"}],
+                "sab": {"url": fake.url, "apikey": "sabkey123456", "category": "hoerbuecher"}})
+            self.admin.call("PUT", "/api/settings", {"bitrate": "96k"})
+            plain = self.admin.get("/api/settings/export")
+            self.assertEqual(plain["hoerwerk_export"], 1)
+            self.assertEqual(plain["settings"]["bitrate"], "96k")
+            self.assertEqual(plain["sources"]["indexers"][0]["name"], "Fake")
+            self.assertNotIn("indexerkey123", json.dumps(plain))
+            self.assertNotIn("sabkey123456", json.dumps(plain))
+            full = self.admin.get("/api/settings/export?keys=1")
+            self.assertEqual(full["sources"]["indexers"][0]["apikey"], "indexerkey123")
+            self.assertEqual(full["sources"]["sab"]["apikey"], "sabkey123456")
+            self.assertEqual(self.family().call("GET", "/api/settings/export", expect=None)[0], 403)
+            # on another server (empty sources): the file with keys brings everything
+            s = Server().start()
+            try:
+                other = Client(s, **ADMIN)
+                self.assertEqual(other.call("POST", "/api/settings/import", {"nope": 1}, expect=None)[0], 400)
+                done = other.call("POST", "/api/settings/import", full)
+                self.assertEqual(done["indexers"], 1)
+                self.assertEqual(other.get("/api/settings")["bitrate"], "96k")
+                src = other.get("/api/sources")
+                self.assertEqual(src["indexers"][0]["name"], "Fake")
+                self.assertTrue(src["indexers"][0]["apikey_set"])
+                self.assertTrue(src["sab"]["apikey_set"])
+            finally:
+                s.cleanup()
+        finally:
+            self.admin.call("PUT", "/api/sources", {"indexers": [], "sab": {}})
+            self.admin.call("PUT", "/api/settings", {"bitrate": "auto"})
+            fake.close()
+
     def test_metrics_only_with_the_token(self):
         """Prometheus metrics: off without METRICS_TOKEN, with it only for the bearer token; counts only."""
         self.assertEqual(self.server.request("GET", "/api/metrics")[0], 404)         # not switched on here

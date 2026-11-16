@@ -983,6 +983,20 @@ impl Usenet {
         json!({"indexers": indexers, "sab": hide(&data["sab"]), "configured": self.configured()})
     }
 
+    /// Indexers and SABnzbd for the settings export – the API keys only when asked for.
+    pub fn export_config(&self, with_keys: bool) -> Value {
+        let data = self.load();
+        let strip = |v: &Value| {
+            let mut o = v.as_object().cloned().unwrap_or_default();
+            if !with_keys {
+                o.remove(SECRET);
+            }
+            Value::Object(o)
+        };
+        let indexers: Vec<Value> = data["indexers"].as_array().into_iter().flatten().map(strip).collect();
+        json!({"indexers": indexers, "sab": strip(&data["sab"])})
+    }
+
     /// Empty or missing API keys keep the stored ones – but never for another server.
     pub fn update_config(&self, new: &Value) -> Value {
         {

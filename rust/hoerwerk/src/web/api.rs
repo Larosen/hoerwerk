@@ -54,6 +54,8 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("GET", "/api/security/blocked") => h!(blocked_list),
         ("DELETE", "/api/security/blocked") => h!(blocked_lift),
         ("GET", "/api/settings") => h!(settings_get),
+        ("GET", "/api/settings/export") => h!(super::transfer::export),
+        ("POST", "/api/settings/import") => h!(super::transfer::import),
         ("PUT", "/api/settings") => h!(settings_put),
         ("GET", "/api/logs") => h!(logs),
         ("GET", "/api/events") => h!(events),

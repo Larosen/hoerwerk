@@ -13,6 +13,9 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 - **A two-factor code cannot be used again after a restart:** the last accepted time step is stored per account.
 - **Prometheus metrics:** `GET /api/metrics` (set `METRICS_TOKEN`; only with `Authorization: Bearer <token>`): queues,
   jobs by status, requests, library, uptime and held locks – counts only.
+- **Settings export/import** (Settings → General → "Moving to a new server"): settings and sources (indexers, SABnzbd) as
+  a JSON file, API keys only with "Export with keys"; the file can be loaded on another server. Accounts, requests and
+  the library are not part of it.
 - **Phone flows in real WebKit:** the CI runs the new iPhone tests (login, tab bar, NZB picker) in WebKit as well.
 - **arm64 check:** a CI job builds the image on a native arm64 runner and starts it (publishing arm64 comes next).
 - Unused leftovers of the Rust port are removed (the crate-wide `allow(dead_code)` is gone).

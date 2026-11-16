@@ -633,6 +633,18 @@
   },
   {
    "method": "GET",
+   "path": "/api/settings/export",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/settings/import",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
    "path": "/api/sources",
    "access": "admin",
    "raw_body": false

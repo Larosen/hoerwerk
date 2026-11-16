@@ -1332,3 +1332,5 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .log-line.debug .log-level { color: var(--faint); }
 .nzb-upload { align-items: center; margin: 4px 0 2px; }
 .nzb-upload label.busy { opacity: .6; pointer-events: none; }
+.transfer-box { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.transfer-box label.btn { cursor: pointer; }

@@ -258,6 +258,11 @@ pub fn since(after: u64, level: &str, limit: usize) -> (Vec<Value>, u64) {
     (out[skip..].to_vec(), l.seq)
 }
 
+/// "YYYY-MM-DD" today, local time.
+pub fn today() -> String {
+    stamp(now()).chars().take(10).collect()
+}
+
 /// "YYYY-MM-DD HH:MM:SS" in the container's local time (TZ), like the Python log lines.
 fn stamp(t: f64) -> String {
     let tm = local(t);

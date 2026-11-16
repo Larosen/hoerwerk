@@ -1668,5 +1668,17 @@
  "Neues nicht übernehmen": "Don't take the new one",
  "Die Sitzung konnte nicht gespeichert werden (Datenbank)": "The session could not be stored (database)",
  "Anmeldung nicht möglich: die Sitzung konnte nicht gespeichert werden. Einzelheiten stehen im Protokoll.": "Signing in is not possible: the session could not be stored. Details are in the log.",
- "Zugangsschlüssel fehlt oder ist falsch": "Access token missing or wrong"
+ "Zugangsschlüssel fehlt oder ist falsch": "Access token missing or wrong",
+ "Die Datei enthält dann die API-Schlüssel deiner Indexer und von SABnzbd. Wie ein Passwort aufbewahren – fortfahren?": "The file will then contain the API keys of your indexers and SABnzbd. Keep it like a password – continue?",
+ "Die Datei ist zu groß": "The file is too big",
+ "Die Einstellungen und Quellen aus „{name}“ übernehmen? Gleiche Einstellungen werden überschrieben.": "Apply the settings and sources from “{name}”? Settings that exist already are overwritten.",
+ "Einstellungen und Quellen (Indexer, SABnzbd) als Datei sichern oder einspielen. Konten, Anfragen und die Bibliothek gehören nicht dazu – dafür gibt es die tägliche Datenbanksicherung.": "Save or load the settings and sources (indexers, SABnzbd) as a file. Accounts, requests and the library are not part of it – the daily database backup covers those.",
+ "Exportieren": "Export",
+ "Exportieren mit Schlüsseln": "Export with keys",
+ "Importieren": "Import",
+ "Importieren …": "Import …",
+ "Mit den API-Schlüsseln der Indexer und von SABnzbd – die Datei wie ein Passwort aufbewahren": "With the API keys of the indexers and SABnzbd – keep the file like a password",
+ "Umzug auf einen neuen Server": "Moving to a new server",
+ "Übernommen: {n} Einstellungen, {m} Indexer": "Applied: {n} settings, {m} indexers",
+ "Das ist keine Hörwerk-Exportdatei": "That is not a Hörwerk export file"
 }
