@@ -1,7 +1,7 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 // Click-through tests against the real server (rust/target/release/hoerwerk + ffmpeg) with throwaway folders.
-// Run: npm run build && npx playwright test   (CI installs Chromium via `npx playwright install`)
+// Run: npm run build && npx playwright test   (CI installs Chromium and WebKit via `npx playwright install`; PW_WEBKIT=1 adds the phone flows in WebKit)
 const PORT = Number(process.env.E2E_PORT || 8099);
 // E2E_URL: test an already running server (e.g. the Docker image, folders prepared with e2e/setup.mjs)
 const EXTERNAL = process.env.E2E_URL;
@@ -21,6 +21,11 @@ export default defineConfig({
     screenshot: "only-on-failure",
     launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
   },
+  projects: [
+    { name: "chromium" },
+    // real WebKit (Safari's engine) for the phone flows – CI sets PW_WEBKIT=1 and installs it
+    ...(process.env.PW_WEBKIT ? [{ name: "webkit-iphone", testMatch: /mobile\.spec/, use: { ...devices["iPhone 13"] } }] : []),
+  ],
   webServer: EXTERNAL ? undefined : {
     command: "node e2e/setup.mjs && rust/target/release/hoerwerk",
     url: `http://127.0.0.1:${PORT}/api/health`,
