@@ -25,7 +25,7 @@ RUN mkdir -p static && npx tsc -p tsconfig.json
 # Stage 3: the server (rust/hoerwerk) and hw-run, the jail for ffmpeg/ffprobe (Landlock + seccomp, rust/hw-run).
 # Cargo.lock pins every crate; --locked refuses a build that would change it. The server reads the settings and
 # routes of the API contract at build time (contract/settings.json, contract/routes.json).
-FROM rust:1.97-slim-trixie AS rust
+FROM rust:1.100-slim-trixie AS rust
 WORKDIR /src/rust
 COPY contract/settings.json contract/routes.json /src/contract/
 COPY rust/ ./

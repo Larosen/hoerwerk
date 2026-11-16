@@ -118,7 +118,7 @@ pub fn objects(raw: &[u8]) -> Objects {
             .filter(|x| x.iter().all(u8::is_ascii_digit))
             .map(num)
             .collect();
-        let pairs: Vec<(u64, u64)> = nums.chunks_exact(2).map(|p| (p[0], p[1])).collect();
+        let pairs: Vec<(u64, u64)> = nums.as_chunks::<2>().0.iter().map(|p| (p[0], p[1])).collect();
         for (i, (no, off)) in pairs.iter().enumerate() {
             let start = first_at.saturating_add(*off as usize).min(data.len());
             let end = match pairs.get(i + 1) {
@@ -152,7 +152,7 @@ fn hex_int(h: &[u8]) -> u32 {
 }
 
 fn utf16be(b: &[u8]) -> String {
-    let units: Vec<u16> = b.chunks_exact(2).map(|p| u16::from_be_bytes([p[0], p[1]])).collect();
+    let units: Vec<u16> = b.as_chunks::<2>().0.iter().map(|p| u16::from_be_bytes(*p)).collect();
     let mut s = String::from_utf16_lossy(&units);
     if b.len() % 2 == 1 {
         s.push('\u{fffd}');
@@ -299,7 +299,9 @@ fn decode(font: &Font, bs: &[u8]) -> String {
     let table = table.as_ref().filter(|t| !t.is_empty());
     if *two {
         return bs
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|p| {
                 table
                     .and_then(|t| t.get(&u32::from(u16::from_be_bytes([p[0], p[1]]))))
