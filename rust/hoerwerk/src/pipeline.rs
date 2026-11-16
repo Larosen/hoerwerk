@@ -322,13 +322,17 @@ pub struct Slot {
     job: Mutex<Job>,
     pub cancel: Arc<AtomicBool>,
     runner: Mutex<Option<Arc<Runner>>>,
+    /// the job's name, readable while the job is locked (for the lock watchdog)
+    label: String,
 }
 
 pub type JobRef = Arc<Slot>;
 
 impl Slot {
     fn new(job: Job) -> JobRef {
+        let label = job.name.clone();
         Arc::new(Slot {
+            label,
             job: Mutex::new(job),
             cancel: Arc::new(AtomicBool::new(false)),
             runner: Mutex::new(None),
@@ -914,6 +918,31 @@ impl Pipeline {
             }
         }
         app.publish("audiobooks");
+    }
+
+    /// Locks that are held right now (for the watchdog): their names. A lock held for a moment is normal; one
+    /// that stays held is what makes pages hang.
+    pub fn busy_locks(&self) -> Vec<String> {
+        fn held<T>(m: &Mutex<T>) -> bool {
+            matches!(m.try_lock(), Err(std::sync::TryLockError::WouldBlock))
+        }
+        let mut out = Vec::new();
+        if held(&self.jobs) {
+            out.push(t("Hörbücher: Liste", &[]));
+            return out; // the jobs themselves cannot be looked at now
+        }
+        if held(&self.save_lock) {
+            out.push(t("Hörbücher: Speichern", &[]));
+        }
+        if held(&self.watch) {
+            out.push(t("Hörbücher: Eingang", &[]));
+        }
+        for slot in self.all() {
+            if held(&slot.job) {
+                out.push(t("Hörbuch „{name}“", &[("name", &slot.label)]));
+            }
+        }
+        out
     }
 
     // -- public API --------------------------------------------------------------------------------

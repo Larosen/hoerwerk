@@ -153,6 +153,11 @@ impl LibraryIndex {
         }
     }
 
+    /// The index is locked right now (for the watchdog).
+    pub fn busy(&self) -> bool {
+        matches!(self.state.try_lock(), Err(std::sync::TryLockError::WouldBlock))
+    }
+
     fn lock(&self) -> std::sync::MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(|p| p.into_inner())
     }

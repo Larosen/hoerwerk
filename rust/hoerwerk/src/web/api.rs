@@ -331,7 +331,12 @@ fn live_stream(
                     let mut out = String::from("retry: 3000\n\n");
                     for topic in &topics {
                         seen.insert(topic.clone(), app.version(topic));
-                        out.push_str(&format!("event: {topic}\ndata: {}\n\n", app.snapshot(topic)));
+                        match app.snapshot_off(topic, Duration::from_secs(20)).await {
+                            Some(v) => out.push_str(&format!("event: {topic}\ndata: {v}\n\n")),
+                            None => {
+                                seen.remove(topic); // not ready: sent with the next round
+                            }
+                        }
                     }
                     return Some((Ok(Bytes::from(out)), (app, topics, seen, false, guard)));
                 }
@@ -355,7 +360,12 @@ fn live_stream(
                     let v = app.version(topic);
                     if seen.get(topic) != Some(&v) {
                         seen.insert(topic.clone(), v);
-                        out.push_str(&format!("event: {topic}\ndata: {}\n\n", app.snapshot(topic)));
+                        match app.snapshot_off(topic, Duration::from_secs(20)).await {
+                            Some(v) => out.push_str(&format!("event: {topic}\ndata: {v}\n\n")),
+                            None => {
+                                seen.remove(topic); // not ready: sent with the next round
+                            }
+                        }
                     }
                 }
                 Some((

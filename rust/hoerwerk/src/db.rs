@@ -82,6 +82,11 @@ impl Db {
         Ok(())
     }
 
+    /// The database is locked right now (for the watchdog).
+    pub fn busy(&self) -> bool {
+        matches!(self.conn.try_lock(), Err(std::sync::TryLockError::WouldBlock))
+    }
+
     pub fn lock(&self) -> MutexGuard<'_, Connection> {
         self.conn.lock().unwrap_or_else(|p| p.into_inner())
     }

@@ -3,6 +3,13 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.9 – 2026-11-16
+
+- **A hanging part no longer stalls the whole app:** the audiobook list and the live updates are worked out off the web
+  server's threads. If they wait too long, the page says so (with a hint to the log) instead of every page getting slow.
+- **Lock watchdog:** when a lock stays held for more than 30 seconds (a job, the job list, the inbox, the queues, the
+  library index, the database or the log), the log says which one – so a hang can be found and fixed.
+
 ## 1.0.8 – 2026-11-15
 
 - **The log survives restarts and updates:** it is also written to `config/logs/hoerwerk.log` (rotated at 5 MB) and the newest

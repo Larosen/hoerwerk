@@ -177,6 +177,12 @@ pub fn fix_mojibake(text: &str) -> String {
     String::from_utf8(bytes).unwrap_or_else(|_| text.to_string())
 }
 
+/// The log itself is locked right now (for the watchdog – which then must not log).
+pub fn log_busy() -> bool {
+    matches!(LOG.try_lock(), Err(std::sync::TryLockError::WouldBlock))
+        || matches!(LOG_FILE.try_lock(), Err(std::sync::TryLockError::WouldBlock))
+}
+
 pub fn log(level: &str, source: &str, text: &str) {
     log_entry(level, source, text, true);
 }

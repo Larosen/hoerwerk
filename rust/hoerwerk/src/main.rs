@@ -179,6 +179,13 @@ async fn library_rescanner(app: Arc<App>) {
         })
         .expect("follows thread");
     std::thread::Builder::new()
+        .name("lock-watchdog".into())
+        .spawn({
+            let app = app.clone();
+            move || watch_locks(&app)
+        })
+        .expect("watchdog thread");
+    std::thread::Builder::new()
         .name("inbox-scanner".into())
         .spawn({
             let app = app.clone();
@@ -281,6 +288,33 @@ fn log_panics() {
         );
         default(info);
     }));
+}
+
+/// Every 10 s: which locks are held? One that stays held for half a minute (three looks in a row) makes pages hang –
+/// it goes into the log once, with its name, so the cause can be found. While the log itself is the one held, the
+/// note goes to the console only.
+fn watch_locks(app: &Arc<App>) {
+    let mut seen: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+    while !app.stopping() {
+        std::thread::sleep(Duration::from_secs(10));
+        let busy = app.busy_locks();
+        seen.retain(|k, _| busy.contains(k));
+        for name in busy {
+            let n = seen.entry(name.clone()).or_insert(0);
+            *n += 1;
+            if *n == 3 || *n == 30 {
+                let msg = t(
+                    "Hängt: „{lock}“ ist seit über {s} s belegt – bitte dieses Protokoll melden",
+                    &[("lock", &name), ("s", &(*n * 10 - 10).to_string())],
+                );
+                if text::log_busy() {
+                    eprintln!("WARN  [Wächter] {msg}");
+                } else {
+                    text::warn("Wächter", &msg);
+                }
+            }
+        }
+    }
 }
 
 #[tokio::main]
