@@ -3,6 +3,16 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.12 – 2026-11-16
+
+- **First setup behind a proxy:** the setup code is only skipped for visitors from the own network who also use the own
+  network's address (an IP, `localhost`, a name without a dot, `.local`/`.lan`). Under a public name it is always
+  required – even when a proxy in the home network hides the visitor's address and sends no forwarding headers.
+- **Login only succeeds when the session is stored:** a database error while saving the session no longer hands out a
+  cookie for a login that would not hold; the page says so and the log has the cause.
+- **A two-factor code cannot be used again after a restart:** the last accepted time step is stored per account.
+- Docs: the security notes point to the tests that really exist; an outdated comment in `main.rs` is corrected.
+
 ## 1.0.11 – 2026-11-16
 
 - **NZB files can be picked on the iPhone:** the file picker no longer filters by type (iOS does not know ".nzb" and

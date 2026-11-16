@@ -118,6 +118,8 @@ pub struct Req {
     pub token: String,
     pub agent: String,
     pub proxied: bool,
+    /// asked for under the own network's address (not a public name)
+    pub home_host: bool,
     pub conn: Value,
 }
 
@@ -670,6 +672,7 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
         token,
         agent: header_str(h, "user-agent").to_string(),
         proxied: conn.forwarded,
+        home_host: hosts::is_home_host(&host),
         conn: conn_info,
     };
     let audit = route.access == "admin" && !reading;

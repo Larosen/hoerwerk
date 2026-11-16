@@ -1665,5 +1665,7 @@
  "Vorhandenes ersetzen": "Replace existing",
  "daraus wurde die neue M4B umgewandelt": "the new M4B was made from it",
  "„{path}“ bleibt. Das Doppel „{old}“ wird entfernt – wie unter „Alte Dateien danach“ eingestellt nach _ersetzt verschoben oder gelöscht.": "“{path}” stays. The second copy “{old}” is removed – moved to _ersetzt or deleted, as set under “Old files afterwards”.",
- "Neues nicht übernehmen": "Don't take the new one"
+ "Neues nicht übernehmen": "Don't take the new one",
+ "Die Sitzung konnte nicht gespeichert werden (Datenbank)": "The session could not be stored (database)",
+ "Anmeldung nicht möglich: die Sitzung konnte nicht gespeichert werden. Einzelheiten stehen im Protokoll.": "Signing in is not possible: the session could not be stored. Details are in the log."
 }

@@ -230,8 +230,25 @@ fn id_param(params: &HashMap<String, String>, key: &str) -> Option<i64> {
     params.get(key).and_then(|v| v.parse().ok())
 }
 
+/// The session could not be stored: no cookie, so nobody is told "signed in" and then thrown out on the next click.
+fn session_failed() -> Reply {
+    text::error(
+        "Anmeldung",
+        &t("Die Sitzung konnte nicht gespeichert werden (Datenbank)", &[]),
+    );
+    error(
+        500,
+        t(
+            "Anmeldung nicht möglich: die Sitzung konnte nicht gespeichert werden. Einzelheiten stehen im Protokoll.",
+            &[],
+        ),
+    )
+}
+
 fn home(req: &Req) -> bool {
+    // not behind a proxy, not under a public name, and from the own network: only then no setup code is needed
     !req.proxied
+        && req.home_host
         && req.ip.parse::<std::net::IpAddr>().is_ok_and(|ip| match ip {
             std::net::IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
             std::net::IpAddr::V6(v6) => {
@@ -429,9 +446,12 @@ async fn setup(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
                 "setup",
                 &[("user", user["name"].as_str().unwrap_or("")), ("ip", &req.ip)],
             );
-            let token =
+            let Some(token) =
                 app.accounts
-                    .start_session(&app.db, user["id"].as_i64().unwrap_or(0), true, &req.ip, &req.agent);
+                    .start_session(&app.db, user["id"].as_i64().unwrap_or(0), true, &req.ip, &req.agent)
+            else {
+                return session_failed();
+            };
             with_cookie(json!({"ok": true, "user": me(&user)}), cookie(&req, &token, true))
         }
         Err(e) => error(400, e),
@@ -463,13 +483,15 @@ async fn login(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
                 let ticket = new_ticket(&app, user["id"].as_i64().unwrap_or(0), persistent);
                 return json_reply(json!({"ok": false, "totp": true, "ticket": ticket}));
             }
-            let token = app.accounts.start_session(
+            let Some(token) = app.accounts.start_session(
                 &app.db,
                 user["id"].as_i64().unwrap_or(0),
                 persistent,
                 &req.ip,
                 &req.agent,
-            );
+            ) else {
+                return session_failed();
+            };
             authlog::event(
                 "login_ok",
                 &[("user", user["name"].as_str().unwrap_or("")), ("ip", &req.ip)],
@@ -538,9 +560,12 @@ async fn login_totp(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Repl
     }
     app.totp.lock().unwrap_or_else(|p| p.into_inner()).tickets.remove(&tid);
     let user = user.unwrap_or(Value::Null);
-    let token = app
+    let Some(token) = app
         .accounts
-        .start_session(&app.db, uid, persistent, &req.ip, &req.agent);
+        .start_session(&app.db, uid, persistent, &req.ip, &req.agent)
+    else {
+        return session_failed();
+    };
     authlog::event(
         "login_ok",
         &[("user", user["name"].as_str().unwrap_or("")), ("ip", &req.ip)],
@@ -663,9 +688,12 @@ async fn password(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply 
         return error(400, e);
     }
     authlog::event("password_changed", &[("user", &req.user_name()), ("ip", &req.ip)]);
-    let token = app
+    let Some(token) = app
         .accounts
-        .start_session(&app.db, req.user_id(), true, &req.ip, &req.agent);
+        .start_session(&app.db, req.user_id(), true, &req.ip, &req.agent)
+    else {
+        return session_failed();
+    };
     with_cookie(json!({"ok": true}), cookie(&req, &token, true))
 }
 
@@ -1031,9 +1059,12 @@ async fn invite_accept(app: Arc<App>, req: Req, params: HashMap<String, String>)
                 "invite_accepted",
                 user["name"].as_str().unwrap_or(""),
             );
-            let session =
+            let Some(session) =
                 app.accounts
-                    .start_session(&app.db, user["id"].as_i64().unwrap_or(0), true, &req.ip, &req.agent);
+                    .start_session(&app.db, user["id"].as_i64().unwrap_or(0), true, &req.ip, &req.agent)
+            else {
+                return session_failed();
+            };
             with_cookie(json!({"ok": true, "user": me(&user)}), cookie(&req, &session, true))
         }
         Err((true, e)) => refuse_invite(&app, &req.ip, e, &name).await,

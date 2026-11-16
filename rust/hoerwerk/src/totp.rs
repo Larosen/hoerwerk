@@ -81,11 +81,19 @@ pub fn ok(app: &App, uid: i64, secret: &str, input: &str) -> bool {
     let current = (now() as i64).div_euclid(STEP);
     for step in [current - 1, current, current + 1] {
         if same(&code(secret, step), &input) {
+            let key = format!("totp_step:{uid}");
             let mut st = app.totp.lock().unwrap_or_else(|p| p.into_inner());
-            if st.used.get(&uid).is_some_and(|u| *u >= step) {
+            // the last accepted step also survives a restart (else a code seen once could be used again after it)
+            let last = st
+                .used
+                .get(&uid)
+                .copied()
+                .or_else(|| app.db.get(&key).and_then(|v| v.as_i64()));
+            if last.is_some_and(|u| u >= step) {
                 return false;
             }
             st.used.insert(uid, step);
+            let _ = app.db.put(&key, &serde_json::json!(step));
             return true;
         }
     }
@@ -120,5 +128,35 @@ mod tests {
         assert_eq!(code(&s, 1111111109 / 30), "081804");
         assert_eq!(unbase32("gezdgnbvgy3tqojq").unwrap(), b"1234567890");
         assert_eq!(secret().len(), 32);
+    }
+
+    #[test]
+    fn a_code_is_not_accepted_twice_even_after_a_restart() {
+        use crate::config::Config;
+        use crate::db::Db;
+        let dir = std::env::temp_dir().join(format!("hw-totp-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let env: std::collections::BTreeMap<String, String> = [
+            ("CONFIG_DIR", dir.join("config")),
+            ("LIBRARY_DIR", dir.join("lib")),
+            ("INBOX_DIR", dir.join("in")),
+        ]
+        .into_iter()
+        .map(|(k, v)| (k.to_string(), v.display().to_string()))
+        .collect();
+        let app = |env: &std::collections::BTreeMap<String, String>| {
+            let cfg = Config::from_map(env.clone()).unwrap();
+            let db = Db::open(&cfg.config_dir.join("hoerwerk.db")).unwrap();
+            App::new(cfg, db)
+        };
+        let secret = base32(b"12345678901234567890");
+        let now_code = code(&secret, (now() as i64).div_euclid(STEP));
+        let first = app(&env);
+        assert!(ok(&first, 7, &secret, &now_code));
+        assert!(!ok(&first, 7, &secret, &now_code), "same app: replay refused");
+        drop(first);
+        let restarted = app(&env);
+        assert!(!ok(&restarted, 7, &secret, &now_code), "after a restart: still refused");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
