@@ -401,6 +401,87 @@ struct Watch {
     force: bool,
 }
 
+/// Chapter names as they are and as they would become, with the reason for every change.
+pub struct TidyPlan {
+    pub current: Vec<Chapter>,
+    pub wanted: Vec<Chapter>,
+    pub reasons: Vec<Vec<&'static str>>,
+}
+
+impl TidyPlan {
+    pub fn changed(&self) -> usize {
+        self.current
+            .iter()
+            .zip(&self.wanted)
+            .filter(|(a, b)| a.title != b.title)
+            .count()
+    }
+
+    /// The reasons of one chapter in words ("" when it stays).
+    pub fn why(&self, i: usize) -> String {
+        self.reasons
+            .get(i)
+            .map(|r| {
+                r.iter()
+                    .map(|c| crate::chapters::reason_text(c))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            })
+            .unwrap_or_default()
+    }
+
+    /// One line for the log (what was done how often) and, with the debug level, a line per chapter.
+    pub fn log(&self, book: &str) {
+        let mut counts: Vec<(&'static str, usize)> = vec![];
+        for (i, (a, b)) in self.current.iter().zip(&self.wanted).enumerate() {
+            if a.title == b.title {
+                continue;
+            }
+            for code in self.reasons.get(i).into_iter().flatten() {
+                match counts.iter_mut().find(|(c, _)| c == code) {
+                    Some(e) => e.1 += 1,
+                    None => counts.push((code, 1)),
+                }
+            }
+        }
+        let what = counts
+            .iter()
+            .map(|(c, n)| format!("{n}× {}", crate::chapters::reason_text(c)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        crate::text::info(
+            "Kapitel",
+            &t(
+                "{book}: {changed} von {total} Kapitelnamen geändert ({what}), {kept} blieben",
+                &[
+                    ("book", book),
+                    ("changed", &self.changed().to_string()),
+                    ("total", &self.current.len().to_string()),
+                    ("what", &what),
+                    ("kept", &(self.current.len() - self.changed()).to_string()),
+                ],
+            ),
+        );
+        if crate::text::debug_on() {
+            for (i, (a, b)) in self.current.iter().zip(&self.wanted).enumerate() {
+                crate::text::debug(
+                    "Kapitel",
+                    &format!(
+                        "{book}: „{}“ → „{}“ ({})",
+                        a.title,
+                        b.title,
+                        if a.title == b.title {
+                            t("unverändert", &[])
+                        } else {
+                            self.why(i)
+                        }
+                    ),
+                );
+            }
+        }
+    }
+}
+
 pub struct Pipeline {
     jobs: Mutex<Vec<JobRef>>,
     stored: Mutex<HashMap<String, String>>,
@@ -3680,20 +3761,15 @@ impl Pipeline {
         .unwrap_or_default()
     }
 
-    /// Clean the chapter names of a finished M4B in place (a library book, or "Kapitel aufräumen"): the rules
-    /// of `chapters::clean_titles`; the chapter starts stay. (changed, first, last) – or None when nothing changed.
-    pub fn tidy_file(&self, app: &App, m4b: &Path, book: &Value, name: &str) -> Res<Option<(usize, String, String)>> {
+    /// What cleaning the chapter names of a finished M4B would do – nothing is written. None: fewer than two chapters.
+    pub fn plan_tidy(&self, m4b: &Path, book: &Value, name: &str) -> Option<TidyPlan> {
         let current = encoder::file_chapters(m4b);
         if current.len() < 2 {
-            return Ok(None);
+            return None;
         }
         let titles: Vec<String> = current.iter().map(|c| c.title.clone()).collect();
         let cleaned = crate::chapters::clean_titles(&titles, &Self::known_names(book), &Self::chapter_lang(book, name));
-        if cleaned.names == titles {
-            return Ok(None);
-        }
-        let changed = cleaned.names.iter().zip(&titles).filter(|(a, b)| a != b).count();
-        let wanted: Vec<Chapter> = current
+        let wanted = current
             .iter()
             .zip(&cleaned.names)
             .map(|(c, title)| Chapter {
@@ -3701,8 +3777,35 @@ impl Pipeline {
                 title: title.clone(),
             })
             .collect();
-        self.rechapter(app, m4b, &wanted)?;
-        let (first, last) = (wanted[0].title.clone(), wanted[wanted.len() - 1].title.clone());
+        Some(TidyPlan {
+            current,
+            wanted,
+            reasons: cleaned.reasons,
+        })
+    }
+
+    /// Clean the chapter names of a finished M4B in place (a library book, or "Kapitel aufräumen"): the rules
+    /// of `chapters::clean_titles`; the chapter starts stay. (changed, first, last) – or None when nothing changed.
+    /// The decisions go to the log.
+    pub fn tidy_file(&self, app: &App, m4b: &Path, book: &Value, name: &str) -> Res<Option<(usize, String, String)>> {
+        let Some(plan) = self.plan_tidy(m4b, book, name) else {
+            return Ok(None);
+        };
+        let changed = plan.changed();
+        if changed == 0 {
+            return Ok(None);
+        }
+        self.rechapter(app, m4b, &plan.wanted)?;
+        let label = if name.is_empty() {
+            s(book, "title").to_string()
+        } else {
+            name.to_string()
+        };
+        plan.log(&label);
+        let (first, last) = (
+            plan.wanted[0].title.clone(),
+            plan.wanted[plan.wanted.len() - 1].title.clone(),
+        );
         Ok(Some((changed, first, last)))
     }
 

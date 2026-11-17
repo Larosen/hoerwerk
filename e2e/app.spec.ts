@@ -74,6 +74,41 @@ test("Bibliothek: alle Bücher, mit Suche", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("Bibliothek: Kapitel neu benennen – Vorschau mit Grund, Abbrechen schreibt nichts, Anwenden schon", async ({ page }) => {
+  const errors = await open(page);
+  const book = { path: "Fitzek/Der Federmann", title: "Der Federmann", authors: ["Sebastian Fitzek"], series: null, series_position: null, asin: null, format: "m4b", files: 1 };
+  await page.route("**/api/library/books?*", (r) => r.fulfill({ json: { total: 1, books: [book] } }));
+  const plan = { changed: 2, total: 3, rows: [
+    { from: "Der Federmann001", to: "Kapitel 1", why: "Zähler entfernt; Buchtitel/Autor entfernt; nichts Aussagekräftiges – nummeriert" },
+    { from: "Der Federmann002", to: "Kapitel 2", why: "Zähler entfernt" },
+    { from: "Epilog", to: "Epilog", why: "" }] };
+  const sent: unknown[] = [];
+  await page.route("**/api/library/chapters", async (r) => {
+    const body = r.request().postDataJSON();
+    sent.push(body);
+    await r.fulfill({ json: body.apply === false ? plan : { changed: 2, first: "Kapitel 1", last: "Kapitel 2" } });
+  });
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
+  await page.locator(".lib-row .lib-actions").getByRole("button", { name: "Kapitel" }).click();
+  const dialog = page.locator("#chaptersDialog");
+  await expect(dialog.locator(".chap-rows .from").first()).toHaveText("Der Federmann001");
+  await expect(dialog.locator(".chap-rows .to").first()).toHaveText("Kapitel 1");
+  await expect(dialog.locator(".chap-rows .why").first()).toContainText("Zähler entfernt");
+  await expect(dialog).toContainText("2 von 3 Kapiteln werden geändert");
+  await dialog.getByRole("button", { name: "Abbrechen" }).click();
+  await expect(dialog).not.toBeVisible();
+  expect(sent).toEqual([{ path: book.path, apply: false }]);                      // cancelled: only the preview was asked for
+  // several books: tick one, the bar offers the same dialog
+  await page.locator(".lib-row .lib-check input").check();
+  await expect(page.locator("#libBar")).toContainText("1 Hörbuch ausgewählt");
+  await page.locator("#libBar").getByRole("button", { name: /Kapitel neu benennen/ }).click();
+  await dialog.getByRole("button", { name: "Umbenennung anwenden" }).click();
+  await expect(dialog).not.toBeVisible();
+  expect(sent.at(-1)).toEqual({ path: book.path });                                // applied: the real call
+  expect(errors).toEqual([]);
+});
+
 test("Eingang → M4B → Bibliothek, Doppeltes wird erkannt", async ({ page }) => {
   const errors = await open(page);
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();

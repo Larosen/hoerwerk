@@ -1,5 +1,6 @@
 //! Chapter names from track files and tags (encoder.chapter_title / chapter_titles / looks_generic).
 
+use crate::text::t;
 use std::sync::LazyLock;
 
 use regex_lite::Regex;
@@ -90,6 +91,23 @@ pub fn chapter_titles<S: AsRef<str>>(names: &[S], book_title: &str) -> Vec<Strin
 pub struct Cleaned {
     pub names: Vec<String>,
     pub repetitive: bool,
+    /// Per chapter, what was done to its name (codes, see `reason_text`); empty = left as it was.
+    pub reasons: Vec<Vec<&'static str>>,
+}
+
+/// The decision codes in words – for the log and the preview.
+pub fn reason_text(code: &str) -> String {
+    match code {
+        "counter" => t("Zähler entfernt", &[]),
+        "book" => t("Buchtitel/Autor entfernt", &[]),
+        "shared" => t("wiederholter Text entfernt", &[]),
+        "form" => t("Kapitelwort vereinheitlicht", &[]),
+        "numbered" => t("nichts Aussagekräftiges – nummeriert", &[]),
+        "all_numbered" => t("mehr als die Hälfte ohne Aussage – alle nummeriert", &[]),
+        "double" => t("doppelter Name – Nummer vorangestellt", &[]),
+        "shortened" => t("zu lang – gekürzt", &[]),
+        _ => String::new(),
+    }
 }
 
 /// The chapter names of one book, cleaned together. A chapter name keeps only what tells this chapter from
@@ -112,8 +130,19 @@ pub fn clean_titles<S: AsRef<str>>(names: &[S], known: &[String], lang: &str) ->
         lang.to_string()
     };
     let mut out = raw_names;
+    let mut reasons: Vec<Vec<&'static str>> = vec![vec![]; out.len()];
+    // what a step changed is written down per chapter: the log and the preview say why a name became what it is
+    let note = |reasons: &mut Vec<Vec<&'static str>>, before: &[String], after: &[String], code: &'static str| {
+        for (i, (a, b)) in before.iter().zip(after).enumerate() {
+            if a != b && !reasons[i].contains(&code) {
+                reasons[i].push(code);
+            }
+        }
+    };
+    let start = out.clone();
     split_glued_numbers(&mut out);
     let counters = strip_counters(&mut out);
+    note(&mut reasons, &start, &out, "counter");
     let length = |v: &[String]| v.iter().map(|n| n.chars().count()).sum::<usize>();
     let before = length(&out);
     let mut known: Vec<Vec<String>> = known
@@ -123,17 +152,30 @@ pub fn clean_titles<S: AsRef<str>>(names: &[S], known: &[String], lang: &str) ->
         .collect();
     known.sort_by_key(|k| std::cmp::Reverse(k.len()));
     known.dedup();
+    let stage = out.clone();
     for n in out.iter_mut() {
         *n = strip_known(n, &known);
     }
+    note(&mut reasons, &stage, &out, "book");
+    let stage = out.clone();
     strip_shared(&mut out);
+    note(&mut reasons, &stage, &out, "shared");
     let repetitive = before > 0 && (before - length(&out)) * 2 > before;
+    let stage = out.clone();
     for n in out.iter_mut() {
         *n = chapter_form(n);
     }
+    note(&mut reasons, &stage, &out, "form");
+    let (names, last) = settle(out, &counters, &lang);
+    for (r, l) in reasons.iter_mut().zip(last) {
+        if let Some(code) = l {
+            r.push(code);
+        }
+    }
     Cleaned {
-        names: settle(out, &counters, &lang),
+        names,
         repetitive,
+        reasons,
     }
 }
 
@@ -637,7 +679,8 @@ fn says_nothing(name: &str) -> bool {
 
 const MAX_LEN: usize = 80;
 
-fn settle(names: Vec<String>, counters: &[Option<u64>], lang: &str) -> Vec<String> {
+/// The final names, and per chapter what `settle` itself did (numbered, doubled, shortened).
+fn settle(names: Vec<String>, counters: &[Option<u64>], lang: &str) -> (Vec<String>, Vec<Option<&'static str>>) {
     let n = names.len();
     let nums: Vec<Option<u128>> = names
         .iter()
@@ -666,21 +709,30 @@ fn settle(names: Vec<String>, counters: &[Option<u64>], lang: &str) -> Vec<Strin
         .collect();
     let bad = (0..n).filter(|i| rubbish[*i] || double[*i]).count();
     if bad * 2 > n {
-        return (0..n).map(|i| crate::encoder::chapter_name(number(i), lang)).collect();
+        let all = (0..n).map(|i| crate::encoder::chapter_name(number(i), lang)).collect();
+        return (all, vec![Some("all_numbered"); n]);
     }
-    names
+    let mut why = vec![None; n];
+    let out = names
         .into_iter()
         .enumerate()
         .map(|(i, name)| {
             if empty[i] {
+                why[i] = Some("numbered");
                 crate::encoder::chapter_name(number(i), lang)
             } else if double[i] {
+                why[i] = Some("double");
                 shorten(&format!("{}: {name}", number(i)))
             } else {
-                shorten(&name)
+                let short = shorten(&name);
+                if short != name {
+                    why[i] = Some("shortened");
+                }
+                short
             }
         })
-        .collect()
+        .collect();
+    (out, why)
 }
 
 /// Longer than 80 characters: cut at the end of a word, with "…".

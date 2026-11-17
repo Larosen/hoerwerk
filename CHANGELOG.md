@@ -18,6 +18,10 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
   longer remove each other. Password hashing runs outside the database lock, in blocking workers, at most four at once.
 - **Chapter names:** a counter stuck to the book title (`Der Federmann002`, `Der Federmann003` …) is recognised as a
   counter, so these chapters become `Kapitel 2`, `Kapitel 3` … instead of staying as they are.
+- **Rename chapters again, with a preview:** tick library books (M4B) – or use the "Kapitel" button of one – and see
+  every chapter as "now → new" with the reason; only "Apply renaming" writes the M4B, "Cancel" changes nothing.
+- **Decisions in the log:** every chapter cleaning writes one line (how many names changed and why: book title or
+  author removed, repeated text, counter, numbered …); the debug level adds one line per chapter.
 - **Upload:** Cancel and Escape work in every phase (also while the session is being created) and clean up.
 - **Settings:** when the saved values cannot be loaded, the form stays locked and offers "Reload" instead of letting
   empty defaults be saved.

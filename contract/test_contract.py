@@ -10,6 +10,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import pathlib
 import re
 import shutil
 import signal
@@ -903,6 +904,43 @@ class Processing(ContractTest):
         self.assertEqual(twisted["status"], "review", twisted)
         detail = self.admin.get(f'/api/audiobooks/{twisted["id"]}')
         self.assertTrue(any("Reihenfolge der Dateinamen" in line for line in detail["log"]), detail["log"])
+
+    def test_library_chapters_preview_then_apply(self):
+        """A filed M4B whose chapters are the book title plus a glued number: the preview shows "now" and "new" with
+        the reason and writes nothing; applying renames them; the decisions reach the log."""
+        tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "album": "Der Zaehler", "genre": "Hörbuch"}
+        deliver(self.server.inbox, "Ella Echo - Der Zaehler",
+                {f"{i + 1:02d}.mp3": {**tags, "title": f"Teil {i + 1}", "track": str(i + 1)} for i in range(4)})
+        job = self.job("Ella Echo - Der Zaehler")
+        self.assertEqual(job["status"], "done", job)
+        dest = job["dest"]
+        rel = os.path.relpath(os.path.dirname(dest), self.server.library)
+        # give the file ugly chapter names, as a badly tagged download would have
+        meta = os.path.join(self.server.dir, "ugly.ffmeta")
+        with open(meta, "w", encoding="utf-8") as fh:
+            fh.write(";FFMETADATA1\n")
+            for i in range(4):
+                fh.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={i * 1000}\nEND={(i + 1) * 1000}\ntitle=Der Zaehler{i + 1:03d}\n")
+        ugly = dest + ".ugly.m4b"
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", dest, "-i", meta, "-map", "0", "-map_metadata", "0",
+                        "-map_chapters", "1", "-c", "copy", "-f", "mp4", ugly], check=True)
+        os.replace(ugly, dest)
+        before = pathlib.Path(dest).read_bytes()
+        pre = self.admin.call("POST", "/api/library/chapters", {"path": rel, "apply": False})
+        self.assertEqual((pre["changed"], pre["total"]), (4, 4), pre)
+        self.assertEqual([r["from"] for r in pre["rows"]], [f"Der Zaehler{i:03d}" for i in range(1, 5)])
+        self.assertEqual([r["to"] for r in pre["rows"]], [f"Kapitel {i}" for i in range(1, 5)])
+        self.assertTrue(all(r["why"] for r in pre["rows"]), pre)
+        self.assertEqual(pathlib.Path(dest).read_bytes(), before)             # the preview wrote nothing
+        out = self.admin.call("POST", "/api/library/chapters", {"path": rel})
+        self.assertEqual(out["changed"], 4, out)
+        probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-print_format", "json", "-show_chapters", dest],
+                                          capture_output=True, text=True, check=True).stdout)
+        self.assertEqual([c["tags"]["title"] for c in probe["chapters"]], [f"Kapitel {i}" for i in range(1, 5)])
+        self.assertEqual(self.admin.call("POST", "/api/library/chapters", {"path": rel, "apply": False})["changed"], 0)
+        # the decision is in the log: how many names, and why
+        log = self.admin.get("/api/logs?after=0&level=info")
+        self.assertIn("Kapitelnamen geändert", json.dumps(log, ensure_ascii=False))
 
     def test_pack_becomes_one_job_per_volume(self):
         tmp = os.path.join(self.server.dir, ".incoming", "Paula Pack - Reihe 01-02")
