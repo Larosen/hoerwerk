@@ -422,6 +422,45 @@ class Accounts(ContractTest):
         finally:
             s.cleanup()
 
+    def test_the_last_admin_survives_concurrent_changes(self):
+        """Two admins demoting or locking each other at the same moment must leave one active admin."""
+        import threading
+
+        s = Server().start()
+        try:
+            root = Client(s, **ADMIN)
+            pw = "Kaffee Garten Hund Regen 7"
+            second = root.call("POST", "/api/users", {"name": "Zweiter Admin", "password": pw, "role": "admin"})
+            first = next(u for u in root.call("GET", "/api/users")["users"] if u["name"] == ADMIN["name"])
+            for change in ({"role": "user"}, {"disabled": True}):
+                a, b = Client(s, **ADMIN), Client(s, "Zweiter Admin", pw)
+                go = threading.Barrier(2)
+
+                def act(who, target, body, gate):
+                    gate.wait()
+                    who.call("PUT", f"/api/users/{target}", body, expect=None)
+
+                ts = [threading.Thread(target=act, args=(a, second["id"], change, go)),
+                      threading.Thread(target=act, args=(b, first["id"], change, go))]
+                [x.start() for x in ts]
+                [x.join() for x in ts]
+                # whoever is still an active admin can read the list; at least one of them is
+                active = []
+                for who, name in ((Client(s), ADMIN["name"]), (Client(s), "Zweiter Admin")):
+                    try:
+                        who.login(name, ADMIN["password"] if name == ADMIN["name"] else pw)
+                    except AssertionError:
+                        continue
+                    if who.call("GET", "/api/users", expect=None)[0] == 200:
+                        active.append(name)
+                self.assertTrue(active, f"no admin left after {change}")
+                # put both back for the next round
+                keeper = Client(s, active[0], ADMIN["password"] if active[0] == ADMIN["name"] else pw)
+                for uid in (first["id"], second["id"]):
+                    keeper.call("PUT", f"/api/users/{uid}", {"role": "admin", "disabled": False}, expect=None)
+        finally:
+            s.cleanup()
+
 
 class Settings(ContractTest):
     def test_read_change_refuse(self):

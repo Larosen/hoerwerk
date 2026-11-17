@@ -60,7 +60,32 @@ fn random(n: usize) -> Vec<u8> {
     v
 }
 
+/// scrypt takes 32 MiB and noticeable CPU per run: at most this many run at once, the rest wait their turn.
+const MAX_HASHING: usize = 4;
+static HASHING: (Mutex<usize>, std::sync::Condvar) = (Mutex::new(0), std::sync::Condvar::new());
+
+struct HashSlot;
+
+impl HashSlot {
+    fn take() -> Self {
+        let mut n = HASHING.0.lock().unwrap_or_else(|p| p.into_inner());
+        while *n >= MAX_HASHING {
+            n = HASHING.1.wait(n).unwrap_or_else(|p| p.into_inner());
+        }
+        *n += 1;
+        HashSlot
+    }
+}
+
+impl Drop for HashSlot {
+    fn drop(&mut self) {
+        *HASHING.0.lock().unwrap_or_else(|p| p.into_inner()) -= 1;
+        HASHING.1.notify_one();
+    }
+}
+
 pub fn hash_password(password: &str) -> String {
+    let _slot = HashSlot::take();
     let salt = random(16);
     let params = scrypt::Params::new(15, 8, 1).expect("valid scrypt parameters");
     let mut out = [0u8; 32];
@@ -88,6 +113,7 @@ pub fn verify_password(password: &str, stored: &str) -> bool {
     let Ok(params) = scrypt::Params::new(n.trailing_zeros() as u8, r, p) else {
         return false;
     };
+    let _slot = HashSlot::take();
     let mut got = vec![0u8; want.len()];
     if scrypt::scrypt(password.as_bytes(), &salt, &params, &mut got).is_err() {
         return false;
@@ -315,13 +341,14 @@ impl Accounts {
             clean.insert(k.into(), json!(perms.get(k).and_then(Value::as_bool).unwrap_or(false)));
         }
         let ts = now();
+        let hashed = hash_password(password); // slow: never while the database is locked
         let id = {
             let c = db.lock();
             c.execute(
                 "INSERT INTO users(name, pw, role, perms, quota, created, pw_changed) VALUES(?,?,?,?,?,?,?)",
                 params![
                     name,
-                    hash_password(password),
+                    hashed,
                     role,
                     Value::Object(clean).to_string(),
                     q,
@@ -335,20 +362,32 @@ impl Accounts {
         self.get(db, id).ok_or_else(|| "user vanished".into())
     }
 
-    fn admins(&self, db: &Db, exclude: i64) -> i64 {
-        db.lock()
-            .query_row(
-                "SELECT COUNT(*) FROM users WHERE role='admin' AND disabled=0 AND id<>?",
-                [exclude],
-                |r| r.get(0),
-            )
-            .unwrap_or(0)
+    /// Active admins other than `exclude`, counted on the connection that is about to change the account.
+    fn other_admins(c: &rusqlite::Connection, exclude: i64) -> Result<i64, String> {
+        c.query_row(
+            "SELECT COUNT(*) FROM users WHERE role='admin' AND disabled=0 AND id<>?",
+            [exclude],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())
+    }
+
+    /// The account is an active admin right now (read under the same lock as the change that follows).
+    fn is_active_admin(c: &rusqlite::Connection, uid: i64) -> Result<bool, String> {
+        c.query_row(
+            "SELECT COUNT(*) FROM users WHERE id=? AND role='admin' AND disabled=0",
+            [uid],
+            |r| r.get::<_, i64>(0),
+        )
+        .map(|n| n > 0)
+        .map_err(|e| e.to_string())
     }
 
     /// Ok(None) = no such account.
     pub fn update(&self, db: &Db, uid: i64, changes: &Map<String, Value>) -> Result<Option<Value>, String> {
         let Some(user) = self.get(db, uid) else { return Ok(None) };
         let mut sets: Vec<(&str, rusqlite::types::Value)> = vec![];
+        let mut leaves_admin = false;
         if let Some(v) = changes.get("name") {
             let name = check_name(v.as_str().unwrap_or(""))?;
             if self.by_name(db, &name).is_some_and(|o| o["id"] != uid) {
@@ -361,9 +400,7 @@ impl Accounts {
             if !ROLES.contains(&role) {
                 return Err(t("Unbekannte Rolle", &[]));
             }
-            if user["role"] == "admin" && role != "admin" && self.admins(db, uid) == 0 {
-                return Err(t("Der letzte Admin kann nicht herabgestuft werden", &[]));
-            }
+            leaves_admin = role != "admin";
             sets.push(("role", role.to_string().into()));
         }
         if let Some(Value::Object(p)) = changes.get("perms") {
@@ -381,15 +418,20 @@ impl Accounts {
         let mut disable = false;
         if let Some(v) = changes.get("disabled") {
             let off = v.as_bool().unwrap_or(false);
-            if off && user["role"] == "admin" && self.admins(db, uid) == 0 {
-                return Err(t("Der letzte Admin kann nicht gesperrt werden", &[]));
-            }
             disable = off;
             sets.push(("disabled", i64::from(off).into()));
         }
         if !sets.is_empty() {
             let mut c = db.lock();
             let tx = c.transaction().map_err(|e| e.to_string())?;
+            // The last active admin must stay: checked here, under the lock and in the transaction that changes it.
+            if (leaves_admin || disable) && Self::is_active_admin(&tx, uid)? && Self::other_admins(&tx, uid)? == 0 {
+                return Err(if disable {
+                    t("Der letzte Admin kann nicht gesperrt werden", &[])
+                } else {
+                    t("Der letzte Admin kann nicht herabgestuft werden", &[])
+                });
+            }
             for (col, val) in sets {
                 // fixed column names, values bound
                 tx.execute(&format!("UPDATE users SET {col}=? WHERE id=?"), params![val, uid])
@@ -407,11 +449,12 @@ impl Accounts {
     pub fn set_password(&self, db: &Db, uid: i64, password: &str) -> Result<(), String> {
         let user = self.get(db, uid).ok_or_else(|| t("Nicht gefunden", &[]))?;
         check_password(password, user["name"].as_str().unwrap_or(""))?;
+        let hashed = hash_password(password); // slow: never while the database is locked
         let mut c = db.lock();
         let tx = c.transaction().map_err(|e| e.to_string())?;
         tx.execute(
             "UPDATE users SET pw=?, pw_changed=? WHERE id=?",
-            params![hash_password(password), now(), uid],
+            params![hashed, now(), uid],
         )
         .map_err(|e| e.to_string())?;
         tx.execute("DELETE FROM sessions WHERE user_id=?", [uid])
@@ -421,14 +464,17 @@ impl Accounts {
 
     /// Ok(false) = no such account.
     pub fn delete(&self, db: &Db, uid: i64) -> Result<bool, String> {
-        let Some(user) = self.get(db, uid) else {
+        let c = db.lock();
+        let exists: i64 = c
+            .query_row("SELECT COUNT(*) FROM users WHERE id=?", [uid], |r| r.get(0))
+            .map_err(|e| e.to_string())?;
+        if exists == 0 {
             return Ok(false);
-        };
-        if user["role"] == "admin" && self.admins(db, uid) == 0 {
+        }
+        if Self::is_active_admin(&c, uid)? && Self::other_admins(&c, uid)? == 0 {
             return Err(t("Der letzte Admin kann nicht gelöscht werden", &[]));
         }
-        db.lock()
-            .execute("DELETE FROM users WHERE id=?", [uid])
+        c.execute("DELETE FROM users WHERE id=?", [uid])
             .map_err(|e| e.to_string())?;
         Ok(true)
     }

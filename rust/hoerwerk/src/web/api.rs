@@ -437,14 +437,16 @@ async fn setup(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
         tokio::time::sleep(Duration::from_secs(1)).await;
         return error(403, t("Einrichtungs-Code falsch (steht im Container-Protokoll)", &[]));
     }
-    match app.accounts.create(
-        &app.db,
-        &req.str("name"),
-        &req.str("password"),
-        "admin",
-        &json!({}),
-        &Value::Null,
-    ) {
+    let created = {
+        let (a, name, password) = (app.clone(), req.str("name"), req.str("password"));
+        tokio::task::spawn_blocking(move || {
+            a.accounts
+                .create(&a.db, &name, &password, "admin", &json!({}), &Value::Null)
+        })
+        .await
+        .unwrap_or_else(|_| Err("intern".to_string()))
+    };
+    match created {
         Ok(user) => {
             authlog::event(
                 "setup",
@@ -759,10 +761,17 @@ async fn auth_me(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
 }
 
 async fn password(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
-    if let Err(e) = app
-        .accounts
-        .authenticate(&app.db, &req.user_name(), &req.str("old"), &req.ip)
-    {
+    let proof = {
+        let (a, name, old, ip) = (app.clone(), req.user_name(), req.str("old"), req.ip.clone());
+        tokio::task::spawn_blocking(move || a.accounts.authenticate(&a.db, &name, &old, &ip))
+            .await
+            .unwrap_or_else(|_| Err(crate::accounts::AuthError {
+                message: "intern".into(),
+                status: 500,
+                reason: "internal",
+            }))
+    };
+    if let Err(e) = proof {
         authlog::event(
             "login_failed",
             &[
@@ -776,7 +785,13 @@ async fn password(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply 
             t("Das bisherige Passwort stimmt nicht", &[]),
         );
     }
-    if let Err(e) = app.accounts.set_password(&app.db, req.user_id(), &req.str("new")) {
+    let set = {
+        let (a, uid, new) = (app.clone(), req.user_id(), req.str("new"));
+        tokio::task::spawn_blocking(move || a.accounts.set_password(&a.db, uid, &new))
+            .await
+            .unwrap_or_else(|_| Err("intern".to_string()))
+    };
+    if let Err(e) = set {
         return error(400, e);
     }
     authlog::event("password_changed", &[("user", &req.user_name()), ("ip", &req.ip)]);
@@ -878,14 +893,14 @@ async fn users_create(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Re
         let r = req.str("role");
         if r.is_empty() { "user".to_string() } else { r }
     };
-    match app.accounts.create(
-        &app.db,
-        &req.str("name"),
-        &req.str("password"),
-        &role,
-        req.get("perms"),
-        req.get("quota"),
-    ) {
+    let created = {
+        let (a, name, password) = (app.clone(), req.str("name"), req.str("password"));
+        let (perms, quota) = (req.get("perms").clone(), req.get("quota").clone());
+        tokio::task::spawn_blocking(move || a.accounts.create(&a.db, &name, &password, &role, &perms, &quota))
+            .await
+            .unwrap_or_else(|_| Err("intern".to_string()))
+    };
+    match created {
         Ok(user) => {
             authlog::event(
                 "user_created",
