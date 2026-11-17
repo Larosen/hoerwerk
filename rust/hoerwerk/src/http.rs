@@ -98,7 +98,11 @@ impl<'a> Call<'a> {
             .tls_config(tls)
             .build();
         let agent = if self.public_only {
-            ureq::Agent::with_parts(config, ureq::unversioned::transport::DefaultConnector::default(), PublicResolver)
+            ureq::Agent::with_parts(
+                config,
+                ureq::unversioned::transport::DefaultConnector::default(),
+                PublicResolver,
+            )
         } else {
             ureq::Agent::from(config)
         };

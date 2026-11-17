@@ -765,11 +765,13 @@ async fn password(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply 
         let (a, name, old, ip) = (app.clone(), req.user_name(), req.str("old"), req.ip.clone());
         tokio::task::spawn_blocking(move || a.accounts.authenticate(&a.db, &name, &old, &ip))
             .await
-            .unwrap_or_else(|_| Err(crate::accounts::AuthError {
-                message: "intern".into(),
-                status: 500,
-                reason: "internal",
-            }))
+            .unwrap_or_else(|_| {
+                Err(crate::accounts::AuthError {
+                    message: "intern".into(),
+                    status: 500,
+                    reason: "internal",
+                })
+            })
     };
     if let Err(e) = proof {
         authlog::event(

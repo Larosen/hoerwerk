@@ -346,15 +346,7 @@ impl Accounts {
             let c = db.lock();
             c.execute(
                 "INSERT INTO users(name, pw, role, perms, quota, created, pw_changed) VALUES(?,?,?,?,?,?,?)",
-                params![
-                    name,
-                    hashed,
-                    role,
-                    Value::Object(clean).to_string(),
-                    q,
-                    ts,
-                    ts
-                ],
+                params![name, hashed, role, Value::Object(clean).to_string(), q, ts, ts],
             )
             .map_err(|e| e.to_string())?;
             c.last_insert_rowid()
