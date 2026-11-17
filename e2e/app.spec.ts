@@ -769,6 +769,47 @@ test("Hochladen: CD-Hörbuch als Ordner hochladen, landet als M4B in der Bibliot
   expect(errors).toEqual([]);
 });
 
+test("Quellen nicht ladbar: Formular bleibt gesperrt, bis „Erneut laden“ klappt", async ({ page }) => {
+  const errors = await open(page);
+  let fail = true;
+  await page.route("**/api/sources", async (r) => {
+    if (fail && r.request().method() === "GET") await r.fulfill({ status: 500, json: { error: "kaputt" } });
+    else await r.continue();
+  });
+  await page.goto("/settings/downloads");
+  const form = page.locator("#sourcesForm");
+  await expect(form.locator(".load-failed")).toBeVisible();
+  await expect(form.locator("button[type=submit]")).toBeDisabled();       // empty defaults cannot be saved over the real values
+  fail = false;
+  await form.getByRole("button", { name: "Erneut laden" }).click();
+  await expect(form.locator(".load-failed")).toHaveCount(0);
+  await expect(form.locator("button[type=submit]")).toBeEnabled();
+  expect(errors.filter((e) => !/500|kaputt/.test(e))).toEqual([]);
+});
+
+test("Hochladen: Abbrechen wirkt auch, solange die Sitzung erst angelegt wird (und per Escape)", async ({ page }) => {
+  const errors = await open(page);
+  const dir = join(ROOT, "upload-src", "Abbruch Test");
+  tone(join(dir, "01 Anfang.mp3"), 1.0, { album: "Abbruch Test", artist: "Nobody" });
+  let sent = 0;
+  await page.route("**/api/upload/*", (r) => { if (r.request().method() === "PUT") sent++; return r.continue(); });
+  await page.route("**/api/upload", async (r) => {                       // the session is created slowly
+    if (r.request().method() !== "POST") return r.continue();
+    await new Promise((res) => setTimeout(res, 1500));
+    return r.continue();
+  });
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#uploadBtn").click();
+  await page.locator("#uploadFolder").setInputFiles(dir);
+  await page.locator("#uploadGo").click();
+  await page.keyboard.press("Escape");                                    // cancel, not just close
+  await expect(page.locator("#uploadDialog")).toBeVisible();
+  await expect(page.locator("#uploadNote")).toContainText(/abgebrochen/i, { timeout: 8000 });
+  expect(sent).toBe(0);                                                   // nothing was sent after the cancel
+  await expect(page.locator("#uploadGo")).toBeEnabled();
+  expect(errors.filter((e) => !/abgebrochen|500/i.test(e))).toEqual([]);
+});
+
 test("App auf dem Home-Bildschirm: Manifest und Symbole ohne Anmeldung, sonst nichts", async ({ request }) => {
   const manifest = await request.get("/manifest.webmanifest");
   expect(manifest.status()).toBe(200);

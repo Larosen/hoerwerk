@@ -1340,3 +1340,4 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .prowlarr-box { margin-top: 10px; }
 .prowlarr-box summary { cursor: pointer; font-weight: 600; }
 .prowlarr-box input { flex: 1 1 200px; min-width: 0; }
+.load-failed { color: var(--err); margin: 0 0 10px; }

@@ -3,6 +3,23 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.13 – 2026-11-17
+
+- **Second factor:** replacing or switching off an existing second factor needs the password and a current code; a
+  stolen session alone is no longer enough. The account page has "Set up a new key" for it, and database errors while
+  saving are reported instead of ignored.
+- **Downloads connect only to checked addresses:** covers and other outside downloads are resolved once; the connection
+  uses exactly the public addresses that passed the check, for every redirect hop (no DNS swap in between).
+- **Slow requests:** a JSON request body must arrive within 20 seconds.
+- **Bounded helper output:** ffmpeg/ffprobe output kept in memory is capped (stderr: its tail), and still drained.
+- **Covers:** background fetching uses one bounded worker pool instead of new threads per list; a waiting request now
+  finds the finished file.
+- **Accounts:** the "last admin" rule is checked in the same lock and transaction as the change, so two admins can no
+  longer remove each other. Password hashing runs outside the database lock, in blocking workers, at most four at once.
+- **Upload:** Cancel and Escape work in every phase (also while the session is being created) and clean up.
+- **Settings:** when the saved values cannot be loaded, the form stays locked and offers "Reload" instead of letting
+  empty defaults be saved.
+
 ## 1.0.12 – 2026-11-16
 
 - **First setup behind a proxy:** the setup code is only skipped for visitors from the own network who also use the own

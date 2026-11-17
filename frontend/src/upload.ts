@@ -9,6 +9,9 @@ const upload = {
   items: [] as UploadItem[],
   id: "",
   busy: false,
+  /** Where an upload is: cancelling works in "creating" and "sending"; once "finishing" the folders are moving. */
+  phase: "idle" as "idle" | "creating" | "sending" | "finishing",
+  cancelled: false,
   xhr: null as XMLHttpRequest | null,
 };
 const UPLOAD_EXT = /\.(mp3|m4a|m4b|mp4|aac|flac|ogg|oga|opus|wav|wma|jpe?g|png|webp|cue)$/i;
@@ -57,6 +60,18 @@ function renderUploadList(): void {
   $<HTMLButtonElement>("#uploadGo").disabled = !upload.items.length || upload.busy;
 }
 
+/** Cancelled by the user: stops at once, wherever the upload is (checked after every await). */
+function throwIfCancelled(): void {
+  if (upload.cancelled) throw new Error(t("Upload abgebrochen"));
+}
+
+function cancelUpload(): void {
+  if (!upload.busy) { $<HTMLDialogElement>("#uploadDialog").close(); return; }
+  if (upload.phase === "finishing") { toast(t("Der Upload wird gerade abgeschlossen – das lässt sich nicht mehr abbrechen")); return; }
+  upload.cancelled = true;
+  upload.xhr?.abort();
+}
+
 function sendFile(item: UploadItem, done: number, total: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -91,16 +106,24 @@ async function startUpload(): Promise<boolean> {
     return false;
   }
   upload.busy = true;
+  upload.cancelled = false;
+  upload.phase = "creating";
   renderUploadList();
   const total = upload.items.reduce((n, i) => n + i.file.size, 0) || 1;
   let done = 0;
   try {
     upload.id = (await api<{ id: string }>("POST", "/api/upload")).id;
+    throwIfCancelled();
+    upload.phase = "sending";
     for (const [n, item] of upload.items.entries()) {
+      throwIfCancelled();
       $("#uploadNote").textContent = t("Datei {n} von {total}: {name}", { n: n + 1, total: upload.items.length, name: item.path.split("/").pop() || "" });
       await sendFile({ ...item, path: item.path.includes("/") ? item.path : `${name}/${item.path}` }, done, total);
+      throwIfCancelled();
       done += item.file.size;
     }
+    throwIfCancelled();
+    upload.phase = "finishing";
     const res = await api<{ names: string[] }>("POST", `/api/upload/${upload.id}/finish`);
     toast(t("Hochgeladen – wird jetzt verarbeitet: {names}", { names: res.names.join(", ") }));
     upload.id = "";
@@ -108,13 +131,14 @@ async function startUpload(): Promise<boolean> {
     setTimeout(() => pollBooks(true), 800);
     return true;
   } catch (e) {
-    toast(errMsg(e), true);
+    toast(errMsg(e), !upload.cancelled);
     $("#uploadNote").textContent = errMsg(e);
     if (upload.id) api("DELETE", `/api/upload/${upload.id}`).catch(() => { /* gone anyway */ });
     upload.id = "";
     return false;
   } finally {
     upload.busy = false;
+    upload.phase = "idle";
     upload.xhr = null;
     renderUploadList();
   }
@@ -157,9 +181,10 @@ function initUpload(): void {
     const go = $("#uploadGo");
     trackButton(go, startUpload().then((ok) => (ok ? undefined : Promise.reject(new Error("upload")))), t("Lädt hoch …"));
   });
-  $("#uploadCancel").addEventListener("click", () => {
-    if (upload.busy && upload.xhr) upload.xhr.abort();
-    else $<HTMLDialogElement>("#uploadDialog").close();
+  $("#uploadCancel").addEventListener("click", cancelUpload);
+  // Escape is a cancel as well – it must not close the dialog while files are still on their way
+  $("#uploadDialog").addEventListener("cancel", (e) => {
+    if (upload.busy) { e.preventDefault(); cancelUpload(); }
   });
 }
 
