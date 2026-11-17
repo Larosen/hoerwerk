@@ -236,7 +236,7 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
       el("button", { type: "button", class: "btn small ghost", title: t("Erneut nach Releases suchen: ein besseres ersetzt dieses Hörbuch"),
         onclick: () => upgradeLibraryBook(b) }, icon("refresh"), el("span", { class: "lbl" }, t("Besser"))),
       b.format === "m4b" ? el("button", { type: "button", class: "btn small ghost", title: t("Kapitelnamen nach den Regeln für neue Hörbücher neu benennen – erst eine Vorschau"),
-        onclick: () => previewChapters([{ path: b.path, title: b.title || b.path }]) }, icon("chapters"), el("span", { class: "lbl" }, t("Kapitel"))) : null,
+        "aria-label": t("Kapitel neu benennen"), onclick: () => previewChapters([{ path: b.path, title: b.title || b.path }]) }, icon("chapters"), el("span", { class: "lbl" }, t("Kapitel"))) : null,
       el("button", { type: "button", class: "btn small ghost", title: t("Falsch erkannt oder falsche Fassung? Neu zuordnen"),
         onclick: () => correctLibraryBook(b) }, icon("pencil"), el("span", { class: "lbl" }, t("Korrigieren")))) : null);
   // the whole row opens the details (the buttons keep their own job)
