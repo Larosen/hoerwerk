@@ -98,16 +98,44 @@ pub fn warm(app: &App, urls: Vec<String>) {
     if todo.is_empty() {
         return;
     }
-    let queue = Arc::new(Mutex::new(todo));
-    for _ in 0..8 {
-        let (q, dir) = (queue.clone(), dir.clone());
-        std::thread::spawn(move || {
-            loop {
-                let next = q.lock().unwrap_or_else(|p| p.into_inner()).pop();
-                let Some(url) = next else { break };
-                let _ = cached_or_fetch(&dir, &url);
-            }
-        });
+    for url in todo {
+        enqueue(&dir, url);
+    }
+}
+
+/// Background fetches wait here; a fixed set of workers takes them, so the number of threads and of waiting
+/// jobs stays bounded however often lists are shown. When the queue is full, new jobs are dropped: the page then
+/// loads those covers through `proxy` one by one instead.
+const WORKERS: usize = 6;
+const QUEUE_MAX: usize = 240;
+type Job = (std::path::PathBuf, String);
+static QUEUE: Mutex<std::collections::VecDeque<Job>> = Mutex::new(std::collections::VecDeque::new());
+static WAKE: std::sync::Condvar = std::sync::Condvar::new();
+static STARTED: std::sync::Once = std::sync::Once::new();
+
+fn enqueue(dir: &Path, url: String) {
+    STARTED.call_once(|| {
+        for _ in 0..WORKERS {
+            std::thread::spawn(|| {
+                loop {
+                    let job = {
+                        let mut q = QUEUE.lock().unwrap_or_else(|p| p.into_inner());
+                        loop {
+                            if let Some(j) = q.pop_front() {
+                                break j;
+                            }
+                            q = WAKE.wait(q).unwrap_or_else(|p| p.into_inner());
+                        }
+                    };
+                    let _ = cached_or_fetch(&job.0, &job.1);
+                }
+            });
+        }
+    });
+    let mut q = QUEUE.lock().unwrap_or_else(|p| p.into_inner());
+    if q.len() < QUEUE_MAX && !q.iter().any(|(_, u)| *u == url) {
+        q.push_back((dir.to_path_buf(), url));
+        WAKE.notify_one();
     }
 }
 
@@ -141,16 +169,18 @@ fn cached_or_fetch(dir: &Path, url: &str) -> Option<Vec<u8>> {
         return std::fs::read(&path).ok().filter(|d| media::image_type(d).is_some());
     }
     let fetched = audible::fetch_image(url).ok().flatten();
-    release(&k);
-    let data = fetched?;
-    if std::fs::create_dir_all(dir).is_ok() {
+    if let Some(data) = &fetched
+        && std::fs::create_dir_all(dir).is_ok()
+    {
         let tmp = path.with_extension("tmp");
-        if std::fs::write(&tmp, &data).is_ok() {
+        if std::fs::write(&tmp, data).is_ok() {
             let _ = std::fs::rename(&tmp, &path);
         }
         prune(dir);
     }
-    Some(data)
+    // only now: a request that waited for this fetch finds the file
+    release(&k);
+    fetched
 }
 
 /// `GET /api/cover?u=<https address>` – signed-in users only; anything that is not a picture is refused.

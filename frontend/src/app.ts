@@ -21,12 +21,13 @@ function settingsInputs(): [string, SettingsInput][] {
 }
 
 /** Put the saved values into the form (when the settings pages are opened – not between two parts, so edits stay). */
-async function fillSettings(): Promise<void> {
-  try { await loadSettings(); } catch (e) { toast(errMsg(e), true); return; }
+async function fillSettings(): Promise<boolean> {
+  try { await loadSettings(); } catch (e) { toast(errMsg(e), true); return false; }
   for (const [k, input] of settingsInputs()) {
     const v = state.settings[k];
     if (input instanceof HTMLInputElement && input.type === "checkbox") input.checked = !!v; else input.value = String(v);
   }
+  return true;
 }
 
 async function saveSettings(): Promise<void> {

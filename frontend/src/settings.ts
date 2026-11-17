@@ -40,14 +40,26 @@ function renderSettingsHub(): void {
 }
 
 /** Controls stay locked until the saved values are in – otherwise a late answer would overwrite what was just typed. */
+const lockedControls = new WeakMap<HTMLFormElement, HTMLInputElement[]>();
+
 async function whileLoading(form: HTMLFormElement, load: () => Promise<unknown>): Promise<void> {
-  const controls = [...form.elements].filter((c): c is HTMLInputElement => "disabled" in c && !(c as HTMLInputElement).disabled);
+  form.querySelector(".load-failed")?.remove();
+  // after a failed load the controls are still locked from the first round: remember which ones we locked
+  const controls = lockedControls.get(form) ||
+    [...form.elements].filter((c): c is HTMLInputElement => "disabled" in c && !(c as HTMLInputElement).disabled);
+  lockedControls.set(form, controls);
   form.setAttribute("aria-busy", "true");
   for (const c of controls) c.disabled = true;
-  try { await load(); } catch { /* shown on the page itself */ } finally {
-    for (const c of controls) c.disabled = false;
-    form.removeAttribute("aria-busy");
-  }
+  let ok = false;
+  try {
+    const r = await load();
+    ok = !(r === false || (Array.isArray(r) && r.includes(false)));
+  } catch { /* shown as a message below */ }
+  form.removeAttribute("aria-busy");
+  if (ok) { for (const c of controls) c.disabled = false; lockedControls.delete(form); return; }
+  // Not read: the form stays locked, so empty defaults cannot be saved over the real values.
+  form.prepend(el("p", { class: "load-failed small" }, t("Die gespeicherten Werte konnten nicht geladen werden."), " ",
+    el("button", { type: "button", class: "btn small", onclick: () => whileLoading(form, load) }, t("Erneut laden"))));
 }
 
 function showSettingsPage(section: string, entering: boolean): void {
@@ -73,7 +85,7 @@ function showSettingsPage(section: string, entering: boolean): void {
 
   if (entering) {                          // fresh values when coming from another page – not between two areas
     whileLoading($<HTMLFormElement>("#settingsForm"), () => Promise.all([fillSettings(), loadNotify()]));
-    whileLoading($<HTMLFormElement>("#sourcesForm"), () => loadSources().then(fillSources));
+    whileLoading($<HTMLFormElement>("#sourcesForm"), () => loadSources().then((ok) => { if (ok) fillSources(); return ok; }));
   }
   if (section === "library") showLibrarySettings();
   if (section === "users") { loadUsers(); loadListenMap(); }

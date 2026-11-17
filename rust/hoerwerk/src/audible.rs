@@ -98,7 +98,7 @@ pub fn form(params: &[(&str, String)]) -> String {
 
 // -- HTTP -------------------------------------------------------------------------------------------
 
-fn global(ip: IpAddr) -> bool {
+pub(crate) fn global(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => {
             let o = v4.octets();
@@ -198,13 +198,16 @@ pub fn http_get(
         let mut target = url.to_string();
         let mut answer = None;
         for _ in 0..6 {
-            let r = http::get(&target)
+            let mut call = http::get(&target)
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", if accept_json { "application/json" } else { "*/*" })
                 .timeout(timeout)
                 .no_redirect()
-                .limit(max_bytes + 1)
-                .send();
+                .limit(max_bytes + 1);
+            if allow.is_some() {
+                call = call.public_only();
+            }
+            let r = call.send();
             match r {
                 Ok(resp) if (300..400).contains(&resp.status) && resp.location.is_some() => {
                     let loc = resp.location.clone().unwrap_or_default();

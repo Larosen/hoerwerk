@@ -1,7 +1,6 @@
 //! Audio to one chapterised M4B with ffmpeg – every call jailed through hw-run.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::io::Read;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -105,7 +104,7 @@ impl Runner {
         let mut child: Child = Command::new(&argv[0])
             .args(&argv[1..])
             .stdin(Stdio::null())
-            .stdout(Stdio::piped())
+            .stdout(Stdio::null()) // ffmpeg writes to files
             .stderr(Stdio::piped())
             .process_group(0)
             .spawn()
@@ -119,23 +118,10 @@ impl Runner {
         if late {
             terminate(pid);
         }
-        let mut out = child.stdout.take();
         let mut err = child.stderr.take();
-        let reader = std::thread::spawn(move || {
-            let mut b = Vec::new();
-            if let Some(o) = out.as_mut() {
-                let _ = o.read_to_end(&mut b);
-            }
-            b
-        });
-        let ereader = std::thread::spawn(move || {
-            let mut s = String::new();
-            if let Some(e) = err.as_mut() {
-                let mut b = Vec::new();
-                let _ = e.read_to_end(&mut b);
-                s = String::from_utf8_lossy(&b).into_owned();
-            }
-            s
+        let ereader = std::thread::spawn(move || match err.as_mut() {
+            Some(e) => String::from_utf8_lossy(&crate::media::drain_tail(e, STDERR_KEEP)).into_owned(),
+            None => String::new(),
         });
         let start = Instant::now();
         let status = loop {
@@ -156,7 +142,6 @@ impl Runner {
             }
         };
         self.procs.lock().unwrap_or_else(|p| p.into_inner()).remove(&pid);
-        let _ = reader.join(); // stdout is not used (ffmpeg writes to files)
         let stderr = ereader.join().unwrap_or_default();
         if self.stop_now() {
             return Err(EncodeError::Cancelled);
@@ -181,6 +166,9 @@ impl Runner {
         }
     }
 }
+
+/// How much of a child's stderr is kept (its end, where the reason for a failure is).
+const STDERR_KEEP: usize = 256 << 10;
 
 fn ffmpeg(args: Vec<String>, read: &[&Path], write: &[&Path], nice: &str) -> Result<Vec<String>> {
     command(&ffmpeg_bin(), &args, read, write, nice).map_err(EncodeError::Failed)

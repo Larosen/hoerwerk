@@ -33,6 +33,8 @@ use crate::app::App;
 use crate::text::t;
 
 pub const MAX_BODY: usize = 4 * 1024 * 1024;
+/// Absolute time a JSON request body may take to arrive.
+pub const BODY_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
 pub const MAX_UPLOAD: usize = 4 << 30;
 pub const COOKIE: &str = "hw_session";
 const CSRF_HEADER: &str = "x-requested-with";
@@ -632,9 +634,12 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
     if route.raw_body {
         raw = Some(body);
     } else if length > 0 {
-        let bytes = match Limited::new(body, MAX_BODY).collect().await {
-            Ok(c) => c.to_bytes(),
-            Err(_) => return simple(400, &t("Ungültiges JSON", &[])),
+        // A small JSON body has no reason to trickle in: an absolute limit keeps slow senders from holding a slot.
+        let read = tokio::time::timeout(BODY_READ_TIMEOUT, Limited::new(body, MAX_BODY).collect()).await;
+        let bytes = match read {
+            Ok(Ok(c)) => c.to_bytes(),
+            Ok(Err(_)) => return simple(400, &t("Ungültiges JSON", &[])),
+            Err(_) => return simple(408, &t("Anfrage zu langsam", &[])),
         };
         json_body = match serde_json::from_slice(&bytes) {
             Ok(v) => v,

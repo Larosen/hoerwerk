@@ -224,6 +224,24 @@ pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
+    if req.get("apply") == &Value::Bool(false) {
+        // preview: what each chapter is now, what it would become and why – nothing is written
+        let plan = blocking(move || Ok::<_, crate::pipeline::PipeError>(a.pipeline.plan_tidy(&f, &book, &name))).await;
+        let Ok(plan) = plan else {
+            return error(500, t("Die Kapitel konnten nicht gelesen werden", &[]));
+        };
+        let Some(plan) = plan else {
+            return error(409, t("Das Hörbuch hat weniger als zwei Kapitel", &[]));
+        };
+        let rows: Vec<Value> = plan
+            .current
+            .iter()
+            .zip(&plan.wanted)
+            .enumerate()
+            .map(|(i, (a, b))| json!({"from": a.title, "to": b.title, "why": if a.title == b.title { String::new() } else { plan.why(i) }}))
+            .collect();
+        return json_reply(json!({"changed": plan.changed(), "total": rows.len(), "rows": rows}));
+    }
     match blocking(move || a.pipeline.tidy_file(&a, &f, &book, &name)).await {
         Ok(Some((n, first, last))) => {
             // Audiobookshelf reads the chapters from metadata.json first: give it the same names, then let

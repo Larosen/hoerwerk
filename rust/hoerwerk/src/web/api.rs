@@ -437,14 +437,16 @@ async fn setup(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
         tokio::time::sleep(Duration::from_secs(1)).await;
         return error(403, t("Einrichtungs-Code falsch (steht im Container-Protokoll)", &[]));
     }
-    match app.accounts.create(
-        &app.db,
-        &req.str("name"),
-        &req.str("password"),
-        "admin",
-        &json!({}),
-        &Value::Null,
-    ) {
+    let created = {
+        let (a, name, password) = (app.clone(), req.str("name"), req.str("password"));
+        tokio::task::spawn_blocking(move || {
+            a.accounts
+                .create(&a.db, &name, &password, "admin", &json!({}), &Value::Null)
+        })
+        .await
+        .unwrap_or_else(|_| Err("intern".to_string()))
+    };
+    match created {
         Ok(user) => {
             authlog::event(
                 "setup",
@@ -578,33 +580,129 @@ async fn login_totp(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Repl
 }
 
 /// A new secret for the authenticator app – active only after a correct code (confirm).
+/// Password and a current code of the existing second factor: what changing or switching it off needs, so a stolen
+/// session alone cannot do it.
+async fn prove_factor(
+    app: &Arc<App>,
+    uid: i64,
+    name: String,
+    ip: String,
+    password: String,
+    code: String,
+) -> Result<(), Reply> {
+    let (a, n, i) = (app.clone(), name.clone(), ip.clone());
+    match tokio::task::spawn_blocking(move || a.accounts.authenticate(&a.db, &n, &password, &i)).await {
+        Ok(Ok(_)) => {}
+        Ok(Err(e)) => {
+            authlog::event(
+                "login_failed",
+                &[("user", &name), ("ip", &ip), ("reason", "bad_old_password")],
+            );
+            return Err(error(
+                if e.status == 429 { 429 } else { 403 },
+                t("Das bisherige Passwort stimmt nicht", &[]),
+            ));
+        }
+        Err(_) => return Err(error(500, "intern".to_string())),
+    }
+    if !crate::totp::check(app, uid, &code) {
+        return Err(error(403, t("Code falsch", &[])));
+    }
+    Ok(())
+}
+
 async fn totp_setup(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let uid = req.user_id();
+    // a second factor exists: a new one only after password and a current code of the old one
+    let replacing = crate::totp::stored_secret(&app, uid).is_some();
+    if replacing
+        && let Err(r) = prove_factor(
+            &app,
+            uid,
+            req.user_name(),
+            req.ip.clone(),
+            req.str("password"),
+            req.str("code"),
+        )
+        .await
+    {
+        return r;
+    }
     let secret = crate::totp::secret();
-    app.totp
-        .lock()
-        .unwrap_or_else(|p| p.into_inner())
-        .pending
-        .insert(req.user_id(), secret.clone());
+    {
+        let mut st = app.totp.lock().unwrap_or_else(|p| p.into_inner());
+        st.pending.insert(uid, secret.clone());
+        if replacing {
+            st.replace_ok.insert(uid);
+        } else {
+            st.replace_ok.remove(&uid);
+        }
+    }
     json_reply(json!({"secret": secret, "uri": crate::totp::uri(&secret, &req.user_name())}))
 }
 
 async fn totp_confirm(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
     let uid = req.user_id();
-    let pending = app
-        .totp
-        .lock()
-        .unwrap_or_else(|p| p.into_inner())
-        .pending
-        .get(&uid)
-        .cloned();
+    let (pending, proven) = {
+        let st = app.totp.lock().unwrap_or_else(|p| p.into_inner());
+        (st.pending.get(&uid).cloned(), st.replace_ok.contains(&uid))
+    };
+    // checked again here: an existing factor is only replaced when the proof came with the setup
+    let replacing = crate::totp::stored_secret(&app, uid).is_some();
+    if replacing && !proven {
+        return error(
+            403,
+            t(
+                "Zum Ersetzen des Zweitfaktors zuerst Passwort und aktuellen Code eingeben",
+                &[],
+            ),
+        );
+    }
+    let matched = pending
+        .as_ref()
+        .and_then(|secret| crate::totp::accept(&app, -uid, secret, &req.str("code")));
     match pending {
-        Some(secret) if crate::totp::ok(&app, uid, &secret, &req.str("code")) => {
-            let _ = app
+        Some(secret) if matched.is_some() => {
+            if let Some(step) = matched {
+                crate::totp::mark_used(&app, uid, step);
+            }
+            // only an unchanged situation may be overwritten: no factor yet, or the one that was proven
+            let done = app
                 .db
                 .lock()
                 .execute("UPDATE users SET totp=? WHERE id=?", rusqlite::params![secret, uid]);
-            app.totp.lock().unwrap_or_else(|p| p.into_inner()).pending.remove(&uid);
-            authlog::event("totp_on", &[("user", &req.user_name()), ("ip", &req.ip)]);
+            if !matches!(done, Ok(1)) {
+                text::error(
+                    "Anmeldung",
+                    &t("Der Zweitfaktor konnte nicht gespeichert werden (Datenbank)", &[]),
+                );
+                return error(
+                    500,
+                    t(
+                        "Der Zweitfaktor konnte nicht gespeichert werden. Einzelheiten stehen im Protokoll.",
+                        &[],
+                    ),
+                );
+            }
+            {
+                let mut st = app.totp.lock().unwrap_or_else(|p| p.into_inner());
+                st.pending.remove(&uid);
+                st.replace_ok.remove(&uid);
+            }
+            if replacing {
+                // a new factor: other devices must sign in again
+                let keep = req
+                    .user
+                    .as_ref()
+                    .and_then(|u| u["session"].as_str())
+                    .unwrap_or("")
+                    .to_string();
+                app.accounts.end_sessions(&app.db, uid, &keep);
+            }
+            authlog::event(
+                if replacing { "totp_replaced" } else { "totp_on" },
+                &[("user", &req.user_name()), ("ip", &req.ip)],
+            );
             json_reply(json!({"ok": true}))
         }
         _ => error(
@@ -618,33 +716,25 @@ async fn totp_confirm(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Re
 }
 
 async fn totp_disable(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
-    let (a, name, password, ip) = (app.clone(), req.user_name(), req.str("password"), req.ip.clone());
-    let checked = tokio::task::spawn_blocking(move || a.accounts.authenticate(&a.db, &name, &password, &ip)).await;
-    match checked {
-        Ok(Ok(_)) => {}
-        Ok(Err(e)) => {
-            authlog::event(
-                "login_failed",
-                &[
-                    ("user", &req.user_name()),
-                    ("ip", &req.ip),
-                    ("reason", "bad_old_password"),
-                ],
-            );
-            return error(
-                if e.status == 429 { 429 } else { 403 },
-                t("Das bisherige Passwort stimmt nicht", &[]),
-            );
-        }
-        Err(_) => return error(500, "intern".to_string()),
+    if let Err(r) = prove_factor(
+        &app,
+        req.user_id(),
+        req.user_name(),
+        req.ip.clone(),
+        req.str("password"),
+        req.str("code"),
+    )
+    .await
+    {
+        return r;
     }
-    if !crate::totp::check(&app, req.user_id(), &req.str("code")) {
-        return error(403, t("Code falsch", &[]));
-    }
-    let _ = app
+    let done = app
         .db
         .lock()
         .execute("UPDATE users SET totp=NULL WHERE id=?", [req.user_id()]);
+    if done.is_err() {
+        return error(500, t("Der Zweitfaktor konnte nicht ausgeschaltet werden", &[]));
+    }
     authlog::event("totp_off", &[("user", &req.user_name()), ("ip", &req.ip)]);
     json_reply(json!({"ok": true}))
 }
@@ -671,10 +761,19 @@ async fn auth_me(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
 }
 
 async fn password(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
-    if let Err(e) = app
-        .accounts
-        .authenticate(&app.db, &req.user_name(), &req.str("old"), &req.ip)
-    {
+    let proof = {
+        let (a, name, old, ip) = (app.clone(), req.user_name(), req.str("old"), req.ip.clone());
+        tokio::task::spawn_blocking(move || a.accounts.authenticate(&a.db, &name, &old, &ip))
+            .await
+            .unwrap_or_else(|_| {
+                Err(crate::accounts::AuthError {
+                    message: "intern".into(),
+                    status: 500,
+                    reason: "internal",
+                })
+            })
+    };
+    if let Err(e) = proof {
         authlog::event(
             "login_failed",
             &[
@@ -688,7 +787,13 @@ async fn password(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply 
             t("Das bisherige Passwort stimmt nicht", &[]),
         );
     }
-    if let Err(e) = app.accounts.set_password(&app.db, req.user_id(), &req.str("new")) {
+    let set = {
+        let (a, uid, new) = (app.clone(), req.user_id(), req.str("new"));
+        tokio::task::spawn_blocking(move || a.accounts.set_password(&a.db, uid, &new))
+            .await
+            .unwrap_or_else(|_| Err("intern".to_string()))
+    };
+    if let Err(e) = set {
         return error(400, e);
     }
     authlog::event("password_changed", &[("user", &req.user_name()), ("ip", &req.ip)]);
@@ -790,14 +895,14 @@ async fn users_create(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Re
         let r = req.str("role");
         if r.is_empty() { "user".to_string() } else { r }
     };
-    match app.accounts.create(
-        &app.db,
-        &req.str("name"),
-        &req.str("password"),
-        &role,
-        req.get("perms"),
-        req.get("quota"),
-    ) {
+    let created = {
+        let (a, name, password) = (app.clone(), req.str("name"), req.str("password"));
+        let (perms, quota) = (req.get("perms").clone(), req.get("quota").clone());
+        tokio::task::spawn_blocking(move || a.accounts.create(&a.db, &name, &password, &role, &perms, &quota))
+            .await
+            .unwrap_or_else(|_| Err("intern".to_string()))
+    };
+    match created {
         Ok(user) => {
             authlog::event(
                 "user_created",

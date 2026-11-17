@@ -27,9 +27,10 @@ function fmtAge(ts: number | null): string {
   return t("{n} J", { n: Math.round(d / 365) });
 }
 
-async function loadSources(): Promise<void> {
+/** false = the sources could not be read (the caller must not fill a form with defaults and let it be saved). */
+async function loadSources(): Promise<boolean> {
   let s: Sources;
-  try { s = search.sources = await api<Sources>("GET", "/api/sources"); } catch (e) { toast(errMsg(e), true); return; }
+  try { s = search.sources = await api<Sources>("GET", "/api/sources"); } catch (e) { toast(errMsg(e), true); return false; }
   // the connections themselves live under Einstellungen; here only a note when something is missing for the search
   const missing: string[] = [];
   if (!s.indexers.some((i) => i.enabled && i.apikey_set)) missing.push(t("ein Indexer"));
@@ -40,6 +41,7 @@ async function loadSources(): Promise<void> {
     t("Für die Release-Suche fehlt noch: {what}.", { what: missing.length > 1 ? t("ein Indexer und SABnzbd") : missing[0] }), " ",
     el("a", { href: "/settings/downloads" }, t("Einrichten")),
   ] : []));
+  return true;
 }
 
 function indexerRow(i: Indexer = {}): HTMLDivElement {

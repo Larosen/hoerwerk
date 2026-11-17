@@ -10,6 +10,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import pathlib
 import re
 import shutil
 import signal
@@ -383,6 +384,83 @@ class Accounts(ContractTest):
         self.admin.call("PUT", f"/api/users/{uid}", {"totp": False})            # lost phone: the admin switches it off
         status, _, body = self.server.request("POST", "/api/auth/login", {"name": name, "password": pw}, headers=OWN)
         self.assertEqual((status, json.loads(body)["ok"]), (200, True))
+
+    def test_second_factor_cannot_be_replaced_with_the_session_alone(self):
+        """An existing second factor changes only with password and a current code – a stolen session is not enough."""
+        import base64
+        import hashlib
+        import hmac as hmaclib
+
+        def code(secret: str, step: int) -> str:
+            key = base64.b32decode(secret + "=" * (-len(secret) % 8), casefold=True)
+            d = hmaclib.new(key, step.to_bytes(8, "big"), hashlib.sha1).digest()
+            o = d[-1] & 15
+            return f"{(int.from_bytes(d[o:o + 4], 'big') & 0x7FFFFFFF) % 1000000:06d}"
+
+        s = Server().start()                      # its own server: failed sign-ins of other tests count against an address
+        try:
+            admin = Client(s, **ADMIN)
+            name, pw = "Faktorwechsel", "Kaffee Garten Hund Regen 7"
+            admin.call("POST", "/api/users", {"name": name, "password": pw, "role": "user"})
+            user, other = Client(s, name, pw), Client(s, name, pw)
+            step = int(time.time() // 30)
+            first = user.call("POST", "/api/auth/totp/setup")
+            user.call("POST", "/api/auth/totp/confirm", {"code": code(first["secret"], step)})
+            # session alone: refused, and a confirmation without the proof as well
+            self.assertEqual(user.call("POST", "/api/auth/totp/setup", expect=None)[0], 403)
+            self.assertEqual(user.call("POST", "/api/auth/totp/confirm", {"code": "123456"}, expect=None)[0], 403)
+            # right password, wrong code and wrong password with a right code: refused
+            self.assertEqual(user.call("POST", "/api/auth/totp/setup", {"password": pw, "code": "000000"}, expect=None)[0], 403)
+            self.assertEqual(user.call("POST", "/api/auth/totp/setup", {"password": "falsch", "code": code(first["secret"], step + 1)}, expect=None)[0], 403)
+            # with both: a new key, and its first code is accepted at once
+            new = user.call("POST", "/api/auth/totp/setup", {"password": pw, "code": code(first["secret"], step + 1)})
+            self.assertNotEqual(new["secret"], first["secret"])
+            user.call("POST", "/api/auth/totp/confirm", {"code": code(new["secret"], step + 1)})  # the confirmation has its own memory of used steps
+            self.assertEqual(other.call("GET", "/api/requests", expect=None)[0], 401)           # other devices sign in again
+            self.assertEqual(user.call("GET", "/api/requests", expect=None)[0], 200)           # this one stays
+            # switching it off needs the same proof
+            self.assertEqual(user.call("POST", "/api/auth/totp/disable", {"password": pw}, expect=None)[0], 403)
+        finally:
+            s.cleanup()
+
+    def test_the_last_admin_survives_concurrent_changes(self):
+        """Two admins demoting or locking each other at the same moment must leave one active admin."""
+        import threading
+
+        s = Server().start()
+        try:
+            root = Client(s, **ADMIN)
+            pw = "Kaffee Garten Hund Regen 7"
+            second = root.call("POST", "/api/users", {"name": "Zweiter Admin", "password": pw, "role": "admin"})
+            first = next(u for u in root.call("GET", "/api/users")["users"] if u["name"] == ADMIN["name"])
+            for change in ({"role": "user"}, {"disabled": True}):
+                a, b = Client(s, **ADMIN), Client(s, "Zweiter Admin", pw)
+                go = threading.Barrier(2)
+
+                def act(who, target, body, gate):
+                    gate.wait()
+                    who.call("PUT", f"/api/users/{target}", body, expect=None)
+
+                ts = [threading.Thread(target=act, args=(a, second["id"], change, go)),
+                      threading.Thread(target=act, args=(b, first["id"], change, go))]
+                [x.start() for x in ts]
+                [x.join() for x in ts]
+                # whoever is still an active admin can read the list; at least one of them is
+                active = []
+                for who, name in ((Client(s), ADMIN["name"]), (Client(s), "Zweiter Admin")):
+                    try:
+                        who.login(name, ADMIN["password"] if name == ADMIN["name"] else pw)
+                    except AssertionError:
+                        continue
+                    if who.call("GET", "/api/users", expect=None)[0] == 200:
+                        active.append(name)
+                self.assertTrue(active, f"no admin left after {change}")
+                # put both back for the next round
+                keeper = Client(s, active[0], ADMIN["password"] if active[0] == ADMIN["name"] else pw)
+                for uid in (first["id"], second["id"]):
+                    keeper.call("PUT", f"/api/users/{uid}", {"role": "admin", "disabled": False}, expect=None)
+        finally:
+            s.cleanup()
 
 
 class Settings(ContractTest):
@@ -826,6 +904,43 @@ class Processing(ContractTest):
         self.assertEqual(twisted["status"], "review", twisted)
         detail = self.admin.get(f'/api/audiobooks/{twisted["id"]}')
         self.assertTrue(any("Reihenfolge der Dateinamen" in line for line in detail["log"]), detail["log"])
+
+    def test_library_chapters_preview_then_apply(self):
+        """A filed M4B whose chapters are the book title plus a glued number: the preview shows "now" and "new" with
+        the reason and writes nothing; applying renames them; the decisions reach the log."""
+        tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "album": "Der Zaehler", "genre": "Hörbuch"}
+        deliver(self.server.inbox, "Ella Echo - Der Zaehler",
+                {f"{i + 1:02d}.mp3": {**tags, "title": f"Teil {i + 1}", "track": str(i + 1)} for i in range(4)})
+        job = self.job("Ella Echo - Der Zaehler")
+        self.assertEqual(job["status"], "done", job)
+        dest = job["dest"]
+        rel = os.path.relpath(os.path.dirname(dest), self.server.library)
+        # give the file ugly chapter names, as a badly tagged download would have
+        meta = os.path.join(self.server.dir, "ugly.ffmeta")
+        with open(meta, "w", encoding="utf-8") as fh:
+            fh.write(";FFMETADATA1\n")
+            for i in range(4):
+                fh.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={i * 1000}\nEND={(i + 1) * 1000}\ntitle=Der Zaehler{i + 1:03d}\n")
+        ugly = dest + ".ugly.m4b"
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", dest, "-i", meta, "-map", "0", "-map_metadata", "0",
+                        "-map_chapters", "1", "-c", "copy", "-f", "mp4", ugly], check=True)
+        os.replace(ugly, dest)
+        before = pathlib.Path(dest).read_bytes()
+        pre = self.admin.call("POST", "/api/library/chapters", {"path": rel, "apply": False})
+        self.assertEqual((pre["changed"], pre["total"]), (4, 4), pre)
+        self.assertEqual([r["from"] for r in pre["rows"]], [f"Der Zaehler{i:03d}" for i in range(1, 5)])
+        self.assertEqual([r["to"] for r in pre["rows"]], [f"Kapitel {i}" for i in range(1, 5)])
+        self.assertTrue(all(r["why"] for r in pre["rows"]), pre)
+        self.assertEqual(pathlib.Path(dest).read_bytes(), before)             # the preview wrote nothing
+        out = self.admin.call("POST", "/api/library/chapters", {"path": rel})
+        self.assertEqual(out["changed"], 4, out)
+        probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-print_format", "json", "-show_chapters", dest],
+                                          capture_output=True, text=True, check=True).stdout)
+        self.assertEqual([c["tags"]["title"] for c in probe["chapters"]], [f"Kapitel {i}" for i in range(1, 5)])
+        self.assertEqual(self.admin.call("POST", "/api/library/chapters", {"path": rel, "apply": False})["changed"], 0)
+        # the decision is in the log: how many names, and why
+        log = self.admin.get("/api/logs?after=0&level=info")
+        self.assertIn("Kapitelnamen geändert", json.dumps(log, ensure_ascii=False))
 
     def test_pack_becomes_one_job_per_volume(self):
         tmp = os.path.join(self.server.dir, ".incoming", "Paula Pack - Reihe 01-02")

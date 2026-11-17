@@ -74,9 +74,21 @@ fn same(a: &str, b: &str) -> bool {
 
 /// A code for this secret – and never the same time step twice for one account (replay).
 pub fn ok(app: &App, uid: i64, secret: &str, input: &str) -> bool {
+    ok_in(app, uid, secret, input)
+}
+
+/// The same, with its own memory of used time steps (`domain`): the confirmation of a new key must not be refused
+/// because the proof with the old key used up the current step a moment ago.
+pub fn ok_in(app: &App, domain: i64, secret: &str, input: &str) -> bool {
+    accept(app, domain, secret, input).is_some()
+}
+
+/// Like `ok_in`, and says which time step the code was for.
+pub fn accept(app: &App, domain: i64, secret: &str, input: &str) -> Option<i64> {
+    let uid = domain;
     let input: String = input.chars().filter(char::is_ascii_digit).collect();
     if input.len() != 6 {
-        return false;
+        return None;
     }
     let current = (now() as i64).div_euclid(STEP);
     for step in [current - 1, current, current + 1] {
@@ -90,14 +102,29 @@ pub fn ok(app: &App, uid: i64, secret: &str, input: &str) -> bool {
                 .copied()
                 .or_else(|| app.db.get(&key).and_then(|v| v.as_i64()));
             if last.is_some_and(|u| u >= step) {
-                return false;
+                return None;
             }
             st.used.insert(uid, step);
             let _ = app.db.put(&key, &serde_json::json!(step));
-            return true;
+            return Some(step);
         }
     }
-    false
+    None
+}
+
+/// A time step counts as used for this account (sign-in) too: a code that confirmed a new key does not work again.
+pub fn mark_used(app: &App, uid: i64, step: i64) {
+    let key = format!("totp_step:{uid}");
+    let mut st = app.totp.lock().unwrap_or_else(|p| p.into_inner());
+    let last = st
+        .used
+        .get(&uid)
+        .copied()
+        .or_else(|| app.db.get(&key).and_then(|v| v.as_i64()));
+    if last.is_none_or(|u| u < step) {
+        st.used.insert(uid, step);
+        let _ = app.db.put(&key, &serde_json::json!(step));
+    }
 }
 
 pub fn stored_secret(app: &App, uid: i64) -> Option<String> {

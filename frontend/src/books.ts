@@ -31,6 +31,7 @@ const books = {
   libShown: 100,                              // rows loaded so far
   libTotal: null as number | null,            // books in the library (for the filter chip)
   libTimer: undefined as number | undefined,
+  libPicked: new Set<string>(),               // library books ticked for "Kapitel neu benennen"
   hideDone: store.get("booksHideDone", false),   // "Aufträge" without the finished ones (only hidden, never deleted)
 };
 
@@ -182,7 +183,9 @@ function renderLibrary(list: HTMLElement): void {
       for (const b of view.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === view.children[key === "regal" ? 0 : 1]));
     } }, label));
   }
-  list.append(el("li", { class: "lib-search" }, icon("search"), q), el("li", { class: "lib-sort" }, sort, view), el("li", { class: "lib-wrap" }, rows));
+  list.append(el("li", { class: "lib-search" }, icon("search"), q), el("li", { class: "lib-sort" }, sort, view),
+    ...(IS_ADMIN ? [el("li", { class: "lib-bar", id: "libBar", hidden: true })] : []), el("li", { class: "lib-wrap" }, rows));
+  updateLibBar();
   loadLibraryBooks();
 }
 
@@ -213,7 +216,11 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
   const all = [...(b.authors || []), ...(b.names || [])];
   const other = (b.names || []).filter((n, i, arr) => arr.indexOf(n) === i && !(b.authors || []).includes(n)
     && !all.some((m) => m !== n && m.includes(n)));
+  const tick = IS_ADMIN && b.format === "m4b" ? el("input", { type: "checkbox", checked: books.libPicked.has(b.path),
+    "aria-label": t("Auswählen: {title}", { title: b.title || b.path }) }) : null;
+  tick?.addEventListener("change", () => { if (tick.checked) books.libPicked.add(b.path); else books.libPicked.delete(b.path); updateLibBar(); });
   const row = el("li", { class: "lib-row", "data-asin": b.asin || "" },
+    tick ? el("label", { class: "lib-check" }, tick) : null,
     libraryCover(b.path, b.title || b.path, author, b.format !== "m4b" ? (b.format || "").toUpperCase() : "", b.mtime || "", !!b.cover),
     el("div", { class: "lib-main" },
       el("div", { class: "lib-title" }, el("button", { type: "button", class: "lib-open", title: t("Details"), onclick: () => showDetail(libraryAsBook(b)) }, b.title || b.path),
@@ -228,12 +235,12 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
     IS_ADMIN ? el("div", { class: "lib-actions" },
       el("button", { type: "button", class: "btn small ghost", title: t("Erneut nach Releases suchen: ein besseres ersetzt dieses Hörbuch"),
         onclick: () => upgradeLibraryBook(b) }, icon("refresh"), el("span", { class: "lbl" }, t("Besser"))),
-      b.format === "m4b" ? el("button", { type: "button", class: "btn small ghost", title: t("Kapitelnamen nach den Regeln für neue Hörbücher aufräumen (Buchtitel und Track-Nummern weg)"),
-        onclick: (e: Event) => tidyLibraryChapters(b, e.currentTarget as HTMLButtonElement) }, icon("chapters"), el("span", { class: "lbl" }, t("Kapitel"))) : null,
+      b.format === "m4b" ? el("button", { type: "button", class: "btn small ghost", title: t("Kapitelnamen nach den Regeln für neue Hörbücher neu benennen – erst eine Vorschau"),
+        "aria-label": t("Kapitel neu benennen"), onclick: () => previewChapters([{ path: b.path, title: b.title || b.path }]) }, icon("chapters"), el("span", { class: "lbl" }, t("Kapitel"))) : null,
       el("button", { type: "button", class: "btn small ghost", title: t("Falsch erkannt oder falsche Fassung? Neu zuordnen"),
         onclick: () => correctLibraryBook(b) }, icon("pencil"), el("span", { class: "lbl" }, t("Korrigieren")))) : null);
   // the whole row opens the details (the buttons keep their own job)
-  row.addEventListener("click", (e) => { if (!(e.target as Element).closest("button, a")) showDetail(libraryAsBook(b)); });
+  row.addEventListener("click", (e) => { if (!(e.target as Element).closest("button, a, label, input")) showDetail(libraryAsBook(b)); });
   return row;
 }
 
@@ -834,15 +841,83 @@ async function upgradeLibraryBook(b: LibraryBook): Promise<void> {
   } catch (e) { toast(errMsg(e), true); }
 }
 
-/** The chapter names of a filed M4B, cleaned by the same rules as new books. */
-async function tidyLibraryChapters(b: LibraryBook, btn: HTMLButtonElement): Promise<void> {
-  btn.disabled = true;
-  try {
-    const r = await api<{ changed: number; first?: string; last?: string }>("POST", "/api/library/chapters", { path: b.path });
-    toast(r.changed ? t("{n} Kapitelnamen aufgeräumt: {first} … {last}", { n: r.changed, first: r.first || "", last: r.last || "" })
-      : t("Die Kapitelnamen sind schon sauber"));
-  } catch (e) { toast(errMsg(e), true); }
-  btn.disabled = false;
+/** The bar over the library: how many books are ticked, and the way to the chapter preview. */
+function updateLibBar(): void {
+  const bar = document.getElementById("libBar");
+  if (!bar) return;
+  const n = books.libPicked.size;
+  bar.hidden = !n;
+  bar.replaceChildren(
+    el("span", {}, plural(n, t("1 Hörbuch ausgewählt"), t("{n} Hörbücher ausgewählt", { n }))),
+    el("button", { type: "button", class: "btn small primary", onclick: () => previewChapters([...books.libPicked].map((path) => ({ path, title: path.split("/").pop() || path }))) },
+      icon("chapters"), t("Kapitel neu benennen …")),
+    el("button", { type: "button", class: "btn small ghost", onclick: () => {
+      books.libPicked.clear();
+      for (const cb of document.querySelectorAll<HTMLInputElement>("#libRows .lib-check input")) cb.checked = false;
+      updateLibBar();
+    } }, t("Auswahl aufheben")));
+}
+
+interface ChapterRow { from: string; to: string; why: string }
+interface ChapterPlan { changed: number; total: number; rows: ChapterRow[] }
+
+/** Chapter names of the chosen M4B books by the rules for new books: first "now → new" with the reason, then the
+ *  user decides – nothing is written before "Umbenennung anwenden". */
+async function previewChapters(items: { path: string; title: string }[]): Promise<void> {
+  const d = $<HTMLDialogElement>("#chaptersDialog");
+  const body = $("#chaptersBody");
+  const apply = $<HTMLButtonElement>("#chaptersApply");
+  apply.disabled = true;
+  body.replaceChildren(el("p", { class: "muted" }, t("Lade Vorschau …")));
+  $("#chaptersNote").textContent = t("Links der Name jetzt, rechts der neue – mit dem Grund. Erst „Umbenennung anwenden“ schreibt die neuen Namen in die M4B.");
+  if (!d.open) d.showModal();
+  let cancelled = false;
+  d.addEventListener("close", () => { cancelled = true; }, { once: true });
+  const todo: { path: string; changed: number }[] = [];
+  const sections: HTMLElement[] = [];
+  for (const it of items) {
+    if (cancelled) return;
+    const head = el("h3", {}, it.title);
+    try {
+      const plan = await api<ChapterPlan>("POST", "/api/library/chapters", { path: it.path, apply: false });
+      if (cancelled) return;
+      head.append(" ", el("span", { class: "muted small" }, plan.changed
+        ? t("{changed} von {total} Kapiteln werden geändert", { changed: plan.changed, total: plan.total })
+        : t("schon sauber")));
+      const line = (r: ChapterRow): HTMLElement => el("li", {},
+        el("span", { class: "from" }, r.from), el("span", { class: "arrow", "aria-hidden": "true" }, "→"), el("b", { class: "to" }, r.to),
+        r.why ? el("span", { class: "why" }, r.why) : null);
+      const changedRows = plan.rows.filter((r) => r.from !== r.to);
+      const keptRows = plan.rows.filter((r) => r.from === r.to);
+      sections.push(el("section", { class: "chap-book" }, head,
+        changedRows.length ? el("ul", { class: "chap-rows" }, changedRows.map(line)) : null,
+        keptRows.length ? el("details", {}, el("summary", { class: "muted small" }, t("{n} bleiben unverändert", { n: keptRows.length })),
+          el("ul", { class: "chap-rows" }, keptRows.map(line))) : null));
+      if (plan.changed) todo.push({ path: it.path, changed: plan.changed });
+    } catch (e) {
+      head.append(" ", el("span", { class: "muted small" }, errMsg(e)));
+      sections.push(el("section", { class: "chap-book" }, head));
+    }
+  }
+  body.replaceChildren(...sections);
+  apply.disabled = !todo.length;
+  apply.onclick = async () => {
+    apply.disabled = true;
+    let changed = 0;
+    for (const [i, x] of todo.entries()) {
+      apply.textContent = t("Benenne um … ({n} von {total})", { n: i + 1, total: todo.length });
+      try {
+        const r = await api<{ changed: number }>("POST", "/api/library/chapters", { path: x.path });
+        changed += r.changed;
+      } catch (e) { toast(errMsg(e), true); }
+    }
+    apply.textContent = t("Umbenennung anwenden");
+    toast(t("{n} Kapitelnamen umbenannt", { n: changed }));
+    for (const x of todo) books.libPicked.delete(x.path);
+    d.close();
+    updateLibBar();
+    loadLibraryBooks();
+  };
 }
 
 /** Any book of the library back for a correction – also when its import is long gone from the list. */
@@ -919,6 +994,7 @@ function updatePathPreview(): void {
 }
 
 function initBooks(): void {
+  $("#chaptersCancel").addEventListener("click", () => $<HTMLDialogElement>("#chaptersDialog").close());
   if (!IS_ADMIN) return;   // family accounts: search, discover, requests
   $("#scanBtn").addEventListener("click", async () => {
     try { await api("POST", "/api/audiobooks/scan"); toast(t("Eingang wird geprüft")); setTimeout(() => pollBooks(true), 800); }

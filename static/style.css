@@ -1340,3 +1340,20 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .prowlarr-box { margin-top: 10px; }
 .prowlarr-box summary { cursor: pointer; font-weight: 600; }
 .prowlarr-box input { flex: 1 1 200px; min-width: 0; }
+.load-failed { color: var(--err); margin: 0 0 10px; }
+
+.lib-row .lib-check { display: flex; align-items: center; }
+.lib-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; background: var(--panel-2); border-bottom: 1px solid var(--border); }
+.chap-preview { max-height: 60vh; overflow: auto; }
+.chap-book { margin: 0 0 16px; }
+.chap-book h3 { margin: 0 0 6px; font-size: 15px; }
+.chap-rows { list-style: none; margin: 0; padding: 0; }
+.chap-rows li { display: grid; grid-template-columns: 1fr auto 1fr; gap: 4px 10px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.chap-rows .from { color: var(--muted); overflow-wrap: anywhere; }
+.chap-rows .to { overflow-wrap: anywhere; }
+.chap-rows .why { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+@media (max-width: 600px) { .chap-rows li { grid-template-columns: 1fr; } .chap-rows .arrow { display: none; } }
+/* shelf view: the tick sits on the cover's corner (and has a size a finger can hit) */
+.lib-rows.regal > li.lib-row { position: relative; }
+.lib-rows.regal .lib-row > .lib-check { position: absolute; top: 6px; left: 14px; z-index: 2; grid-row: 1; padding: 6px; border-radius: 8px; background: rgba(0, 0, 0, .45); }
+.lib-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
