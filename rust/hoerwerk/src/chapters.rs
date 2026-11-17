@@ -112,6 +112,7 @@ pub fn clean_titles<S: AsRef<str>>(names: &[S], known: &[String], lang: &str) ->
         lang.to_string()
     };
     let mut out = raw_names;
+    split_glued_numbers(&mut out);
     let counters = strip_counters(&mut out);
     let length = |v: &[String]| v.iter().map(|n| n.chars().count()).sum::<usize>();
     let before = length(&out);
@@ -169,6 +170,52 @@ fn guess_lang(names: &[String]) -> String {
         "de".into()
     } else {
         String::new()
+    }
+}
+
+/// "Der Federmann002", "Der Federmann003" …: a number stuck to the last word is a counter, not part of the word.
+/// Only when (nearly) every name has one and they count up – a single "Apollo 13" or "Catch-22" stays as it is.
+fn split_glued_numbers(names: &mut [String]) {
+    /// (text before, digits) when 1–4 digits end the name right behind a letter.
+    fn glued(name: &str) -> Option<(&str, &str)> {
+        let digits = name.len() - name.trim_end_matches(|c: char| c.is_ascii_digit()).len();
+        let (head, tail) = name.split_at(name.len() - digits);
+        (1..=4).contains(&digits).then_some(())?;
+        head.chars()
+            .last()
+            .is_some_and(char::is_alphabetic)
+            .then_some((head, tail))
+    }
+    let n = names.len();
+    if n < 3 {
+        return;
+    }
+    let found: Vec<Option<u64>> = names
+        .iter()
+        .map(|x| glued(x).and_then(|(_, d)| d.parse().ok()))
+        .collect();
+    if found.iter().flatten().count() * 10 < n * 9 {
+        return;
+    }
+    let nums: Vec<u64> = found.iter().flatten().copied().collect();
+    if !nums.windows(2).all(|w| w[1] > w[0]) {
+        return;
+    }
+    // the same text in front of every counter is ballast whoever wrote it (title missing from the metadata, a typo
+    // in it …): only the counter is left, and a bare counter becomes "Kapitel N" later
+    let stems: std::collections::HashSet<String> = names
+        .iter()
+        .filter_map(|x| glued(x).map(|(head, _)| crate::words::match_words(head).join(" ")))
+        .collect();
+    let same_stem = stems.len() == 1 && stems.iter().all(|s| !CHAPTER_WORD.is_match(s));
+    for name in names.iter_mut() {
+        if let Some((head, digits)) = glued(name) {
+            *name = if same_stem {
+                digits.to_string()
+            } else {
+                format!("{head} {digits}")
+            };
+        }
     }
 }
 
@@ -654,6 +701,35 @@ mod tests {
     fn clean(names: &[&str], known: &[&str], lang: &str) -> Vec<String> {
         let known: Vec<String> = known.iter().map(|k| k.to_string()).collect();
         clean_titles(names, &known, lang).names
+    }
+
+    #[test]
+    fn numbers_stuck_to_the_book_title_are_counters() {
+        crate::text::set_language("de");
+        let names: Vec<String> = (1..=13).map(|i| format!("Der Federmann{i:03}")).collect();
+        let want: Vec<String> = (1..=13).map(|i| format!("Kapitel {i}")).collect();
+        assert_eq!(
+            clean(
+                &names.iter().map(String::as_str).collect::<Vec<_>>(),
+                &["Der Federmann"],
+                "de"
+            ),
+            want
+        );
+        // without the title in the metadata the shared text still goes
+        assert_eq!(
+            clean(&names.iter().map(String::as_str).collect::<Vec<_>>(), &[], "de"),
+            want
+        );
+        // a first chapter that is already "Kapitel 1" does not spoil the rest
+        let mut mixed: Vec<&str> = names.iter().map(String::as_str).collect();
+        mixed[0] = "Kapitel 1";
+        assert_eq!(clean(&mixed, &["Der Federmann"], "de"), want);
+        // one name alone, or numbers that do not count up, stay what they are
+        assert_eq!(
+            clean(&["Apollo13", "Prolog", "Epilog"], &[], "de"),
+            ["Apollo13", "Prolog", "Epilog"]
+        );
     }
 
     #[test]

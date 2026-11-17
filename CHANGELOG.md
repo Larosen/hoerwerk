@@ -16,6 +16,8 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
   finds the finished file.
 - **Accounts:** the "last admin" rule is checked in the same lock and transaction as the change, so two admins can no
   longer remove each other. Password hashing runs outside the database lock, in blocking workers, at most four at once.
+- **Chapter names:** a counter stuck to the book title (`Der Federmann002`, `Der Federmann003` …) is recognised as a
+  counter, so these chapters become `Kapitel 2`, `Kapitel 3` … instead of staying as they are.
 - **Upload:** Cancel and Escape work in every phase (also while the session is being created) and clean up.
 - **Settings:** when the saved values cannot be loaded, the form stays locked and offers "Reload" instead of letting
   empty defaults be saved.
