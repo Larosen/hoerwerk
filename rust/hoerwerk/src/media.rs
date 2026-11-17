@@ -209,6 +209,43 @@ pub fn ffprobe_bin() -> String {
     env_or("FFPROBE", "ffprobe")
 }
 
+/// Largest stdout (ffprobe JSON) and stderr kept from a helper process.
+const MAX_STDOUT: usize = 32 << 20;
+const MAX_STDERR: usize = 256 << 10;
+
+/// Read to the end, but keep only the first `cap` bytes; the rest is read and dropped so the process never blocks.
+pub fn drain_head(r: &mut impl std::io::Read, cap: usize) -> Vec<u8> {
+    let mut keep = Vec::new();
+    let mut buf = [0u8; 16 << 10];
+    while let Ok(n) = r.read(&mut buf) {
+        if n == 0 {
+            break;
+        }
+        let room = cap.saturating_sub(keep.len());
+        keep.extend_from_slice(&buf[..n.min(room)]);
+    }
+    keep
+}
+
+/// Read to the end, but keep only the last `cap` bytes (the reason for a failure is at the end).
+pub fn drain_tail(r: &mut impl std::io::Read, cap: usize) -> Vec<u8> {
+    let mut keep: Vec<u8> = Vec::new();
+    let mut buf = [0u8; 16 << 10];
+    while let Ok(n) = r.read(&mut buf) {
+        if n == 0 {
+            break;
+        }
+        keep.extend_from_slice(&buf[..n]);
+        if keep.len() > cap * 2 {
+            keep.drain(..keep.len() - cap);
+        }
+    }
+    if keep.len() > cap {
+        keep.drain(..keep.len() - cap);
+    }
+    keep
+}
+
 /// Run argv, give up after `timeout`; stdout as bytes (None on failure to start or time out).
 pub fn run_output(argv: &[String], timeout: Duration) -> Option<(i32, Vec<u8>, String)> {
     let mut child = Command::new(&argv[0])
@@ -220,16 +257,8 @@ pub fn run_output(argv: &[String], timeout: Duration) -> Option<(i32, Vec<u8>, S
         .ok()?;
     let mut stdout = child.stdout.take()?;
     let mut stderr = child.stderr.take()?;
-    let out = std::thread::spawn(move || {
-        let mut b = Vec::new();
-        let _ = std::io::Read::read_to_end(&mut stdout, &mut b);
-        b
-    });
-    let err = std::thread::spawn(move || {
-        let mut s = String::new();
-        let _ = std::io::Read::read_to_string(&mut stderr, &mut s);
-        s
-    });
+    let out = std::thread::spawn(move || drain_head(&mut stdout, MAX_STDOUT));
+    let err = std::thread::spawn(move || String::from_utf8_lossy(&drain_tail(&mut stderr, MAX_STDERR)).into_owned());
     let start = Instant::now();
     let status = loop {
         match child.try_wait() {
@@ -389,6 +418,14 @@ pub fn image_type(data: &[u8]) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn drains_keep_only_the_cap_but_read_everything() {
+        let data: Vec<u8> = (0..100_000u32).map(|i| (i % 251) as u8).collect();
+        assert_eq!(super::drain_head(&mut &data[..], 1000), data[..1000]);
+        assert_eq!(super::drain_tail(&mut &data[..], 1000), data[data.len() - 1000..]);
+        assert_eq!(super::drain_tail(&mut &data[..10], 1000), data[..10]);
+    }
+
     use super::*;
 
     #[test]
