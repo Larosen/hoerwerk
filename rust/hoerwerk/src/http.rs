@@ -32,6 +32,8 @@ pub struct Call<'a> {
     pub timeout: Duration,
     pub follow: bool,
     pub limit: u64,
+    /// Connect only to public addresses, decided on the very addresses that are then used (no re-resolving).
+    pub public_only: bool,
 }
 
 impl<'a> Call<'a> {
@@ -44,6 +46,7 @@ impl<'a> Call<'a> {
             timeout: Duration::from_secs(20),
             follow: true,
             limit: 8 << 20,
+            public_only: false,
         }
     }
 
@@ -72,6 +75,11 @@ impl<'a> Call<'a> {
         self
     }
 
+    pub fn public_only(mut self) -> Self {
+        self.public_only = true;
+        self
+    }
+
     pub fn limit(mut self, bytes: u64) -> Self {
         self.limit = bytes;
         self
@@ -82,14 +90,18 @@ impl<'a> Call<'a> {
         let tls = ureq::tls::TlsConfig::builder()
             .root_certs(ureq::tls::RootCerts::PlatformVerifier)
             .build();
-        let agent: ureq::Agent = ureq::Agent::config_builder()
+        let config = ureq::Agent::config_builder()
             .timeout_global(Some(self.timeout))
             .max_redirects(if self.follow { 5 } else { 0 })
             .http_status_as_error(false)
             .user_agent(USER_AGENT)
             .tls_config(tls)
-            .build()
-            .into();
+            .build();
+        let agent = if self.public_only {
+            ureq::Agent::with_parts(config, ureq::unversioned::transport::DefaultConnector::default(), PublicResolver)
+        } else {
+            ureq::Agent::from(config)
+        };
         let mut builder = ureq::http::Request::builder().method(self.method).uri(self.url);
         for (k, v) in &self.headers {
             builder = builder.header(k, v);
@@ -217,6 +229,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn public_only_never_connects_to_loopback() {
+        // a listener that must not be reached, even though the URL points straight at it
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        l.set_nonblocking(true).unwrap();
+        let url = format!("http://127.0.0.1:{}/", l.local_addr().unwrap().port());
+        assert!(Call::new("GET", &url).timeout(3).public_only().send().is_err());
+        assert!(l.accept().is_err(), "a connection was made");
+        let url = format!("http://localhost:{}/", l.local_addr().unwrap().port());
+        assert!(Call::new("GET", &url).timeout(3).public_only().send().is_err());
+        assert!(l.accept().is_err(), "a connection was made");
+    }
+
+    #[test]
     fn addresses() {
         assert_eq!(origin("https://NTFY.example:8443/x"), "https://ntfy.example:8443");
         assert_eq!(origin("https://ntfy.sh"), "https://ntfy.sh:");
@@ -231,5 +256,30 @@ mod tests {
         ] {
             assert!(!valid_url(bad), "{bad}");
         }
+    }
+}
+
+/// Resolves like the system does, then drops every non-public address. The connection (and with it the TLS name
+/// check) uses exactly what this returns, so a second lookup cannot swap in an internal address afterwards.
+#[derive(Debug)]
+struct PublicResolver;
+
+impl ureq::unversioned::resolver::Resolver for PublicResolver {
+    fn resolve(
+        &self,
+        uri: &ureq::http::Uri,
+        config: &ureq::config::Config,
+        timeout: ureq::unversioned::transport::NextTimeout,
+    ) -> Result<ureq::unversioned::resolver::ResolvedSocketAddrs, ureq::Error> {
+        use ureq::unversioned::resolver::DefaultResolver;
+        let all = DefaultResolver::default().resolve(uri, config, timeout)?;
+        let mut out = self.empty();
+        for a in all.iter().filter(|a| crate::audible::global(a.ip())) {
+            out.push(*a);
+        }
+        if out.is_empty() {
+            return Err(ureq::Error::HostNotFound);
+        }
+        Ok(out)
     }
 }

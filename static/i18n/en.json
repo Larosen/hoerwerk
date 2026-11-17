@@ -1696,5 +1696,6 @@
  "Der Zweitfaktor konnte nicht gespeichert werden. Einzelheiten stehen im Protokoll.": "The second factor could not be saved. Details are in the log.",
  "Ersetzt den bisherigen Schlüssel; andere Geräte müssen sich danach neu anmelden. Der Code muss vom neuen Schlüssel stammen.": "Replaces the current key; other devices must sign in again afterwards. The code must come from the new key.",
  "Neuen Schlüssel einrichten": "Set up a new key",
- "Zum Ersetzen des Zweitfaktors zuerst Passwort und aktuellen Code eingeben": "To replace the second factor, first enter your password and a current code"
+ "Zum Ersetzen des Zweitfaktors zuerst Passwort und aktuellen Code eingeben": "To replace the second factor, first enter your password and a current code",
+ "Anfrage zu langsam": "Request too slow"
 }
