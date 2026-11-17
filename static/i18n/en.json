@@ -1689,5 +1689,12 @@
  "Prowlarr: unerwartete Antwort": "Prowlarr: unexpected answer",
  "http://prowlarr:9696": "http://prowlarr:9696",
  "API-Schlüssel von Prowlarr": "API key of Prowlarr",
- "Adresse und API-Schlüssel von Prowlarr (Einstellungen → Allgemein). Die Usenet-Indexer werden hinzugefügt, schon vorhandene bleiben, nichts wird gelöscht. Hörwerk fragt sie über Prowlarr ab.": "Address and API key of Prowlarr (Settings → General). Its Usenet indexers are added, existing ones stay, nothing is deleted. Hörwerk asks them through Prowlarr."
+ "Adresse und API-Schlüssel von Prowlarr (Einstellungen → Allgemein). Die Usenet-Indexer werden hinzugefügt, schon vorhandene bleiben, nichts wird gelöscht. Hörwerk fragt sie über Prowlarr ab.": "Address and API key of Prowlarr (Settings → General). Its Usenet indexers are added, existing ones stay, nothing is deleted. Hörwerk asks them through Prowlarr.",
+ "Ausschalten oder einen neuen Schlüssel einrichten geht nur mit Passwort und aktuellem Code.": "Switching off or setting up a new key needs your password and a current code.",
+ "Der Zweitfaktor konnte nicht ausgeschaltet werden": "The second factor could not be switched off",
+ "Der Zweitfaktor konnte nicht gespeichert werden (Datenbank)": "The second factor could not be saved (database)",
+ "Der Zweitfaktor konnte nicht gespeichert werden. Einzelheiten stehen im Protokoll.": "The second factor could not be saved. Details are in the log.",
+ "Ersetzt den bisherigen Schlüssel; andere Geräte müssen sich danach neu anmelden. Der Code muss vom neuen Schlüssel stammen.": "Replaces the current key; other devices must sign in again afterwards. The code must come from the new key.",
+ "Neuen Schlüssel einrichten": "Set up a new key",
+ "Zum Ersetzen des Zweitfaktors zuerst Passwort und aktuellen Code eingeben": "To replace the second factor, first enter your password and a current code"
 }

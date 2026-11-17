@@ -113,33 +113,41 @@ async function logout(): Promise<void> {
 }
 
 // -- second factor ------------------------------------------------------------
+/** The key for the authenticator app and the confirmation. `proof` (password and a current code) when a second factor
+ *  exists already and is replaced. */
+async function beginTotpSetup(box: HTMLElement, proof?: { password: string; code: string }): Promise<void> {
+  try {
+    const s = await api<{ secret: string; uri: string }>("POST", "/api/auth/totp/setup", proof);
+    const code = el("input", { inputmode: "numeric", placeholder: t("Code aus der App"), maxlength: "7", autocomplete: "one-time-code", class: "code" });
+    box.replaceChildren(
+      el("p", { class: "small" }, t("In der Authenticator-App ein Konto hinzufügen – auf dem Handy über den Link, sonst den Schlüssel abtippen:")),
+      el("p", {}, el("a", { href: s.uri }, t("In der App öffnen")), " · ", el("code", { class: "secret" }, s.secret.replace(/(.{4})/g, "$1 ").trim())),
+      ...(proof ? [el("p", { class: "muted small" }, t("Ersetzt den bisherigen Schlüssel; andere Geräte müssen sich danach neu anmelden. Der Code muss vom neuen Schlüssel stammen."))] : []),
+      el("div", { class: "row gap" }, code, el("button", { type: "button", class: "btn small primary", onclick: async () => {
+        try { await api("POST", "/api/auth/totp/confirm", { code: code.value.replace(/\s/g, "") }); toast(t("Zweitfaktor aktiv")); renderTotp(true); }
+        catch (e) { toast(errMsg(e), true); }
+      } }, t("Bestätigen"))));
+    code.focus();
+  } catch (e) { toast(errMsg(e), true); }
+}
+
 function renderTotp(active: boolean): void {
   const box = $("#totpBox");
   if (active) {
     const pw = el("input", { type: "password", placeholder: t("Passwort"), autocomplete: "current-password", maxlength: "256" });
     const code = el("input", { inputmode: "numeric", placeholder: t("Code"), maxlength: "7", autocomplete: "one-time-code", class: "code" });
     box.replaceChildren(el("p", { class: "ok-text" }, icon("check"), t("Aktiv – beim Anmelden fragt Hörwerk nach dem Code aus der App.")),
-      el("div", { class: "row gap wrap" }, pw, code, el("button", { type: "button", class: "btn small", onclick: async () => {
-        try { await api("POST", "/api/auth/totp/disable", { password: pw.value, code: code.value }); toast(t("Zweitfaktor ausgeschaltet")); renderTotp(false); }
-        catch (e) { toast(errMsg(e), true); }
-      } }, t("Ausschalten"))));
+      el("p", { class: "muted small" }, t("Ausschalten oder einen neuen Schlüssel einrichten geht nur mit Passwort und aktuellem Code.")),
+      el("div", { class: "row gap wrap" }, pw, code,
+        el("button", { type: "button", class: "btn small", onclick: async () => {
+          try { await api("POST", "/api/auth/totp/disable", { password: pw.value, code: code.value }); toast(t("Zweitfaktor ausgeschaltet")); renderTotp(false); }
+          catch (e) { toast(errMsg(e), true); }
+        } }, t("Ausschalten")),
+        el("button", { type: "button", class: "btn small", onclick: () => beginTotpSetup(box, { password: pw.value, code: code.value.replace(/\s/g, "") }) }, t("Neuen Schlüssel einrichten"))));
     return;
   }
   box.replaceChildren(el("p", { class: "muted small" }, t("Beim Anmelden zusätzlich ein Code aus einer Authenticator-App (z. B. Aegis, 2FAS oder Google Authenticator).")),
-    el("button", { type: "button", class: "btn small", onclick: async () => {
-      try {
-        const s = await api<{ secret: string; uri: string }>("POST", "/api/auth/totp/setup");
-        const code = el("input", { inputmode: "numeric", placeholder: t("Code aus der App"), maxlength: "7", autocomplete: "one-time-code", class: "code" });
-        box.replaceChildren(
-          el("p", { class: "small" }, t("In der Authenticator-App ein Konto hinzufügen – auf dem Handy über den Link, sonst den Schlüssel abtippen:")),
-          el("p", {}, el("a", { href: s.uri }, t("In der App öffnen")), " · ", el("code", { class: "secret" }, s.secret.replace(/(.{4})/g, "$1 ").trim())),
-          el("div", { class: "row gap" }, code, el("button", { type: "button", class: "btn small primary", onclick: async () => {
-            try { await api("POST", "/api/auth/totp/confirm", { code: code.value.replace(/\s/g, "") }); toast(t("Zweitfaktor aktiv")); renderTotp(true); }
-            catch (e) { toast(errMsg(e), true); }
-          } }, t("Bestätigen"))));
-        code.focus();
-      } catch (e) { toast(errMsg(e), true); }
-    } }, t("Einrichten")));
+    el("button", { type: "button", class: "btn small", onclick: () => beginTotpSetup(box) }, t("Einrichten")));
 }
 
 async function loadAudit(): Promise<void> {

@@ -384,6 +384,44 @@ class Accounts(ContractTest):
         status, _, body = self.server.request("POST", "/api/auth/login", {"name": name, "password": pw}, headers=OWN)
         self.assertEqual((status, json.loads(body)["ok"]), (200, True))
 
+    def test_second_factor_cannot_be_replaced_with_the_session_alone(self):
+        """An existing second factor changes only with password and a current code – a stolen session is not enough."""
+        import base64
+        import hashlib
+        import hmac as hmaclib
+
+        def code(secret: str, step: int) -> str:
+            key = base64.b32decode(secret + "=" * (-len(secret) % 8), casefold=True)
+            d = hmaclib.new(key, step.to_bytes(8, "big"), hashlib.sha1).digest()
+            o = d[-1] & 15
+            return f"{(int.from_bytes(d[o:o + 4], 'big') & 0x7FFFFFFF) % 1000000:06d}"
+
+        s = Server().start()                      # its own server: failed sign-ins of other tests count against an address
+        try:
+            admin = Client(s, **ADMIN)
+            name, pw = "Faktorwechsel", "Kaffee Garten Hund Regen 7"
+            admin.call("POST", "/api/users", {"name": name, "password": pw, "role": "user"})
+            user, other = Client(s, name, pw), Client(s, name, pw)
+            step = int(time.time() // 30)
+            first = user.call("POST", "/api/auth/totp/setup")
+            user.call("POST", "/api/auth/totp/confirm", {"code": code(first["secret"], step)})
+            # session alone: refused, and a confirmation without the proof as well
+            self.assertEqual(user.call("POST", "/api/auth/totp/setup", expect=None)[0], 403)
+            self.assertEqual(user.call("POST", "/api/auth/totp/confirm", {"code": "123456"}, expect=None)[0], 403)
+            # right password, wrong code and wrong password with a right code: refused
+            self.assertEqual(user.call("POST", "/api/auth/totp/setup", {"password": pw, "code": "000000"}, expect=None)[0], 403)
+            self.assertEqual(user.call("POST", "/api/auth/totp/setup", {"password": "falsch", "code": code(first["secret"], step + 1)}, expect=None)[0], 403)
+            # with both: a new key, and its first code is accepted at once
+            new = user.call("POST", "/api/auth/totp/setup", {"password": pw, "code": code(first["secret"], step + 1)})
+            self.assertNotEqual(new["secret"], first["secret"])
+            user.call("POST", "/api/auth/totp/confirm", {"code": code(new["secret"], step + 1)})  # the confirmation has its own memory of used steps
+            self.assertEqual(other.call("GET", "/api/requests", expect=None)[0], 401)           # other devices sign in again
+            self.assertEqual(user.call("GET", "/api/requests", expect=None)[0], 200)           # this one stays
+            # switching it off needs the same proof
+            self.assertEqual(user.call("POST", "/api/auth/totp/disable", {"password": pw}, expect=None)[0], 403)
+        finally:
+            s.cleanup()
+
 
 class Settings(ContractTest):
     def test_read_change_refuse(self):

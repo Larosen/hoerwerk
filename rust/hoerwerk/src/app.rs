@@ -71,6 +71,8 @@ pub struct App {
 pub struct Totp {
     pub tickets: HashMap<String, (i64, bool, f64, u32)>, // ticket -> (uid, persistent, expires, tries)
     pub pending: HashMap<i64, String>,
+    /// accounts that proved password and current code before replacing an existing second factor
+    pub replace_ok: std::collections::HashSet<i64>,
     pub used: HashMap<i64, i64>,
 }
 
