@@ -1556,6 +1556,26 @@ fn parse_dnb(xml: &str) -> Result<Vec<Value>> {
     Ok(out)
 }
 
+/// An album of Apple Music (iTunes search) as a candidate: for CDs that are no audiobook anywhere, e.g. spoken
+/// word with music. `runtime_min` is the sum of the track lengths (0 when unknown).
+pub fn from_itunes_album(d: &Value, runtime_min: i64) -> Value {
+    let cover = [s(d, "artworkUrl100"), s(d, "artworkUrl60")]
+        .into_iter()
+        .find(|x| !x.is_empty())
+        .map(|c| sub(rx!(r"/\d+x\d+bb\.(jpg|png)$"), c, "/1400x1400bb.$1"));
+    let release: String = s(d, "releaseDate").chars().take(10).collect();
+    let url = s(d, "collectionViewUrl").split('?').next().unwrap_or("").to_string();
+    book(
+        "applemusic",
+        json!({
+            "id": format!("applemusic:{}", text_of(&d["collectionId"])), "title": s(d, "collectionName").trim(),
+            "authors": names(s(d, "artistName")), "release_date": opt_str(&release), "runtime_min": runtime_min,
+            "genres": if s(d, "primaryGenreName").is_empty() { json!([]) } else { json!([s(d, "primaryGenreName")]) },
+            "cover_url": cover, "url": opt_str(&url),
+        }),
+    )
+}
+
 fn itunes_country(region: &str) -> &'static str {
     match region {
         "de" => "de",
@@ -1592,7 +1612,7 @@ impl Default for Providers {
             client: Client::default(),
             get: Box::new(provider_json),
             get_text: Box::new(provider_text),
-            fallbacks: vec!["audnexus", "apple", "openlibrary", "dnb"],
+            fallbacks: vec!["audnexus", "apple", "openlibrary", "dnb", "applemusic"],
         }
     }
 }
@@ -1682,6 +1702,59 @@ impl Providers {
             }
         }
         Ok(Vec::new())
+    }
+
+    /// Apple Music albums for CDs that are no audiobook anywhere: the first few hits, each with the sum of its
+    /// track lengths (one more request per album) – so the runtime can be compared with the files.
+    fn apple_albums(&self, hints: &Value, region: &str) -> Result<Vec<Value>> {
+        let ta = [s(hints, "title"), s(hints, "author")]
+            .into_iter()
+            .filter(|x| !x.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let term = if ta.is_empty() {
+            s(hints, "query").to_string()
+        } else {
+            ta
+        };
+        if term.is_empty() {
+            return Ok(Vec::new());
+        }
+        let country = itunes_country(region);
+        let params = [
+            ("term", term),
+            ("media", "music".into()),
+            ("entity", "album".into()),
+            ("country", country.into()),
+            ("limit", "6".into()),
+        ];
+        let data = (self.get)(&format!("https://itunes.apple.com/search?{}", form(&params)))?;
+        let mut out = Vec::new();
+        for d in data["results"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|d| !s(d, "collectionName").is_empty())
+            .take(3)
+        {
+            let id = text_of(&d["collectionId"]);
+            let minutes = (self.get)(&format!(
+                "https://itunes.apple.com/lookup?id={id}&entity=song&country={country}"
+            ))
+            .map(|l| {
+                let ms: f64 = l["results"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|r| r["wrapperType"] == "track")
+                    .filter_map(|r| r["trackTimeMillis"].as_f64())
+                    .sum();
+                (ms / 60000.0).round() as i64
+            })
+            .unwrap_or(0);
+            out.push(from_itunes_album(d, minutes));
+        }
+        Ok(out)
     }
 
     fn openlibrary(&self, hints: &Value) -> Result<Vec<Value>> {
@@ -1788,6 +1861,20 @@ impl Providers {
                 }
             }
         }
+        if self.fallbacks.contains(&"applemusic") {
+            match self.apple_albums(hints, region) {
+                Err(e) => notes.push(format!("Apple Music: {e}")),
+                Ok(h) => {
+                    if !h.is_empty() {
+                        notes.push(t(
+                            "{n} Treffer bei {source}",
+                            &[("n", &h.len().to_string()), ("source", "Apple Music")],
+                        ));
+                    }
+                    found.extend(h);
+                }
+            }
+        }
         let mut all = ranked;
         all.extend(found);
         (rank(&all, hints), notes, failed)
@@ -1854,6 +1941,37 @@ mod tests {
 <datafield tag="336" ind1=" " ind2=" "><subfield code="a">Text</subfield><subfield code="b">txt</subfield></datafield>
 </record></recordData></record>
 </records></searchRetrieveResponse>"#;
+
+    #[test]
+    fn apple_music_albums_come_with_cover_and_summed_runtime() {
+        let providers = Providers {
+            client: Client::new(Box::new(|_| Ok(json!({"products": []})))),
+            get: Box::new(|url| {
+                if url.contains("/lookup?") {
+                    Ok(json!({"results": [
+                        {"wrapperType": "collection"},
+                        {"wrapperType": "track", "trackTimeMillis": 1_900_000},
+                        {"wrapperType": "track", "trackTimeMillis": 1_880_000}]}))
+                } else {
+                    assert!(url.contains("entity=album") && url.contains("media=music"), "{url}");
+                    Ok(
+                        json!({"results": [{"collectionId": 42, "collectionName": "Rilke Projekt - Überfließende Himmel",
+                        "artistName": "Schönherz & Fleer", "releaseDate": "2004-01-01T08:00:00Z", "primaryGenreName": "Klassik",
+                        "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/x/100x100bb.jpg",
+                        "collectionViewUrl": "https://music.apple.com/de/album/x/42?uo=4"}]}),
+                    )
+                }
+            }),
+            get_text: Box::new(|_| Ok("<x/>".to_string())),
+            fallbacks: vec!["applemusic"],
+        };
+        let hints = json!({"title": "Überfließende Himmel", "author": "Rilke Projekt", "duration": 3780.0});
+        let (ranked, _) = providers.lookup(&hints, "de", true);
+        let b = &ranked[0];
+        assert_eq!((s(b, "source"), b["runtime_min"].as_i64()), ("applemusic", Some(63)));
+        assert!(s(b, "cover_url").ends_with("/1400x1400bb.jpg"), "{}", s(b, "cover_url"));
+        assert_eq!(b["match"]["duration"].as_f64(), Some(1.0));
+    }
 
     #[test]
     fn cds_from_the_national_library_are_found_when_audible_has_nothing() {

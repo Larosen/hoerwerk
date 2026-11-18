@@ -743,7 +743,7 @@ function fmtAgo(ts: number | null | undefined): string {
 
 const SOURCE_NAMES: Record<string, string> = {
   audible: "Audible", audnexus: "Audnexus", bookbeat: "BookBeat", thalia: "Thalia",
-  apple: "Apple Books", openlibrary: "Open Library", dnb: "Deutsche Nationalbibliothek",
+  apple: "Apple Books", openlibrary: "Open Library", dnb: "Deutsche Nationalbibliothek", applemusic: "Apple Music",
 };
 
 translateDom(document.body);
