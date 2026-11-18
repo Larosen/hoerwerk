@@ -1,6 +1,7 @@
-//! Audible's listener ratings for the books of the library: fetched once per book (by its ASIN) in the
-//! background, slowly, kept for a month, and used to sort the library – so badly rated books can be found and
-//! looked at. Books without an ASIN have no rating.
+//! Audible's data for the books of the library: the listeners' rating and the runtime, fetched once per book (by
+//! its ASIN) in the background, slowly, kept for a month. The rating sorts the library – so badly rated books can
+//! be found – and the runtime shows books that are another recording than the one Audible lists. Books without an
+//! ASIN have neither.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,6 +26,8 @@ const MAX_FAILS: usize = 5;
 struct Item {
     rating: f64,
     count: i64,
+    /// Audible's runtime of the title in minutes (0 = unknown)
+    runtime_min: i64,
     at: f64,
 }
 
@@ -51,7 +54,13 @@ impl Ratings {
                     Item {
                         rating: v["r"].as_f64().unwrap_or(0.0),
                         count: v["n"].as_i64().unwrap_or(0),
-                        at: v["t"].as_f64().unwrap_or(0.0),
+                        runtime_min: v["m"].as_i64().unwrap_or(0),
+                        // an older entry without the runtime is fetched again
+                        at: if v["m"].is_null() {
+                            0.0
+                        } else {
+                            v["t"].as_f64().unwrap_or(0.0)
+                        },
                     },
                 );
             }
@@ -77,11 +86,25 @@ impl Ratings {
             .collect()
     }
 
+    /// asin -> Audible's runtime in minutes, where known.
+    pub fn runtimes(&self) -> HashMap<String, i64> {
+        self.lock()
+            .iter()
+            .filter(|(_, i)| i.runtime_min > 0)
+            .map(|(a, i)| (a.clone(), i.runtime_min))
+            .collect()
+    }
+
     fn save(&self, db: &Db) {
         let map: serde_json::Map<String, Value> = self
             .lock()
             .iter()
-            .map(|(a, i)| (a.clone(), json!({"r": i.rating, "n": i.count, "t": i.at})))
+            .map(|(a, i)| {
+                (
+                    a.clone(),
+                    json!({"r": i.rating, "n": i.count, "m": i.runtime_min, "t": i.at}),
+                )
+            })
             .collect();
         let _ = db.put(KEY, &Value::Object(map));
     }
@@ -155,14 +178,15 @@ impl Ratings {
             while app.pipeline.busy() && !self.stop.load(Ordering::SeqCst) {
                 std::thread::sleep(Duration::from_secs(5));
             }
-            match app.providers.client.rating(asin, &region) {
-                Ok((rating, count)) => {
+            match app.providers.client.basics(asin, &region) {
+                Ok(b) => {
                     fails = 0;
                     self.lock().insert(
                         asin.clone(),
                         Item {
-                            rating,
-                            count,
+                            rating: b.rating,
+                            count: b.ratings,
+                            runtime_min: b.runtime_min,
                             at: text::now(),
                         },
                     );
@@ -175,6 +199,7 @@ impl Ratings {
                         Item {
                             rating: 0.0,
                             count: 0,
+                            runtime_min: 0,
                             at: text::now(),
                         },
                     );
@@ -185,7 +210,7 @@ impl Ratings {
                         text::warn(
                             "Bibliothek",
                             &t(
-                                "Bewertungen: Audible antwortet nicht – abgebrochen, später erneut versuchen",
+                                "Audible-Daten: Audible antwortet nicht – abgebrochen, später erneut versuchen",
                                 &[],
                             ),
                         );
@@ -204,7 +229,7 @@ impl Ratings {
         text::info(
             "Bibliothek",
             &t(
-                "Audible-Bewertungen: {done} von {total} Titeln abgefragt",
+                "Audible-Daten: {done} von {total} Titeln abgefragt",
                 &[("done", &done.to_string()), ("total", &total.to_string())],
             ),
         );

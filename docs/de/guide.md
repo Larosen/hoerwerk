@@ -75,9 +75,16 @@ danach per Knopf; sie läuft im Hintergrund, ein Buch nach dem anderen, und weic
 Befunds zeigt nur die betroffenen Bücher, **Sortieren → Zustand** die schlechtesten zuerst. Behoben wird mit den
 vorhandenen Knöpfen (*Kapitel* mit Vorschau, *Besser*, *Korrigieren*).
 
-**Audible-Bewertungen** (unabhängig vom Zustand): *Bewertungen laden* holt die Hörer-Bewertungen der Bücher mit ASIN,
+**Audible-Daten** (unabhängig vom Zustand): *Audible-Daten laden* holt Hörer-Bewertung und Laufzeit der Bücher mit ASIN,
 langsam im Hintergrund, und merkt sie einen Monat. Danach lässt sich die Bibliothek nach **Audible-Bewertung**
 sortieren (schlechteste oder beste zuerst); Stimmen zählen mit, 4,9 von zwei Personen schlägt 4,6 von zweitausend nicht.
+Weicht die Länge der Datei stark von Audibles Laufzeit ab (mehr als 8 % und 5 Minuten), erscheint der Befund
+*Laufzeit weicht stark von Audible ab* – meist eine andere Fassung.
+
+**Echte Kapitelnamen:** Würden beim Umbenennen nur „Kapitel 7“ übrig bleiben, sucht Hörwerk zuerst online: die Kapitel
+von Audible (gleiche Länge ±2 %, gleiche Kapitelzahl, aussagekräftige Namen) oder die Titel der CD bei Apple Music
+(gleiche Titelzahl, jedes Kapitel beginnt dort, wo der Titel davor endet, Gesamtlänge ±3 %). Erst danach wird nummeriert.
+Die Vorschau zeigt, woher ein Name kommt.
 
 ### Downloads mit mehreren Bänden
 

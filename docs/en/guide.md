@@ -74,9 +74,16 @@ background, one book at a time, and steps aside for new books. Tapping a finding
 **Sort → Condition** puts the worst first. Fix them with the existing buttons (*Chapters* with preview, *Better*,
 *Correct*).
 
-**Audible ratings** (independent of the condition): *Load ratings* fetches the listener ratings of the books that have
-an ASIN, slowly in the background, and keeps them for a month. The library can then be sorted by **Audible rating**
-(worst or best first); votes count, 4.9 from two people does not beat 4.6 from two thousand.
+**Audible data** (independent of the condition): *Load Audible data* fetches the listener rating and the runtime of the
+books that have an ASIN, slowly in the background, and keeps them for a month. The library can then be sorted by
+**Audible rating** (worst or best first); votes count, 4.9 from two people does not beat 4.6 from two thousand. If the
+file's length is far from Audible's runtime (more than 8 % and 5 minutes), the finding *Length differs a lot from
+Audible* appears – usually another edition.
+
+**Real chapter names:** if renaming would only leave "Chapter 7", Hörwerk first looks online: Audible's chapters (same
+length ±2 %, same number of chapters, names that say something) or the track titles of the CD at Apple Music (same
+number of tracks, every chapter starts where the track before it ends, total length ±3 %). Only then it numbers. The
+preview says where a name comes from.
 
 ### Downloads with several volumes
 

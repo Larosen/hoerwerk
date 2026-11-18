@@ -21,13 +21,14 @@ use crate::text::{self, t};
 
 const KEY: &str = "library_check";
 /// bump when the rules change: every book is looked at again
-const VERSION: i64 = 1;
+const VERSION: i64 = 2;
 /// A book longer than this without chapters is hard to navigate.
 const LONG_BOOK: f64 = 1800.0;
 
 /// (code, points lost) – the score is 100 minus these.
-const WEIGHTS: [(&str, i64); 8] = [
+const WEIGHTS: [(&str, i64); 9] = [
     ("chapters", 35),
+    ("runtime_off", 25),
     ("chapters_part", 12),
     ("no_chapters", 15),
     ("no_cover", 15),
@@ -41,6 +42,7 @@ const WEIGHTS: [(&str, i64); 8] = [
 pub fn issue_text(code: &str) -> String {
     match code {
         "chapters" => t("Kapitelnamen wiederholen den Titel oder sagen nichts", &[]),
+        "runtime_off" => t("Laufzeit weicht stark von Audible ab (andere Fassung?)", &[]),
         "chapters_part" => t("Einzelne Kapitelnamen lassen sich bereinigen", &[]),
         "no_chapters" => t("Keine Kapitel", &[]),
         "no_cover" => t("Cover fehlt", &[]),
@@ -111,6 +113,28 @@ struct Item {
     mtime: f64,
     score: i64,
     issues: Vec<String>,
+    asin: String,
+    /// length of the M4B in seconds (0 = unknown)
+    duration: f64,
+}
+
+/// Audible lists another length than the file has: more than 8 % and 5 minutes apart – most likely another
+/// recording or an abridged/unabridged mix-up. Audible's own figures are rounded, so small gaps are normal.
+pub fn runtime_off(duration_s: f64, audible_min: i64) -> bool {
+    let rt = audible_min as f64 * 60.0;
+    duration_s > 0.0 && rt > 0.0 && (duration_s - rt).abs() > (rt * 0.08).max(300.0)
+}
+
+impl Item {
+    /// Score and findings including the online one: the length compared with Audible's (known once the Audible
+    /// data of the book was fetched).
+    fn effective(&self, runtimes: &HashMap<String, i64>) -> (i64, Vec<String>) {
+        let mut issues = self.issues.clone();
+        if runtimes.get(&self.asin).is_some_and(|m| runtime_off(self.duration, *m)) {
+            issues.push("runtime_off".to_string());
+        }
+        (score_of(&issues), issues)
+    }
 }
 
 pub struct Health {
@@ -133,6 +157,8 @@ impl Health {
                     Item {
                         mtime: v["m"].as_f64().unwrap_or(0.0),
                         score: v["s"].as_i64().unwrap_or(0),
+                        asin: v["a"].as_str().unwrap_or("").to_string(),
+                        duration: v["d"].as_f64().unwrap_or(0.0),
                         issues: v["i"]
                             .as_array()
                             .into_iter()
@@ -155,11 +181,12 @@ impl Health {
         self.items.lock().unwrap_or_else(|p| p.into_inner())
     }
 
-    /// path -> (score, findings) of the books looked at so far.
-    pub fn snapshot(&self) -> HashMap<String, (i64, Vec<String>)> {
+    /// path -> (score, findings) of the books looked at so far; `runtimes` (asin -> Audible's minutes) adds the
+    /// online finding where Audible's data is known.
+    pub fn snapshot(&self, runtimes: &HashMap<String, i64>) -> HashMap<String, (i64, Vec<String>)> {
         self.lock()
             .iter()
-            .map(|(p, i)| (p.clone(), (i.score, i.issues.clone())))
+            .map(|(p, i)| (p.clone(), i.effective(runtimes)))
             .collect()
     }
 
@@ -180,7 +207,12 @@ impl Health {
         let items: serde_json::Map<String, Value> = self
             .lock()
             .iter()
-            .map(|(p, i)| (p.clone(), json!({"m": i.mtime, "s": i.score, "i": i.issues})))
+            .map(|(p, i)| {
+                (
+                    p.clone(),
+                    json!({"m": i.mtime, "s": i.score, "i": i.issues, "a": i.asin, "d": i.duration}),
+                )
+            })
             .collect();
         let _ = db.put(KEY, &json!({"v": VERSION, "items": items}));
     }
@@ -193,13 +225,14 @@ impl Health {
             .iter()
             .filter_map(|e| e["path"].as_str().map(str::to_string))
             .collect();
+        let runtimes = app.ratings.runtimes();
         let mut counts: HashMap<&str, usize> = HashMap::new();
         let (mut sum, mut n) = (0i64, 0i64);
-        for (p, i) in items.iter().filter(|(p, _)| known.contains(*p)) {
-            let _ = p;
-            sum += i.score;
+        for (_, i) in items.iter().filter(|(p, _)| known.contains(*p)) {
+            let (score, issues) = i.effective(&runtimes);
+            sum += score;
             n += 1;
-            for c in &i.issues {
+            for c in &issues {
                 if let Some((code, _)) = WEIGHTS.iter().find(|(w, _)| w == c) {
                     *counts.entry(code).or_default() += 1;
                 }
@@ -319,6 +352,8 @@ fn check_entry(app: &App, entry: &Value) -> Item {
         mtime: entry["mtime"].as_f64().unwrap_or(0.0),
         score: score_of(&issues),
         issues,
+        asin: entry["asin"].as_str().unwrap_or("").to_string(),
+        duration,
     }
 }
 
@@ -372,6 +407,28 @@ mod tests {
                 .iter()
                 .all(|i| i != "chapters")
         );
+    }
+
+    #[test]
+    fn another_length_than_audible_lists_is_found() {
+        // 10 h file against 10 h 20 min at Audible: rounding, fine; 6 h against 10 h: another recording
+        assert!(!runtime_off(36_000.0, 620));
+        assert!(runtime_off(21_600.0, 600));
+        // short books: five minutes of slack
+        assert!(!runtime_off(4_000.0, 70));
+        assert!(runtime_off(3_000.0, 70));
+        // unknown on either side: no finding
+        assert!(!runtime_off(0.0, 600) && !runtime_off(3_600.0, 0));
+        let item = Item {
+            mtime: 0.0,
+            score: 100,
+            issues: vec![],
+            asin: "B1".into(),
+            duration: 21_600.0,
+        };
+        let runtimes: HashMap<String, i64> = [("B1".to_string(), 600)].into();
+        assert_eq!(item.effective(&runtimes), (75, vec!["runtime_off".to_string()]));
+        assert_eq!(item.effective(&HashMap::new()), (100, vec![]));
     }
 
     #[test]

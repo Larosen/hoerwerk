@@ -87,7 +87,7 @@ pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
         limit,
         sort,
         &crate::library::Extra {
-            health: &app.health.snapshot(),
+            health: &app.health.snapshot(&app.ratings.runtimes()),
             ratings: &app.ratings.snapshot(),
             issue,
         },
@@ -365,10 +365,7 @@ pub async fn ratings_run(app: Arc<App>, req: Req, _: HashMap<String, String>) ->
     };
     if on {
         if app.ratings.start(&app) {
-            text::info(
-                "Bibliothek",
-                &t("Audible-Bewertungen werden abgefragt (im Hintergrund)", &[]),
-            );
+            text::info("Bibliothek", &t("Audible-Daten werden abgefragt (im Hintergrund)", &[]));
         }
     } else {
         app.ratings.stop();

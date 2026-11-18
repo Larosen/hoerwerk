@@ -226,7 +226,8 @@ pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
         .unwrap_or_default();
     if req.get("apply") == &Value::Bool(false) {
         // preview: what each chapter is now, what it would become and why – nothing is written
-        let plan = blocking(move || Ok::<_, crate::pipeline::PipeError>(a.pipeline.plan_tidy(&f, &book, &name))).await;
+        let plan =
+            blocking(move || Ok::<_, crate::pipeline::PipeError>(a.pipeline.plan_tidy(&a, &f, &book, &name))).await;
         let Ok(plan) = plan else {
             return error(500, t("Die Kapitel konnten nicht gelesen werden", &[]));
         };

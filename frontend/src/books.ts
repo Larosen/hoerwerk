@@ -901,12 +901,12 @@ function renderCheck(): void {
   const rateBtn = r ? el("button", { type: "button", class: "btn small", onclick: async () => {
     try {
       books.ratings = await api<LibraryRatings>("POST", "/api/library/ratings", { on: !r.running });
-      toast(books.ratings.running ? t("Audible-Bewertungen werden abgefragt – im Hintergrund, langsam") : t("Abfrage angehalten"), "info");
+      toast(books.ratings.running ? t("Audible-Daten werden abgefragt – im Hintergrund, langsam") : t("Abfrage angehalten"), "info");
       loadCheck();
     } catch (e) { toast(errMsg(e), true); }
-  } }, r.running ? t("Abfrage anhalten") : r.rated ? t("Bewertungen aktualisieren") : t("Bewertungen laden")) : null;
-  const rateNote = r ? (r.running ? t("Bewertungen … {done} von {total}", { done: r.done, total: r.total })
-    : t("{rated} von {n} Büchern mit Audible-Bewertung", { rated: r.rated, n: r.with_asin })) : "";
+  } }, r.running ? t("Abfrage anhalten") : r.rated ? t("Audible-Daten aktualisieren") : t("Audible-Daten laden")) : null;
+  const rateNote = r ? (r.running ? t("Audible-Daten … {done} von {total}", { done: r.done, total: r.total })
+    : t("{rated} von {n} Büchern mit Audible-Bewertung und -Laufzeit", { rated: r.rated, n: r.with_asin })) : "";
   box.replaceChildren(el("div", { class: "row gap wrap" }, go, el("span", { class: "muted small" }, note)),
     ...(rateBtn ? [el("div", { class: "row gap wrap" }, rateBtn, el("span", { class: "muted small" }, rateNote))] : []),
     ...(chips.length ? [el("div", { class: "chips" }, chips)] : []));

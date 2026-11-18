@@ -3767,16 +3767,32 @@ impl Pipeline {
     }
 
     /// What cleaning the chapter names of a finished M4B would do – nothing is written. None: fewer than two chapters.
-    pub fn plan_tidy(&self, m4b: &Path, book: &Value, name: &str) -> Option<TidyPlan> {
+    /// Names that would only be numbered ("Kapitel 7") are first looked for online: Audible's chapters of the
+    /// book, or the track names of the CD – adopted only when they surely belong to the file.
+    pub fn plan_tidy(&self, app: &App, m4b: &Path, book: &Value, name: &str) -> Option<TidyPlan> {
         let current = encoder::file_chapters(m4b);
         if current.len() < 2 {
             return None;
         }
         let titles: Vec<String> = current.iter().map(|c| c.title.clone()).collect();
-        let cleaned = crate::chapters::clean_titles(&titles, &Self::known_names(book), &Self::chapter_lang(book, name));
+        let lang = Self::chapter_lang(book, name);
+        let known = Self::known_names(book);
+        let cleaned = crate::chapters::clean_titles(&titles, &known, &lang);
+        let (mut names, mut reasons) = (cleaned.names, cleaned.reasons);
+        let numbered = reasons
+            .iter()
+            .filter(|r| r.iter().any(|c| matches!(*c, "numbered" | "all_numbered")))
+            .count();
+        if numbered * 2 >= current.len()
+            && sbool(&app.settings(), "ab_fallback", true)
+            && let Some((online, source)) = self.online_names(app, book, m4b, &current, &known, &lang)
+        {
+            names = online;
+            reasons = vec![vec![source]; current.len()];
+        }
         let wanted = current
             .iter()
-            .zip(&cleaned.names)
+            .zip(&names)
             .map(|(c, title)| Chapter {
                 start: c.start,
                 title: title.clone(),
@@ -3785,15 +3801,61 @@ impl Pipeline {
         Some(TidyPlan {
             current,
             wanted,
-            reasons: cleaned.reasons,
+            reasons,
         })
+    }
+
+    /// Real chapter names from outside for a file whose own are only numbers: Audible's chapters (the book has an
+    /// ASIN) or the tracks of a CD at Apple Music. Only when the length and the structure agree.
+    fn online_names(
+        &self,
+        app: &App,
+        book: &Value,
+        m4b: &Path,
+        current: &[Chapter],
+        known: &[String],
+        lang: &str,
+    ) -> Option<(Vec<String>, &'static str)> {
+        let region = sval(&app.settings(), "ab_region", "de");
+        let dur = probe_cached(m4b)["duration"].as_f64().unwrap_or(0.0);
+        let asin = s(book, "asin");
+        let finish = |names: Vec<String>, source: &'static str| {
+            // the names go through the same cleaning as any (a repeated title in front of every track goes)
+            let cleaned = crate::chapters::clean_titles(&names, known, lang).names;
+            (!crate::chapters::looks_generic(&cleaned)).then_some((cleaned, source))
+        };
+        if !asin.is_empty()
+            && let Some(data) = app.providers.client.chapters(asin, &region)
+        {
+            let chs = data["chapters"].as_array().cloned().unwrap_or_default();
+            let shop_len = match data["runtime_ms"].as_f64().unwrap_or(0.0) / 1000.0 {
+                0.0 => chs.last().and_then(|c| c["start"].as_f64()).unwrap_or(0.0),
+                x => x,
+            };
+            let titles: Vec<String> = chs.iter().map(|c| s(c, "title").to_string()).collect();
+            if let Some(names) = crate::chapters::adopt_audible(current.len(), dur, shop_len, &titles)
+                && let Some(done) = finish(names, "audible")
+            {
+                return Some(done);
+            }
+        }
+        let hints = json!({"title": s(book, "title"), "author": book["authors"].as_array().and_then(|a| a.first()).cloned().unwrap_or(Value::Null)});
+        let starts: Vec<f64> = current.iter().map(|c| c.start).collect();
+        for tracks in app.providers.cd_tracklists(&hints, &region).ok()? {
+            if let Some(names) = crate::chapters::adopt_tracks(&starts, dur, &tracks)
+                && let Some(done) = finish(names, "applemusic")
+            {
+                return Some(done);
+            }
+        }
+        None
     }
 
     /// Clean the chapter names of a finished M4B in place (a library book, or "Kapitel aufräumen"): the rules
     /// of `chapters::clean_titles`; the chapter starts stay. (changed, first, last) – or None when nothing changed.
     /// The decisions go to the log.
     pub fn tidy_file(&self, app: &App, m4b: &Path, book: &Value, name: &str) -> Res<Option<(usize, String, String)>> {
-        let Some(plan) = self.plan_tidy(m4b, book, name) else {
+        let Some(plan) = self.plan_tidy(app, m4b, book, name) else {
             return Ok(None);
         };
         let changed = plan.changed();

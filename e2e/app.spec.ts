@@ -136,7 +136,7 @@ test("Bibliothek prüfen: Zustand, Befunde als Filter, Sortierung nach Zustand",
   await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
   await expect.poll(() => urls.at(-1) || "").toContain("sort=health");
   // Audible's ratings: shown in the row, sorted, fetched on request
-  await page.locator("#libCheck").getByRole("button", { name: "Bewertungen aktualisieren" }).waitFor();
+  await page.locator("#libCheck").getByRole("button", { name: "Audible-Daten aktualisieren" }).waitFor();
   await page.locator(".sort-bar").getByRole("button", { name: /Audible-Bewertung \(schlechteste/ }).click();
   await expect.poll(() => urls.at(-1) || "").toContain("sort=rating");
   // start the check
