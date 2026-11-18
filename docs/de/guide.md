@@ -109,8 +109,11 @@ Kapitelnamen bleiben.
 ### Weitere Metadaten-Quellen
 
 Ist Audible nicht erreichbar und die ASIN bekannt, kommen dieselben Daten von **Audnexus**. Findet Audible nichts,
-werden **Apple Books** und **Open Library** gefragt. Diese Treffer haben weder Laufzeit noch Sprecher und werden daher
-nie automatisch abgelegt. Abschalten mit `METADATA_FALLBACK=false`.
+werden **Apple Books** und **Open Library** gefragt; deren Treffer haben weder Laufzeit noch Sprecher und werden daher
+nie automatisch abgelegt. Findet Audible nichts oder nur schwache Treffer (Werke, die es nur als CD gibt), fragt
+Hörwerk auch die **Deutsche Nationalbibliothek** (offene SRU-Schnittstelle, nur Tonträger). Ihre Treffer haben Laufzeit
+und oft Sprecher; sie werden nur dann automatisch übernommen, wenn Titel, Autor und Laufzeit sehr genau passen, sonst
+stehen sie zur Auswahl. Abschalten mit `METADATA_FALLBACK=false`.
 
 ### Audiobookshelf
 

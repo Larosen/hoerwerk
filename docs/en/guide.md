@@ -106,8 +106,11 @@ Chapter names under *automatic* are cleaned for the whole book: text every track
 ### More metadata sources
 
 If Audible is unreachable and the ASIN is known, the same data comes from **Audnexus**. If Audible finds nothing,
-**Apple Books** and **Open Library** are asked. Those matches have no runtime or narrator, so they are never filed
-automatically. Switch off with `METADATA_FALLBACK=false`.
+**Apple Books** and **Open Library** are asked; those matches have no runtime or narrator, so they are never filed
+automatically. If Audible finds nothing or only weak matches (works that exist only as a CD), Hörwerk also asks the
+**German National Library** (open SRU interface, audio media only). Its matches have a runtime and often narrators;
+they are filed automatically only when title, author and runtime fit very closely, otherwise they are offered for
+you to pick. Switch off with `METADATA_FALLBACK=false`.
 
 ### Audiobookshelf
 

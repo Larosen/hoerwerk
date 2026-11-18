@@ -3,6 +3,13 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.14 – 2026-11-18
+
+- **Works that exist only as a CD:** when Audible finds nothing or only weak matches, Hörwerk also asks the German
+  National Library (audio media only). Its matches carry runtime, publisher, year and often narrators, are ranked
+  together with Audible's, and are taken over automatically only when title, author and runtime fit very closely.
+  The job log says how many matches came from there. `METADATA_FALLBACK=false` switches it off.
+
 ## 1.0.13 – 2026-11-17
 
 - **Second factor:** replacing or switching off an existing second factor needs the password and a current code; a
