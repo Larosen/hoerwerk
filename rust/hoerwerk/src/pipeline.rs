@@ -2583,7 +2583,7 @@ impl Pipeline {
             self.link_request(app, slot, &b);
         } else if ranked
             .first()
-            .is_some_and(|r| !audible::AUTO_SOURCES.contains(&s(r, "source")))
+            .is_some_and(|r| !audible::AUTO_SOURCES.contains(&s(r, "source")) && s(r, "source") != "dnb")
         {
             slot.say(&t(
                 "Nur Treffer außerhalb von Audible – bitte prüfen (ohne Laufzeit und Sprecher)",

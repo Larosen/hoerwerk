@@ -40,7 +40,6 @@
  "Antwort ist kein Newznab-XML": "Response is not Newznab XML",
  "Antwort zu groß": "Response too large",
  "Antwort zu groß (> {mb} MB)": "Response too large (> {mb} MB)",
- "Apple Books / Open Library, wenn Audible nichts findet": "Apple Books / Open Library when Audible finds nothing",
  "Audible": "Audible",
  "Audible nicht erreichbar: {error}": "Audible unreachable: {error}",
  "Audible, wenn Laufzeit passt": "Audible, if the runtime matches",
@@ -1725,5 +1724,6 @@
  "{changed} von {total} Kapiteln werden geändert": "{changed} of {total} chapters will change",
  "{n} Hörbücher ausgewählt": "{n} books selected",
  "{n} Kapitelnamen umbenannt": "{n} chapter names renamed",
- "{n} bleiben unverändert": "{n} stay as they are"
+ "{n} bleiben unverändert": "{n} stay as they are",
+ "Deutsche Nationalbibliothek und Apple Music (CDs), Apple Books und Open Library, wenn Audible nichts Passendes findet": "German National Library and Apple Music (CDs), Apple Books and Open Library when Audible finds nothing suitable"
 }

@@ -36,6 +36,8 @@ const USER_AGENT: &str = "Hoerwerk/7 (+https://github.com/Larosen/hoerwerk)";
 const MAX_RESPONSE: u64 = 8 * 1024 * 1024;
 const MAX_IMAGE: u64 = 15 * 1024 * 1024;
 pub const AUTO_SOURCES: [&str; 2] = ["audible", "audnexus"];
+/// Below this (or without a clear lead) Audible's best hit is not convincing and the other sources are asked too.
+const WEAK_MATCH: f64 = 0.8;
 
 #[derive(Debug, Clone)]
 pub struct AudibleError(pub String);
@@ -1264,7 +1266,7 @@ fn host_ok(url: &str) -> bool {
     url.to_lowercase().starts_with("https://")
         && matches!(
             hostname(url).to_lowercase().as_str(),
-            "api.audnex.us" | "itunes.apple.com" | "openlibrary.org"
+            "api.audnex.us" | "itunes.apple.com" | "openlibrary.org" | "services.dnb.de"
         )
 }
 
@@ -1357,6 +1359,223 @@ pub fn from_openlibrary(d: &Value) -> Value {
     )
 }
 
+/// The text of a MARC subfield without the "non-sorting" control characters the library puts around articles.
+fn marc_clean(text: &str) -> String {
+    let s: String = text.chars().filter(|c| !matches!(*c, '\u{98}' | '\u{9c}')).collect();
+    s.trim()
+        .trim_end_matches([' ', '/', ':', ';', ',', '='])
+        .trim()
+        .to_string()
+}
+
+/// "Wehrle, Martin" -> "Martin Wehrle"
+fn marc_name(text: &str) -> String {
+    let n = marc_clean(text);
+    match n.split_once(',') {
+        Some((last, first)) if !first.trim().is_empty() => format!("{} {}", first.trim(), last.trim()),
+        _ => n,
+    }
+}
+
+/// Minutes from an extent like "1 CD (70 Min.)", "2 CDs (2 Std. 10 Min.)" (0 when it names none).
+fn marc_minutes(extent: &str) -> i64 {
+    let hours = rx::search(rx!(r"(\d+)\s*(?:Std|h)\b"), extent)
+        .and_then(|c| c[1].parse::<i64>().ok())
+        .unwrap_or(0);
+    let mins = rx::search(rx!(r"(\d+)\s*Min"), extent)
+        .and_then(|c| c[1].parse::<i64>().ok())
+        .unwrap_or(0);
+    hours * 60 + mins
+}
+
+/// One record of the German National Library (MARC 21 XML) as a candidate; None when it is not an audio medium
+/// (the library also holds the printed book). Runtime comes from the extent ("1 CD (70 Min.)").
+pub fn from_dnb(rec: roxmltree::Node) -> Option<Value> {
+    let fields = |tag: &str| -> Vec<roxmltree::Node> {
+        rec.children()
+            .filter(|n| n.has_tag_name("datafield") && n.attribute("tag") == Some(tag))
+            .collect()
+    };
+    let subs = |f: roxmltree::Node, code: &str| -> Vec<String> {
+        f.children()
+            .filter(|n| n.has_tag_name("subfield") && n.attribute("code") == Some(code))
+            .filter_map(|n| n.text())
+            .map(str::to_string)
+            .collect()
+    };
+    let first = |tag: &str, code: &str| -> String {
+        fields(tag)
+            .into_iter()
+            .find_map(|f| subs(f, code).into_iter().next())
+            .map(|x| marc_clean(&x))
+            .unwrap_or_default()
+    };
+    let extent = first("300", "a");
+    let spoken = fields("336").into_iter().any(|f| {
+        subs(f, "b").iter().any(|c| c == "spw" || c == "prm")
+            || subs(f, "a")
+                .iter()
+                .any(|c| c.contains("gesprochenes Wort") || c.contains("aufgeführte Musik"))
+    });
+    if !spoken && !(extent.contains("CD") || extent.contains("Min.")) {
+        return None;
+    }
+    let idn = rec
+        .children()
+        .find(|n| n.has_tag_name("controlfield") && n.attribute("tag") == Some("001"))
+        .and_then(|n| n.text())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let mut title = first("245", "a");
+    if title.is_empty() {
+        return None;
+    }
+    let (part_no, part_name) = (first("245", "n"), first("245", "p"));
+    if !part_no.is_empty() {
+        title = format!("{title} {part_no}");
+    }
+    if !part_name.is_empty() {
+        title = format!("{title}: {part_name}");
+    }
+    let subtitle = first("245", "b");
+    let (mut authors, mut narrators): (Vec<String>, Vec<String>) = (vec![], vec![]);
+    let add = |list: &mut Vec<String>, name: String| {
+        if !name.is_empty() && !list.contains(&name) {
+            list.push(name);
+        }
+    };
+    for f in fields("100") {
+        for a in subs(f, "a") {
+            add(&mut authors, marc_name(&a));
+        }
+    }
+    for f in fields("700") {
+        let role: Vec<String> = subs(f, "4").into_iter().chain(subs(f, "e")).collect();
+        let has = |w: &[&str]| role.iter().any(|r| w.iter().any(|x| r.to_lowercase().contains(x)));
+        let name = subs(f, "a").first().map(|a| marc_name(a)).unwrap_or_default();
+        if has(&["spk", "nrt", "sprecher", "erzähler"]) {
+            add(&mut narrators, name);
+        } else if has(&["aut", "verfasser"]) {
+            add(&mut authors, name);
+        }
+    }
+    if authors.is_empty() {
+        // CDs often list everybody as "Mitwirkender": the first names of the statement of responsibility
+        // ("Martin Wehrle. Hörbuchbearb.: Anne Büntig …") are the authors
+        let resp = first("245", "c");
+        let head = resp.split(['.', ';']).next().unwrap_or("");
+        for n in rx::split(rx!(r"\s*(?:,|&|\bund\b)\s*"), head) {
+            let n = n.trim().to_string();
+            if (1..=4).contains(&n.split_whitespace().count()) && !n.contains(':') {
+                add(&mut authors, n);
+            }
+        }
+    }
+    let (publisher, year) = fields("264")
+        .into_iter()
+        .chain(fields("260"))
+        .find_map(|f| {
+            let b = subs(f, "b").first().map(|x| marc_clean(x)).unwrap_or_default();
+            let c = subs(f, "c").first().cloned().unwrap_or_default();
+            let y = rx::search(rx!(r"\b(1[5-9]\d\d|20\d\d)\b"), &c).map(|m| m[1].to_string());
+            (!b.is_empty() || y.is_some()).then_some((b, y))
+        })
+        .unwrap_or_default();
+    let all_245: String = fields("245")
+        .into_iter()
+        .flat_map(|f| {
+            f.children()
+                .filter_map(|n| n.text())
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .chain(fields("250").into_iter().flat_map(|f| subs(f, "a")))
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+    let format_type = if all_245.contains("ungekürzt") {
+        Some("unabridged")
+    } else if all_245.contains("gekürzt") {
+        Some("abridged")
+    } else {
+        None
+    };
+    let isbn = fields("020")
+        .into_iter()
+        .find_map(|f| subs(f, "a").into_iter().next())
+        .map(|x| x.chars().filter(char::is_ascii_digit).collect::<String>())
+        .filter(|x| !x.is_empty());
+    let language = match first("041", "a").as_str() {
+        "ger" => Some("German"),
+        "eng" => Some("English"),
+        _ => None,
+    };
+    Some(book(
+        "dnb",
+        json!({
+            "id": format!("dnb:{idn}"), "title": title, "subtitle": opt_str(&subtitle), "authors": authors.into_iter().take(4).collect::<Vec<_>>(),
+            "narrators": narrators.into_iter().take(6).collect::<Vec<_>>(), "publisher": opt_str(&publisher),
+            "release_date": year, "runtime_min": marc_minutes(&extent), "format_type": format_type, "language": language,
+            "description": first("520", "a"), "isbn": isbn,
+            "url": if idn.is_empty() { Value::Null } else { json!(format!("https://d-nb.info/{idn}")) },
+        }),
+    ))
+}
+
+/// The audio records of an SRU answer; the same recording on several carriers (CD, online copy) counts once.
+fn parse_dnb(xml: &str) -> Result<Vec<Value>> {
+    let doc = roxmltree::Document::parse_with_options(
+        xml,
+        roxmltree::ParsingOptions {
+            allow_dtd: false,
+            ..Default::default()
+        },
+    )
+    .map_err(|_| AudibleError(t("Ungültige Antwort von {url}", &[("url", "services.dnb.de")])))?;
+    let mut out: Vec<Value> = Vec::new();
+    for rec in doc
+        .descendants()
+        .filter(|n| n.has_tag_name("record") && n.children().any(|c| c.has_tag_name("datafield")))
+    {
+        let Some(b) = from_dnb(rec) else { continue };
+        let key = format!("{}|{}", fold(s(&b, "title")), strs(&b["authors"]).join(","));
+        match out
+            .iter_mut()
+            .find(|o| format!("{}|{}", fold(s(o, "title")), strs(&o["authors"]).join(",")) == key)
+        {
+            Some(old)
+                if old["runtime_min"].as_i64().unwrap_or(0) == 0 && b["runtime_min"].as_i64().unwrap_or(0) > 0 =>
+            {
+                *old = b
+            }
+            Some(_) => {}
+            None => out.push(b),
+        }
+    }
+    Ok(out)
+}
+
+/// An album of Apple Music (iTunes search) as a candidate: for CDs that are no audiobook anywhere, e.g. spoken
+/// word with music. `runtime_min` is the sum of the track lengths (0 when unknown).
+pub fn from_itunes_album(d: &Value, runtime_min: i64) -> Value {
+    let cover = [s(d, "artworkUrl100"), s(d, "artworkUrl60")]
+        .into_iter()
+        .find(|x| !x.is_empty())
+        .map(|c| sub(rx!(r"/\d+x\d+bb\.(jpg|png)$"), c, "/1400x1400bb.$1"));
+    let release: String = s(d, "releaseDate").chars().take(10).collect();
+    let url = s(d, "collectionViewUrl").split('?').next().unwrap_or("").to_string();
+    book(
+        "applemusic",
+        json!({
+            "id": format!("applemusic:{}", text_of(&d["collectionId"])), "title": s(d, "collectionName").trim(),
+            "authors": names(s(d, "artistName")), "release_date": opt_str(&release), "runtime_min": runtime_min,
+            "genres": if s(d, "primaryGenreName").is_empty() { json!([]) } else { json!([s(d, "primaryGenreName")]) },
+            "cover_url": cover, "url": opt_str(&url),
+        }),
+    )
+}
+
 fn itunes_country(region: &str) -> &'static str {
     match region {
         "de" => "de",
@@ -1376,7 +1595,15 @@ fn itunes_country(region: &str) -> &'static str {
 pub struct Providers {
     pub client: Client,
     get: Box<JsonGetter>,
+    get_text: Box<TextGetter>,
     pub fallbacks: Vec<&'static str>,
+}
+
+type TextGetter = dyn Fn(&str) -> Result<String> + Send + Sync;
+
+fn provider_text(url: &str) -> Result<String> {
+    let data = http_get(url, 20, 2, false, MAX_RESPONSE, Some(&host_ok))?;
+    Ok(String::from_utf8_lossy(&data).into_owned())
 }
 
 impl Default for Providers {
@@ -1384,7 +1611,8 @@ impl Default for Providers {
         Providers {
             client: Client::default(),
             get: Box::new(provider_json),
-            fallbacks: vec!["audnexus", "apple", "openlibrary"],
+            get_text: Box::new(provider_text),
+            fallbacks: vec!["audnexus", "apple", "openlibrary", "dnb", "applemusic"],
         }
     }
 }
@@ -1418,6 +1646,115 @@ impl Providers {
             .filter(|d| !s(d, "collectionName").is_empty())
             .map(from_itunes)
             .collect())
+    }
+
+    /// German National Library (SRU, MARC 21): audio media only – CDs that are not at Audible. Tries the words of
+    /// the title with the author, then the title alone, then its first words; the first try with audio hits wins.
+    fn dnb(&self, hints: &Value) -> Result<Vec<Value>> {
+        let source = if s(hints, "title").is_empty() {
+            s(hints, "query")
+        } else {
+            s(hints, "title")
+        };
+        let words = |text: &str| -> Vec<String> {
+            let mut seen = Vec::new();
+            for w in rx::findall(rx!(r"[\wäöüßÄÖÜ]+"), text) {
+                let lw = w.to_lowercase();
+                if lw.chars().count() >= 4 && !seen.contains(&lw) && !lw.chars().all(|c| c.is_ascii_digit()) {
+                    seen.push(lw);
+                }
+            }
+            seen
+        };
+        let title_words = words(source);
+        if title_words.is_empty() {
+            return Ok(Vec::new());
+        }
+        let author_words: Vec<String> = author_words(s(hints, "author"))
+            .into_iter()
+            .filter(|w| w.chars().count() >= 3)
+            .collect();
+        let mut tries: Vec<Vec<String>> = vec![];
+        let t5: Vec<String> = title_words.iter().take(5).cloned().collect();
+        if !author_words.is_empty() {
+            tries.push(t5.iter().cloned().chain(author_words.last().cloned()).collect());
+        }
+        tries.push(t5);
+        tries.push(title_words.iter().take(3).cloned().collect());
+        tries.dedup();
+        for terms in tries {
+            let query = terms
+                .iter()
+                .map(|w| format!("WOE={w}"))
+                .collect::<Vec<_>>()
+                .join(" and ");
+            let params = [
+                ("version", "1.1".to_string()),
+                ("operation", "searchRetrieve".into()),
+                ("query", query),
+                ("recordSchema", "MARC21-xml".into()),
+                ("maximumRecords", "40".into()),
+            ];
+            let xml = (self.get_text)(&format!("https://services.dnb.de/sru/dnb?{}", form(&params)))?;
+            let hits = parse_dnb(&xml)?;
+            if !hits.is_empty() {
+                return Ok(hits);
+            }
+        }
+        Ok(Vec::new())
+    }
+
+    /// Apple Music albums for CDs that are no audiobook anywhere: the first few hits, each with the sum of its
+    /// track lengths (one more request per album) – so the runtime can be compared with the files.
+    fn apple_albums(&self, hints: &Value, region: &str) -> Result<Vec<Value>> {
+        let ta = [s(hints, "title"), s(hints, "author")]
+            .into_iter()
+            .filter(|x| !x.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let term = if ta.is_empty() {
+            s(hints, "query").to_string()
+        } else {
+            ta
+        };
+        if term.is_empty() {
+            return Ok(Vec::new());
+        }
+        let country = itunes_country(region);
+        let params = [
+            ("term", term),
+            ("media", "music".into()),
+            ("entity", "album".into()),
+            ("country", country.into()),
+            ("limit", "6".into()),
+        ];
+        let data = (self.get)(&format!("https://itunes.apple.com/search?{}", form(&params)))?;
+        let mut out = Vec::new();
+        for d in data["results"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|d| !s(d, "collectionName").is_empty())
+            .take(3)
+        {
+            let id = text_of(&d["collectionId"]);
+            let minutes = (self.get)(&format!(
+                "https://itunes.apple.com/lookup?id={id}&entity=song&country={country}"
+            ))
+            .map(|l| {
+                let ms: f64 = l["results"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|r| r["wrapperType"] == "track")
+                    .filter_map(|r| r["trackTimeMillis"].as_f64())
+                    .sum();
+                (ms / 60000.0).round() as i64
+            })
+            .unwrap_or(0);
+            out.push(from_itunes_album(d, minutes));
+        }
+        Ok(out)
     }
 
     fn openlibrary(&self, hints: &Value) -> Result<Vec<Value>> {
@@ -1462,47 +1799,85 @@ impl Providers {
                 (Vec::new(), true)
             }
         };
-        if !ranked.is_empty() || !enabled {
+        if !enabled {
+            return (ranked, notes, failed);
+        }
+        // Audible has a convincing match: done. Nothing, or only weak hits (the work may exist only as a CD):
+        // the other sources are asked too and their candidates are ranked together with Audible's.
+        let confident = best_match(&ranked, WEAK_MATCH).is_some();
+        if confident {
             return (ranked, notes, failed);
         }
         let mut found: Vec<Value> = Vec::new();
-        if failed && !s(hints, "asin").is_empty() && self.fallbacks.contains(&"audnexus") {
-            match (self.get)(&format!(
-                "https://api.audnex.us/books/{}?region={region}",
-                s(hints, "asin")
-            )) {
-                Ok(d) => {
-                    found.push(from_audnexus(&d, region));
-                    notes.push(t("Daten von Audnexus (Audible-Spiegel)", &[]));
+        if ranked.is_empty() {
+            if failed && !s(hints, "asin").is_empty() && self.fallbacks.contains(&"audnexus") {
+                match (self.get)(&format!(
+                    "https://api.audnex.us/books/{}?region={region}",
+                    s(hints, "asin")
+                )) {
+                    Ok(d) => {
+                        found.push(from_audnexus(&d, region));
+                        notes.push(t("Daten von Audnexus (Audible-Spiegel)", &[]));
+                    }
+                    Err(e) => notes.push(format!("Audnexus: {e}")),
                 }
-                Err(e) => notes.push(format!("Audnexus: {e}")),
             }
-        }
-        if found.is_empty() {
-            for (name, key) in [("Apple Books", "apple"), ("Open Library", "openlibrary")] {
-                if !self.fallbacks.contains(&key) {
-                    continue;
-                }
-                let hits = if key == "apple" {
-                    self.apple(hints, region)
-                } else {
-                    self.openlibrary(hints)
-                };
-                match hits {
-                    Err(e) => notes.push(format!("{name}: {e}")),
-                    Ok(h) => {
-                        if !h.is_empty() {
-                            notes.push(t(
-                                "{n} Treffer bei {source}",
-                                &[("n", &h.len().to_string()), ("source", name)],
-                            ));
+            if found.is_empty() {
+                for (name, key) in [("Apple Books", "apple"), ("Open Library", "openlibrary")] {
+                    if !self.fallbacks.contains(&key) {
+                        continue;
+                    }
+                    let hits = if key == "apple" {
+                        self.apple(hints, region)
+                    } else {
+                        self.openlibrary(hints)
+                    };
+                    match hits {
+                        Err(e) => notes.push(format!("{name}: {e}")),
+                        Ok(h) => {
+                            if !h.is_empty() {
+                                notes.push(t(
+                                    "{n} Treffer bei {source}",
+                                    &[("n", &h.len().to_string()), ("source", name)],
+                                ));
+                            }
+                            found.extend(h);
                         }
-                        found.extend(h);
                     }
                 }
             }
         }
-        (rank(&found, hints), notes, failed)
+        if self.fallbacks.contains(&"dnb") {
+            match self.dnb(hints) {
+                Err(e) => notes.push(format!("Deutsche Nationalbibliothek: {e}")),
+                Ok(h) => {
+                    if !h.is_empty() {
+                        notes.push(t(
+                            "{n} Treffer bei {source}",
+                            &[("n", &h.len().to_string()), ("source", "Deutsche Nationalbibliothek")],
+                        ));
+                    }
+                    found.extend(h);
+                }
+            }
+        }
+        if self.fallbacks.contains(&"applemusic") {
+            match self.apple_albums(hints, region) {
+                Err(e) => notes.push(format!("Apple Music: {e}")),
+                Ok(h) => {
+                    if !h.is_empty() {
+                        notes.push(t(
+                            "{n} Treffer bei {source}",
+                            &[("n", &h.len().to_string()), ("source", "Apple Music")],
+                        ));
+                    }
+                    found.extend(h);
+                }
+            }
+        }
+        let mut all = ranked;
+        all.extend(found);
+        (rank(&all, hints), notes, failed)
     }
 
     pub fn lookup(&self, hints: &Value, region: &str, enabled: bool) -> (Vec<Value>, Vec<String>) {
@@ -1527,11 +1902,114 @@ pub fn auto_match(ranked: &[Value], threshold: f64) -> Option<Value> {
         .filter(|b| AUTO_SOURCES.contains(&s(b, "source")))
         .cloned()
         .collect();
-    best_match(&only, threshold)
+    if let Some(b) = best_match(&only, threshold) {
+        return Some(b);
+    }
+    // A CD from the German National Library has runtime and often narrators too: only when title, author and
+    // runtime all fit closely and nothing from Audible competes
+    let top = ranked.first()?;
+    let m = &top["match"];
+    let strict = s(top, "source") == "dnb"
+        && m["title"].as_f64().unwrap_or(0.0) >= 0.9
+        && m["author"].as_f64().unwrap_or(0.0) >= 0.8
+        && m["duration"].as_f64().unwrap_or(0.0) >= 0.95;
+    if strict { best_match(ranked, threshold) } else { None }
 }
 
 #[cfg(test)]
 mod tests {
+    const DNB_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/"><numberOfRecords>3</numberOfRecords><records>
+<record><recordData><record xmlns="http://www.loc.gov/MARC21/slim">
+<controlfield tag="001">1234567890</controlfield>
+<datafield tag="245" ind1="1" ind2="0"><subfield code="a">Ich arbeite in einem Irrenhaus</subfield><subfield code="b">vom ganz normalen Büroalltag</subfield><subfield code="c">Martin Wehrle. Hörbuchbearb.: Anne Büntig. Mit den Stimmen von Matthias Keller</subfield></datafield>
+<datafield tag="264" ind1=" " ind2="1"><subfield code="a">Leipzig</subfield><subfield code="b">Deutsche Nationalbibliothek</subfield><subfield code="c">2021</subfield></datafield>
+<datafield tag="300" ind1=" " ind2=" "><subfield code="a">1 Online-Ressource (1 CD (70 Min.))</subfield></datafield>
+<datafield tag="336" ind1=" " ind2=" "><subfield code="a">gesprochenes Wort</subfield><subfield code="b">spw</subfield></datafield>
+</record></recordData></record>
+<record><recordData><record xmlns="http://www.loc.gov/MARC21/slim">
+<controlfield tag="001">1234567891</controlfield>
+<datafield tag="245" ind1="1" ind2="0"><subfield code="a">Ich arbeite in einem Irrenhaus</subfield><subfield code="c">Martin Wehrle. Hörbuchbearb.: Anne Büntig</subfield></datafield>
+<datafield tag="300" ind1=" " ind2=" "><subfield code="a">Online-Ressource</subfield></datafield>
+<datafield tag="336" ind1=" " ind2=" "><subfield code="a">gesprochenes Wort</subfield><subfield code="b">spw</subfield></datafield>
+</record></recordData></record>
+<record><recordData><record xmlns="http://www.loc.gov/MARC21/slim">
+<controlfield tag="001">9999999999</controlfield>
+<datafield tag="100" ind1="1" ind2=" "><subfield code="a">Wehrle, Martin</subfield><subfield code="4">aut</subfield></datafield>
+<datafield tag="245" ind1="1" ind2="0"><subfield code="a">Ich arbeite in einem Irrenhaus</subfield></datafield>
+<datafield tag="300" ind1=" " ind2=" "><subfield code="a">287 Seiten</subfield></datafield>
+<datafield tag="336" ind1=" " ind2=" "><subfield code="a">Text</subfield><subfield code="b">txt</subfield></datafield>
+</record></recordData></record>
+</records></searchRetrieveResponse>"#;
+
+    #[test]
+    fn apple_music_albums_come_with_cover_and_summed_runtime() {
+        let providers = Providers {
+            client: Client::new(Box::new(|_| Ok(json!({"products": []})))),
+            get: Box::new(|url| {
+                if url.contains("/lookup?") {
+                    Ok(json!({"results": [
+                        {"wrapperType": "collection"},
+                        {"wrapperType": "track", "trackTimeMillis": 1_900_000},
+                        {"wrapperType": "track", "trackTimeMillis": 1_880_000}]}))
+                } else {
+                    assert!(url.contains("entity=album") && url.contains("media=music"), "{url}");
+                    Ok(
+                        json!({"results": [{"collectionId": 42, "collectionName": "Rilke Projekt - Überfließende Himmel",
+                        "artistName": "Schönherz & Fleer", "releaseDate": "2004-01-01T08:00:00Z", "primaryGenreName": "Klassik",
+                        "artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/x/100x100bb.jpg",
+                        "collectionViewUrl": "https://music.apple.com/de/album/x/42?uo=4"}]}),
+                    )
+                }
+            }),
+            get_text: Box::new(|_| Ok("<x/>".to_string())),
+            fallbacks: vec!["applemusic"],
+        };
+        let hints = json!({"title": "Überfließende Himmel", "author": "Rilke Projekt", "duration": 3780.0});
+        let (ranked, _) = providers.lookup(&hints, "de", true);
+        let b = &ranked[0];
+        assert_eq!((s(b, "source"), b["runtime_min"].as_i64()), ("applemusic", Some(63)));
+        assert!(s(b, "cover_url").ends_with("/1400x1400bb.jpg"), "{}", s(b, "cover_url"));
+        assert_eq!(b["match"]["duration"].as_f64(), Some(1.0));
+    }
+
+    #[test]
+    fn cds_from_the_national_library_are_found_when_audible_has_nothing() {
+        let providers = Providers {
+            client: Client::new(Box::new(|_| Ok(json!({"products": []})))),
+            get: Box::new(|_| err("offline".into())),
+            get_text: Box::new(|url| {
+                assert!(url.starts_with("https://services.dnb.de/sru/dnb?"), "{url}");
+                Ok(DNB_XML.to_string())
+            }),
+            fallbacks: vec!["dnb"],
+        };
+        let hints = json!({"title": "Ich arbeite in einem Irrenhaus", "author": "Martin Wehrle", "duration": 4200.0,
+                           "query": "Ich arbeite in einem Irrenhaus Martin Wehrle"});
+        let (ranked, notes) = providers.lookup(&hints, "de", true);
+        // the printed book is no audio medium; the online copy of the same CD counts once
+        assert_eq!(ranked.len(), 1, "{ranked:?}");
+        let b = &ranked[0];
+        assert_eq!(
+            (s(b, "source"), s(b, "title"), b["runtime_min"].as_i64()),
+            ("dnb", "Ich arbeite in einem Irrenhaus", Some(70))
+        );
+        assert_eq!(b["authors"], json!(["Martin Wehrle"]));
+        assert_eq!(s(b, "release_date"), "2021");
+        assert!(
+            notes.iter().any(|n| n.contains("Deutsche Nationalbibliothek")),
+            "{notes:?}"
+        );
+        // title, author and runtime fit: accepted without asking
+        assert!(auto_match(&ranked, 0.85).is_some());
+        // another runtime: only offered
+        let other = json!({"title": "Ich arbeite in einem Irrenhaus", "author": "Martin Wehrle", "duration": 9000.0});
+        let (ranked, _) = providers.lookup(&other, "de", true);
+        assert!(auto_match(&ranked, 0.85).is_none());
+        // switched off: nothing is asked
+        assert!(providers.lookup(&hints, "de", false).0.is_empty());
+    }
+
     #[test]
     fn translators_and_editors_are_no_authors() {
         let names: Vec<String> = [

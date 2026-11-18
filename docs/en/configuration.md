@@ -126,7 +126,7 @@ folder back into the library to restore one.
 | `INBOX_ORIGINALS` | `archive` | Originals afterwards: `archive` (to `_fertig`) or `delete` |
 | `SETTLE_SECONDS` | `120` | How long an inbox folder must stay unchanged |
 | `SCAN_INTERVAL` | `60` | Seconds between two inbox checks |
-| `METADATA_FALLBACK` | `true` | Ask Audnexus, Apple Books and Open Library when Audible finds nothing |
+| `METADATA_FALLBACK` | `true` | Ask Audnexus, Apple Books, Open Library, the German National Library and Apple Music (CDs) when Audible finds nothing suitable |
 | `WRITE_ABS_METADATA` | `true` | Write `metadata.json` for Audiobookshelf |
 | `DUPLICATES` | `ask` | Book already in the library: `ask`, `skip`, `keep` |
 | `LIBRARY_RESCAN_HOURS` | `6` | How often the library is rescanned |
