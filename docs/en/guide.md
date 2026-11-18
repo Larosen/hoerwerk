@@ -74,6 +74,10 @@ background, one book at a time, and steps aside for new books. Tapping a finding
 **Sort → Condition** puts the worst first. Fix them with the existing buttons (*Chapters* with preview, *Better*,
 *Correct*).
 
+**Audible ratings** (independent of the condition): *Load ratings* fetches the listener ratings of the books that have
+an ASIN, slowly in the background, and keeps them for a month. The library can then be sorted by **Audible rating**
+(worst or best first); votes count, 4.9 from two people does not beat 4.6 from two thousand.
+
 ### Downloads with several volumes
 
 A download like `Author-Series 01 - 07-…` is a **pack**: every volume folder becomes its own book – merged, matched

@@ -75,6 +75,10 @@ danach per Knopf; sie läuft im Hintergrund, ein Buch nach dem anderen, und weic
 Befunds zeigt nur die betroffenen Bücher, **Sortieren → Zustand** die schlechtesten zuerst. Behoben wird mit den
 vorhandenen Knöpfen (*Kapitel* mit Vorschau, *Besser*, *Korrigieren*).
 
+**Audible-Bewertungen** (unabhängig vom Zustand): *Bewertungen laden* holt die Hörer-Bewertungen der Bücher mit ASIN,
+langsam im Hintergrund, und merkt sie einen Monat. Danach lässt sich die Bibliothek nach **Audible-Bewertung**
+sortieren (schlechteste oder beste zuerst); Stimmen zählen mit, 4,9 von zwei Personen schlägt 4,6 von zweitausend nicht.
+
 ### Downloads mit mehreren Bänden
 
 Ein Download wie `Autor-Reihe 01 - 07-…` ist ein **Paket**: Jeder Band-Ordner wird ein eigenes Buch – einzeln

@@ -1366,3 +1366,5 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .score.ok { background: var(--ok-soft, #DDEBDD); color: var(--ok); }
 .score.mid { background: #F4E7C8; color: var(--warn); }
 .score.bad { background: var(--err-soft); color: var(--err); }
+
+.rating { margin-left: 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }

@@ -1745,5 +1745,18 @@
  "Sprecher fehlt": "Narrator missing",
  "Zeigt, wo sich Kapitel, Jahr, Cover oder Zuordnung verbessern lassen – ändert selbst nichts.": "Shows where chapters, year, cover or match could be better – it changes nothing by itself.",
  "Zustand (schlechteste zuerst)": "Condition (worst first)",
- "{n} Bücher geprüft, Zustand im Schnitt {avg} von 100": "{n} books checked, condition {avg} of 100 on average"
+ "{n} Bücher geprüft, Zustand im Schnitt {avg} von 100": "{n} books checked, condition {avg} of 100 on average",
+ "Abfrage angehalten": "Fetching stopped",
+ "Abfrage anhalten": "Stop fetching",
+ "Audible-Bewertung (beste zuerst)": "Audible rating (best first)",
+ "Audible-Bewertung (schlechteste zuerst)": "Audible rating (worst first)",
+ "Audible-Bewertungen werden abgefragt (im Hintergrund)": "Fetching Audible ratings (in the background)",
+ "Audible-Bewertungen werden abgefragt – im Hintergrund, langsam": "Fetching Audible ratings – in the background, slowly",
+ "Audible-Bewertungen: {done} von {total} Titeln abgefragt": "Audible ratings: {done} of {total} titles fetched",
+ "Bewertung bei Audible: {n} Stimmen": "Rating at Audible: {n} votes",
+ "Bewertungen aktualisieren": "Update ratings",
+ "Bewertungen laden": "Load ratings",
+ "Bewertungen … {done} von {total}": "Ratings … {done} of {total}",
+ "Bewertungen: Audible antwortet nicht – abgebrochen, später erneut versuchen": "Ratings: Audible does not answer – stopped, try again later",
+ "{rated} von {n} Büchern mit Audible-Bewertung": "{rated} of {n} books have an Audible rating"
 }

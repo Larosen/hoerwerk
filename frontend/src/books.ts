@@ -32,7 +32,8 @@ const books = {
   libTotal: null as number | null,            // books in the library (for the filter chip)
   libTimer: undefined as number | undefined,
   libIssue: "",                              // library filter: only books with this finding
-  check: null as LibraryCheck | null,        // the library check (progress and findings)
+  check: null as LibraryCheck | null,
+  ratings: null as LibraryRatings | null,    // fetching Audible's ratings of the library        // the library check (progress and findings)
   checkTimer: undefined as number | undefined,
   libPicked: new Set<string>(),               // library books ticked for "Kapitel neu benennen"
   hideDone: store.get("booksHideDone", false),   // "Aufträge" without the finished ones (only hidden, never deleted)
@@ -157,8 +158,9 @@ interface Trickle { on: boolean; left: number }
 interface LibraryBook {
   path: string; title: string; authors: string[]; names?: string[]; series: string | null;
   series_position: string | null; asin: string | null; format: string; files: number; mtime?: number; cover?: boolean;
-  score?: number; issues?: string[];
+  score?: number; issues?: string[]; rating?: number; ratings?: number;
 }
+interface LibraryRatings { running: boolean; done: number; total: number; with_asin: number; rated: number }
 interface LibraryCheck {
   running: boolean; done: number; total: number; checked: number; books: number; average: number | null;
   issues: { code: string; count: number; text: string }[];
@@ -167,6 +169,7 @@ interface LibraryCheck {
 const LIBRARY_SORTS: [string, () => string][] = [
   ["author", () => t("Autor")], ["title", () => t("Titel")], ["new", () => t("Neueste")], ["old", () => t("Älteste")],
   ["format", () => t("Nicht M4B zuerst")], ["health", () => t("Zustand (schlechteste zuerst)")],
+  ["rating", () => t("Audible-Bewertung (schlechteste zuerst)")], ["rating_best", () => t("Audible-Bewertung (beste zuerst)")],
 ];
 
 function renderLibrary(list: HTMLElement): void {
@@ -235,6 +238,8 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
       el("div", { class: "lib-title" }, el("button", { type: "button", class: "lib-open", title: t("Details"), onclick: () => showDetail(libraryAsBook(b)) }, b.title || b.path),
         b.series ? el("span", { class: "muted" }, ` · ${b.series}${b.series_position ? " " + b.series_position : ""}`) : null),
       el("div", { class: "book-sub" }, author || t("Autor unbekannt"),
+ b.rating ? el("span", { class: "rating", title: t("Bewertung bei Audible: {n} Stimmen", { n: b.ratings || 0 }) },
+          `★ ${b.rating.toFixed(1).replace(".", ",")} (${b.ratings})`) : null,
         b.score !== undefined ? el("span", { class: "score " + (b.score >= 85 ? "ok" : b.score >= 60 ? "mid" : "bad"),
           title: (b.issues || []).map(issueText).join("\n") || t("Nichts zu verbessern") }, String(b.score)) : null,
         other.length ? el("span", { class: "faint", title: t("Weitere Namen aus Tags und Ordnern – zählen beim Abgleich mit") },
@@ -859,13 +864,15 @@ function issueText(code: string): string { return ISSUE_TEXT[code] || code; }
 async function loadCheck(): Promise<void> {
   try {
     books.check = await api<LibraryCheck>("GET", "/api/library/check", undefined, { key: "libcheck" });
+    books.ratings = await api<LibraryRatings>("GET", "/api/library/ratings", undefined, { key: "libratings" });
     for (const i of books.check.issues) ISSUE_TEXT[i.code] = i.text;
     renderCheck();
     clearTimeout(books.checkTimer);
-    if (books.check.running) {
+    if (books.check.running || books.ratings.running) {
       books.checkTimer = setTimeout(async () => {
+        const was = !!books.check?.running || !!books.ratings?.running;
         await loadCheck();
-        if (!books.check?.running) loadLibraryBooks();   // done: the list shows the scores
+        if (was && !books.check?.running && !books.ratings?.running) loadLibraryBooks();   // done: the list shows the results
       }, 3000);
     }
   } catch (e) { toast(errMsg(e), true); }
@@ -889,7 +896,19 @@ function renderCheck(): void {
     "aria-pressed": String(books.libIssue === i.code),
     onclick: () => { books.libIssue = books.libIssue === i.code ? "" : i.code; books.libShown = 100; renderCheck(); loadLibraryBooks(); } },
     `${i.text} · ${i.count}`));
+  // Audible's listener ratings: separate from the condition – fetched slowly in the background, used for the sort order
+  const r = books.ratings;
+  const rateBtn = r ? el("button", { type: "button", class: "btn small", onclick: async () => {
+    try {
+      books.ratings = await api<LibraryRatings>("POST", "/api/library/ratings", { on: !r.running });
+      toast(books.ratings.running ? t("Audible-Bewertungen werden abgefragt – im Hintergrund, langsam") : t("Abfrage angehalten"), "info");
+      loadCheck();
+    } catch (e) { toast(errMsg(e), true); }
+  } }, r.running ? t("Abfrage anhalten") : r.rated ? t("Bewertungen aktualisieren") : t("Bewertungen laden")) : null;
+  const rateNote = r ? (r.running ? t("Bewertungen … {done} von {total}", { done: r.done, total: r.total })
+    : t("{rated} von {n} Büchern mit Audible-Bewertung", { rated: r.rated, n: r.with_asin })) : "";
   box.replaceChildren(el("div", { class: "row gap wrap" }, go, el("span", { class: "muted small" }, note)),
+    ...(rateBtn ? [el("div", { class: "row gap wrap" }, rateBtn, el("span", { class: "muted small" }, rateNote))] : []),
     ...(chips.length ? [el("div", { class: "chips" }, chips)] : []));
 }
 

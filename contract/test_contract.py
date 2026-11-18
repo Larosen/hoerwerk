@@ -970,6 +970,12 @@ class Processing(ContractTest):
         self.assertIn(code, [i["code"] for i in status["issues"]])
         # a family account may not start it
         self.family().call("POST", "/api/library/check", {"on": True}, expect=403)
+        # Audible's ratings: the status is there (nothing fetched without a network), the sort orders exist
+        rate = self.admin.get("/api/library/ratings")
+        self.assertEqual((rate["running"], rate["rated"]), (False, 0))
+        for sort in ("rating", "rating_best"):
+            self.assertTrue(self.admin.get(f"/api/library/books?sort={sort}&limit=5")["books"])
+        self.family().call("POST", "/api/library/ratings", {"on": True}, expect=403)
 
     def test_pack_becomes_one_job_per_volume(self):
         tmp = os.path.join(self.server.dir, ".incoming", "Paula Pack - Reihe 01-02")

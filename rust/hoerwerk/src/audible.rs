@@ -708,6 +708,28 @@ impl Client {
         Ok(Self::products(&data["similar_products"], region, false))
     }
 
+    /// The listeners' rating of a title: (average, number of ratings) – a small request of its own.
+    pub fn rating(&self, asin: &str, region: &str) -> Result<(f64, i64)> {
+        let data = self.cached(&format!(
+            "{}/1.0/catalog/products/{asin}?response_groups=rating",
+            api_host(region)
+        ))?;
+        let p = &data["product"];
+        if p.is_null() {
+            return err(t(
+                "ASIN {asin} im Audible-Shop ({region}) nicht gefunden",
+                &[("asin", asin), ("region", region)],
+            ));
+        }
+        let r = &p["rating"]["overall_distribution"];
+        let num = |v: &Value| {
+            v.as_f64()
+                .or_else(|| v.as_str().and_then(|x| x.parse().ok()))
+                .unwrap_or(0.0)
+        };
+        Ok((num(&r["display_average_rating"]), num(&r["num_ratings"]) as i64))
+    }
+
     pub fn product(&self, asin: &str, region: &str) -> Result<Value> {
         let params = [
             ("response_groups", RESPONSE_GROUPS.to_string()),

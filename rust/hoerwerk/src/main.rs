@@ -29,6 +29,7 @@ mod packs;
 mod pdftext;
 mod pipeline;
 mod quality;
+mod ratings;
 mod releases;
 mod requests;
 mod rx;

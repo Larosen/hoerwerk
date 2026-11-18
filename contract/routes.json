@@ -381,6 +381,18 @@
   },
   {
    "method": "GET",
+   "path": "/api/library/ratings",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
+   "path": "/api/library/ratings",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "GET",
    "path": "/api/library/cleanup",
    "access": "admin",
    "raw_body": false

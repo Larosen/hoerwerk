@@ -9,6 +9,10 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
   gives it a condition score with findings – chapter names that repeat the title or say nothing, no chapters, cover,
   year or narrator missing, no Audible link, not an M4B. Findings are filters, the library can be sorted by condition
   (worst first), and the fixes are the existing buttons. It runs in the background and changes nothing by itself.
+- **Sort by Audible rating:** "Bewertungen laden" fetches the listener ratings of the library's books (by ASIN, slowly in
+  the background, kept for a month). The library can then be sorted by Audible rating, worst or best first – votes
+  count, so 4.9 from two people does not beat 4.6 from two thousand – and each row shows the rating. Independent of the
+  condition check.
 
 ## 1.0.14 – 2026-11-18
 

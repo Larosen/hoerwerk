@@ -113,8 +113,9 @@ test("Bibliothek prüfen: Zustand, Befunde als Filter, Sortierung nach Zustand",
   const errors = await open(page);
   const urls: string[] = [];
   const bad = { path: "A/Schlecht", title: "Schlechtes Buch", authors: ["A"], series: null, series_position: null, asin: null, format: "m4b", files: 1, score: 40, issues: ["chapters", "no_year"] };
-  const good = { path: "A/Gut", title: "Gutes Buch", authors: ["A"], series: null, series_position: null, asin: "B0X", format: "m4b", files: 1, score: 100, issues: [] };
+  const good = { path: "A/Gut", title: "Gutes Buch", authors: ["A"], series: null, series_position: null, asin: "B0X", format: "m4b", files: 1, score: 100, issues: [], rating: 4.6, ratings: 1234 };
   await page.route("**/api/library/books?*", (r) => { urls.push(r.request().url()); return r.fulfill({ json: { total: 2, books: [bad, good] } }); });
+  await page.route("**/api/library/ratings", (r) => r.fulfill({ json: { running: false, done: 0, total: 0, with_asin: 2, rated: 1 } }));
   let running = false;
   await page.route("**/api/library/check", async (r) => {
     if (r.request().method() === "POST") running = true;
@@ -125,6 +126,7 @@ test("Bibliothek prüfen: Zustand, Befunde als Filter, Sortierung nach Zustand",
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
   await expect(page.locator("#libCheck")).toContainText("2 Bücher geprüft");
   await expect(page.locator(".lib-row .score").first()).toHaveText("40");
+  await expect(page.locator(".lib-row .rating").first()).toHaveText("★ 4,6 (1234)");
   // a finding as a filter
   await page.locator("#libCheck .chip", { hasText: "Jahr fehlt" }).click();
   await expect.poll(() => urls.at(-1) || "").toContain("issue=no_year");
@@ -133,6 +135,10 @@ test("Bibliothek prüfen: Zustand, Befunde als Filter, Sortierung nach Zustand",
   // sorted by condition
   await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
   await expect.poll(() => urls.at(-1) || "").toContain("sort=health");
+  // Audible's ratings: shown in the row, sorted, fetched on request
+  await page.locator("#libCheck").getByRole("button", { name: "Bewertungen aktualisieren" }).waitFor();
+  await page.locator(".sort-bar").getByRole("button", { name: /Audible-Bewertung \(schlechteste/ }).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=rating");
   // start the check
   await page.locator("#libCheck").getByRole("button", { name: "Erneut prüfen" }).click();
   await expect(page.locator("#libCheck")).toContainText("Prüft");

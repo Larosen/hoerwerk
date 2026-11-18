@@ -81,10 +81,15 @@ pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
         .unwrap_or_default();
     let sort = req.query.get("sort").map(String::as_str).unwrap_or("");
     let issue = req.query.get("issue").map(String::as_str).unwrap_or("");
-    json_reply(
-        app.library
-            .books(&q, offset, limit, sort, &app.health.snapshot(), issue),
-    )
+    json_reply(app.library.books(
+        &q,
+        offset,
+        limit,
+        sort,
+        &app.health.snapshot(),
+        &app.ratings.snapshot(),
+        issue,
+    ))
 }
 
 fn image(data: Vec<u8>) -> Option<Reply> {
@@ -343,4 +348,34 @@ pub async fn check_run(app: Arc<App>, req: Req, _: HashMap<String, String>) -> R
         "",
     );
     json_reply(app.health.status(&app))
+}
+
+/// `GET /api/library/ratings` – how many books have an Audible rating, and the progress of fetching them (admins).
+pub async fn ratings_status(app: Arc<App>, _: Req, _: HashMap<String, String>) -> Reply {
+    json_reply(app.ratings.status(&app))
+}
+
+/// `POST /api/library/ratings {on}` – fetch Audible's ratings of the library's books in the background (the ones
+/// missing or older than a month), or stop a running fetch (admins).
+pub async fn ratings_run(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let Some(on) = req.get("on").as_bool() else {
+        return error(400, t("on muss true oder false sein", &[]));
+    };
+    if on {
+        if app.ratings.start(&app) {
+            text::info(
+                "Bibliothek",
+                &t("Audible-Bewertungen werden abgefragt (im Hintergrund)", &[]),
+            );
+        }
+    } else {
+        app.ratings.stop();
+    }
+    app.audit(
+        &req.user_name(),
+        &req.ip,
+        if on { "library_ratings" } else { "library_ratings_stop" },
+        "",
+    );
+    json_reply(app.ratings.status(&app))
 }
