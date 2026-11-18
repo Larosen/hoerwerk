@@ -86,9 +86,11 @@ pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
         offset,
         limit,
         sort,
-        &app.health.snapshot(),
-        &app.ratings.snapshot(),
-        issue,
+        &crate::library::Extra {
+            health: &app.health.snapshot(),
+            ratings: &app.ratings.snapshot(),
+            issue,
+        },
     ))
 }
 

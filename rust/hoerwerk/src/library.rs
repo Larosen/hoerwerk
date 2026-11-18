@@ -61,6 +61,16 @@ struct State {
     during: Option<HashMap<String, Option<Value>>>,
 }
 
+/// What the library check and the ratings add to a listing (sorting, filtering, extra fields).
+pub struct Extra<'a> {
+    /// path -> (condition score, findings)
+    pub health: &'a HashMap<String, (i64, Vec<String>)>,
+    /// asin -> (average rating, number of ratings)
+    pub ratings: &'a HashMap<String, (f64, i64)>,
+    /// only books with this finding ("" = all)
+    pub issue: &'a str,
+}
+
 pub struct LibraryIndex {
     pub root: PathBuf,
     db: Db,
@@ -595,16 +605,8 @@ impl LibraryIndex {
     /// Browse the library: every word of the query in title, author, series or path.
     /// `sort`: "author" (the folder order, default), "title", "new" / "old" (when the files changed last),
     /// "format" (what is not one M4B yet first), "health" (the worst condition by the library check first), "rating" / "rating_best" (Audible's listener ratings).
-    pub fn books(
-        &self,
-        query: &str,
-        offset: usize,
-        limit: usize,
-        sort: &str,
-        health: &HashMap<String, (i64, Vec<String>)>,
-        ratings: &HashMap<String, (f64, i64)>,
-        issue: &str,
-    ) -> Value {
+    pub fn books(&self, query: &str, offset: usize, limit: usize, sort: &str, extra: &Extra) -> Value {
+        let (health, ratings, issue) = (extra.health, extra.ratings, extra.issue);
         let want = match_words(query);
         let mut entries = self.entries();
         if !want.is_empty() {
@@ -916,7 +918,17 @@ mod tests {
         ]
         .into();
         let titles = |sort: &str| -> Vec<String> {
-            idx.books("", 0, 10, sort, &HashMap::new(), &ratings, "")["books"]
+            idx.books(
+                "",
+                0,
+                10,
+                sort,
+                &Extra {
+                    health: &HashMap::new(),
+                    ratings: &ratings,
+                    issue: "",
+                },
+            )["books"]
                 .as_array()
                 .unwrap()
                 .iter()
@@ -925,7 +937,17 @@ mod tests {
         };
         assert_eq!(titles("rating"), ["Schlecht", "Wenige", "Gut", "Ohne"]);
         assert_eq!(titles("rating_best"), ["Gut", "Wenige", "Schlecht", "Ohne"]);
-        let books = idx.books("", 0, 10, "rating", &HashMap::new(), &ratings, "");
+        let books = idx.books(
+            "",
+            0,
+            10,
+            "rating",
+            &Extra {
+                health: &HashMap::new(),
+                ratings: &ratings,
+                issue: "",
+            },
+        );
         assert_eq!(books["books"][0]["ratings"], 500);
     }
 
