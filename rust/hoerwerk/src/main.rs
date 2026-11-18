@@ -15,6 +15,7 @@ mod engine;
 mod filing;
 mod follows;
 mod free;
+mod health;
 mod htmlent;
 mod http;
 mod invites;
@@ -122,6 +123,7 @@ async fn library_rescanner(app: Arc<App>) {
     }
     app.library_error.lock().unwrap_or_else(|p| p.into_inner()).clear();
     app.library_ready.store(true, Ordering::SeqCst);
+    app.health.start_if_new(&app); // a library seen for the first time is looked at in the background
     // only now: books are checked against the library for duplicates
     app.pipeline.note(String::new());
     app.engine.start();

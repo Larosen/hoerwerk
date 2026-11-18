@@ -67,6 +67,13 @@ the picture inside the audio file; books without one get a generated tile.
 Plex never reads them, Audiobookshelf only when `metadata.json` is missing. Audiobooks, `cover.jpg` and folders without
 `metadata.json` stay untouched, symlinks are not followed. New books no longer get the two files.
 
+**Check library** (admins) looks at every book once, locally and without changing anything, and gives it a condition
+from 0 to 100 with findings: chapter names that repeat the title or say nothing, no chapters, missing cover, year or
+narrator, no Audible link, not an M4B yet. It starts by itself the first time and by button afterwards; it runs in the
+background, one book at a time, and steps aside for new books. Tapping a finding shows only the books that have it,
+**Sort → Condition** puts the worst first. Fix them with the existing buttons (*Chapters* with preview, *Better*,
+*Correct*).
+
 ### Downloads with several volumes
 
 A download like `Author-Series 01 - 07-…` is a **pack**: every volume folder becomes its own book – merged, matched

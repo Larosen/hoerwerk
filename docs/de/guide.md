@@ -68,6 +68,13 @@ der M4B; Plex liest die Dateien gar nicht, Audiobookshelf nur, wenn `metadata.js
 und Ordner ohne `metadata.json` bleiben unberührt, Symlinks werden nicht verfolgt. Neue Bücher bekommen die beiden
 Dateien danach nicht mehr.
 
+**Bibliothek prüfen** (Admins) schaut jedes Buch einmal an, rein lokal und ohne etwas zu verändern, und gibt ihm einen
+Zustand von 0 bis 100 mit Befunden: Kapitelnamen, die den Titel wiederholen oder nichts sagen, keine Kapitel, Cover,
+Jahr oder Sprecher fehlen, keine Audible-Verknüpfung, noch keine M4B. Beim ersten Mal startet die Prüfung von selbst,
+danach per Knopf; sie läuft im Hintergrund, ein Buch nach dem anderen, und weicht neuen Büchern. Ein Antippen eines
+Befunds zeigt nur die betroffenen Bücher, **Sortieren → Zustand** die schlechtesten zuerst. Behoben wird mit den
+vorhandenen Knöpfen (*Kapitel* mit Vorschau, *Besser*, *Korrigieren*).
+
 ### Downloads mit mehreren Bänden
 
 Ein Download wie `Autor-Reihe 01 - 07-…` ist ein **Paket**: Jeder Band-Ordner wird ein eigenes Buch – einzeln

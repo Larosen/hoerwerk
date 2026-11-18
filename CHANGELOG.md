@@ -3,6 +3,13 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.15 – 2026-11-18
+
+- **Library check:** a button (and the first time a library is seen, automatically) looks at every book locally and
+  gives it a condition score with findings – chapter names that repeat the title or say nothing, no chapters, cover,
+  year or narrator missing, no Audible link, not an M4B. Findings are filters, the library can be sorted by condition
+  (worst first), and the fixes are the existing buttons. It runs in the background and changes nothing by itself.
+
 ## 1.0.14 – 2026-11-18
 
 - **Works that exist only as a CD:** when Audible finds nothing or only weak matches, Hörwerk also asks the German

@@ -1144,6 +1144,11 @@ impl Pipeline {
         left
     }
 
+    /// New books or downloads are being processed.
+    pub fn busy(&self) -> bool {
+        self.all().iter().any(|j| ACTIVE.contains(&j.lock().status.as_str()))
+    }
+
     pub fn trickle_status(&self, app: &App) -> Value {
         json!({"on": self.trickle_on(app), "left": self.trickle_left(app).len()})
     }
@@ -3728,7 +3733,7 @@ impl Pipeline {
     }
 
     /// What a book is called – these go from its chapter names: title, series, authors.
-    fn known_names(book: &Value) -> Vec<String> {
+    pub(crate) fn known_names(book: &Value) -> Vec<String> {
         let mut out: Vec<String> = ["title", "series"]
             .iter()
             .map(|k| s(book, k).trim().to_string())
@@ -3747,7 +3752,7 @@ impl Pipeline {
     }
 
     /// The language for "Kapitel N" / "Chapter N": the book's, else the download's.
-    fn chapter_lang(book: &Value, name: &str) -> String {
+    pub(crate) fn chapter_lang(book: &Value, name: &str) -> String {
         [
             releases::book_language(book),
             crate::usenet::release_info(name)["language"]

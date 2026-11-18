@@ -109,6 +109,36 @@ test("Bibliothek: Kapitel neu benennen – Vorschau mit Grund, Abbrechen schreib
   expect(errors).toEqual([]);
 });
 
+test("Bibliothek prüfen: Zustand, Befunde als Filter, Sortierung nach Zustand", async ({ page }) => {
+  const errors = await open(page);
+  const urls: string[] = [];
+  const bad = { path: "A/Schlecht", title: "Schlechtes Buch", authors: ["A"], series: null, series_position: null, asin: null, format: "m4b", files: 1, score: 40, issues: ["chapters", "no_year"] };
+  const good = { path: "A/Gut", title: "Gutes Buch", authors: ["A"], series: null, series_position: null, asin: "B0X", format: "m4b", files: 1, score: 100, issues: [] };
+  await page.route("**/api/library/books?*", (r) => { urls.push(r.request().url()); return r.fulfill({ json: { total: 2, books: [bad, good] } }); });
+  let running = false;
+  await page.route("**/api/library/check", async (r) => {
+    if (r.request().method() === "POST") running = true;
+    await r.fulfill({ json: { running, done: 1, total: 2, checked: running ? 1 : 2, books: 2, average: 70,
+      issues: [{ code: "chapters", count: 1, text: "Kapitelnamen wiederholen den Titel oder sagen nichts" }, { code: "no_year", count: 1, text: "Jahr fehlt" }] } });
+  });
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
+  await expect(page.locator("#libCheck")).toContainText("2 Bücher geprüft");
+  await expect(page.locator(".lib-row .score").first()).toHaveText("40");
+  // a finding as a filter
+  await page.locator("#libCheck .chip", { hasText: "Jahr fehlt" }).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("issue=no_year");
+  await page.locator("#libCheck .chip", { hasText: "Jahr fehlt" }).click();
+  await expect.poll(() => urls.at(-1) || "").toMatch(/issue=$/);
+  // sorted by condition
+  await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=health");
+  // start the check
+  await page.locator("#libCheck").getByRole("button", { name: "Erneut prüfen" }).click();
+  await expect(page.locator("#libCheck")).toContainText("Prüft");
+  expect(errors).toEqual([]);
+});
+
 test("Eingang → M4B → Bibliothek, Doppeltes wird erkannt", async ({ page }) => {
   const errors = await open(page);
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();

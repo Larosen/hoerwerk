@@ -80,7 +80,11 @@ pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
         .map(|q| q.chars().take(200).collect())
         .unwrap_or_default();
     let sort = req.query.get("sort").map(String::as_str).unwrap_or("");
-    json_reply(app.library.books(&q, offset, limit, sort))
+    let issue = req.query.get("issue").map(String::as_str).unwrap_or("");
+    json_reply(
+        app.library
+            .books(&q, offset, limit, sort, &app.health.snapshot(), issue),
+    )
 }
 
 fn image(data: Vec<u8>) -> Option<Reply> {
@@ -312,4 +316,31 @@ pub async fn delete_book(app: Arc<App>, req: Req, _: HashMap<String, String>) ->
         }
         Err(e) => error(400, e.to_string()),
     }
+}
+
+/// `GET /api/library/check` – progress and what the check found, by kind (admins).
+pub async fn check_status(app: Arc<App>, _: Req, _: HashMap<String, String>) -> Reply {
+    json_reply(app.health.status(&app))
+}
+
+/// `POST /api/library/check {on}` – start the check of the library (books that are not checked yet or changed)
+/// or stop a running one (admins).
+pub async fn check_run(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let Some(on) = req.get("on").as_bool() else {
+        return error(400, t("on muss true oder false sein", &[]));
+    };
+    if on {
+        if app.health.start(&app) {
+            text::info("Bibliothek", &t("Bibliotheks-Check gestartet", &[]));
+        }
+    } else {
+        app.health.stop();
+    }
+    app.audit(
+        &req.user_name(),
+        &req.ip,
+        if on { "library_check" } else { "library_check_stop" },
+        "",
+    );
+    json_reply(app.health.status(&app))
 }

@@ -594,8 +594,16 @@ impl LibraryIndex {
 
     /// Browse the library: every word of the query in title, author, series or path.
     /// `sort`: "author" (the folder order, default), "title", "new" / "old" (when the files changed last),
-    /// "format" (what is not one M4B yet first).
-    pub fn books(&self, query: &str, offset: usize, limit: usize, sort: &str) -> Value {
+    /// "format" (what is not one M4B yet first), "health" (the worst condition by the library check first).
+    pub fn books(
+        &self,
+        query: &str,
+        offset: usize,
+        limit: usize,
+        sort: &str,
+        health: &HashMap<String, (i64, Vec<String>)>,
+        issue: &str,
+    ) -> Value {
         let want = match_words(query);
         let mut entries = self.entries();
         if !want.is_empty() {
@@ -612,6 +620,13 @@ impl LibraryIndex {
                 want.iter().all(|w| have.iter().any(|t| t.starts_with(w.as_str())))
             });
         }
+        if !issue.is_empty() {
+            entries.retain(|e| {
+                health
+                    .get(s(e, "path"))
+                    .is_some_and(|(_, found)| found.iter().any(|f| f == issue))
+            });
+        }
         entries.sort_by_key(|e| path_key(s(e, "path")));
         let mtime = |e: &Value| e["mtime"].as_f64().unwrap_or(0.0);
         match sort {
@@ -619,6 +634,8 @@ impl LibraryIndex {
             "new" => entries.sort_by(|a, b| mtime(b).partial_cmp(&mtime(a)).unwrap_or(std::cmp::Ordering::Equal)),
             "old" => entries.sort_by(|a, b| mtime(a).partial_cmp(&mtime(b)).unwrap_or(std::cmp::Ordering::Equal)),
             "format" => entries.sort_by_key(|e| s(e, "format") == "m4b"),
+            // worst condition first; books not checked yet at the end
+            "health" => entries.sort_by_key(|e| health.get(s(e, "path")).map_or(i64::MAX, |(score, _)| *score)),
             _ => {}
         }
         let total = entries.len();
@@ -627,12 +644,17 @@ impl LibraryIndex {
             .skip(offset)
             .take(limit)
             .map(|e| {
-                Value::Object(
+                let mut b = Value::Object(
                     PUBLIC_KEYS
                         .iter()
                         .map(|k| (k.to_string(), e.get(*k).cloned().unwrap_or(Value::Null)))
                         .collect(),
-                )
+                );
+                if let Some((score, found)) = health.get(s(&e, "path")) {
+                    b["score"] = json!(score);
+                    b["issues"] = json!(found);
+                }
+                b
             })
             .collect();
         json!({"total": total, "offset": offset, "books": books})
