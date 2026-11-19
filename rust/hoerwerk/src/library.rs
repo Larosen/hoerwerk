@@ -696,6 +696,11 @@ impl LibraryIndex {
             });
         }
         entries.sort_by_key(|e| path_key(s(e, "path")));
+        // a "-" in front reverses the order ("-title" is Z→A, "-health" the best condition first)
+        let (reverse, sort) = match sort.strip_prefix('-') {
+            Some(base) => (true, base),
+            None => (false, sort),
+        };
         let added = self.added.lock().unwrap_or_else(|p| p.into_inner()).clone();
         let mtime = |e: &Value| {
             added
@@ -703,25 +708,49 @@ impl LibraryIndex {
                 .copied()
                 .unwrap_or_else(|| e["mtime"].as_f64().unwrap_or(0.0))
         };
+        // "rating_best" is the old word for "-rating"
+        let (reverse, sort) = if sort == "rating_best" {
+            (true, "rating")
+        } else {
+            (reverse, sort)
+        };
+        // a value per book (lower first); books without one stay at the end, whichever way it goes
+        let scored = |entries: &mut Vec<Value>, key: &dyn Fn(&Value) -> Option<f64>| {
+            entries.sort_by(|a, b| match (key(a), key(b)) {
+                (Some(x), Some(y)) => {
+                    let o = x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal);
+                    if reverse { o.reverse() } else { o }
+                }
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => std::cmp::Ordering::Equal,
+            });
+        };
         match sort {
-            "title" => entries.sort_by_key(|e| crate::words::natural_key(s(e, "title"))),
-            "new" => entries.sort_by(|a, b| mtime(b).partial_cmp(&mtime(a)).unwrap_or(std::cmp::Ordering::Equal)),
-            "old" => entries.sort_by(|a, b| mtime(a).partial_cmp(&mtime(b)).unwrap_or(std::cmp::Ordering::Equal)),
-            "format" => entries.sort_by_key(|e| s(e, "format") == "m4b"),
-            // worst condition first; books not checked yet at the end
-            // by Audible's listener rating (weighted by the number of votes); books without one at the end
-            "rating" | "rating_best" => {
-                let key = |e: &Value| ratings.get(s(e, "asin")).map(|(r, n)| crate::ratings::weighted(*r, *n));
-                entries.sort_by(|a, b| match (key(a), key(b)) {
-                    (Some(x), Some(y)) if sort == "rating" => x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal),
-                    (Some(x), Some(y)) => y.partial_cmp(&x).unwrap_or(std::cmp::Ordering::Equal),
-                    (Some(_), None) => std::cmp::Ordering::Less,
-                    (None, Some(_)) => std::cmp::Ordering::Greater,
-                    (None, None) => std::cmp::Ordering::Equal,
-                });
+            // by Audible's listener rating, weighted by the number of votes
+            "rating" => scored(&mut entries, &|e| {
+                ratings.get(s(e, "asin")).map(|(r, n)| crate::ratings::weighted(*r, *n))
+            }),
+            // by the condition the library check found
+            "health" => scored(&mut entries, &|e| {
+                health.get(s(e, "path")).map(|(score, _)| *score as f64)
+            }),
+            other => {
+                match other {
+                    "title" => entries.sort_by_key(|e| crate::words::natural_key(s(e, "title"))),
+                    "new" => {
+                        entries.sort_by(|a, b| mtime(b).partial_cmp(&mtime(a)).unwrap_or(std::cmp::Ordering::Equal))
+                    }
+                    "old" => {
+                        entries.sort_by(|a, b| mtime(a).partial_cmp(&mtime(b)).unwrap_or(std::cmp::Ordering::Equal))
+                    }
+                    "format" => entries.sort_by_key(|e| s(e, "format") == "m4b"),
+                    _ => {}
+                }
+                if reverse {
+                    entries.reverse();
+                }
             }
-            "health" => entries.sort_by_key(|e| health.get(s(e, "path")).map_or(i64::MAX, |(score, _)| *score)),
-            _ => {}
         }
         let total = entries.len();
         let books: Vec<Value> = entries
@@ -1008,6 +1037,10 @@ mod tests {
         };
         assert_eq!(titles("rating"), ["Schlecht", "Wenige", "Gut", "Ohne"]);
         assert_eq!(titles("rating_best"), ["Gut", "Wenige", "Schlecht", "Ohne"]);
+        assert_eq!(titles("-rating"), titles("rating_best"));
+        // a "-" in front turns any order around
+        assert_eq!(titles("title"), ["Gut", "Ohne", "Schlecht", "Wenige"]);
+        assert_eq!(titles("-title"), ["Wenige", "Schlecht", "Ohne", "Gut"]);
         let books = idx.books(
             "",
             0,

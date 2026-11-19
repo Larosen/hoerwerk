@@ -1385,3 +1385,22 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .enrich-label { color: var(--muted); min-width: 84px; font-size: 13px; }
 .enrich-list .plus { background: var(--ok-soft, #DDEBDD); color: var(--ok); border-radius: 8px; padding: 2px 10px; overflow-wrap: anywhere; }
 .enrich-cover { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; }
+
+/* library: one slim row of sort keys (arrow = direction), view as two icons, findings as one scrolling row */
+.lib-search { display: flex; align-items: center; gap: 8px; }
+.lib-search input { flex: 1; min-width: 0; }
+.view-toggle button { padding: 6px 9px; }
+.lib-sort { padding: 0 12px 6px; }
+.lib-sort .sort-bar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+.lib-sort .sort-bar::-webkit-scrollbar { display: none; }
+.lib-sort .chip { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 13px; }
+.lib-sort .chip .ico { width: 14px; height: 14px; }
+.lib-check-bar { gap: 6px; }
+.check-row { align-items: center; gap: 8px; }
+.check-row .btn .ico { width: 14px; height: 14px; margin-right: 4px; }
+.issue-chips { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; padding-bottom: 2px; }
+.issue-chips::-webkit-scrollbar { display: none; }
+.issue-chips > .ico { flex: none; width: 16px; height: 16px; color: var(--warn); }
+.lib-check-bar .issue-chips .chip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; font-size: 13px; white-space: nowrap; }
+.lib-check-bar .issue-chips .chip .n { background: var(--panel-2); color: var(--muted); border-radius: 999px; padding: 0 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.lib-check-bar .issue-chips .chip.on .n { background: rgba(255, 255, 255, .25); color: inherit; }

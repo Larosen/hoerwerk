@@ -5,6 +5,10 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 
 ## 1.0.16 – 2026-11-19
 
+- **Library controls much shorter:** one slim row of sort keys (Autor, Titel, Datum, Zustand, ★ Audible rating) – the
+  active key shows an arrow, a second tap turns it around (↑ ascending: A→Z, oldest, lowest condition or rating first);
+  Regal/Liste are two icons beside the search; the findings are short chips with a count in one scrolling row, and the
+  two check buttons ("Prüfen", "Audible-Daten") share one line with a one-line summary.
 - **Chapter preview for the phone:** every changed chapter shows what it was (red, struck through) above what it will be
   (green); no explanations, no left/right columns.
 - **Dune-style names:** a counter that the book title hid (`… - 01 - Dune II 01`) is found afterwards, so such chapters

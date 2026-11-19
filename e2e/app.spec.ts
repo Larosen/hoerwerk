@@ -166,23 +166,26 @@ test("Bibliothek prüfen: Zustand, Befunde als Filter, Sortierung nach Zustand",
   });
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
-  await expect(page.locator("#libCheck")).toContainText("2 Bücher geprüft");
+  await expect(page.locator("#libCheck")).toContainText("2 geprüft");
   await expect(page.locator(".lib-row .score").first()).toHaveText("40");
   await expect(page.locator(".lib-row .rating").first()).toHaveText("★ 4,6 (1234)");
   // a finding as a filter
-  await page.locator("#libCheck .chip", { hasText: "Jahr fehlt" }).click();
+  await page.locator("#libCheck .chip", { hasText: "Jahr" }).click();
   await expect.poll(() => urls.at(-1) || "").toContain("issue=no_year");
-  await page.locator("#libCheck .chip", { hasText: "Jahr fehlt" }).click();
+  await page.locator("#libCheck .chip", { hasText: "Jahr" }).click();
   await expect.poll(() => urls.at(-1) || "").toMatch(/issue=$/);
   // sorted by condition
+  // sorted by condition: the key first (lowest first), the same key again turns it around
   await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
-  await expect.poll(() => urls.at(-1) || "").toContain("sort=health");
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=health&");
+  await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=-health");
   // Audible's ratings: shown in the row, sorted, fetched on request
-  await page.locator("#libCheck").getByRole("button", { name: "Audible-Daten aktualisieren" }).waitFor();
-  await page.locator(".sort-bar").getByRole("button", { name: /Audible-Bewertung \(schlechteste/ }).click();
-  await expect.poll(() => urls.at(-1) || "").toContain("sort=rating");
+  await page.locator("#libCheck").getByRole("button", { name: "Audible-Daten" }).waitFor();
+  await page.locator(".sort-bar").getByRole("button", { name: "Audible-Bewertung" }).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=rating&");
   // start the check
-  await page.locator("#libCheck").getByRole("button", { name: "Erneut prüfen" }).click();
+  await page.locator("#libCheck").getByRole("button", { name: "Prüfen", exact: true }).click();
   await expect(page.locator("#libCheck")).toContainText("Prüft");
   expect(errors).toEqual([]);
 });
