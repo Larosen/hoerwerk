@@ -1404,3 +1404,8 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .lib-check-bar .issue-chips .chip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; font-size: 13px; white-space: nowrap; }
 .lib-check-bar .issue-chips .chip .n { background: var(--panel-2); color: var(--muted); border-radius: 999px; padding: 0 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .lib-check-bar .issue-chips .chip.on .n { background: rgba(255, 255, 255, .25); color: inherit; }
+
+.lib-bar { gap: 6px; }
+.lib-bar .sel-n { min-width: 24px; height: 24px; padding: 0 7px; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+.lib-bar .btn .ico { width: 14px; height: 14px; margin-right: 4px; }
+.btn.danger { color: var(--err); }

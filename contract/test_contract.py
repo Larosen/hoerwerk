@@ -1019,6 +1019,43 @@ class Processing(ContractTest):
         book = next(b for b in self.admin.get("/api/library/books?limit=500")["books"] if b["path"] == rel)
         self.assertTrue(book["cover"])
 
+    def test_select_all_and_delete_several_books(self):
+        """"Select all" gets the paths of every match (not only the shown ones); several books go in one call."""
+        tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "genre": "Hörbuch"}
+        rels = []
+        for name in ("Loeschtest Eins", "Loeschtest Zwei"):
+            deliver(self.server.inbox, f"Ella Echo - {name}", {"01.mp3": {**tags, "album": name, "title": "Kapitel", "track": "1"}})
+            job = self.job(f"Ella Echo - {name}")
+            self.assertEqual(job["status"], "done", job)
+            rels.append(os.path.relpath(os.path.dirname(job["dest"]), self.server.library))
+        found = self.admin.get("/api/library/books?q=Loeschtest&ids=1&limit=1")
+        self.assertEqual(sorted(found["paths"]), sorted(rels))         # all matches, whatever the page size
+        self.assertEqual(found["total"], 2)
+        self.family().call("POST", "/api/library/delete", {"paths": rels}, expect=403)
+        self.admin.call("POST", "/api/library/delete", {"paths": []}, expect=400)
+        res = self.admin.call("POST", "/api/library/delete", {"paths": [*rels, "gibt/es/nicht"]})
+        self.assertEqual(res["deleted"], 2)
+        self.assertEqual([f["path"] for f in res["failed"]], ["gibt/es/nicht"])
+        self.assertEqual(self.admin.get("/api/library/books?q=Loeschtest&ids=1")["paths"], [])
+        for rel in rels:
+            self.assertFalse(os.path.exists(os.path.join(self.server.library, rel)))
+
+    def test_a_stub_without_sound_does_not_stop_the_book(self):
+        """A split download can start with a file that has no sound (an empty "Opening Credits"): it is left out."""
+        tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "album": "Das Stummbuch", "genre": "Hörbuch"}
+        deliver(self.server.inbox, "Ella Echo - Das Stummbuch",
+                {"01 - Erstes.mp3": {**tags, "title": "Erstes", "track": "1"}, "02 - Zweites.mp3": {**tags, "title": "Zweites", "track": "2"}})
+        stub = os.path.join(self.server.inbox, "Ella Echo - Das Stummbuch", "00 - Opening Credits.mp3")
+        with open(stub, "wb") as fh:
+            fh.write(b"ID3\x03\x00\x00\x00\x00\x00\x00")             # tags only, not one frame of sound
+        job = self.job("Ella Echo - Das Stummbuch")
+        self.assertEqual(job["status"], "done", job)
+        probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-print_format", "json", "-show_chapters", job["dest"]],
+                                          capture_output=True, text=True, check=True).stdout)
+        self.assertEqual([c["tags"]["title"] for c in probe["chapters"]], ["Erstes", "Zweites"])
+        detail = self.admin.get(f'/api/audiobooks/{job["id"]}')
+        self.assertTrue(any("Ohne Ton übersprungen" in line for line in detail["log"]), detail["log"])
+
     def test_pack_becomes_one_job_per_volume(self):
         tmp = os.path.join(self.server.dir, ".incoming", "Paula Pack - Reihe 01-02")
         for vol, title in ((1, "Erster Fall"), (2, "Zweiter Fall")):

@@ -3010,6 +3010,47 @@ impl Pipeline {
         }
     }
 
+    /// Files without any sound (an empty "Opening Credits" chapter of a split download, a stub with only tags) are
+    /// left out – the book is built from the files that have sound, with their names. Only files that are
+    /// shorter than two seconds count as stubs, and only when other files do have sound; a long file that cannot
+    /// be read still stops the book.
+    fn without_stubs(
+        folder: &Path,
+        files: Vec<String>,
+        names: Option<Vec<String>>,
+        slot: &JobRef,
+    ) -> (Vec<String>, Option<Vec<String>>) {
+        let silent: Vec<bool> = files
+            .iter()
+            .map(|f| {
+                let i = probe_cached(&folder.join(f));
+                i["sample_rate"].as_i64().unwrap_or(0) == 0 && i["duration"].as_f64().unwrap_or(0.0) < 2.0
+            })
+            .collect();
+        if !silent.iter().any(|s| *s) || silent.iter().all(|s| *s) {
+            return (files, names);
+        }
+        let skipped: Vec<&str> = files
+            .iter()
+            .zip(&silent)
+            .filter(|(_, s)| **s)
+            .map(|(f, _)| f.as_str())
+            .collect();
+        slot.say(&t(
+            "Ohne Ton übersprungen: {files}",
+            &[("files", &skipped.iter().take(3).copied().collect::<Vec<_>>().join(", "))],
+        ));
+        let keep = |v: Vec<String>| -> Vec<String> {
+            v.into_iter()
+                .zip(&silent)
+                .filter(|(_, s)| !**s)
+                .map(|(x, _)| x)
+                .collect()
+        };
+        let names = names.filter(|n| n.len() == files.len()).map(keep);
+        (keep(files), names)
+    }
+
     fn convert(&self, app: &Arc<App>, slot: &JobRef) -> Res<()> {
         let s_ = app.settings();
         let (id, source, files, chapter_names, matched, name) = {
@@ -3062,6 +3103,7 @@ impl Pipeline {
                 }
             }
         }
+        let (files, chapter_names) = Self::without_stubs(&folder, files, chapter_names, slot);
         let first = folder.join(&files[0]);
         let single = files.len() == 1
             && [".m4b", ".m4a", ".mp4"]

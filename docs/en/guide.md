@@ -74,6 +74,9 @@ background, one book at a time, and steps aside for new books. Tapping a finding
 **Sort → Condition** puts the worst first. Fix them with the existing buttons (*Chapters* with preview, *Better*,
 *Correct*).
 
+**Selection:** the tick on the cover picks a book, *All (N)* every match of the search and the filter. For the selection
+there are *Chapters* (preview), *Add* and *Delete*.
+
 **Cover** (button on every M4B book): your own picture (JPEG/PNG) for books nobody offers a cover for. It becomes
 `cover.jpg`/`cover.png` in the book folder and the picture inside the M4B; all other tags stay.
 
@@ -86,7 +89,8 @@ and *Newest* keeps the date a book was first seen.
 
 **Audible data** (independent of the condition): *Load Audible data* fetches the listener rating and the runtime of the
 books that have an ASIN, slowly in the background, and keeps them for a month. The library can then be sorted by
-**Audible rating** (worst or best first); votes count, 4.9 from two people does not beat 4.6 from two thousand. If the
+**Audible rating** (worst or best first) – exactly by the number shown; ratings with fewer than 5 votes follow the
+others, books without a rating are last. If the
 file's length is far from Audible's runtime (more than 8 % and 5 minutes), the finding *Length differs a lot from
 Audible* appears – usually another edition.
 

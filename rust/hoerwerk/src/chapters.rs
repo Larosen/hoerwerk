@@ -785,8 +785,17 @@ fn settle(names: Vec<String>, counters: &[Option<u64>], lang: &str) -> (Vec<Stri
         .enumerate()
         .map(|(i, name)| {
             if empty[i] {
-                why[i] = Some("numbered");
-                crate::encoder::chapter_name(number(i), lang)
+                // "Kapitel 36" already is a number the book gave itself: it stays 36 (only the wording follows the
+                // language) – counting positions would turn it into "Kapitel 16" when other names are mixed in
+                let own = is_generic(name.trim())
+                    .then(|| NUMBER.find(&name).and_then(|m| m.as_str().parse::<usize>().ok()))
+                    .flatten();
+                if own.is_some() && crate::encoder::chapter_name(own.unwrap_or(0), lang) == name {
+                    name
+                } else {
+                    why[i] = Some("numbered");
+                    crate::encoder::chapter_name(own.unwrap_or_else(|| number(i)), lang)
+                }
             } else if double[i] {
                 why[i] = Some("double");
                 shorten(&format!("{}: {name}", number(i)))
@@ -850,6 +859,31 @@ mod tests {
         assert_eq!(adopt_tracks(&[0.0, 700.0, 1500.0, 2000.0], 2700.0, &tracks), None); // starts do not fit
         assert_eq!(adopt_tracks(&starts, 3600.0, &tracks), None); // another length
         assert_eq!(adopt_tracks(&starts[..3], 2700.0, &tracks), None); // another number of chapters
+    }
+
+    #[test]
+    fn numbers_the_book_gave_itself_are_kept() {
+        crate::text::set_language("de");
+        // a long book whose parts are named, with a stretch of plain "Kapitel N" in the middle: those stay what they are
+        let mut names: Vec<String> = (1..=15).map(|i| format!("Der Weg des Soldaten, Teil {i}")).collect();
+        names.extend((36..=56).map(|i| format!("Kapitel {i}")));
+        names.extend((1..=28).map(|i| format!("Zentrale Intelligenz Agentur, Teil {i}")));
+        let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+        assert_eq!(clean(&refs, &[], "de"), names);
+    }
+
+    #[test]
+    fn a_counter_the_book_title_hid_is_found_afterwards() {
+        crate::text::set_language("de");
+        let names: Vec<String> = (1..=86)
+            .map(|i| format!("Frank Herbert - Dune II-Der Herr Des Wüstenplaneten - {i:02} - Dune II {i:02}"))
+            .collect();
+        let want: Vec<String> = (1..=86).map(|i| format!("Kapitel {i}")).collect();
+        let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+        assert_eq!(
+            clean(&refs, &["Der Herr des Wüstenplaneten", "Frank Herbert"], "de"),
+            want
+        );
     }
 
     #[test]

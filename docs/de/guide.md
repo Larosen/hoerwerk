@@ -75,6 +75,9 @@ danach per Knopf; sie läuft im Hintergrund, ein Buch nach dem anderen, und weic
 Befunds zeigt nur die betroffenen Bücher, **Sortieren → Zustand** die schlechtesten zuerst. Behoben wird mit den
 vorhandenen Knöpfen (*Kapitel* mit Vorschau, *Besser*, *Korrigieren*).
 
+**Auswahl:** das Häkchen auf dem Cover wählt ein Buch, *Alle (N)* alle Treffer von Suche und Filter. Für die Auswahl gibt
+es *Kapitel* (Vorschau), *Ergänzen* und *Löschen*.
+
 **Cover** (Knopf an jedem M4B-Buch): ein eigenes Bild (JPEG/PNG) für Bücher, zu denen es öffentlich keins gibt. Es wird
 `cover.jpg`/`cover.png` im Buchordner und das Bild in der M4B; alle anderen Tags bleiben.
 
@@ -87,7 +90,8 @@ Schreiben versteckt, und *Neueste* behält das Datum, an dem ein Buch zuerst ges
 
 **Audible-Daten** (unabhängig vom Zustand): *Audible-Daten laden* holt Hörer-Bewertung und Laufzeit der Bücher mit ASIN,
 langsam im Hintergrund, und merkt sie einen Monat. Danach lässt sich die Bibliothek nach **Audible-Bewertung**
-sortieren (schlechteste oder beste zuerst); Stimmen zählen mit, 4,9 von zwei Personen schlägt 4,6 von zweitausend nicht.
+sortieren (schlechteste oder beste zuerst) – genau nach der angezeigten Zahl; Bewertungen mit weniger als 5 Stimmen
+folgen den übrigen, Bücher ohne Bewertung stehen am Ende.
 Weicht die Länge der Datei stark von Audibles Laufzeit ab (mehr als 8 % und 5 Minuten), erscheint der Befund
 *Laufzeit weicht stark von Audible ab* – meist eine andere Fassung.
 

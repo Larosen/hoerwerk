@@ -3,6 +3,18 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.17 – 2026-11-19
+
+- **Chapter names that are numbers already stay:** `Kapitel 36` is no longer renumbered by its position (`Kapitel 16`)
+  when other names are mixed in.
+- **Rating order you can read:** the library sorts by the rating exactly as shown (3,1 · 3,5 · 3,7 …); ratings with fewer
+  than 5 votes follow the others, books without a rating are last.
+- **Select all and delete the selection:** the bar over the library has "Alle (N)" – every book that matches the search
+  and the filter, not only the ones loaded – and "Löschen" for the ticked books (one question, one call).
+- **A file without sound does not stop a book:** an empty stub (shorter than two seconds, no audio) among the files of a
+  split download – e.g. an empty "Opening Credits" – is left out and noted in the log instead of ending the job with
+  "Keine Tonspur".
+
 ## 1.0.16 – 2026-11-19
 
 - **Library controls much shorter:** one slim row of sort keys (Autor, Titel, Datum, Zustand, ★ Audible rating) – the

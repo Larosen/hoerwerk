@@ -35,6 +35,7 @@ const books = {
   check: null as LibraryCheck | null,
   ratings: null as LibraryRatings | null,    // fetching Audible's ratings of the library        // the library check (progress and findings)
   checkTimer: undefined as number | undefined,
+  libMatch: 0,                                // how many books match the search and the filter
   libPicked: new Set<string>(),               // library books ticked for "Kapitel neu benennen"
   hideDone: store.get("booksHideDone", false),   // "Aufträge" without the finished ones (only hidden, never deleted)
 };
@@ -232,8 +233,10 @@ async function loadLibraryBooks(): Promise<void> {
   if (target && !target.children.length) skeleton(target, 6);
   try {
     const res = await api<{ total: number; books: LibraryBook[] }>("GET",
-      `/api/library/books?q=${encodeURIComponent(books.libQuery)}&limit=${books.libShown}&sort=${books.libSort}&issue=${encodeURIComponent(books.libIssue)}`, undefined, { key: "library" });
+      libraryUrl(), undefined, { key: "library" });
     if (!books.libQuery) books.libTotal = res.total;
+    books.libMatch = res.total;
+    updateLibBar();
     const rows = document.getElementById("libRows");
     if (!rows) return;
     const y = window.scrollY;                       // a reload (new books filed) keeps the place in the list
@@ -956,19 +959,57 @@ function updateLibBar(): void {
   const bar = document.getElementById("libBar");
   if (!bar) return;
   const n = books.libPicked.size;
-  bar.hidden = !n;
-  bar.replaceChildren(
-    el("span", {}, plural(n, t("1 Hörbuch ausgewählt"), t("{n} Hörbücher ausgewählt", { n }))),
-    el("button", { type: "button", class: "btn small primary", onclick: () => previewChapters([...books.libPicked].map((path) => ({ path, title: path.split("/").pop() || path }))) },
-      icon("chapters"), t("Kapitel neu benennen …")),
-    el("button", { type: "button", class: "btn small", title: t("Fehlendes (Jahr, Sprecher, Cover …) ergänzen, wo die Fassung sicher ist"),
-      onclick: () => previewEnrich([...books.libPicked].map((path) => ({ path, title: path.split("/").pop() || path }))) },
-      icon("check"), t("Daten ergänzen …")),
-    el("button", { type: "button", class: "btn small ghost", onclick: () => {
-      books.libPicked.clear();
-      for (const cb of document.querySelectorAll<HTMLInputElement>("#libRows .lib-check input")) cb.checked = false;
+  const items = (): { path: string; title: string }[] => [...books.libPicked].map((path) => ({ path, title: path.split("/").pop() || path }));
+  const tick = (on: boolean): void => {
+    for (const cb of document.querySelectorAll<HTMLInputElement>("#libRows .lib-check input")) cb.checked = on;
+  };
+  // everything that matches the search and the filter – not only the books loaded so far
+  const all = el("button", { type: "button", class: "btn small ghost", onclick: async () => {
+    try {
+      const res = await api<{ paths: string[] }>("GET", libraryUrl({ ids: true }));
+      for (const p of res.paths) books.libPicked.add(p);
+      tick(true);
       updateLibBar();
-    } }, t("Auswahl aufheben")));
+    } catch (e) { toast(errMsg(e), true); }
+  } }, icon("check"), t("Alle ({n})", { n: books.libMatch }));
+  bar.hidden = !n && !books.libMatch;
+  if (!n) { bar.replaceChildren(all); return; }
+  bar.replaceChildren(
+    el("span", { class: "sel-n" }, String(n)),
+    el("button", { type: "button", class: "btn small primary", title: t("Kapitelnamen neu benennen – erst eine Vorschau"), onclick: () => previewChapters(items()) },
+      icon("chapters"), t("Kapitel")),
+    el("button", { type: "button", class: "btn small", title: t("Fehlendes (Jahr, Sprecher, Cover …) ergänzen, wo die Fassung sicher ist"),
+      onclick: () => previewEnrich(items()) }, icon("check"), t("Ergänzen")),
+    el("button", { type: "button", class: "btn small ghost danger", title: t("Ausgewählte Hörbücher löschen"), onclick: () => deleteSelected() },
+      icon("x"), t("Löschen")),
+    ...(n < books.libMatch ? [all] : []),
+    el("button", { type: "button", class: "btn small ghost", title: t("Auswahl aufheben"), "aria-label": t("Auswahl aufheben"),
+      onclick: () => { books.libPicked.clear(); tick(false); updateLibBar(); } }, icon("x")));
+}
+
+/** The books of the library as the list asks for them (search, filter, order) – `ids` only the paths of all of them. */
+function libraryUrl(o: { ids?: boolean } = {}): string {
+  const q = `q=${encodeURIComponent(books.libQuery)}&sort=${books.libSort}&issue=${encodeURIComponent(books.libIssue)}`;
+  return o.ids ? `/api/library/books?${q}&ids=1` : `/api/library/books?${q}&limit=${books.libShown}`;
+}
+
+/** Delete the ticked books (moved to `_ersetzt` or deleted, as set for replaced originals) – after asking once. */
+async function deleteSelected(): Promise<void> {
+  const paths = [...books.libPicked];
+  if (!paths.length) return;
+  if (!(await confirmBox(plural(paths.length,
+    t("1 Hörbuch aus der Bibliothek löschen? Je nach Einstellung landet es unter _ersetzt im Eingang oder wird gelöscht."),
+    t("{n} Hörbücher aus der Bibliothek löschen? Je nach Einstellung landen sie unter _ersetzt im Eingang oder werden gelöscht.", { n: paths.length })),
+    t("Löschen")))) return;
+  try {
+    const res = await api<{ deleted: number; failed: { path: string; error: string }[] }>("POST", "/api/library/delete", { paths });
+    toast(plural(res.deleted, t("1 Hörbuch gelöscht"), t("{n} Hörbücher gelöscht", { n: res.deleted })), res.failed.length ? true : undefined);
+    if (res.failed.length) toast(`${res.failed[0].path}: ${res.failed[0].error}`, true);
+    books.libPicked.clear();
+    updateLibBar();
+    loadLibraryBooks();
+    loadCheck();
+  } catch (e) { toast(errMsg(e), true); }
 }
 
 /** Choose a picture for a book that has none (or a wrong one): it becomes the cover in its folder and inside the M4B. */

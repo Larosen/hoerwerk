@@ -101,8 +101,8 @@ test("Bibliothek: Kapitel neu benennen – Vorschau mit Grund, Abbrechen schreib
   expect(sent).toEqual([{ path: book.path, apply: false }]);                      // cancelled: only the preview was asked for
   // several books: tick one, the bar offers the same dialog
   await page.locator(".lib-row .lib-check input").check();
-  await expect(page.locator("#libBar")).toContainText("1 Hörbuch ausgewählt");
-  await page.locator("#libBar").getByRole("button", { name: /Kapitel neu benennen/ }).click();
+  await expect(page.locator("#libBar .sel-n")).toHaveText("1");
+  await page.locator("#libBar").getByRole("button", { name: "Kapitel", exact: true }).click();
   await dialog.getByRole("button", { name: "Umbenennung anwenden" }).click();
   await expect(dialog).not.toBeVisible();
   expect(sent.at(-1)).toEqual({ path: book.path });                                // applied: the real call
@@ -138,16 +138,41 @@ test("Bibliothek: eigenes Cover hochladen, Daten für die Auswahl ergänzen", as
   expect(sent[0].size).toBe(png.length);
   // details for the ticked books: the list first, then one click for all
   await page.locator(".lib-row .lib-check input").check();
-  await page.locator("#libBar").getByRole("button", { name: /Daten ergänzen/ }).click();
+  await page.locator("#libBar").getByRole("button", { name: "Ergänzen", exact: true }).click();
   const dialog = page.locator("#enrichDialog");
   await expect(dialog.locator(".enrich-list .plus").first()).toHaveText("2016");
   await expect(dialog).toContainText("Simon Jäger");
   await dialog.getByRole("button", { name: "Abbrechen" }).click();
   expect(posts).toEqual([{ path: book.path, apply: false }]);                      // cancelled: nothing was written
-  await page.locator("#libBar").getByRole("button", { name: /Daten ergänzen/ }).click();
+  await page.locator("#libBar").getByRole("button", { name: "Ergänzen", exact: true }).click();
   await dialog.getByRole("button", { name: "Ergänzen", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   expect(posts.at(-1)).toEqual({ path: book.path });
+  expect(errors).toEqual([]);
+});
+
+test("Bibliothek: alle auswählen (auch die noch nicht geladenen) und die Auswahl löschen", async ({ page }) => {
+  const errors = await open(page);
+  const mk = (n: number) => ({ path: `A/Buch ${n}`, title: `Buch ${n}`, authors: ["A"], series: null, series_position: null, asin: null, format: "m4b", files: 1 });
+  await page.route("**/api/library/books?*", (r) => {
+    const url = new URL(r.request().url());
+    if (url.searchParams.get("ids") === "1") return r.fulfill({ json: { total: 250, paths: Array.from({ length: 250 }, (_, i) => `A/Buch ${i + 1}`) } });
+    return r.fulfill({ json: { total: 250, books: [mk(1), mk(2)] } });
+  });
+  let deleted: string[] = [];
+  await page.route("**/api/library/delete", async (r) => {
+    deleted = r.request().postDataJSON().paths;
+    await r.fulfill({ json: { deleted: deleted.length, failed: [] } });
+  });
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
+  await page.locator("#libBar").getByRole("button", { name: "Alle (250)" }).click();      // all matches, not just the two shown
+  await expect(page.locator("#libBar .sel-n")).toHaveText("250");
+  await expect(page.locator(".lib-row .lib-check input:checked")).toHaveCount(2);
+  await page.locator("#libBar").getByRole("button", { name: "Löschen" }).click();
+  await page.locator("#confirmDialog").getByRole("button", { name: "Löschen" }).click();
+  await expect.poll(() => deleted.length).toBe(250);
+  await expect(page.locator("#libBar .sel-n")).toHaveCount(0);                              // selection cleared
   expect(errors).toEqual([]);
 });
 
@@ -173,7 +198,7 @@ test("Bibliothek prüfen: Zustand, Befunde als Filter, Sortierung nach Zustand",
   await page.locator("#libCheck .chip", { hasText: "Jahr" }).click();
   await expect.poll(() => urls.at(-1) || "").toContain("issue=no_year");
   await page.locator("#libCheck .chip", { hasText: "Jahr" }).click();
-  await expect.poll(() => urls.at(-1) || "").toMatch(/issue=$/);
+  await expect.poll(() => urls.at(-1) || "").toContain("issue=&limit");
   // sorted by condition
   // sorted by condition: the key first (lowest first), the same key again turns it around
   await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
