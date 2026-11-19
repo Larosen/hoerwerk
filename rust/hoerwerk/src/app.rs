@@ -44,6 +44,10 @@ pub struct App {
     pub abs: Abs,
     pub plex: Plex,
     pub listening: Listening,
+    /// the library check (condition score and findings per book)
+    pub health: Arc<crate::health::Health>,
+    /// Audible's listener ratings of the library's books
+    pub ratings: Arc<crate::ratings::Ratings>,
     pub free: crate::free::Free,
     pub discover: crate::discover::Discover,
     /// the daily database snapshot: when it last worked, why it last failed ("" = fine), when it last ran
@@ -103,6 +107,8 @@ impl App {
             abs: Abs::new(db.clone()),
             plex: Plex::new(db.clone()),
             listening: Listening::default(),
+            health: Arc::new(crate::health::Health::new(&db)),
+            ratings: Arc::new(crate::ratings::Ratings::new(&db)),
             free: crate::free::Free::default(),
             discover: crate::discover::Discover::new(true),
             db_backup: Mutex::new((None, String::new(), 0.0)),

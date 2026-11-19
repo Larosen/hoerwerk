@@ -61,6 +61,16 @@ struct State {
     during: Option<HashMap<String, Option<Value>>>,
 }
 
+/// What the library check and the ratings add to a listing (sorting, filtering, extra fields).
+pub struct Extra<'a> {
+    /// path -> (condition score, findings)
+    pub health: &'a HashMap<String, (i64, Vec<String>)>,
+    /// asin -> (average rating, number of ratings)
+    pub ratings: &'a HashMap<String, (f64, i64)>,
+    /// only books with this finding ("" = all)
+    pub issue: &'a str,
+}
+
 pub struct LibraryIndex {
     pub root: PathBuf,
     db: Db,
@@ -594,8 +604,9 @@ impl LibraryIndex {
 
     /// Browse the library: every word of the query in title, author, series or path.
     /// `sort`: "author" (the folder order, default), "title", "new" / "old" (when the files changed last),
-    /// "format" (what is not one M4B yet first).
-    pub fn books(&self, query: &str, offset: usize, limit: usize, sort: &str) -> Value {
+    /// "format" (what is not one M4B yet first), "health" (the worst condition by the library check first), "rating" / "rating_best" (Audible's listener ratings).
+    pub fn books(&self, query: &str, offset: usize, limit: usize, sort: &str, extra: &Extra) -> Value {
+        let (health, ratings, issue) = (extra.health, extra.ratings, extra.issue);
         let want = match_words(query);
         let mut entries = self.entries();
         if !want.is_empty() {
@@ -612,6 +623,13 @@ impl LibraryIndex {
                 want.iter().all(|w| have.iter().any(|t| t.starts_with(w.as_str())))
             });
         }
+        if !issue.is_empty() {
+            entries.retain(|e| {
+                health
+                    .get(s(e, "path"))
+                    .is_some_and(|(_, found)| found.iter().any(|f| f == issue))
+            });
+        }
         entries.sort_by_key(|e| path_key(s(e, "path")));
         let mtime = |e: &Value| e["mtime"].as_f64().unwrap_or(0.0);
         match sort {
@@ -619,6 +637,19 @@ impl LibraryIndex {
             "new" => entries.sort_by(|a, b| mtime(b).partial_cmp(&mtime(a)).unwrap_or(std::cmp::Ordering::Equal)),
             "old" => entries.sort_by(|a, b| mtime(a).partial_cmp(&mtime(b)).unwrap_or(std::cmp::Ordering::Equal)),
             "format" => entries.sort_by_key(|e| s(e, "format") == "m4b"),
+            // worst condition first; books not checked yet at the end
+            // by Audible's listener rating (weighted by the number of votes); books without one at the end
+            "rating" | "rating_best" => {
+                let key = |e: &Value| ratings.get(s(e, "asin")).map(|(r, n)| crate::ratings::weighted(*r, *n));
+                entries.sort_by(|a, b| match (key(a), key(b)) {
+                    (Some(x), Some(y)) if sort == "rating" => x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal),
+                    (Some(x), Some(y)) => y.partial_cmp(&x).unwrap_or(std::cmp::Ordering::Equal),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
+                });
+            }
+            "health" => entries.sort_by_key(|e| health.get(s(e, "path")).map_or(i64::MAX, |(score, _)| *score)),
             _ => {}
         }
         let total = entries.len();
@@ -627,12 +658,21 @@ impl LibraryIndex {
             .skip(offset)
             .take(limit)
             .map(|e| {
-                Value::Object(
+                let mut b = Value::Object(
                     PUBLIC_KEYS
                         .iter()
                         .map(|k| (k.to_string(), e.get(*k).cloned().unwrap_or(Value::Null)))
                         .collect(),
-                )
+                );
+                if let Some((rating, count)) = ratings.get(s(&e, "asin")) {
+                    b["rating"] = json!(rating);
+                    b["ratings"] = json!(count);
+                }
+                if let Some((score, found)) = health.get(s(&e, "path")) {
+                    b["score"] = json!(score);
+                    b["issues"] = json!(found);
+                }
+                b
             })
             .collect();
         json!({"total": total, "offset": offset, "books": books})
@@ -848,6 +888,67 @@ mod tests {
             &json!({"title": "Der Stein", "subtitle": "Das Hörspiel"}),
             &both
         ));
+    }
+
+    #[test]
+    fn the_library_sorts_by_audible_rating() {
+        let db = Db::memory();
+        let idx = LibraryIndex::new(Path::new(""), db.clone());
+        let e = |p: &str, asin: Option<&str>| {
+            json!({"v": ENTRY_VERSION, "path": p, "title": p, "authors": ["A"], "names": ["a"], "files": 1, "mtime": 1.0,
+                   "format": "m4b", "cover": true, "asin": asin})
+        };
+        idx.store(
+            &[
+                e("Gut", Some("G")),
+                e("Schlecht", Some("S")),
+                e("Ohne", None),
+                e("Wenige", Some("W")),
+            ],
+            &[],
+            Some(1.0),
+        )
+        .unwrap();
+        let idx = LibraryIndex::new(Path::new(""), db); // entries come back from the database
+        // 4.9 from two people is not better than 4.6 from two thousand; no ASIN or no rating: at the end
+        let ratings: HashMap<String, (f64, i64)> = [
+            ("G".into(), (4.6, 2000)),
+            ("S".into(), (2.8, 500)),
+            ("W".into(), (4.9, 2)),
+        ]
+        .into();
+        let titles = |sort: &str| -> Vec<String> {
+            idx.books(
+                "",
+                0,
+                10,
+                sort,
+                &Extra {
+                    health: &HashMap::new(),
+                    ratings: &ratings,
+                    issue: "",
+                },
+            )["books"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|b| b["title"].as_str().unwrap().to_string())
+                .collect()
+        };
+        assert_eq!(titles("rating"), ["Schlecht", "Wenige", "Gut", "Ohne"]);
+        assert_eq!(titles("rating_best"), ["Gut", "Wenige", "Schlecht", "Ohne"]);
+        let books = idx.books(
+            "",
+            0,
+            10,
+            "rating",
+            &Extra {
+                health: &HashMap::new(),
+                ratings: &ratings,
+                issue: "",
+            },
+        );
+        assert_eq!(books["books"][0]["ratings"], 500);
     }
 
     #[test]

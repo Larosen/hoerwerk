@@ -942,6 +942,41 @@ class Processing(ContractTest):
         log = self.admin.get("/api/logs?after=0&level=info")
         self.assertIn("Kapitelnamen geändert", json.dumps(log, ensure_ascii=False))
 
+    def test_library_check_finds_what_could_be_better(self):
+        """The library check looks at every book once (nothing is changed), gives a score and findings, and the
+        library can be sorted and filtered by them."""
+        tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "album": "Das Pruefbuch", "genre": "Hörbuch"}
+        deliver(self.server.inbox, "Ella Echo - Das Pruefbuch",
+                {f"{i + 1:02d}.mp3": {**tags, "title": f"Das Pruefbuch{i + 1:03d}", "track": str(i + 1)} for i in range(3)})
+        job = self.job("Ella Echo - Das Pruefbuch")
+        self.assertEqual(job["status"], "done", job)
+        status = self.admin.call("POST", "/api/library/check", {"on": True})
+        self.assertIn("running", status)
+        status = self.admin.wait(lambda: (lambda s: s if not s["running"] and s["checked"] >= 1 else None)(
+            self.admin.get("/api/library/check")), seconds=90, what="library check")
+        self.assertGreaterEqual(status["checked"], 1)
+        books = self.admin.get("/api/library/books?sort=health&limit=500")["books"]
+        mine = next(b for b in books if b["title"] == "Das Pruefbuch")
+        self.assertIsInstance(mine["score"], int)
+        self.assertLess(mine["score"], 100)
+        self.assertTrue(mine["issues"], mine)
+        # worst first: the scores never go down along the list
+        scores = [b["score"] for b in books if "score" in b]
+        self.assertEqual(scores, sorted(scores))
+        # filtering by a finding keeps only the books that have it
+        code = mine["issues"][0]
+        only = self.admin.get(f"/api/library/books?issue={code}&limit=500")["books"]
+        self.assertTrue(only and all(code in b["issues"] for b in only), only)
+        self.assertIn(code, [i["code"] for i in status["issues"]])
+        # a family account may not start it
+        self.family().call("POST", "/api/library/check", {"on": True}, expect=403)
+        # Audible's ratings: the status is there (nothing fetched without a network), the sort orders exist
+        rate = self.admin.get("/api/library/ratings")
+        self.assertEqual((rate["running"], rate["rated"]), (False, 0))
+        for sort in ("rating", "rating_best"):
+            self.assertTrue(self.admin.get(f"/api/library/books?sort={sort}&limit=5")["books"])
+        self.family().call("POST", "/api/library/ratings", {"on": True}, expect=403)
+
     def test_pack_becomes_one_job_per_volume(self):
         tmp = os.path.join(self.server.dir, ".incoming", "Paula Pack - Reihe 01-02")
         for vol, title in ((1, "Erster Fall"), (2, "Zweiter Fall")):

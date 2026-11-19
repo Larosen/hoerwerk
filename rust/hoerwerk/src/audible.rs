@@ -537,6 +537,13 @@ fn person_works(books: Vec<Value>, field: &str, want: &str, language: &str, limi
 
 pub type JsonGetter = dyn Fn(&str) -> Result<Value> + Send + Sync;
 
+/// Rating and runtime of a title (see `Client::basics`).
+pub struct Basics {
+    pub rating: f64,
+    pub ratings: i64,
+    pub runtime_min: i64,
+}
+
 pub struct Client {
     get: Box<JsonGetter>,
     cache: Mutex<HashMap<String, (f64, Value)>>,
@@ -706,6 +713,33 @@ impl Client {
             form(&params)
         ))?;
         Ok(Self::products(&data["similar_products"], region, false))
+    }
+
+    /// What the library check wants to know of a title, in one small request: the listeners' rating (average and
+    /// number of ratings) and the runtime in minutes.
+    pub fn basics(&self, asin: &str, region: &str) -> Result<Basics> {
+        let data = self.cached(&format!(
+            "{}/1.0/catalog/products/{asin}?response_groups=rating,product_attrs",
+            api_host(region)
+        ))?;
+        let p = &data["product"];
+        if p.is_null() {
+            return err(t(
+                "ASIN {asin} im Audible-Shop ({region}) nicht gefunden",
+                &[("asin", asin), ("region", region)],
+            ));
+        }
+        let num = |v: &Value| {
+            v.as_f64()
+                .or_else(|| v.as_str().and_then(|x| x.parse().ok()))
+                .unwrap_or(0.0)
+        };
+        let r = &p["rating"]["overall_distribution"];
+        Ok(Basics {
+            rating: num(&r["display_average_rating"]),
+            ratings: num(&r["num_ratings"]) as i64,
+            runtime_min: num(&p["runtime_length_min"]) as i64,
+        })
     }
 
     pub fn product(&self, asin: &str, region: &str) -> Result<Value> {
@@ -1599,6 +1633,9 @@ pub struct Providers {
     pub fallbacks: Vec<&'static str>,
 }
 
+/// (name, seconds) of the tracks of a CD, in order.
+type Tracks = Vec<(String, f64)>;
+
 type TextGetter = dyn Fn(&str) -> Result<String> + Send + Sync;
 
 fn provider_text(url: &str) -> Result<String> {
@@ -1707,6 +1744,28 @@ impl Providers {
     /// Apple Music albums for CDs that are no audiobook anywhere: the first few hits, each with the sum of its
     /// track lengths (one more request per album) – so the runtime can be compared with the files.
     fn apple_albums(&self, hints: &Value, region: &str) -> Result<Vec<Value>> {
+        Ok(self
+            .apple_albums_with_tracks(hints, region)?
+            .into_iter()
+            .map(|(d, tracks)| {
+                let secs: f64 = tracks.iter().map(|(_, s)| s).sum();
+                from_itunes_album(&d, (secs / 60.0).round() as i64)
+            })
+            .collect())
+    }
+
+    /// The track lists of the first few Apple Music albums for a title: (name, seconds) in disc and track order –
+    /// for CD works, whose track names are the chapter names when count and starts fit the files.
+    pub fn cd_tracklists(&self, hints: &Value, region: &str) -> Result<Vec<Tracks>> {
+        Ok(self
+            .apple_albums_with_tracks(hints, region)?
+            .into_iter()
+            .map(|(_, t)| t)
+            .collect())
+    }
+
+    /// Album hits (iTunes search, music) each with its tracks (one lookup per album).
+    fn apple_albums_with_tracks(&self, hints: &Value, region: &str) -> Result<Vec<(Value, Tracks)>> {
         let ta = [s(hints, "title"), s(hints, "author")]
             .into_iter()
             .filter(|x| !x.is_empty())
@@ -1738,21 +1797,28 @@ impl Providers {
             .take(3)
         {
             let id = text_of(&d["collectionId"]);
-            let minutes = (self.get)(&format!(
+            let mut tracks: Vec<(i64, i64, String, f64)> = (self.get)(&format!(
                 "https://itunes.apple.com/lookup?id={id}&entity=song&country={country}"
             ))
             .map(|l| {
-                let ms: f64 = l["results"]
+                l["results"]
                     .as_array()
                     .into_iter()
                     .flatten()
                     .filter(|r| r["wrapperType"] == "track")
-                    .filter_map(|r| r["trackTimeMillis"].as_f64())
-                    .sum();
-                (ms / 60000.0).round() as i64
+                    .filter_map(|r| {
+                        Some((
+                            r["discNumber"].as_i64().unwrap_or(1),
+                            r["trackNumber"].as_i64().unwrap_or(0),
+                            s(r, "trackName").trim().to_string(),
+                            r["trackTimeMillis"].as_f64()? / 1000.0,
+                        ))
+                    })
+                    .collect()
             })
-            .unwrap_or(0);
-            out.push(from_itunes_album(d, minutes));
+            .unwrap_or_default();
+            tracks.sort_by_key(|(disc, no, _, _)| (*disc, *no));
+            out.push((d.clone(), tracks.into_iter().map(|(_, _, n, s)| (n, s)).collect()));
         }
         Ok(out)
     }

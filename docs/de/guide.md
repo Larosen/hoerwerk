@@ -68,6 +68,24 @@ der M4B; Plex liest die Dateien gar nicht, Audiobookshelf nur, wenn `metadata.js
 und Ordner ohne `metadata.json` bleiben unberührt, Symlinks werden nicht verfolgt. Neue Bücher bekommen die beiden
 Dateien danach nicht mehr.
 
+**Bibliothek prüfen** (Admins) schaut jedes Buch einmal an, rein lokal und ohne etwas zu verändern, und gibt ihm einen
+Zustand von 0 bis 100 mit Befunden: Kapitelnamen, die den Titel wiederholen oder nichts sagen, keine Kapitel, Cover,
+Jahr oder Sprecher fehlen, keine Audible-Verknüpfung, noch keine M4B. Beim ersten Mal startet die Prüfung von selbst,
+danach per Knopf; sie läuft im Hintergrund, ein Buch nach dem anderen, und weicht neuen Büchern. Ein Antippen eines
+Befunds zeigt nur die betroffenen Bücher, **Sortieren → Zustand** die schlechtesten zuerst. Behoben wird mit den
+vorhandenen Knöpfen (*Kapitel* mit Vorschau, *Besser*, *Korrigieren*).
+
+**Audible-Daten** (unabhängig vom Zustand): *Audible-Daten laden* holt Hörer-Bewertung und Laufzeit der Bücher mit ASIN,
+langsam im Hintergrund, und merkt sie einen Monat. Danach lässt sich die Bibliothek nach **Audible-Bewertung**
+sortieren (schlechteste oder beste zuerst); Stimmen zählen mit, 4,9 von zwei Personen schlägt 4,6 von zweitausend nicht.
+Weicht die Länge der Datei stark von Audibles Laufzeit ab (mehr als 8 % und 5 Minuten), erscheint der Befund
+*Laufzeit weicht stark von Audible ab* – meist eine andere Fassung.
+
+**Echte Kapitelnamen:** Würden beim Umbenennen nur „Kapitel 7“ übrig bleiben, sucht Hörwerk zuerst online: die Kapitel
+von Audible (gleiche Länge ±2 %, gleiche Kapitelzahl, aussagekräftige Namen) oder die Titel der CD bei Apple Music
+(gleiche Titelzahl, jedes Kapitel beginnt dort, wo der Titel davor endet, Gesamtlänge ±3 %). Erst danach wird nummeriert.
+Die Vorschau zeigt, woher ein Name kommt.
+
 ### Downloads mit mehreren Bänden
 
 Ein Download wie `Autor-Reihe 01 - 07-…` ist ein **Paket**: Jeder Band-Ordner wird ein eigenes Buch – einzeln

@@ -31,6 +31,10 @@ const books = {
   libShown: 100,                              // rows loaded so far
   libTotal: null as number | null,            // books in the library (for the filter chip)
   libTimer: undefined as number | undefined,
+  libIssue: "",                              // library filter: only books with this finding
+  check: null as LibraryCheck | null,
+  ratings: null as LibraryRatings | null,    // fetching Audible's ratings of the library        // the library check (progress and findings)
+  checkTimer: undefined as number | undefined,
   libPicked: new Set<string>(),               // library books ticked for "Kapitel neu benennen"
   hideDone: store.get("booksHideDone", false),   // "Aufträge" without the finished ones (only hidden, never deleted)
 };
@@ -154,11 +158,18 @@ interface Trickle { on: boolean; left: number }
 interface LibraryBook {
   path: string; title: string; authors: string[]; names?: string[]; series: string | null;
   series_position: string | null; asin: string | null; format: string; files: number; mtime?: number; cover?: boolean;
+  score?: number; issues?: string[]; rating?: number; ratings?: number;
+}
+interface LibraryRatings { running: boolean; done: number; total: number; with_asin: number; rated: number }
+interface LibraryCheck {
+  running: boolean; done: number; total: number; checked: number; books: number; average: number | null;
+  issues: { code: string; count: number; text: string }[];
 }
 
 const LIBRARY_SORTS: [string, () => string][] = [
   ["author", () => t("Autor")], ["title", () => t("Titel")], ["new", () => t("Neueste")], ["old", () => t("Älteste")],
-  ["format", () => t("Nicht M4B zuerst")],
+  ["format", () => t("Nicht M4B zuerst")], ["health", () => t("Zustand (schlechteste zuerst)")],
+  ["rating", () => t("Audible-Bewertung (schlechteste zuerst)")], ["rating_best", () => t("Audible-Bewertung (beste zuerst)")],
 ];
 
 function renderLibrary(list: HTMLElement): void {
@@ -184,8 +195,9 @@ function renderLibrary(list: HTMLElement): void {
     } }, label));
   }
   list.append(el("li", { class: "lib-search" }, icon("search"), q), el("li", { class: "lib-sort" }, sort, view),
-    ...(IS_ADMIN ? [el("li", { class: "lib-bar", id: "libBar", hidden: true })] : []), el("li", { class: "lib-wrap" }, rows));
+    ...(IS_ADMIN ? [el("li", { class: "lib-check-bar", id: "libCheck" }), el("li", { class: "lib-bar", id: "libBar", hidden: true })] : []), el("li", { class: "lib-wrap" }, rows));
   updateLibBar();
+  if (IS_ADMIN) loadCheck();
   loadLibraryBooks();
 }
 
@@ -194,7 +206,7 @@ async function loadLibraryBooks(): Promise<void> {
   if (target && !target.children.length) skeleton(target, 6);
   try {
     const res = await api<{ total: number; books: LibraryBook[] }>("GET",
-      `/api/library/books?q=${encodeURIComponent(books.libQuery)}&limit=${books.libShown}&sort=${books.libSort}`, undefined, { key: "library" });
+      `/api/library/books?q=${encodeURIComponent(books.libQuery)}&limit=${books.libShown}&sort=${books.libSort}&issue=${encodeURIComponent(books.libIssue)}`, undefined, { key: "library" });
     if (!books.libQuery) books.libTotal = res.total;
     const rows = document.getElementById("libRows");
     if (!rows) return;
@@ -226,6 +238,10 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
       el("div", { class: "lib-title" }, el("button", { type: "button", class: "lib-open", title: t("Details"), onclick: () => showDetail(libraryAsBook(b)) }, b.title || b.path),
         b.series ? el("span", { class: "muted" }, ` · ${b.series}${b.series_position ? " " + b.series_position : ""}`) : null),
       el("div", { class: "book-sub" }, author || t("Autor unbekannt"),
+ b.rating ? el("span", { class: "rating", title: t("Bewertung bei Audible: {n} Stimmen", { n: b.ratings || 0 }) },
+          `★ ${b.rating.toFixed(1).replace(".", ",")} (${b.ratings})`) : null,
+        b.score !== undefined ? el("span", { class: "score " + (b.score >= 85 ? "ok" : b.score >= 60 ? "mid" : "bad"),
+          title: (b.issues || []).map(issueText).join("\n") || t("Nichts zu verbessern") }, String(b.score)) : null,
         other.length ? el("span", { class: "faint", title: t("Weitere Namen aus Tags und Ordnern – zählen beim Abgleich mit") },
           " · " + other.slice(0, 4).join(" / ")) : null),
       el("code", { class: "lib-path" }, b.path)),
@@ -839,6 +855,61 @@ async function upgradeLibraryBook(b: LibraryBook): Promise<void> {
     toast(t("Sucht nach einem besseren Release – zu sehen unter „Anfragen“"));
     loadRequests();
   } catch (e) { toast(errMsg(e), true); }
+}
+
+let ISSUE_TEXT: Record<string, string> = {};
+function issueText(code: string): string { return ISSUE_TEXT[code] || code; }
+
+/** The library check: a button, the progress, and what it found by kind – a tap on a kind shows only those books. */
+async function loadCheck(): Promise<void> {
+  try {
+    books.check = await api<LibraryCheck>("GET", "/api/library/check", undefined, { key: "libcheck" });
+    books.ratings = await api<LibraryRatings>("GET", "/api/library/ratings", undefined, { key: "libratings" });
+    for (const i of books.check.issues) ISSUE_TEXT[i.code] = i.text;
+    renderCheck();
+    clearTimeout(books.checkTimer);
+    if (books.check.running || books.ratings.running) {
+      books.checkTimer = setTimeout(async () => {
+        const was = !!books.check?.running || !!books.ratings?.running;
+        await loadCheck();
+        if (was && !books.check?.running && !books.ratings?.running) loadLibraryBooks();   // done: the list shows the results
+      }, 3000);
+    }
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+function renderCheck(): void {
+  const box = document.getElementById("libCheck");
+  const c = books.check;
+  if (!box || !c) return;
+  const go = el("button", { type: "button", class: "btn small" + (c.running ? "" : " primary"), onclick: async () => {
+    try {
+      books.check = await api<LibraryCheck>("POST", "/api/library/check", { on: !c.running });
+      toast(books.check.running ? t("Bibliothek wird geprüft – im Hintergrund, ein Buch nach dem anderen") : t("Prüfung angehalten"), "info");
+      loadCheck();
+    } catch (e) { toast(errMsg(e), true); }
+  } }, c.running ? t("Prüfung anhalten") : c.checked ? t("Erneut prüfen") : t("Bibliothek prüfen"));
+  const note = c.running ? t("Prüft … {done} von {total}", { done: c.done, total: c.total })
+    : c.checked ? t("{n} Bücher geprüft, Zustand im Schnitt {avg} von 100", { n: c.checked, avg: c.average ?? 0 })
+    : t("Zeigt, wo sich Kapitel, Jahr, Cover oder Zuordnung verbessern lassen – ändert selbst nichts.");
+  const chips = c.issues.map((i) => el("button", { type: "button", class: "chip" + (books.libIssue === i.code ? " on" : ""),
+    "aria-pressed": String(books.libIssue === i.code),
+    onclick: () => { books.libIssue = books.libIssue === i.code ? "" : i.code; books.libShown = 100; renderCheck(); loadLibraryBooks(); } },
+    `${i.text} · ${i.count}`));
+  // Audible's listener ratings: separate from the condition – fetched slowly in the background, used for the sort order
+  const r = books.ratings;
+  const rateBtn = r ? el("button", { type: "button", class: "btn small", onclick: async () => {
+    try {
+      books.ratings = await api<LibraryRatings>("POST", "/api/library/ratings", { on: !r.running });
+      toast(books.ratings.running ? t("Audible-Daten werden abgefragt – im Hintergrund, langsam") : t("Abfrage angehalten"), "info");
+      loadCheck();
+    } catch (e) { toast(errMsg(e), true); }
+  } }, r.running ? t("Abfrage anhalten") : r.rated ? t("Audible-Daten aktualisieren") : t("Audible-Daten laden")) : null;
+  const rateNote = r ? (r.running ? t("Audible-Daten … {done} von {total}", { done: r.done, total: r.total })
+    : t("{rated} von {n} Büchern mit Audible-Bewertung und -Laufzeit", { rated: r.rated, n: r.with_asin })) : "";
+  box.replaceChildren(el("div", { class: "row gap wrap" }, go, el("span", { class: "muted small" }, note)),
+    ...(rateBtn ? [el("div", { class: "row gap wrap" }, rateBtn, el("span", { class: "muted small" }, rateNote))] : []),
+    ...(chips.length ? [el("div", { class: "chips" }, chips)] : []));
 }
 
 /** The bar over the library: how many books are ticked, and the way to the chapter preview. */

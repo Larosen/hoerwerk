@@ -3,6 +3,22 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.15 – 2026-11-18
+
+- **Library check:** a button (and the first time a library is seen, automatically) looks at every book locally and
+  gives it a condition score with findings – chapter names that repeat the title or say nothing, no chapters, cover,
+  year or narrator missing, no Audible link, not an M4B. Findings are filters, the library can be sorted by condition
+  (worst first), and the fixes are the existing buttons. It runs in the background and changes nothing by itself.
+- **Audible data, sort by rating, wrong editions:** "Audible-Daten laden" fetches rating and runtime of the library's
+  books (by ASIN, slowly in the background, kept for a month). The library can then be sorted by Audible rating, worst
+  or best first – votes count, so 4.9 from two people does not beat 4.6 from two thousand – and each row shows the
+  rating. A file whose length is far from Audible's (8 % and 5 minutes) gets the finding "Laufzeit weicht stark von
+  Audible ab (andere Fassung?)".
+- **Real chapter names before numbering:** when renaming chapters would only leave "Kapitel 7", Hörwerk first looks
+  for real names online – Audible's chapters (same length ±2 %, same number of chapters, names that say something) or
+  the track names of the CD at Apple Music (same number of tracks, every chapter starts where the track before it
+  ends, total length ±3 %). Only then it numbers. The preview says where a name comes from.
+
 ## 1.0.14 – 2026-11-18
 
 - **Works that exist only as a CD:** when Audible finds nothing or only weak matches, Hörwerk also asks the German

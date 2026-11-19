@@ -226,7 +226,8 @@ pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
         .unwrap_or_default();
     if req.get("apply") == &Value::Bool(false) {
         // preview: what each chapter is now, what it would become and why – nothing is written
-        let plan = blocking(move || Ok::<_, crate::pipeline::PipeError>(a.pipeline.plan_tidy(&f, &book, &name))).await;
+        let plan =
+            blocking(move || Ok::<_, crate::pipeline::PipeError>(a.pipeline.plan_tidy(&a, &f, &book, &name))).await;
         let Ok(plan) = plan else {
             return error(500, t("Die Kapitel konnten nicht gelesen werden", &[]));
         };
@@ -250,6 +251,8 @@ pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
             let sidecar = crate::tagger::rename_abs_chapters(&folder, &chapters).unwrap_or(false);
             crate::mediaservers::request_scans(&app);
             app.audit(&req.user_name(), &req.ip, "library_chapters", &rel);
+            let (a, r) = (app.clone(), rel.clone());
+            blocking(move || a.health.recheck(&a, &r)).await;
             json_reply(json!({"changed": n, "first": first, "last": last, "metadata_json": sidecar}))
         }
         Ok(None) => {

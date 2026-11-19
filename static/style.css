@@ -1357,3 +1357,14 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .lib-rows.regal > li.lib-row { position: relative; }
 .lib-rows.regal .lib-row > .lib-check { position: absolute; top: 6px; left: 14px; z-index: 2; grid-row: 1; padding: 6px; border-radius: 8px; background: rgba(0, 0, 0, .45); }
 .lib-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+
+.lib-check-bar { padding: 8px 12px; border-bottom: 1px solid var(--border); display: grid; gap: 8px; }
+.lib-check-bar .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lib-check-bar .chip { border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 999px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+.lib-check-bar .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.score { display: inline-block; margin-left: 8px; padding: 0 7px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 18px; vertical-align: 1px; }
+.score.ok { background: var(--ok-soft, #DDEBDD); color: var(--ok); }
+.score.mid { background: #F4E7C8; color: var(--warn); }
+.score.bad { background: var(--err-soft); color: var(--err); }
+
+.rating { margin-left: 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }

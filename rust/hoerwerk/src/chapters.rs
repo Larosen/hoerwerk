@@ -106,8 +106,50 @@ pub fn reason_text(code: &str) -> String {
         "all_numbered" => t("mehr als die Hälfte ohne Aussage – alle nummeriert", &[]),
         "double" => t("doppelter Name – Nummer vorangestellt", &[]),
         "shortened" => t("zu lang – gekürzt", &[]),
+        "audible" => t("Name von Audible (Laufzeit und Kapitelzahl passen)", &[]),
+        "applemusic" => t("Titelname der CD (Apple Music; Anzahl und Anfänge stimmen)", &[]),
         _ => String::new(),
     }
+}
+
+/// Audible's chapter names for a file – only when they surely belong to it: the length agrees within 2 % (at
+/// least 2 s), there are as many chapters as the file has, and the names say something.
+pub fn adopt_audible(
+    file_chapters: usize,
+    file_len: f64,
+    shop_len: f64,
+    shop_titles: &[String],
+) -> Option<Vec<String>> {
+    let titles: Vec<String> = shop_titles.iter().map(|x| x.trim().to_string()).collect();
+    let same_length = shop_len > 0.0 && file_len > 0.0 && (file_len - shop_len).abs() <= (0.02 * shop_len).max(2.0);
+    (same_length
+        && file_chapters >= 2
+        && titles.len() == file_chapters
+        && titles.iter().all(|x| !x.is_empty())
+        && !looks_generic(&titles))
+    .then_some(titles)
+}
+
+/// The track names of a CD for a file's chapters – only when they surely belong to it: as many tracks as chapters,
+/// the total length agrees within 3 %, and every chapter starts where the track before it ends.
+pub fn adopt_tracks(starts: &[f64], file_len: f64, tracks: &[(String, f64)]) -> Option<Vec<String>> {
+    let total: f64 = tracks.iter().map(|(_, s)| s).sum();
+    if starts.len() < 2 || tracks.len() != starts.len() || total <= 0.0 || file_len <= 0.0 {
+        return None;
+    }
+    if (file_len - total).abs() > (0.03 * total).max(5.0) {
+        return None;
+    }
+    let near = (0.005 * total).max(3.0);
+    let mut at = 0.0;
+    for (start, (_, secs)) in starts.iter().zip(tracks) {
+        if (start - at).abs() > near {
+            return None;
+        }
+        at += secs;
+    }
+    let names: Vec<String> = tracks.iter().map(|(n, _)| n.trim().to_string()).collect();
+    (names.iter().all(|x| !x.is_empty()) && !looks_generic(&names)).then_some(names)
 }
 
 /// The chapter names of one book, cleaned together. A chapter name keeps only what tells this chapter from
@@ -753,6 +795,36 @@ mod tests {
     fn clean(names: &[&str], known: &[&str], lang: &str) -> Vec<String> {
         let known: Vec<String> = known.iter().map(|k| k.to_string()).collect();
         clean_titles(names, &known, lang).names
+    }
+
+    #[test]
+    fn online_names_are_adopted_only_when_they_surely_fit() {
+        let titles: Vec<String> = ["Prolog", "Der Anruf", "Mittwoch Vormittag", "Das Finale"]
+            .map(String::from)
+            .to_vec();
+        // Audible: same length (±2 %), same number of chapters, real names
+        assert_eq!(adopt_audible(4, 36_000.0, 36_300.0, &titles), Some(titles.clone()));
+        assert_eq!(adopt_audible(4, 30_000.0, 36_300.0, &titles), None); // another recording
+        assert_eq!(adopt_audible(5, 36_000.0, 36_300.0, &titles), None); // another chapter structure
+        let numbered: Vec<String> = (1..=4).map(|i| format!("Kapitel {i}")).collect();
+        assert_eq!(adopt_audible(4, 36_000.0, 36_300.0, &numbered), None); // nothing gained
+        // CD: every chapter starts where the track before it ends
+        let tracks: Vec<(String, f64)> = [
+            ("Siehe", 600.0),
+            ("Der Panther", 900.0),
+            ("Herbsttag", 500.0),
+            ("Abschied", 700.0),
+        ]
+        .map(|(n, s)| (n.to_string(), s))
+        .to_vec();
+        let starts = [0.0, 600.5, 1500.0, 2000.8];
+        assert_eq!(
+            adopt_tracks(&starts, 2700.0, &tracks).map(|n| n[1].clone()),
+            Some("Der Panther".to_string())
+        );
+        assert_eq!(adopt_tracks(&[0.0, 700.0, 1500.0, 2000.0], 2700.0, &tracks), None); // starts do not fit
+        assert_eq!(adopt_tracks(&starts, 3600.0, &tracks), None); // another length
+        assert_eq!(adopt_tracks(&starts[..3], 2700.0, &tracks), None); // another number of chapters
     }
 
     #[test]
