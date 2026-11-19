@@ -74,6 +74,16 @@ background, one book at a time, and steps aside for new books. Tapping a finding
 **Sort → Condition** puts the worst first. Fix them with the existing buttons (*Chapters* with preview, *Better*,
 *Correct*).
 
+**Cover** (button on every M4B book): your own picture (JPEG/PNG) for books nobody offers a cover for. It becomes
+`cover.jpg`/`cover.png` in the book folder and the picture inside the M4B; all other tags stay.
+
+**Complete details** (selection bar): shows per book what Hörwerk can add where it is sure about the edition (ASIN, or
+a close match of title, author and length): year, narrators, publisher, series, description, cover. One click adds it
+for all; only gaps are filled, what is there stays.
+
+Rewriting tags, chapters or the cover never moves or renames a book; the temporary file is hidden while it is written,
+and *Newest* keeps the date a book was first seen.
+
 **Audible data** (independent of the condition): *Load Audible data* fetches the listener rating and the runtime of the
 books that have an ASIN, slowly in the background, and keeps them for a month. The library can then be sorted by
 **Audible rating** (worst or best first); votes count, 4.9 from two people does not beat 4.6 from two thousand. If the

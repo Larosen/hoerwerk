@@ -24,6 +24,11 @@ pub fn copy_tags(src: &Path, dst: &Path) -> Result<(), String> {
     hw_tags::copy_tags(src, dst).map_err(|e| e.to_string())
 }
 
+/// Put a new picture into an M4B; the other tags stay.
+pub fn set_cover(path: &Path, cover: Vec<u8>) -> Result<(), String> {
+    hw_tags::set_cover(path, cover).map_err(|e| e.to_string())
+}
+
 pub fn read_cover(path: &Path) -> Option<Vec<u8>> {
     hw_tags::embedded_cover(path)
 }

@@ -12,6 +12,7 @@ mod discover;
 mod edition;
 mod encoder;
 mod engine;
+mod enrich;
 mod filing;
 mod follows;
 mod free;

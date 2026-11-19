@@ -3,6 +3,21 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.16 – 2026-11-19
+
+- **Chapter preview for the phone:** every changed chapter shows what it was (red, struck through) above what it will be
+  (green); no explanations, no left/right columns.
+- **Dune-style names:** a counter that the book title hid (`… - 01 - Dune II 01`) is found afterwards, so such chapters
+  become `Kapitel 1`, `Kapitel 2` … instead of `01 - Dune II 01`.
+- **Own cover:** the "Cover" button of a library book uploads a picture (JPEG/PNG) for books nobody offers a cover for;
+  it becomes `cover.jpg`/`cover.png` in the folder and the picture inside the M4B, the other tags stay.
+- **Complete details for the selection:** "Daten ergänzen …" in the selection bar shows, per book, what Hörwerk can add
+  where it is sure about the edition (its ASIN, or a close match of title, author and length) – year, narrators,
+  publisher, series, description, cover – and adds it with one click for all. Only gaps are filled.
+- **Books stay where they are:** rewriting tags, chapters or the cover never moves or renames a book; the temporary
+  file is hidden while it is written, and "Neueste" keeps the date a book was first seen, so an updated book does not
+  jump to the top.
+
 ## 1.0.15 – 2026-11-18
 
 - **Library check:** a button (and the first time a library is seen, automatically) looks at every book locally and
