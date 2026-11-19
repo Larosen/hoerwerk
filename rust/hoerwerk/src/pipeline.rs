@@ -3493,6 +3493,8 @@ impl Pipeline {
         }
         app.library.add(&dest, &book);
         if let Some(folder) = dest.parent() {
+            // the new book is looked at for the tidy-up lists at once
+            app.health.recheck(app, &rel_to(&folder.display().to_string(), &root));
             // remembered, so a later conflict can say which download or folder this book came from
             let name = slot.lock().name.clone();
             let _ = app.db.put(

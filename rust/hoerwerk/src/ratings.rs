@@ -34,6 +34,14 @@ struct Item {
 /// Ratings with fewer votes than this say little: the library sorts them after the others.
 pub const MIN_VOTES: i64 = 5;
 
+/// "Badly rated": below this average with at least this many votes (a handful of votes is not a verdict).
+pub const LOW_RATING: f64 = 3.4;
+pub const LOW_VOTES: i64 = 20;
+
+pub fn is_low(rating: f64, votes: i64) -> bool {
+    votes >= LOW_VOTES && rating > 0.0 && rating < LOW_RATING
+}
+
 pub struct Ratings {
     items: Mutex<HashMap<String, Item>>,
     running: AtomicBool,

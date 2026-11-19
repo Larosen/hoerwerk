@@ -102,6 +102,7 @@ pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
             health: &app.health.snapshot(&app.ratings.runtimes()),
             ratings: &app.ratings.snapshot(),
             issue,
+            admin: req.is_admin(),
         },
     ))
 }

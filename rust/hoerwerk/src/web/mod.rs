@@ -142,6 +142,10 @@ impl Req {
         }
     }
 
+    pub fn is_admin(&self) -> bool {
+        self.user.as_ref().is_some_and(|u| u["role"] == "admin")
+    }
+
     pub fn user_id(&self) -> i64 {
         self.user.as_ref().and_then(|u| u["id"].as_i64()).unwrap_or(0)
     }

@@ -68,8 +68,10 @@ pub struct Extra<'a> {
     pub health: &'a HashMap<String, (i64, Vec<String>)>,
     /// asin -> (average rating, number of ratings)
     pub ratings: &'a HashMap<String, (f64, i64)>,
-    /// only books with this finding ("" = all)
+    /// only the books of this tidy-up task ("" = all): chapters, details, match, lowrated
     pub issue: &'a str,
+    /// admins only: the order by condition, the tidy-up filter (the rest of the users get the plain library)
+    pub admin: bool,
 }
 
 pub struct LibraryIndex {
@@ -671,7 +673,13 @@ impl LibraryIndex {
     /// `sort`: "author" (the folder order, default), "title", "new" / "old" (when the files changed last),
     /// "format" (what is not one M4B yet first), "health" (the worst condition by the library check first), "rating" / "rating_best" (Audible's listener ratings).
     pub fn books(&self, query: &str, offset: usize, limit: usize, sort: &str, extra: &Extra) -> Value {
-        let (health, ratings, issue) = (extra.health, extra.ratings, extra.issue);
+        let (health, ratings) = (extra.health, extra.ratings);
+        let issue = if extra.admin { extra.issue } else { "" };
+        let sort = if !extra.admin && sort.trim_start_matches('-') == "health" {
+            "author"
+        } else {
+            sort
+        };
         let want = match_words(query);
         let mut entries = self.entries();
         if !want.is_empty() {
@@ -690,9 +698,14 @@ impl LibraryIndex {
         }
         if !issue.is_empty() {
             entries.retain(|e| {
+                if issue == "lowrated" {
+                    return ratings
+                        .get(s(e, "asin"))
+                        .is_some_and(|(r, v)| crate::ratings::is_low(*r, *v));
+                }
                 health
                     .get(s(e, "path"))
-                    .is_some_and(|(_, found)| found.iter().any(|f| f == issue))
+                    .is_some_and(|(_, found)| crate::health::in_group(found, issue))
             });
         }
         entries.sort_by_key(|e| path_key(s(e, "path")));
@@ -770,10 +783,6 @@ impl LibraryIndex {
                 if let Some((rating, count)) = ratings.get(s(&e, "asin")) {
                     b["rating"] = json!(rating);
                     b["ratings"] = json!(count);
-                }
-                if let Some((score, found)) = health.get(s(&e, "path")) {
-                    b["score"] = json!(score);
-                    b["issues"] = json!(found);
                 }
                 b
             })
@@ -1031,6 +1040,7 @@ mod tests {
                     health: &HashMap::new(),
                     ratings: &ratings,
                     issue: "",
+                    admin: true,
                 },
             )["books"]
                 .as_array()
@@ -1054,6 +1064,7 @@ mod tests {
                 health: &HashMap::new(),
                 ratings: &ratings,
                 issue: "",
+                admin: true,
             },
         );
         assert_eq!(books["books"][0]["ratings"], 500);

@@ -68,17 +68,19 @@ der M4B; Plex liest die Dateien gar nicht, Audiobookshelf nur, wenn `metadata.js
 und Ordner ohne `metadata.json` bleiben unberührt, Symlinks werden nicht verfolgt. Neue Bücher bekommen die beiden
 Dateien danach nicht mehr.
 
-**Bibliothek prüfen** (Admins) schaut jedes Buch einmal an, rein lokal und ohne etwas zu verändern, und gibt ihm einen
-Zustand von 0 bis 100 mit Befunden: Kapitelnamen, die den Titel wiederholen oder nichts sagen, keine Kapitel, Cover,
-Jahr oder Sprecher fehlen, keine Audible-Verknüpfung, noch keine M4B. Beim ersten Mal startet die Prüfung von selbst,
-danach per Knopf; sie läuft im Hintergrund, ein Buch nach dem anderen, und weicht neuen Büchern. Ein Antippen eines
-Befunds zeigt nur die betroffenen Bücher, **Sortieren → Zustand** die schlechtesten zuerst. Behoben wird mit den
-vorhandenen Knöpfen (*Kapitel* mit Vorschau, *Besser*, *Korrigieren*).
+**Zum Aufräumen** (Admins): Hörwerk schaut jedes Buch einmal an, rein lokal und ohne etwas zu verändern, und zeigt vier
+Kacheln mit je einer Zahl – *Kapitel* (Namen wiederholen den Titel, sagen nichts oder fehlen), *Angaben* (Cover, Jahr oder
+Sprecher fehlen), *Zuordnung* (keine Audible-Verknüpfung oder eine andere Fassung, Laufzeit weicht ab) und *Schlecht
+bewertet* (Audible-Bewertung unter 3,4 bei mindestens 20 Stimmen). Ein Antippen zeigt nur diese Bücher, ein zweites
+wieder alle. Prüfung und Audible-Daten laufen von selbst im Hintergrund (nach jedem Einlesen der Bibliothek, nur was
+fehlt); das ↻ schaut alles neu an. Sortieren geht nach Autor, Titel, Datum, ★ Audible-Bewertung und (nur Admins)
+Zustand; die aktive Taste zeigt einen Pfeil, ein zweites Antippen dreht die Richtung um. Alle weiteren Aktionen eines
+Buchs stehen in seinem „⋯“-Menü.
 
-**Auswahl:** das Häkchen auf dem Cover wählt ein Buch, *Alle (N)* alle Treffer von Suche und Filter. Für die Auswahl gibt
+**Auswahl:** das Häkchen auf dem Cover wählt ein Buch, *Alle (N)* alle Treffer von Suche und Kachel-Filter. Die Leiste bleibt oben stehen. Für die Auswahl gibt
 es *Kapitel* (Vorschau), *Ergänzen* und *Löschen*.
 
-**Cover** (Knopf an jedem M4B-Buch): ein eigenes Bild (JPEG/PNG) für Bücher, zu denen es öffentlich keins gibt. Es wird
+**Eigenes Cover** (im „⋯“-Menü jedes M4B-Buchs): ein eigenes Bild (JPEG/PNG) für Bücher, zu denen es öffentlich keins gibt. Es wird
 `cover.jpg`/`cover.png` im Buchordner und das Bild in der M4B; alle anderen Tags bleiben.
 
 **Daten ergänzen** (Auswahlleiste): zeigt je Buch, was Hörwerk ergänzen kann, wenn es sich bei der Fassung sicher ist
@@ -88,7 +90,7 @@ Klick ergänzt alle; nur Leeres wird gefüllt, Vorhandenes bleibt.
 Das Umschreiben von Tags, Kapiteln und Cover verschiebt oder benennt ein Buch nie um; die Zwischendatei ist beim
 Schreiben versteckt, und *Neueste* behält das Datum, an dem ein Buch zuerst gesehen wurde.
 
-**Audible-Daten** (unabhängig vom Zustand): *Audible-Daten laden* holt Hörer-Bewertung und Laufzeit der Bücher mit ASIN,
+**Audible-Daten** (unabhängig vom Zustand): Hörwerk holt Hörer-Bewertung und Laufzeit der Bücher mit ASIN,
 langsam im Hintergrund, und merkt sie einen Monat. Danach lässt sich die Bibliothek nach **Audible-Bewertung**
 sortieren (schlechteste oder beste zuerst) – genau nach der angezeigten Zahl; Bewertungen mit weniger als 5 Stimmen
 folgen den übrigen, Bücher ohne Bewertung stehen am Ende.

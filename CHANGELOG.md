@@ -5,6 +5,17 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 
 ## 1.0.17 – 2026-11-19
 
+- **The library page, rebuilt around "what is there and what should I tidy up?":** search with Regal/Liste as two icons; one
+  slim row of sort keys (Autor, Titel, Datum, ★ Audible rating, for admins also Zustand – the active key shows an arrow, a
+  second tap turns it around); under "Zum Aufräumen" four tiles with a number each – *Kapitel*, *Angaben*, *Zuordnung* and
+  *Schlecht bewertet* (Audible rating below 3.4 with at least 20 votes, which also puts the worst first) – a tap shows only
+  those books; the selection bar sticks to the top while scrolling (Kapitel, Ergänzen, Löschen, Alle); everything else of a
+  book is in its "⋯" menu. The condition numbers on the covers are gone. Check and Audible data run by themselves in the
+  background (after every library scan, only what is missing); one ↻ looks at everything again.
+- **Admins only:** the order by condition, the tidy-up filter and the scores are ignored and not sent for other accounts;
+  deleting was and is admin-only.
+- **Discover:** another list (tab, genre, length or year) no longer leaves the previous list's book in the column on the
+  right – on wide screens it starts with the first book of the new list.
 - **Chapter names that are numbers already stay:** `Kapitel 36` is no longer renumbered by its position (`Kapitel 16`)
   when other names are mixed in.
 - **Rating order you can read:** the library sorts by the rating exactly as shown (3,1 · 3,5 · 3,7 …); ratings with fewer
