@@ -26,8 +26,9 @@ test("iPhone: anmelden und mit der unteren Leiste zwischen den Seiten wechseln",
   await expect(page.locator("#viewBooks")).toBeVisible();
   await page.goto("/requests");
   await expect(page.locator("#viewRequests")).toBeVisible();
-  // WebKit reports a request that the page change cancelled ("… due to access control checks") – no app error
-  expect(errors.filter((e) => !/^Fetch API cannot load .* due to access control checks\.?$/.test(e))).toEqual([]);
+  // WebKit reports a request that the page change cancelled ("… due to access control checks") – the fetch of a
+  // page and the live stream alike – no app error
+  expect(errors.filter((e) => !/^(Fetch API|EventSource) cannot load .* due to access control checks\.?$/.test(e))).toEqual([]);
 });
 
 test("iPhone: das Ende einer langen Liste liegt über der Werkbank-Leiste und der Tab-Leiste", async ({ page }) => {
