@@ -99,6 +99,7 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("GET", "/api/library") => h!(super::library::stats),
         ("GET", "/api/library/books") => h!(super::library::books),
         ("DELETE", "/api/library/book") => h!(super::library::delete_book),
+        ("POST", "/api/library/delete") => h!(super::library::delete_books),
         ("GET", "/api/library/cover") => h!(super::library::cover),
         ("PUT", "/api/library/cover") => h!(super::library::put_cover),
         ("GET", "/api/cover") => h!(super::covers::proxy),

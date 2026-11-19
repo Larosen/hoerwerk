@@ -375,6 +375,12 @@
   },
   {
    "method": "POST",
+   "path": "/api/library/delete",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
+   "method": "POST",
    "path": "/api/library/enrich",
    "access": "admin",
    "raw_body": false

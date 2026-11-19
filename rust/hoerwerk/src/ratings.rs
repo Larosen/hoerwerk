@@ -31,10 +31,15 @@ struct Item {
     at: f64,
 }
 
-/// A rating of 4.8 from three people says less than 4.5 from 5000: pulled towards the usual 4.2 by ten
-/// "average" votes – used only for the order.
-pub fn weighted(rating: f64, count: i64) -> f64 {
-    (rating * count as f64 + 4.2 * 10.0) / (count as f64 + 10.0)
+/// Ratings with fewer votes than this say little: the library sorts them after the others.
+pub const MIN_VOTES: i64 = 5;
+
+/// "Badly rated": below this average with at least this many votes (a handful of votes is not a verdict).
+pub const LOW_RATING: f64 = 3.4;
+pub const LOW_VOTES: i64 = 20;
+
+pub fn is_low(rating: f64, votes: i64) -> bool {
+    votes >= LOW_VOTES && rating > 0.0 && rating < LOW_RATING
 }
 
 pub struct Ratings {
@@ -233,18 +238,5 @@ impl Ratings {
                 &[("done", &done.to_string()), ("total", &total.to_string())],
             ),
         );
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::weighted;
-
-    #[test]
-    fn few_votes_do_not_beat_many() {
-        // 4.9 from two people is not better than 4.6 from two thousand
-        assert!(weighted(4.9, 2) < weighted(4.6, 2000));
-        // but a clearly bad title with many votes stays at the bottom
-        assert!(weighted(2.8, 500) < weighted(4.0, 30));
     }
 }

@@ -38,20 +38,20 @@ const WEIGHTS: [(&str, i64); 9] = [
     ("no_narrator", 5),
 ];
 
-/// What a finding means, in words.
-pub fn issue_text(code: &str) -> String {
+/// The tidy-up tasks the library offers: a finding belongs to at most one. ("lowrated" is not a finding: it comes
+/// from Audible's ratings.)
+pub fn group_of(code: &str) -> Option<&'static str> {
     match code {
-        "chapters" => t("Kapitelnamen wiederholen den Titel oder sagen nichts", &[]),
-        "runtime_off" => t("Laufzeit weicht stark von Audible ab (andere Fassung?)", &[]),
-        "chapters_part" => t("Einzelne Kapitelnamen lassen sich bereinigen", &[]),
-        "no_chapters" => t("Keine Kapitel", &[]),
-        "no_cover" => t("Cover fehlt", &[]),
-        "no_year" => t("Jahr fehlt", &[]),
-        "not_m4b" => t("Noch keine M4B", &[]),
-        "no_asin" => t("Nicht mit Audible verknüpft", &[]),
-        "no_narrator" => t("Sprecher fehlt", &[]),
-        _ => String::new(),
+        "chapters" | "chapters_part" | "no_chapters" => Some("chapters"),
+        "no_cover" | "no_year" | "no_narrator" => Some("details"),
+        "no_asin" | "runtime_off" => Some("match"),
+        _ => None,
     }
+}
+
+/// Has the book a finding of this task?
+pub fn in_group(issues: &[String], group: &str) -> bool {
+    issues.iter().any(|i| group_of(i) == Some(group))
 }
 
 pub fn score_of(issues: &[String]) -> i64 {
@@ -217,38 +217,45 @@ impl Health {
         let _ = db.put(KEY, &json!({"v": VERSION, "items": items}));
     }
 
+    /// Progress and how many books each tidy-up task has: chapters, details, match (from the check) and
+    /// lowrated (from Audible's ratings).
     pub fn status(&self, app: &App) -> Value {
         let items = self.lock();
-        let known: std::collections::HashSet<String> = app
-            .library
-            .entries()
+        let entries = app.library.entries();
+        let known: std::collections::HashSet<String> = entries
             .iter()
             .filter_map(|e| e["path"].as_str().map(str::to_string))
             .collect();
         let runtimes = app.ratings.runtimes();
         let mut counts: HashMap<&str, usize> = HashMap::new();
-        let (mut sum, mut n) = (0i64, 0i64);
+        let mut n = 0;
         for (_, i) in items.iter().filter(|(p, _)| known.contains(*p)) {
-            let (score, issues) = i.effective(&runtimes);
-            sum += score;
+            let (_, issues) = i.effective(&runtimes);
             n += 1;
-            for c in &issues {
-                if let Some((code, _)) = WEIGHTS.iter().find(|(w, _)| w == c) {
-                    *counts.entry(code).or_default() += 1;
+            for g in ["chapters", "details", "match"] {
+                if in_group(&issues, g) {
+                    *counts.entry(g).or_default() += 1;
                 }
             }
         }
-        let (done, total) = *self.progress.lock().unwrap_or_else(|p| p.into_inner());
-        let issues: Vec<Value> = WEIGHTS
+        let rated = app.ratings.snapshot();
+        let low = entries
             .iter()
-            .filter_map(|(code, _)| {
-                counts
-                    .get(code)
-                    .map(|n| json!({"code": code, "count": n, "text": issue_text(code)}))
+            .filter(|e| {
+                e["asin"]
+                    .as_str()
+                    .and_then(|a| rated.get(a))
+                    .is_some_and(|(r, v)| crate::ratings::is_low(*r, *v))
             })
+            .count();
+        let (done, total) = *self.progress.lock().unwrap_or_else(|p| p.into_inner());
+        let tiles: Vec<Value> = ["chapters", "details", "match"]
+            .iter()
+            .map(|g| json!({"key": g, "count": counts.get(g).copied().unwrap_or(0)}))
+            .chain([json!({"key": "lowrated", "count": low})])
             .collect();
         json!({"running": self.running.load(Ordering::SeqCst), "done": done, "total": total, "checked": n,
-               "books": known.len(), "average": if n > 0 { json!(sum / n) } else { Value::Null }, "issues": issues})
+               "books": known.len(), "tiles": tiles})
     }
 
     pub fn stop(&self) {

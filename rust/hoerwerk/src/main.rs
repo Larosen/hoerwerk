@@ -126,6 +126,7 @@ async fn library_rescanner(app: Arc<App>) {
     app.library_error.lock().unwrap_or_else(|p| p.into_inner()).clear();
     app.library_ready.store(true, Ordering::SeqCst);
     app.health.start_if_new(&app); // a library seen for the first time is looked at in the background
+    app.ratings.start(&app); // Audible's data of the books that have none yet (slowly, in the background)
     // only now: books are checked against the library for duplicates
     app.pipeline.note(String::new());
     app.engine.start();
@@ -203,11 +204,18 @@ async fn library_rescanner(app: Arc<App>) {
             .max(1) as u64;
         tokio::time::sleep(Duration::from_secs(hours * 3600)).await;
         let a = app.clone();
-        if let Ok(Err(e)) = tokio::task::spawn_blocking(move || a.library.scan()).await {
-            text::error(
+        match tokio::task::spawn_blocking(move || a.library.scan()).await {
+            Ok(Err(e)) => text::error(
                 "Bibliothek",
                 &t("Bibliothek konnte nicht eingelesen werden: {error}", &[("error", &e)]),
-            );
+            ),
+            // new and changed books are looked at, and Audible's data fetched for those that have none (both only
+            // do what is missing, slowly in the background)
+            Ok(Ok(_)) => {
+                app.health.start(&app);
+                app.ratings.start(&app);
+            }
+            Err(_) => {}
         }
     }
 }

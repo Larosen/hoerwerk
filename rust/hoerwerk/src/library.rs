@@ -68,8 +68,10 @@ pub struct Extra<'a> {
     pub health: &'a HashMap<String, (i64, Vec<String>)>,
     /// asin -> (average rating, number of ratings)
     pub ratings: &'a HashMap<String, (f64, i64)>,
-    /// only books with this finding ("" = all)
+    /// only the books of this tidy-up task ("" = all): chapters, details, match, lowrated
     pub issue: &'a str,
+    /// admins only: the order by condition, the tidy-up filter (the rest of the users get the plain library)
+    pub admin: bool,
 }
 
 pub struct LibraryIndex {
@@ -671,7 +673,13 @@ impl LibraryIndex {
     /// `sort`: "author" (the folder order, default), "title", "new" / "old" (when the files changed last),
     /// "format" (what is not one M4B yet first), "health" (the worst condition by the library check first), "rating" / "rating_best" (Audible's listener ratings).
     pub fn books(&self, query: &str, offset: usize, limit: usize, sort: &str, extra: &Extra) -> Value {
-        let (health, ratings, issue) = (extra.health, extra.ratings, extra.issue);
+        let (health, ratings) = (extra.health, extra.ratings);
+        let issue = if extra.admin { extra.issue } else { "" };
+        let sort = if !extra.admin && sort.trim_start_matches('-') == "health" {
+            "author"
+        } else {
+            sort
+        };
         let want = match_words(query);
         let mut entries = self.entries();
         if !want.is_empty() {
@@ -690,9 +698,14 @@ impl LibraryIndex {
         }
         if !issue.is_empty() {
             entries.retain(|e| {
+                if issue == "lowrated" {
+                    return ratings
+                        .get(s(e, "asin"))
+                        .is_some_and(|(r, v)| crate::ratings::is_low(*r, *v));
+                }
                 health
                     .get(s(e, "path"))
-                    .is_some_and(|(_, found)| found.iter().any(|f| f == issue))
+                    .is_some_and(|(_, found)| crate::health::in_group(found, issue))
             });
         }
         entries.sort_by_key(|e| path_key(s(e, "path")));
@@ -714,26 +727,29 @@ impl LibraryIndex {
         } else {
             (reverse, sort)
         };
-        // a value per book (lower first); books without one stay at the end, whichever way it goes
-        let scored = |entries: &mut Vec<Value>, key: &dyn Fn(&Value) -> Option<f64>| {
+        // a value per book (lowest first, or highest with a "-"); a book without a value stays at the end, and a
+        // value with a lower tier (too few votes) comes after the books of tier 0, whichever way it goes
+        let scored = |entries: &mut Vec<Value>, key: &dyn Fn(&Value) -> Option<(u8, f64)>| {
             entries.sort_by(|a, b| match (key(a), key(b)) {
-                (Some(x), Some(y)) => {
+                (Some((ta, x)), Some((tb, y))) => ta.cmp(&tb).then_with(|| {
                     let o = x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal);
                     if reverse { o.reverse() } else { o }
-                }
+                }),
                 (Some(_), None) => std::cmp::Ordering::Less,
                 (None, Some(_)) => std::cmp::Ordering::Greater,
                 (None, None) => std::cmp::Ordering::Equal,
             });
         };
         match sort {
-            // by Audible's listener rating, weighted by the number of votes
+            // by Audible's listener rating exactly as it is shown; ratings with very few votes after the others
             "rating" => scored(&mut entries, &|e| {
-                ratings.get(s(e, "asin")).map(|(r, n)| crate::ratings::weighted(*r, *n))
+                ratings
+                    .get(s(e, "asin"))
+                    .map(|(r, n)| (u8::from(*n < crate::ratings::MIN_VOTES), *r))
             }),
             // by the condition the library check found
             "health" => scored(&mut entries, &|e| {
-                health.get(s(e, "path")).map(|(score, _)| *score as f64)
+                health.get(s(e, "path")).map(|(score, _)| (0, *score as f64))
             }),
             other => {
                 match other {
@@ -767,10 +783,6 @@ impl LibraryIndex {
                 if let Some((rating, count)) = ratings.get(s(&e, "asin")) {
                     b["rating"] = json!(rating);
                     b["ratings"] = json!(count);
-                }
-                if let Some((score, found)) = health.get(s(&e, "path")) {
-                    b["score"] = json!(score);
-                    b["issues"] = json!(found);
                 }
                 b
             })
@@ -1010,7 +1022,8 @@ mod tests {
         )
         .unwrap();
         let idx = LibraryIndex::new(Path::new(""), db); // entries come back from the database
-        // 4.9 from two people is not better than 4.6 from two thousand; no ASIN or no rating: at the end
+        // by the rating as shown (ascending: lowest first); 4.9 from two people has too few votes and follows the
+        // others; no ASIN or no rating: at the end
         let ratings: HashMap<String, (f64, i64)> = [
             ("G".into(), (4.6, 2000)),
             ("S".into(), (2.8, 500)),
@@ -1027,6 +1040,7 @@ mod tests {
                     health: &HashMap::new(),
                     ratings: &ratings,
                     issue: "",
+                    admin: true,
                 },
             )["books"]
                 .as_array()
@@ -1035,8 +1049,8 @@ mod tests {
                 .map(|b| b["title"].as_str().unwrap().to_string())
                 .collect()
         };
-        assert_eq!(titles("rating"), ["Schlecht", "Wenige", "Gut", "Ohne"]);
-        assert_eq!(titles("rating_best"), ["Gut", "Wenige", "Schlecht", "Ohne"]);
+        assert_eq!(titles("rating"), ["Schlecht", "Gut", "Wenige", "Ohne"]);
+        assert_eq!(titles("rating_best"), ["Gut", "Schlecht", "Wenige", "Ohne"]);
         assert_eq!(titles("-rating"), titles("rating_best"));
         // a "-" in front turns any order around
         assert_eq!(titles("title"), ["Gut", "Ohne", "Schlecht", "Wenige"]);
@@ -1050,6 +1064,7 @@ mod tests {
                 health: &HashMap::new(),
                 ratings: &ratings,
                 issue: "",
+                admin: true,
             },
         );
         assert_eq!(books["books"][0]["ratings"], 500);

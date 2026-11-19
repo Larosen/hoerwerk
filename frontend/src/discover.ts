@@ -220,6 +220,7 @@ function renderGenreChips(): void {
 }
 
 async function selectGenre(id: string, close: boolean): Promise<void> {
+  if (discover.genre !== id) closeDetail();
   discover.genre = id;
   store.set("discoverGenre", id);       // per browser, also for family accounts
   if (close && id) discover.panel = false;
@@ -260,6 +261,9 @@ function initDiscover(): void {
   if (!(discover.section in DISCOVER_TITLES)) discover.section = "foryou";
   for (const b of document.querySelectorAll<HTMLElement>("#discoverSections button")) {
     b.addEventListener("click", () => {
+      // another list: the column does not keep a book that is not in it any more (on wide screens it starts with
+      // the first book of the new list)
+      if (discover.section !== (b.dataset.section || "foryou")) closeDetail();
       discover.section = b.dataset.section || "foryou";
       store.set("discoverSection", discover.section);
       showDiscover();
@@ -274,6 +278,7 @@ function initDiscover(): void {
     $<HTMLSelectElement>(sel).addEventListener("change", (e) => {
       discover[key] = (e.target as HTMLSelectElement).value;
       store.set(key === "length" ? "discoverLength" : "discoverYear", discover[key]);
+      closeDetail();
       renderGenreChips();
       if (discover.last) renderDiscover(discover.last);
     });

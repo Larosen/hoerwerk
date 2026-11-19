@@ -1,6 +1,6 @@
 [package]
 name = "hw-run"
-version = "1.0.16"
+version = "1.0.17"
 description = "Runs ffmpeg/ffprobe jailed: Landlock (files, TCP, signals), seccomp, resource limits"
 edition.workspace = true
 license.workspace = true

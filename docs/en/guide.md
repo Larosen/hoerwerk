@@ -67,14 +67,18 @@ the picture inside the audio file; books without one get a generated tile.
 Plex never reads them, Audiobookshelf only when `metadata.json` is missing. Audiobooks, `cover.jpg` and folders without
 `metadata.json` stay untouched, symlinks are not followed. New books no longer get the two files.
 
-**Check library** (admins) looks at every book once, locally and without changing anything, and gives it a condition
-from 0 to 100 with findings: chapter names that repeat the title or say nothing, no chapters, missing cover, year or
-narrator, no Audible link, not an M4B yet. It starts by itself the first time and by button afterwards; it runs in the
-background, one book at a time, and steps aside for new books. Tapping a finding shows only the books that have it,
-**Sort → Condition** puts the worst first. Fix them with the existing buttons (*Chapters* with preview, *Better*,
-*Correct*).
+**To tidy up** (admins): Hörwerk looks at every book once, locally and without changing anything, and shows four tiles
+with a number each – *Chapters* (names repeat the title, say nothing or are missing), *Details* (cover, year or narrator
+missing), *Match* (not linked to Audible, or another edition: the length differs) and *Badly rated* (Audible rating
+below 3.4 with at least 20 votes). A tap shows only those books, a second tap all again. The check and Audible's data
+run by themselves in the background (after every library scan, only what is missing); the ↻ looks at everything again.
+Sorting is by author, title, date, ★ Audible rating and (admins only) condition; the active key shows an arrow, a
+second tap turns the direction around. Everything else a book offers is in its "⋯" menu.
 
-**Cover** (button on every M4B book): your own picture (JPEG/PNG) for books nobody offers a cover for. It becomes
+**Selection:** the tick on the cover picks a book, *All (N)* every match of the search and the filter. For the selection
+there are *Chapters* (preview), *Add* and *Delete*.
+
+**Own cover** (in the "⋯" menu of every M4B book): your own picture (JPEG/PNG) for books nobody offers a cover for. It becomes
 `cover.jpg`/`cover.png` in the book folder and the picture inside the M4B; all other tags stay.
 
 **Complete details** (selection bar): shows per book what Hörwerk can add where it is sure about the edition (ASIN, or
@@ -84,9 +88,10 @@ for all; only gaps are filled, what is there stays.
 Rewriting tags, chapters or the cover never moves or renames a book; the temporary file is hidden while it is written,
 and *Newest* keeps the date a book was first seen.
 
-**Audible data** (independent of the condition): *Load Audible data* fetches the listener rating and the runtime of the
+**Audible data** (independent of the condition): Hörwerk fetches the listener rating and the runtime of the
 books that have an ASIN, slowly in the background, and keeps them for a month. The library can then be sorted by
-**Audible rating** (worst or best first); votes count, 4.9 from two people does not beat 4.6 from two thousand. If the
+**Audible rating** (worst or best first) – exactly by the number shown; ratings with fewer than 5 votes follow the
+others, books without a rating are last. If the
 file's length is far from Audible's runtime (more than 8 % and 5 minutes), the finding *Length differs a lot from
 Audible* appears – usually another edition.
 

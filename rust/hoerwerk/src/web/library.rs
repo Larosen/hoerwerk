@@ -81,7 +81,19 @@ pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
         .unwrap_or_default();
     let sort = req.query.get("sort").map(String::as_str).unwrap_or("");
     let issue = req.query.get("issue").map(String::as_str).unwrap_or("");
-    json_reply(app.library.books(
+    // "select all": the paths of every book that matches, not only of the ones shown so far
+    let ids_only = req.query.get("ids").is_some_and(|v| v == "1");
+    let limit = if ids_only { 100_000 } else { limit };
+    let reply = |v: Value| {
+        if ids_only {
+            json_reply(
+                json!({"total": v["total"], "paths": v["books"].as_array().map(|b| b.iter().map(|x| x["path"].clone()).collect::<Vec<_>>()).unwrap_or_default()}),
+            )
+        } else {
+            json_reply(v)
+        }
+    };
+    reply(app.library.books(
         &q,
         offset,
         limit,
@@ -90,6 +102,7 @@ pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
             health: &app.health.snapshot(&app.ratings.runtimes()),
             ratings: &app.ratings.snapshot(),
             issue,
+            admin: req.is_admin(),
         },
     ))
 }
@@ -474,4 +487,38 @@ pub async fn enrich(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Repl
         }
         Err(e) => error(502, e),
     }
+}
+
+/// `POST /api/library/delete {paths}` – several books at once (admins): each goes as `DELETE /api/library/book`
+/// does (moved to `_ersetzt` or deleted, as set), the library is read once at the end.
+pub async fn delete_books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let paths: Vec<String> = req.get("paths").as_array().map_or_else(Vec::new, |a| {
+        a.iter()
+            .filter_map(|p| p.as_str().map(str::to_string))
+            .take(2000)
+            .collect()
+    });
+    if paths.is_empty() {
+        return error(400, t("Kein Hörbuch angegeben", &[]));
+    }
+    let a = app.clone();
+    let (deleted, failed) = tokio::task::spawn_blocking(move || {
+        let (mut deleted, mut failed) = (Vec::new(), Vec::new());
+        for rel in paths {
+            match a.pipeline.delete_from_library(&a, &rel) {
+                Ok(shown) => deleted.push(shown),
+                Err(e) => failed.push(json!({"path": rel, "error": e.to_string()})),
+            }
+        }
+        if !deleted.is_empty() {
+            let _ = a.library.scan();
+        }
+        (deleted, failed)
+    })
+    .await
+    .unwrap_or_default();
+    for shown in &deleted {
+        app.audit(&req.user_name(), &req.ip, "library_deleted", shown);
+    }
+    json_reply(json!({"deleted": deleted.len(), "failed": failed}))
 }

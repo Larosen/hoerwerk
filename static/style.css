@@ -1404,3 +1404,40 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .lib-check-bar .issue-chips .chip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; font-size: 13px; white-space: nowrap; }
 .lib-check-bar .issue-chips .chip .n { background: var(--panel-2); color: var(--muted); border-radius: 999px; padding: 0 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
 .lib-check-bar .issue-chips .chip.on .n { background: rgba(255, 255, 255, .25); color: inherit; }
+
+.lib-bar { gap: 6px; }
+.lib-bar .sel-n { min-width: 24px; height: 24px; padding: 0 7px; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+.lib-bar .btn .ico { width: 14px; height: 14px; margin-right: 4px; }
+.btn.danger { color: var(--err); }
+
+/* "Zum Aufräumen": four tiles with a number each */
+.lib-tiles { padding: 10px 12px 6px; display: grid; gap: 8px; }
+.tiles-head { display: flex; align-items: center; gap: 8px; }
+.tiles-title { font-weight: 600; font-size: 14px; }
+.tiles-head .muted { margin-left: auto; }
+.tiles-head .icon-btn { width: 30px; height: 30px; }
+.tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 640px) { .tiles { grid-template-columns: repeat(4, 1fr); } }
+.tile { display: flex; align-items: baseline; gap: 8px; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel); color: var(--text); text-align: left; cursor: pointer; }
+.tile .n { font-size: 20px; font-variant-numeric: tabular-nums; }
+.tile .l { font-size: 13px; color: var(--muted); }
+.tile.none { opacity: .55; }
+.tile.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tile.on .l { color: inherit; }
+/* the selection bar stays in view while the list scrolls (like the selection of a photo app) */
+.lib-bar { position: sticky; top: 0; z-index: 6; background: var(--panel-2); box-shadow: 0 1px 0 var(--border); }
+/* the "⋯" menu of a book */
+.row-menu-wrap { position: relative; display: inline-block; }
+.row-menu { position: absolute; left: 0; top: 100%; z-index: 20; min-width: 210px; padding: 6px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel); box-shadow: 0 8px 28px rgba(0, 0, 0, .35); display: grid; }
+.row-menu[hidden] { display: none; }
+.row-menu-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 0; background: none; color: var(--text); font: inherit; text-align: left; border-radius: 8px; cursor: pointer; }
+.row-menu-item:hover { background: var(--panel-2); }
+.row-menu-item .ico { width: 16px; height: 16px; color: var(--muted); }
+.lib-rows.regal .lib-actions { justify-content: flex-start; margin-left: -8px; }
+.lib-rows.regal .lib-actions .btn { width: 36px; height: 36px; padding: 0; justify-content: center; }
+
+.row-menu.flip { left: auto; right: 0; }
+.lib-rows:not(.regal) .row-menu { left: auto; right: 0; }
+.row-menu.up { top: auto; bottom: 100%; }
+.lib-sort .chip { padding: 4px 9px; }
+.lib-sort .sort-bar { gap: 5px; }

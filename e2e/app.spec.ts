@@ -90,7 +90,8 @@ test("Bibliothek: Kapitel neu benennen – Vorschau mit Grund, Abbrechen schreib
   });
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
-  await page.locator(".lib-row .lib-actions").getByRole("button", { name: "Kapitel" }).click();
+  await page.locator(".lib-row .lib-actions").getByRole("button", { name: "Weitere Aktionen" }).click();
+  await page.getByRole("menuitem", { name: "Kapitel neu benennen …" }).click();
   const dialog = page.locator("#chaptersDialog");
   await expect(dialog.locator(".chap-change .was").first()).toHaveText("Der Federmann001");   // what it was …
   await expect(dialog.locator(".chap-change .will").first()).toHaveText("Kapitel 1");          // … and what it will be
@@ -101,8 +102,8 @@ test("Bibliothek: Kapitel neu benennen – Vorschau mit Grund, Abbrechen schreib
   expect(sent).toEqual([{ path: book.path, apply: false }]);                      // cancelled: only the preview was asked for
   // several books: tick one, the bar offers the same dialog
   await page.locator(".lib-row .lib-check input").check();
-  await expect(page.locator("#libBar")).toContainText("1 Hörbuch ausgewählt");
-  await page.locator("#libBar").getByRole("button", { name: /Kapitel neu benennen/ }).click();
+  await expect(page.locator("#libBar .sel-n")).toHaveText("1");
+  await page.locator("#libBar").getByRole("button", { name: "Kapitel", exact: true }).click();
   await dialog.getByRole("button", { name: "Umbenennung anwenden" }).click();
   await expect(dialog).not.toBeVisible();
   expect(sent.at(-1)).toEqual({ path: book.path });                                // applied: the real call
@@ -131,63 +132,108 @@ test("Bibliothek: eigenes Cover hochladen, Daten für die Auswahl ergänzen", as
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
   // own cover: the picture goes to the server as it is
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
-  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.locator(".lib-row .lib-actions").getByRole("button", { name: "Cover" }).click()]);
+  await page.locator(".lib-row .lib-actions").getByRole("button", { name: "Weitere Aktionen" }).click();
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("menuitem", { name: "Eigenes Cover …" }).click()]);
   await chooser.setFiles({ name: "cover.png", mimeType: "image/png", buffer: png });
   await expect.poll(() => sent.length).toBe(1);
   expect(sent[0].url).toContain("path=Fitzek%2FDer%20Federmann");
   expect(sent[0].size).toBe(png.length);
   // details for the ticked books: the list first, then one click for all
   await page.locator(".lib-row .lib-check input").check();
-  await page.locator("#libBar").getByRole("button", { name: /Daten ergänzen/ }).click();
+  await page.locator("#libBar").getByRole("button", { name: "Ergänzen", exact: true }).click();
   const dialog = page.locator("#enrichDialog");
   await expect(dialog.locator(".enrich-list .plus").first()).toHaveText("2016");
   await expect(dialog).toContainText("Simon Jäger");
   await dialog.getByRole("button", { name: "Abbrechen" }).click();
   expect(posts).toEqual([{ path: book.path, apply: false }]);                      // cancelled: nothing was written
-  await page.locator("#libBar").getByRole("button", { name: /Daten ergänzen/ }).click();
+  await page.locator("#libBar").getByRole("button", { name: "Ergänzen", exact: true }).click();
   await dialog.getByRole("button", { name: "Ergänzen", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   expect(posts.at(-1)).toEqual({ path: book.path });
   expect(errors).toEqual([]);
 });
 
-test("Bibliothek prüfen: Zustand, Befunde als Filter, Sortierung nach Zustand", async ({ page }) => {
+test("Bibliothek: alle auswählen (auch die noch nicht geladenen) und die Auswahl löschen", async ({ page }) => {
   const errors = await open(page);
-  const urls: string[] = [];
-  const bad = { path: "A/Schlecht", title: "Schlechtes Buch", authors: ["A"], series: null, series_position: null, asin: null, format: "m4b", files: 1, score: 40, issues: ["chapters", "no_year"] };
-  const good = { path: "A/Gut", title: "Gutes Buch", authors: ["A"], series: null, series_position: null, asin: "B0X", format: "m4b", files: 1, score: 100, issues: [], rating: 4.6, ratings: 1234 };
-  await page.route("**/api/library/books?*", (r) => { urls.push(r.request().url()); return r.fulfill({ json: { total: 2, books: [bad, good] } }); });
-  await page.route("**/api/library/ratings", (r) => r.fulfill({ json: { running: false, done: 0, total: 0, with_asin: 2, rated: 1 } }));
-  let running = false;
-  await page.route("**/api/library/check", async (r) => {
-    if (r.request().method() === "POST") running = true;
-    await r.fulfill({ json: { running, done: 1, total: 2, checked: running ? 1 : 2, books: 2, average: 70,
-      issues: [{ code: "chapters", count: 1, text: "Kapitelnamen wiederholen den Titel oder sagen nichts" }, { code: "no_year", count: 1, text: "Jahr fehlt" }] } });
+  const mk = (n: number) => ({ path: `A/Buch ${n}`, title: `Buch ${n}`, authors: ["A"], series: null, series_position: null, asin: null, format: "m4b", files: 1 });
+  await page.route("**/api/library/books?*", (r) => {
+    const url = new URL(r.request().url());
+    if (url.searchParams.get("ids") === "1") return r.fulfill({ json: { total: 250, paths: Array.from({ length: 250 }, (_, i) => `A/Buch ${i + 1}`) } });
+    return r.fulfill({ json: { total: 250, books: [mk(1), mk(2)] } });
+  });
+  let deleted: string[] = [];
+  await page.route("**/api/library/delete", async (r) => {
+    deleted = r.request().postDataJSON().paths;
+    await r.fulfill({ json: { deleted: deleted.length, failed: [] } });
   });
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
-  await expect(page.locator("#libCheck")).toContainText("2 geprüft");
-  await expect(page.locator(".lib-row .score").first()).toHaveText("40");
-  await expect(page.locator(".lib-row .rating").first()).toHaveText("★ 4,6 (1234)");
-  // a finding as a filter
-  await page.locator("#libCheck .chip", { hasText: "Jahr" }).click();
-  await expect.poll(() => urls.at(-1) || "").toContain("issue=no_year");
-  await page.locator("#libCheck .chip", { hasText: "Jahr" }).click();
-  await expect.poll(() => urls.at(-1) || "").toMatch(/issue=$/);
-  // sorted by condition
-  // sorted by condition: the key first (lowest first), the same key again turns it around
-  await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
-  await expect.poll(() => urls.at(-1) || "").toContain("sort=health&");
-  await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
-  await expect.poll(() => urls.at(-1) || "").toContain("sort=-health");
-  // Audible's ratings: shown in the row, sorted, fetched on request
-  await page.locator("#libCheck").getByRole("button", { name: "Audible-Daten" }).waitFor();
-  await page.locator(".sort-bar").getByRole("button", { name: "Audible-Bewertung" }).click();
-  await expect.poll(() => urls.at(-1) || "").toContain("sort=rating&");
-  // start the check
-  await page.locator("#libCheck").getByRole("button", { name: "Prüfen", exact: true }).click();
-  await expect(page.locator("#libCheck")).toContainText("Prüft");
+  await page.locator("#libBar").getByRole("button", { name: "Alle (250)" }).click();      // all matches, not just the two shown
+  await expect(page.locator("#libBar .sel-n")).toHaveText("250");
+  await expect(page.locator(".lib-row .lib-check input:checked")).toHaveCount(2);
+  await page.locator("#libBar").getByRole("button", { name: "Löschen" }).click();
+  await page.locator("#confirmDialog").getByRole("button", { name: "Löschen" }).click();
+  await expect.poll(() => deleted.length).toBe(250);
+  await expect(page.locator("#libBar .sel-n")).toHaveCount(0);                              // selection cleared
   expect(errors).toEqual([]);
+});
+
+test("Bibliothek aufräumen: vier Kacheln mit Zahlen als Filter, Sortierung mit Richtung, Bewertung in der Zeile", async ({ page }) => {
+  const errors = await open(page);
+  const urls: string[] = [];
+  const bad = { path: "A/Schlecht", title: "Schlechtes Buch", authors: ["A"], series: null, series_position: null, asin: "B0S", format: "m4b", files: 1, rating: 2.9, ratings: 120 };
+  const good = { path: "A/Gut", title: "Gutes Buch", authors: ["A"], series: null, series_position: null, asin: "B0X", format: "m4b", files: 1, rating: 4.6, ratings: 1234 };
+  await page.route("**/api/library/books?*", (r) => { urls.push(r.request().url()); return r.fulfill({ json: { total: 2, books: [bad, good] } }); });
+  const posts: string[] = [];
+  await page.route("**/api/library/ratings", async (r) => {
+    if (r.request().method() === "POST") posts.push("ratings");
+    await r.fulfill({ json: { running: false, done: 0, total: 0, with_asin: 2, rated: 2 } });
+  });
+  await page.route("**/api/library/check", async (r) => {
+    if (r.request().method() === "POST") posts.push("check");
+    await r.fulfill({ json: { running: false, done: 2, total: 2, checked: 2, books: 2,
+      tiles: [{ key: "chapters", count: 388 }, { key: "details", count: 120 }, { key: "match", count: 258 }, { key: "lowrated", count: 14 }] } });
+  });
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
+  const tiles = page.locator("#libTiles .tile");
+  await expect(tiles).toHaveCount(4);
+  await expect(tiles.nth(0)).toContainText("388");
+  await expect(tiles.nth(3)).toContainText("14");
+  await expect(page.locator(".lib-row .score")).toHaveCount(0);                              // no condition numbers any more
+  await expect(page.locator(".lib-row .rating").first()).toHaveText("★ 2,9 (120)");
+  // a task as a filter; a second tap shows everything again
+  await tiles.nth(0).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("issue=chapters");
+  await tiles.nth(0).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("issue=&limit");
+  // "badly rated" also puts the worst first
+  await tiles.nth(3).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("issue=lowrated");
+  expect(urls.at(-1)).toContain("sort=rating&");
+  // the sort keys: the key first, the same key again turns it around
+  const sort = page.locator(".sort-bar");
+  await sort.getByRole("button", { name: "Zustand" }).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=health&");
+  await sort.getByRole("button", { name: "Zustand" }).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=-health");
+  // one button looks at everything again
+  await page.locator("#libTiles").getByRole("button", { name: "Neu prüfen" }).click();
+  await expect.poll(() => posts.sort().join()).toBe("check,ratings");
+  expect(errors).toEqual([]);
+});
+
+test("Bibliothek: ein Familienkonto hat die Seite Hörbücher mit Zustand, Aufräumen, Auswahl und Löschen gar nicht", async ({ page, browser, baseURL }) => {
+  await open(page);                                                                          // the admin makes the account
+  const family = { name: "Fanny Familie", password: "Rote-Tasse-4711" };
+  expect((await page.request.post("/api/users", { headers: OWN, data: family })).status()).toBe(200);
+  const other = await browser.newPage({ baseURL });
+  const errors = await open(other, family);
+  await expect(other.locator("nav.tabs").getByRole("link", { name: /Suchen/ })).toBeVisible();
+  await expect(other.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ })).toHaveCount(0);
+  await expect(other.locator("#libTiles, #libBar, .lib-check, .lib-actions")).toHaveCount(0);
+  expect(errors).toEqual([]);
+  await other.close();
 });
 
 test("Eingang → M4B → Bibliothek, Doppeltes wird erkannt", async ({ page }) => {
@@ -1003,6 +1049,31 @@ test("Entdecken am Mac: Detailspalte mit Beschreibung und „Ähnlich wie“ –
   await expect(col.locator(".detail-title")).toHaveText("Das erste Hörbuch");
   await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();                   // the book belongs to the page it was opened on
   await expect(col).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("Entdecken am Mac: ein anderer Reiter lässt das Buch des vorigen Reiters nicht in der Spalte stehen", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const foryou = [detailBook("B0FORYOU01", "Für dich Eins"), detailBook("B0FORYOU02", "Für dich Zwei")];
+  const critics = [detailBook("B0CRIT0001", "Kritik Eins")];
+  await page.route("**/api/discover?*", (r) => {
+    const section = new URL(r.request().url()).searchParams.get("section");
+    return r.fulfill({ json: { items: section === "critics" ? critics : foryou, updated: 1_700_000_000, error: null, running: false, personal: true, linked: true } });
+  });
+  await page.route("**/api/book/detail?*", (r) => {
+    const asin = new URL(r.request().url()).searchParams.get("asin");
+    const b = [...foryou, ...critics].find((x) => x.asin === asin)!;
+    r.fulfill({ json: { book: { ...b, description: `Beschreibung von ${b.title}` }, similar: [], region: "de" } });
+  });
+  const errors = await open(page);
+  await page.locator("nav.tabs").getByRole("link", { name: "Entdecken" }).click();
+  const col = page.locator("#bookDetail");
+  await expect(col.locator(".detail-title")).toHaveText("Für dich Eins");                      // wide: the first of "Für dich"
+  await page.locator("#discoverSections").getByRole("tab", { name: "Aus der Kritik" }).click();
+  await expect(col.locator(".detail-title")).toHaveText("Kritik Eins");                        // not the book of the other list
+  await expect(page.locator("#discoverList .selected")).toContainText("Kritik Eins");
+  await page.locator("#discoverSections").getByRole("tab", { name: "Für dich" }).click();
+  await expect(col.locator(".detail-title")).toHaveText("Für dich Eins");
   expect(errors).toEqual([]);
 });
 

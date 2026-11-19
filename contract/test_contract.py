@@ -943,8 +943,8 @@ class Processing(ContractTest):
         self.assertIn("Kapitelnamen geändert", json.dumps(log, ensure_ascii=False))
 
     def test_library_check_finds_what_could_be_better(self):
-        """The library check looks at every book once (nothing is changed), gives a score and findings, and the
-        library can be sorted and filtered by them."""
+        """The library check looks at every book once (nothing is changed); the tidy-up tasks (chapters, details, match,
+        lowrated) count books, filter the library and are for admins only."""
         tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "album": "Das Pruefbuch", "genre": "Hörbuch"}
         deliver(self.server.inbox, "Ella Echo - Das Pruefbuch",
                 {f"{i + 1:02d}.mp3": {**tags, "title": f"Das Pruefbuch{i + 1:03d}", "track": str(i + 1)} for i in range(3)})
@@ -955,19 +955,25 @@ class Processing(ContractTest):
         status = self.admin.wait(lambda: (lambda s: s if not s["running"] and s["checked"] >= 1 else None)(
             self.admin.get("/api/library/check")), seconds=90, what="library check")
         self.assertGreaterEqual(status["checked"], 1)
-        books = self.admin.get("/api/library/books?sort=health&limit=500")["books"]
-        mine = next(b for b in books if b["title"] == "Das Pruefbuch")
-        self.assertIsInstance(mine["score"], int)
-        self.assertLess(mine["score"], 100)
-        self.assertTrue(mine["issues"], mine)
-        # worst first: the scores never go down along the list
-        scores = [b["score"] for b in books if "score" in b]
-        self.assertEqual(scores, sorted(scores))
-        # filtering by a finding keeps only the books that have it
-        code = mine["issues"][0]
-        only = self.admin.get(f"/api/library/books?issue={code}&limit=500")["books"]
-        self.assertTrue(only and all(code in b["issues"] for b in only), only)
-        self.assertIn(code, [i["code"] for i in status["issues"]])
+        tiles = {x["key"]: x["count"] for x in status["tiles"]}
+        self.assertEqual(sorted(tiles), ["chapters", "details", "lowrated", "match"])
+        self.assertGreaterEqual(tiles["match"], 1)                          # a book without an ASIN is not matched to Audible
+        # a tidy-up task keeps only the books that have it – and no scores are sent
+        only = self.admin.get("/api/library/books?issue=match&limit=500")["books"]
+        self.assertIn("Das Pruefbuch", [b["title"] for b in only])
+        self.assertTrue(all("score" not in b and "issues" not in b for b in only), only)
+        self.assertEqual(len(only), tiles["match"])
+        # the order by condition (worst first) puts that book before the untouched ones
+        ordered = [b["title"] for b in self.admin.get("/api/library/books?sort=health&limit=500")["books"]]
+        self.assertLess(ordered.index("Das Pruefbuch"), len(ordered))
+        # these are for admins only: the others get the plain library (filter and order are ignored)
+        plain = [b["path"] for b in self.family().get("/api/library/books?limit=500")["books"]]
+        self.assertEqual([b["path"] for b in self.family().get("/api/library/books?issue=match&limit=500")["books"]], plain)
+        self.assertEqual([b["path"] for b in self.family().get("/api/library/books?sort=health&limit=500")["books"]],
+                         [b["path"] for b in self.family().get("/api/library/books?sort=author&limit=500")["books"]])
+        self.family().call("GET", "/api/library/check", expect=403)
+        self.family().call("POST", "/api/library/delete", {"paths": ["x"]}, expect=403)
+        self.family().call("DELETE", "/api/library/book?path=x", expect=403)
         # a family account may not start it
         self.family().call("POST", "/api/library/check", {"on": True}, expect=403)
         # Audible's ratings: the status is there (nothing fetched without a network), the sort orders exist
@@ -1018,6 +1024,43 @@ class Processing(ContractTest):
         self.assertTrue(any(s.get("codec_type") == "video" for s in probe["streams"]), probe)
         book = next(b for b in self.admin.get("/api/library/books?limit=500")["books"] if b["path"] == rel)
         self.assertTrue(book["cover"])
+
+    def test_select_all_and_delete_several_books(self):
+        """"Select all" gets the paths of every match (not only the shown ones); several books go in one call."""
+        tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "genre": "Hörbuch"}
+        rels = []
+        for name in ("Loeschtest Eins", "Loeschtest Zwei"):
+            deliver(self.server.inbox, f"Ella Echo - {name}", {"01.mp3": {**tags, "album": name, "title": "Kapitel", "track": "1"}})
+            job = self.job(f"Ella Echo - {name}")
+            self.assertEqual(job["status"], "done", job)
+            rels.append(os.path.relpath(os.path.dirname(job["dest"]), self.server.library))
+        found = self.admin.get("/api/library/books?q=Loeschtest&ids=1&limit=1")
+        self.assertEqual(sorted(found["paths"]), sorted(rels))         # all matches, whatever the page size
+        self.assertEqual(found["total"], 2)
+        self.family().call("POST", "/api/library/delete", {"paths": rels}, expect=403)
+        self.admin.call("POST", "/api/library/delete", {"paths": []}, expect=400)
+        res = self.admin.call("POST", "/api/library/delete", {"paths": [*rels, "gibt/es/nicht"]})
+        self.assertEqual(res["deleted"], 2)
+        self.assertEqual([f["path"] for f in res["failed"]], ["gibt/es/nicht"])
+        self.assertEqual(self.admin.get("/api/library/books?q=Loeschtest&ids=1")["paths"], [])
+        for rel in rels:
+            self.assertFalse(os.path.exists(os.path.join(self.server.library, rel)))
+
+    def test_a_stub_without_sound_does_not_stop_the_book(self):
+        """A split download can start with a file that has no sound (an empty "Opening Credits"): it is left out."""
+        tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "album": "Das Stummbuch", "genre": "Hörbuch"}
+        deliver(self.server.inbox, "Ella Echo - Das Stummbuch",
+                {"01 - Erstes.mp3": {**tags, "title": "Erstes", "track": "1"}, "02 - Zweites.mp3": {**tags, "title": "Zweites", "track": "2"}})
+        stub = os.path.join(self.server.inbox, "Ella Echo - Das Stummbuch", "00 - Opening Credits.mp3")
+        with open(stub, "wb") as fh:
+            fh.write(b"ID3\x03\x00\x00\x00\x00\x00\x00")             # tags only, not one frame of sound
+        job = self.job("Ella Echo - Das Stummbuch")
+        self.assertEqual(job["status"], "done", job)
+        probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-print_format", "json", "-show_chapters", job["dest"]],
+                                          capture_output=True, text=True, check=True).stdout)
+        self.assertEqual([c["tags"]["title"] for c in probe["chapters"]], ["Erstes", "Zweites"])
+        detail = self.admin.get(f'/api/audiobooks/{job["id"]}')
+        self.assertTrue(any("Ohne Ton übersprungen" in line for line in detail["log"]), detail["log"])
 
     def test_pack_becomes_one_job_per_volume(self):
         tmp = os.path.join(self.server.dir, ".incoming", "Paula Pack - Reihe 01-02")
