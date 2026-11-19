@@ -252,7 +252,11 @@ pub async fn tidy_chapters(app: Arc<App>, req: Req, _: Params) -> Reply {
             crate::mediaservers::request_scans(&app);
             app.audit(&req.user_name(), &req.ip, "library_chapters", &rel);
             let (a, r) = (app.clone(), rel.clone());
-            blocking(move || a.health.recheck(&a, &r)).await;
+            blocking(move || {
+                a.library.refresh(&r);
+                a.health.recheck(&a, &r);
+            })
+            .await;
             json_reply(json!({"changed": n, "first": first, "last": last, "metadata_json": sidecar}))
         }
         Ok(None) => {

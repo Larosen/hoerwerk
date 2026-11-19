@@ -3724,7 +3724,13 @@ impl Pipeline {
     }
 
     fn rechapter(&self, app: &App, m4b: &Path, chapters: &[Chapter]) -> Res<()> {
-        let tmp = PathBuf::from(format!("{}.chapters.m4b", m4b.display()));
+        // hidden and no audio extension: a media server scanning meanwhile does not see a second book
+        let tmp = m4b.with_file_name(format!(
+            ".{}.hw-new",
+            m4b.file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        ));
         let runner = Runner::new(Arc::new(AtomicBool::new(false)));
         encoder::remux(m4b, &tmp, Some(chapters), &runner, &app.cfg.nice)?;
         tagger::copy_tags(m4b, &tmp)?;

@@ -251,6 +251,15 @@ pub fn write(path: &std::path::Path, book: &Value, settings: &Value, cover: Opti
     Ok(())
 }
 
+/// Replace only the picture of an M4B – every other tag stays as it is.
+pub fn set_cover(path: &std::path::Path, cover: Vec<u8>) -> Result<(), Error> {
+    let mut tag = Tag::read_from_path(path)?;
+    tag.remove_artworks();
+    tag.set_artwork(Img::new(cover_format(&cover), cover));
+    tag.write_to_path(path)?;
+    Ok(())
+}
+
 /// Existing tags of an M4B as a book (same fields as `tagger.read_book`); `_cover` says whether a picture is inside.
 pub fn read_book(path: &std::path::Path) -> Value {
     let tag = Tag::read_from_path(path).ok();

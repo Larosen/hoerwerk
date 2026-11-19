@@ -75,6 +75,16 @@ danach per Knopf; sie läuft im Hintergrund, ein Buch nach dem anderen, und weic
 Befunds zeigt nur die betroffenen Bücher, **Sortieren → Zustand** die schlechtesten zuerst. Behoben wird mit den
 vorhandenen Knöpfen (*Kapitel* mit Vorschau, *Besser*, *Korrigieren*).
 
+**Cover** (Knopf an jedem M4B-Buch): ein eigenes Bild (JPEG/PNG) für Bücher, zu denen es öffentlich keins gibt. Es wird
+`cover.jpg`/`cover.png` im Buchordner und das Bild in der M4B; alle anderen Tags bleiben.
+
+**Daten ergänzen** (Auswahlleiste): zeigt je Buch, was Hörwerk ergänzen kann, wenn es sich bei der Fassung sicher ist
+(ASIN oder enge Übereinstimmung von Titel, Autor und Länge): Jahr, Sprecher, Verlag, Serie, Beschreibung, Cover. Ein
+Klick ergänzt alle; nur Leeres wird gefüllt, Vorhandenes bleibt.
+
+Das Umschreiben von Tags, Kapiteln und Cover verschiebt oder benennt ein Buch nie um; die Zwischendatei ist beim
+Schreiben versteckt, und *Neueste* behält das Datum, an dem ein Buch zuerst gesehen wurde.
+
 **Audible-Daten** (unabhängig vom Zustand): *Audible-Daten laden* holt Hörer-Bewertung und Laufzeit der Bücher mit ASIN,
 langsam im Hintergrund, und merkt sie einen Monat. Danach lässt sich die Bibliothek nach **Audible-Bewertung**
 sortieren (schlechteste oder beste zuerst); Stimmen zählen mit, 4,9 von zwei Personen schlägt 4,6 von zweitausend nicht.

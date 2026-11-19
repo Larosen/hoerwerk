@@ -977,6 +977,48 @@ class Processing(ContractTest):
             self.assertTrue(self.admin.get(f"/api/library/books?sort={sort}&limit=5")["books"])
         self.family().call("POST", "/api/library/ratings", {"on": True}, expect=403)
 
+    def test_own_cover_for_a_library_book(self):
+        """A cover uploaded for a book lands as cover.png beside it and inside the M4B; the book keeps its folder and
+        file name, a non-image is refused, and only admins may."""
+        import struct
+        import zlib
+
+        def png(w=8, h=8):
+            raw = b"".join(b"\x00" + b"\x40\x80\xc0" * w for _ in range(h))
+            def chunk(k, d):
+                return struct.pack(">I", len(d)) + k + d + struct.pack(">I", zlib.crc32(k + d) & 0xFFFFFFFF)
+            return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+
+        tags = {"artist": "Ella Echo", "album_artist": "Ella Echo", "album": "Das Coverbuch", "genre": "Hörbuch"}
+        deliver(self.server.inbox, "Ella Echo - Das Coverbuch", {"01.mp3": {**tags, "title": "Eins", "track": "1"}})
+        job = self.job("Ella Echo - Das Coverbuch")
+        self.assertEqual(job["status"], "done", job)
+        rel = os.path.relpath(os.path.dirname(job["dest"]), self.server.library)
+        folder = os.path.dirname(job["dest"])
+        before = sorted(os.listdir(folder))
+
+        def put(body, cookie=None, path=rel):
+            return self.server.request("PUT", f"/api/library/cover?path={quote(path)}", raw=body,
+                                       headers={**OWN, "Content-Type": "application/octet-stream"},
+                                       cookie=self.admin.cookie if cookie is None else cookie)
+
+        self.assertEqual(put(b"not an image")[0], 400)
+        self.assertEqual(put(png(), cookie=self.family().cookie)[0], 403)
+        self.assertEqual(put(png(), path="../etc")[0], 404)
+        status, _, body = put(png())
+        self.assertEqual(status, 200, body)
+        self.assertIn("cover.png", os.listdir(folder))
+        # the same file name and place; only the cover file is new
+        self.assertEqual(sorted(set(os.listdir(folder)) - {"cover.png"}), [f for f in before if f != "cover.png"])
+        shown = self.server.request("GET", f"/api/library/cover?path={quote(rel)}", cookie=self.admin.cookie)
+        self.assertEqual((shown[0], shown[1]["content-type"]), (200, "image/png"))
+        # inside the M4B as well
+        probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-print_format", "json", "-show_streams", job["dest"]],
+                                          capture_output=True, text=True, check=True).stdout)
+        self.assertTrue(any(s.get("codec_type") == "video" for s in probe["streams"]), probe)
+        book = next(b for b in self.admin.get("/api/library/books?limit=500")["books"] if b["path"] == rel)
+        self.assertTrue(book["cover"])
+
     def test_pack_becomes_one_job_per_volume(self):
         tmp = os.path.join(self.server.dir, ".incoming", "Paula Pack - Reihe 01-02")
         for vol, title in ((1, "Erster Fall"), (2, "Zweiter Fall")):

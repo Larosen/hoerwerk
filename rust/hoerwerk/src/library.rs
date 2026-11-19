@@ -26,6 +26,7 @@ pub const COVER_FILES: [&str; 7] = [
 const AUDIO_EXTS: [&str; 9] = [".m4b", ".m4a", ".mp3", ".mp4", ".aac", ".flac", ".ogg", ".opus", ".wma"];
 /// bump when the way entries are read changes: cached folders are read again
 const ENTRY_VERSION: i64 = 6;
+const ADDED_KEY: &str = "library_added";
 const PUBLIC_KEYS: [&str; 12] = [
     "path",
     "title",
@@ -76,6 +77,9 @@ pub struct LibraryIndex {
     db: Db,
     state: Mutex<State>,
     notify: OnceLock<Box<dyn Fn() + Send + Sync>>,
+    /// when a book was first seen in the library (path -> time): the order of "Neueste" – rewriting its tags or
+    /// chapters does not make it new again
+    added: Mutex<HashMap<String, f64>>,
     /// what the comparisons need of each entry, worked out once per version of the entry (title words and
     /// surnames are regex work – redone for every entry on every lookup, a big library made searches slow)
     keys: Mutex<HashMap<String, (u64, std::sync::Arc<Key>)>>,
@@ -148,9 +152,62 @@ impl LibraryIndex {
             db,
             state: Mutex::new(State::default()),
             notify: OnceLock::new(),
+            added: Mutex::new(HashMap::new()),
         };
         idx.load();
+        if let Some(d) = idx.db.get(ADDED_KEY).as_ref().and_then(Value::as_object) {
+            *idx.added.lock().unwrap_or_else(|p| p.into_inner()) =
+                d.iter().filter_map(|(p, t)| Some((p.clone(), t.as_f64()?))).collect();
+        }
         idx
+    }
+
+    /// Remember when books were first seen. The first time ever (nothing remembered yet) it is the files' own
+    /// time, so an old library keeps its order; later a new book is new now.
+    fn note_added(&self, found: &HashMap<String, Value>) {
+        let mut a = self.added.lock().unwrap_or_else(|p| p.into_inner());
+        let first = a.is_empty();
+        let t = now();
+        let before = a.len();
+        a.retain(|p, _| found.contains_key(p));
+        let mut changed = a.len() != before;
+        for (p, e) in found {
+            if !a.contains_key(p) {
+                a.insert(p.clone(), if first { e["mtime"].as_f64().unwrap_or(t) } else { t });
+                changed = true;
+            }
+        }
+        if changed {
+            let _ = self.db.put(ADDED_KEY, &json!(*a));
+        }
+    }
+
+    /// Read one book's folder again now (after its tags, chapters or cover were rewritten): same path, same
+    /// "added" time, the entry is up to date at once.
+    pub fn refresh(&self, rel: &str) {
+        let folder = self.root.join(rel);
+        let mut audio = media::collect_audio(&folder);
+        audio.sort();
+        let Some(mtime) = audio
+            .iter()
+            .map(|f| media::mtime(&folder.join(f)))
+            .try_fold(f64::MIN, |m, x| x.map(|x| m.max(x)))
+        else {
+            return;
+        };
+        if audio.is_empty() {
+            return;
+        }
+        let e = entry(&folder, rel, &audio, mtime);
+        {
+            let mut st = self.lock();
+            st.entries.insert(rel.to_string(), e.clone());
+            if let Some(d) = st.during.as_mut() {
+                d.insert(rel.to_string(), Some(e.clone()));
+            }
+            let _ = self.store(&[e], &[], None);
+        }
+        self.changed();
     }
 
     pub fn on_change(&self, f: Box<dyn Fn() + Send + Sync>) {
@@ -375,6 +432,7 @@ impl LibraryIndex {
         changed.retain(|c| !during.contains_key(s(c, "path")));
         let removed: Vec<String> = st.entries.keys().filter(|p| !found.contains_key(*p)).cloned().collect();
         let n = found.len();
+        self.note_added(&found);
         st.entries = found;
         st.last_scan = Some(now());
         self.store(&changed, &removed, st.last_scan)
@@ -400,9 +458,16 @@ impl LibraryIndex {
             let mut st = self.lock();
             st.entries.insert(rel.clone(), e.clone());
             if let Some(d) = st.during.as_mut() {
-                d.insert(rel, Some(e.clone()));
+                d.insert(rel.clone(), Some(e.clone()));
             }
             let _ = self.store(&[e], &[], None);
+        }
+        {
+            let mut a = self.added.lock().unwrap_or_else(|p| p.into_inner());
+            if let std::collections::hash_map::Entry::Vacant(v) = a.entry(rel) {
+                v.insert(now());
+                let _ = self.db.put(ADDED_KEY, &json!(*a));
+            }
         }
         self.changed();
     }
@@ -631,26 +696,61 @@ impl LibraryIndex {
             });
         }
         entries.sort_by_key(|e| path_key(s(e, "path")));
-        let mtime = |e: &Value| e["mtime"].as_f64().unwrap_or(0.0);
+        // a "-" in front reverses the order ("-title" is Z→A, "-health" the best condition first)
+        let (reverse, sort) = match sort.strip_prefix('-') {
+            Some(base) => (true, base),
+            None => (false, sort),
+        };
+        let added = self.added.lock().unwrap_or_else(|p| p.into_inner()).clone();
+        let mtime = |e: &Value| {
+            added
+                .get(s(e, "path"))
+                .copied()
+                .unwrap_or_else(|| e["mtime"].as_f64().unwrap_or(0.0))
+        };
+        // "rating_best" is the old word for "-rating"
+        let (reverse, sort) = if sort == "rating_best" {
+            (true, "rating")
+        } else {
+            (reverse, sort)
+        };
+        // a value per book (lower first); books without one stay at the end, whichever way it goes
+        let scored = |entries: &mut Vec<Value>, key: &dyn Fn(&Value) -> Option<f64>| {
+            entries.sort_by(|a, b| match (key(a), key(b)) {
+                (Some(x), Some(y)) => {
+                    let o = x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal);
+                    if reverse { o.reverse() } else { o }
+                }
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => std::cmp::Ordering::Equal,
+            });
+        };
         match sort {
-            "title" => entries.sort_by_key(|e| crate::words::natural_key(s(e, "title"))),
-            "new" => entries.sort_by(|a, b| mtime(b).partial_cmp(&mtime(a)).unwrap_or(std::cmp::Ordering::Equal)),
-            "old" => entries.sort_by(|a, b| mtime(a).partial_cmp(&mtime(b)).unwrap_or(std::cmp::Ordering::Equal)),
-            "format" => entries.sort_by_key(|e| s(e, "format") == "m4b"),
-            // worst condition first; books not checked yet at the end
-            // by Audible's listener rating (weighted by the number of votes); books without one at the end
-            "rating" | "rating_best" => {
-                let key = |e: &Value| ratings.get(s(e, "asin")).map(|(r, n)| crate::ratings::weighted(*r, *n));
-                entries.sort_by(|a, b| match (key(a), key(b)) {
-                    (Some(x), Some(y)) if sort == "rating" => x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal),
-                    (Some(x), Some(y)) => y.partial_cmp(&x).unwrap_or(std::cmp::Ordering::Equal),
-                    (Some(_), None) => std::cmp::Ordering::Less,
-                    (None, Some(_)) => std::cmp::Ordering::Greater,
-                    (None, None) => std::cmp::Ordering::Equal,
-                });
+            // by Audible's listener rating, weighted by the number of votes
+            "rating" => scored(&mut entries, &|e| {
+                ratings.get(s(e, "asin")).map(|(r, n)| crate::ratings::weighted(*r, *n))
+            }),
+            // by the condition the library check found
+            "health" => scored(&mut entries, &|e| {
+                health.get(s(e, "path")).map(|(score, _)| *score as f64)
+            }),
+            other => {
+                match other {
+                    "title" => entries.sort_by_key(|e| crate::words::natural_key(s(e, "title"))),
+                    "new" => {
+                        entries.sort_by(|a, b| mtime(b).partial_cmp(&mtime(a)).unwrap_or(std::cmp::Ordering::Equal))
+                    }
+                    "old" => {
+                        entries.sort_by(|a, b| mtime(a).partial_cmp(&mtime(b)).unwrap_or(std::cmp::Ordering::Equal))
+                    }
+                    "format" => entries.sort_by_key(|e| s(e, "format") == "m4b"),
+                    _ => {}
+                }
+                if reverse {
+                    entries.reverse();
+                }
             }
-            "health" => entries.sort_by_key(|e| health.get(s(e, "path")).map_or(i64::MAX, |(score, _)| *score)),
-            _ => {}
         }
         let total = entries.len();
         let books: Vec<Value> = entries
@@ -937,6 +1037,10 @@ mod tests {
         };
         assert_eq!(titles("rating"), ["Schlecht", "Wenige", "Gut", "Ohne"]);
         assert_eq!(titles("rating_best"), ["Gut", "Wenige", "Schlecht", "Ohne"]);
+        assert_eq!(titles("-rating"), titles("rating_best"));
+        // a "-" in front turns any order around
+        assert_eq!(titles("title"), ["Gut", "Ohne", "Schlecht", "Wenige"]);
+        assert_eq!(titles("-title"), ["Wenige", "Schlecht", "Ohne", "Gut"]);
         let books = idx.books(
             "",
             0,
@@ -949,6 +1053,37 @@ mod tests {
             },
         );
         assert_eq!(books["books"][0]["ratings"], 500);
+    }
+
+    #[test]
+    fn rewriting_a_book_does_not_make_it_new() {
+        let db = Db::memory();
+        let idx = LibraryIndex::new(Path::new(""), db.clone());
+        let e = |p: &str, m: f64| json!({"path": p, "mtime": m});
+        let found: HashMap<String, Value> = [
+            ("Alt".to_string(), e("Alt", 1000.0)),
+            ("Auch alt".to_string(), e("Auch alt", 2000.0)),
+        ]
+        .into();
+        idx.note_added(&found);
+        // an old library keeps the order of its files' own times
+        assert_eq!(idx.added.lock().unwrap()["Alt"], 1000.0);
+        // its tags were rewritten: the file is newer now, the book is not
+        let rewritten: HashMap<String, Value> = [
+            ("Alt".to_string(), e("Alt", 9_999_999_999.0)),
+            ("Auch alt".to_string(), e("Auch alt", 2000.0)),
+        ]
+        .into();
+        idx.note_added(&rewritten);
+        assert_eq!(idx.added.lock().unwrap()["Alt"], 1000.0);
+        // a book that shows up later is new now
+        let mut more = rewritten.clone();
+        more.insert("Neu".into(), e("Neu", 1.0));
+        idx.note_added(&more);
+        assert!(idx.added.lock().unwrap()["Neu"] > 1_000_000.0);
+        // and it is remembered across a restart
+        let again = LibraryIndex::new(Path::new(""), db);
+        assert_eq!(again.added.lock().unwrap()["Alt"], 1000.0);
     }
 
     #[test]

@@ -378,3 +378,100 @@ pub async fn ratings_run(app: Arc<App>, req: Req, _: HashMap<String, String>) ->
     );
     json_reply(app.ratings.status(&app))
 }
+
+/// `PUT /api/library/cover?path=<book folder>` – the picture of a book from the body (JPEG or PNG, up to 15 MB; admins):
+/// as `cover.jpg`/`cover.png` in its folder and inside the M4B, the other tags stay. For books nobody offers a
+/// cover for. The path, the name and the book's place in the library are not touched.
+pub async fn put_cover(app: Arc<App>, mut req: Req, _: HashMap<String, String>) -> Reply {
+    use http_body_util::{BodyExt, Limited};
+    let rel = req.query.get("path").cloned().unwrap_or_default();
+    let folder = match library_path(&app, &rel) {
+        Ok(f) => f,
+        Err(r) => return r,
+    };
+    if req.length as u64 > MAX_COVER {
+        return error(413, t("Bild zu groß (höchstens 15 MB)", &[]));
+    }
+    let Some(body) = req.raw.take() else {
+        return error(411, t("Ungültige Länge", &[]));
+    };
+    let (user, ip) = (req.user_name(), req.ip.clone());
+    drop(req); // the request (not Sync) must not live across the await
+    let read = tokio::time::timeout(
+        std::time::Duration::from_secs(60),
+        Limited::new(body, MAX_COVER as usize).collect(),
+    )
+    .await;
+    let data = match read {
+        Ok(Ok(c)) => c.to_bytes().to_vec(),
+        Ok(Err(_)) => return error(413, t("Bild zu groß (höchstens 15 MB)", &[])),
+        Err(_) => return error(408, t("Anfrage zu langsam", &[])),
+    };
+    let Some(ctype) = media::image_type(&data) else {
+        return error(400, t("Das ist kein JPEG- oder PNG-Bild", &[]));
+    };
+    let (a, r) = (app.clone(), rel.clone());
+    let done = tokio::task::spawn_blocking(move || set_cover(&a, &r, &folder, data, ctype))
+        .await
+        .unwrap_or_else(|_| Err("intern".to_string()));
+    match done {
+        Ok(()) => {
+            app.audit(&user, &ip, "library_cover", &rel);
+            json_reply(json!({"ok": true}))
+        }
+        Err(e) => error(500, e),
+    }
+}
+
+fn set_cover(app: &Arc<App>, rel: &str, folder: &Path, data: Vec<u8>, ctype: &str) -> Result<(), String> {
+    let name = if ctype == "image/png" { "cover.png" } else { "cover.jpg" };
+    // one cover file: the other kind would win or confuse a media server
+    for other in COVER_FILES.iter().filter(|f| **f != name && f.starts_with("cover.")) {
+        let _ = std::fs::remove_file(folder.join(other));
+    }
+    std::fs::write(folder.join(name), &data).map_err(|e| e.to_string())?;
+    // inside the M4B too (a single one): Plex and the players read it from there
+    let audio = media::collect_audio(folder);
+    if let [file] = audio.as_slice()
+        && file.to_lowercase().ends_with(".m4b")
+    {
+        crate::tagger::set_cover(&folder.join(file), data)?;
+    }
+    app.library.refresh(rel);
+    app.health.recheck(app, rel);
+    crate::mediaservers::request_scans(app);
+    Ok(())
+}
+
+/// `POST /api/library/enrich {path, apply}` – what the book lacks that Hörwerk is sure about (the edition is known by
+/// its ASIN, or title, author and length fit closely): without `apply` only the list, with it the gaps are filled
+/// (year, narrators, publisher, series, description, cover …; nothing that is there is changed). Admins.
+pub async fn enrich(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let rel = req.str("path");
+    if rel.is_empty() {
+        return error(400, t("Kein Hörbuch angegeben", &[]));
+    }
+    if let Err(r) = library_path(&app, &rel) {
+        return r;
+    }
+    let apply = req.get("apply") != &Value::Bool(false);
+    let (a, r) = (app.clone(), rel.clone());
+    let done = tokio::task::spawn_blocking(move || {
+        if apply {
+            crate::enrich::apply(&a, &r).map(|n| json!({"added": n}))
+        } else {
+            crate::enrich::plan(&a, &r)
+        }
+    })
+    .await
+    .unwrap_or_else(|_| Err("intern".to_string()));
+    match done {
+        Ok(v) => {
+            if apply && v["added"].as_u64().unwrap_or(0) > 0 {
+                app.audit(&req.user_name(), &req.ip, "library_enrich", &rel);
+            }
+            json_reply(v)
+        }
+        Err(e) => error(502, e),
+    }
+}

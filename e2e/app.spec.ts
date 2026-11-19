@@ -92,9 +92,9 @@ test("Bibliothek: Kapitel neu benennen – Vorschau mit Grund, Abbrechen schreib
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
   await page.locator(".lib-row .lib-actions").getByRole("button", { name: "Kapitel" }).click();
   const dialog = page.locator("#chaptersDialog");
-  await expect(dialog.locator(".chap-rows .from").first()).toHaveText("Der Federmann001");
-  await expect(dialog.locator(".chap-rows .to").first()).toHaveText("Kapitel 1");
-  await expect(dialog.locator(".chap-rows .why").first()).toContainText("Zähler entfernt");
+  await expect(dialog.locator(".chap-change .was").first()).toHaveText("Der Federmann001");   // what it was …
+  await expect(dialog.locator(".chap-change .will").first()).toHaveText("Kapitel 1");          // … and what it will be
+  await expect(dialog.locator(".chap-change .why")).toHaveCount(0);                            // no explanations
   await expect(dialog).toContainText("2 von 3 Kapiteln werden geändert");
   await dialog.getByRole("button", { name: "Abbrechen" }).click();
   await expect(dialog).not.toBeVisible();
@@ -106,6 +106,48 @@ test("Bibliothek: Kapitel neu benennen – Vorschau mit Grund, Abbrechen schreib
   await dialog.getByRole("button", { name: "Umbenennung anwenden" }).click();
   await expect(dialog).not.toBeVisible();
   expect(sent.at(-1)).toEqual({ path: book.path });                                // applied: the real call
+  expect(errors).toEqual([]);
+});
+
+test("Bibliothek: eigenes Cover hochladen, Daten für die Auswahl ergänzen", async ({ page }) => {
+  const errors = await open(page);
+  const book = { path: "Fitzek/Der Federmann", title: "Der Federmann", authors: ["Sebastian Fitzek"], series: null, series_position: null, asin: "B01", format: "m4b", files: 1, cover: false };
+  await page.route("**/api/library/books?*", (r) => r.fulfill({ json: { total: 1, books: [book] } }));
+  const sent: { url: string; type: string; size: number }[] = [];
+  await page.route("**/api/library/cover?*", async (r) => {
+    if (r.request().method() !== "PUT") return r.continue();
+    sent.push({ url: r.request().url(), type: r.request().headers()["content-type"], size: (r.request().postDataBuffer() || Buffer.alloc(0)).length });
+    await r.fulfill({ json: { ok: true } });
+  });
+  const posts: unknown[] = [];
+  await page.route("**/api/library/enrich", async (r) => {
+    const body = r.request().postDataJSON();
+    posts.push(body);
+    await r.fulfill({ json: body.apply === false
+      ? { status: "ready", match: { title: "Der Federmann", source: "audible" }, changes: [{ field: "release_date", label: "Jahr", to: "2016" }, { field: "narrators", label: "Sprecher", to: "Simon Jäger" }] }
+      : { added: 2 } });
+  });
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
+  // own cover: the picture goes to the server as it is
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64");
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.locator(".lib-row .lib-actions").getByRole("button", { name: "Cover" }).click()]);
+  await chooser.setFiles({ name: "cover.png", mimeType: "image/png", buffer: png });
+  await expect.poll(() => sent.length).toBe(1);
+  expect(sent[0].url).toContain("path=Fitzek%2FDer%20Federmann");
+  expect(sent[0].size).toBe(png.length);
+  // details for the ticked books: the list first, then one click for all
+  await page.locator(".lib-row .lib-check input").check();
+  await page.locator("#libBar").getByRole("button", { name: /Daten ergänzen/ }).click();
+  const dialog = page.locator("#enrichDialog");
+  await expect(dialog.locator(".enrich-list .plus").first()).toHaveText("2016");
+  await expect(dialog).toContainText("Simon Jäger");
+  await dialog.getByRole("button", { name: "Abbrechen" }).click();
+  expect(posts).toEqual([{ path: book.path, apply: false }]);                      // cancelled: nothing was written
+  await page.locator("#libBar").getByRole("button", { name: /Daten ergänzen/ }).click();
+  await dialog.getByRole("button", { name: "Ergänzen", exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  expect(posts.at(-1)).toEqual({ path: book.path });
   expect(errors).toEqual([]);
 });
 
@@ -124,23 +166,26 @@ test("Bibliothek prüfen: Zustand, Befunde als Filter, Sortierung nach Zustand",
   });
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
-  await expect(page.locator("#libCheck")).toContainText("2 Bücher geprüft");
+  await expect(page.locator("#libCheck")).toContainText("2 geprüft");
   await expect(page.locator(".lib-row .score").first()).toHaveText("40");
   await expect(page.locator(".lib-row .rating").first()).toHaveText("★ 4,6 (1234)");
   // a finding as a filter
-  await page.locator("#libCheck .chip", { hasText: "Jahr fehlt" }).click();
+  await page.locator("#libCheck .chip", { hasText: "Jahr" }).click();
   await expect.poll(() => urls.at(-1) || "").toContain("issue=no_year");
-  await page.locator("#libCheck .chip", { hasText: "Jahr fehlt" }).click();
+  await page.locator("#libCheck .chip", { hasText: "Jahr" }).click();
   await expect.poll(() => urls.at(-1) || "").toMatch(/issue=$/);
   // sorted by condition
+  // sorted by condition: the key first (lowest first), the same key again turns it around
   await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
-  await expect.poll(() => urls.at(-1) || "").toContain("sort=health");
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=health&");
+  await page.locator(".sort-bar").getByRole("button", { name: /Zustand/ }).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=-health");
   // Audible's ratings: shown in the row, sorted, fetched on request
-  await page.locator("#libCheck").getByRole("button", { name: "Audible-Daten aktualisieren" }).waitFor();
-  await page.locator(".sort-bar").getByRole("button", { name: /Audible-Bewertung \(schlechteste/ }).click();
-  await expect.poll(() => urls.at(-1) || "").toContain("sort=rating");
+  await page.locator("#libCheck").getByRole("button", { name: "Audible-Daten" }).waitFor();
+  await page.locator(".sort-bar").getByRole("button", { name: "Audible-Bewertung" }).click();
+  await expect.poll(() => urls.at(-1) || "").toContain("sort=rating&");
   // start the check
-  await page.locator("#libCheck").getByRole("button", { name: "Erneut prüfen" }).click();
+  await page.locator("#libCheck").getByRole("button", { name: "Prüfen", exact: true }).click();
   await expect(page.locator("#libCheck")).toContainText("Prüft");
   expect(errors).toEqual([]);
 });

@@ -166,11 +166,25 @@ interface LibraryCheck {
   issues: { code: string; count: number; text: string }[];
 }
 
-const LIBRARY_SORTS: [string, () => string][] = [
-  ["author", () => t("Autor")], ["title", () => t("Titel")], ["new", () => t("Neueste")], ["old", () => t("Älteste")],
-  ["format", () => t("Nicht M4B zuerst")], ["health", () => t("Zustand (schlechteste zuerst)")],
-  ["rating", () => t("Audible-Bewertung (schlechteste zuerst)")], ["rating_best", () => t("Audible-Bewertung (beste zuerst)")],
+/** The sort keys of the library, short, each with the sort word for ascending / descending (a "-" in front reverses).
+ *  Ascending is the arrow up: A→Z, oldest first, lowest condition or rating first (what needs cleaning up). */
+const LIBRARY_SORTS: { key: string; label: () => string; name?: () => string; asc: string; desc: string; first: "asc" | "desc" }[] = [
+  { key: "author", label: () => t("Autor"), asc: "author", desc: "-author", first: "asc" },
+  { key: "title", label: () => t("Titel"), asc: "title", desc: "-title", first: "asc" },
+  { key: "date", label: () => t("Datum"), asc: "old", desc: "new", first: "desc" },
+  { key: "health", label: () => t("Zustand"), asc: "health", desc: "-health", first: "asc" },
+  { key: "rating", label: () => "★", name: () => t("Audible-Bewertung"), asc: "rating", desc: "-rating", first: "asc" },
 ];
+
+/** Which key and direction a stored sort word means. */
+function sortState(word: string): { key: string; dir: "asc" | "desc" } {
+  const w = word === "rating_best" ? "-rating" : word;
+  for (const s of LIBRARY_SORTS) {
+    if (w === s.asc) return { key: s.key, dir: "asc" };
+    if (w === s.desc) return { key: s.key, dir: "desc" };
+  }
+  return { key: "author", dir: "asc" };
+}
 
 function renderLibrary(list: HTMLElement): void {
   const q = el("input", { type: "search", value: books.libQuery, placeholder: t("Titel, Autor, Serie oder Ordner"),
@@ -183,18 +197,30 @@ function renderLibrary(list: HTMLElement): void {
     books.libTimer = setTimeout(loadLibraryBooks, 250);
   });
   const sort = el("div", { class: "sort-bar", role: "group", "aria-label": t("Bibliothek sortieren") });
-  sortBar(sort, LIBRARY_SORTS, () => books.libSort, (key) => {
-    books.libSort = key; store.set("librarySort", key); books.libShown = 100; loadLibraryBooks();
-  });
-  const view = el("div", { class: "seg seg-buttons", role: "group", "aria-label": t("Ansicht") });
-  for (const [key, label] of [["regal", t("Regal")], ["list", t("Liste")]]) {
-    view.append(el("button", { type: "button", "aria-pressed": String(books.libView === key), onclick: () => {
+  const drawSort = (): void => {
+    const cur = sortState(books.libSort);
+    sort.replaceChildren(...LIBRARY_SORTS.map((s) => {
+      const on = cur.key === s.key;
+      return el("button", { type: "button", class: "chip" + (on ? " on" : ""), "aria-pressed": String(on),
+        "aria-label": (s.name || s.label)(),
+        title: on ? (cur.dir === "asc" ? t("Aufsteigend – antippen für absteigend") : t("Absteigend – antippen für aufsteigend")) : (s.name || s.label)(),
+        onclick: () => {
+          const dir = on ? (cur.dir === "asc" ? "desc" : "asc") : s.first;
+          books.libSort = dir === "asc" ? s.asc : s.desc;
+          store.set("librarySort", books.libSort); books.libShown = 100; drawSort(); loadLibraryBooks();
+        } }, s.label(), on ? icon(cur.dir === "asc" ? "arrow-up" : "arrow-down") : null);
+    }));
+  };
+  drawSort();
+  const view = el("div", { class: "seg seg-buttons view-toggle", role: "group", "aria-label": t("Ansicht") });
+  for (const [key, label, ico] of [["regal", t("Regal"), "grid"], ["list", t("Liste"), "list"]]) {
+    view.append(el("button", { type: "button", title: label, "aria-label": label, "aria-pressed": String(books.libView === key), onclick: () => {
       books.libView = key; store.set("libraryView", key);
       rows.classList.toggle("regal", key === "regal");
       for (const b of view.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === view.children[key === "regal" ? 0 : 1]));
-    } }, label));
+    } }, icon(ico)));
   }
-  list.append(el("li", { class: "lib-search" }, icon("search"), q), el("li", { class: "lib-sort" }, sort, view),
+  list.append(el("li", { class: "lib-search" }, icon("search"), q, view), el("li", { class: "lib-sort" }, sort),
     ...(IS_ADMIN ? [el("li", { class: "lib-check-bar", id: "libCheck" }), el("li", { class: "lib-bar", id: "libBar", hidden: true })] : []), el("li", { class: "lib-wrap" }, rows));
   updateLibBar();
   if (IS_ADMIN) loadCheck();
@@ -253,6 +279,8 @@ function libraryRow(b: LibraryBook): HTMLLIElement {
         onclick: () => upgradeLibraryBook(b) }, icon("refresh"), el("span", { class: "lbl" }, t("Besser"))),
       b.format === "m4b" ? el("button", { type: "button", class: "btn small ghost", title: t("Kapitelnamen nach den Regeln für neue Hörbücher neu benennen – erst eine Vorschau"),
         "aria-label": t("Kapitel neu benennen"), onclick: () => previewChapters([{ path: b.path, title: b.title || b.path }]) }, icon("chapters"), el("span", { class: "lbl" }, t("Kapitel"))) : null,
+      b.format === "m4b" ? el("button", { type: "button", class: "btn small ghost", title: t("Eigenes Cover hochladen"), "aria-label": t("Eigenes Cover hochladen"),
+        onclick: () => pickCover(b) }, icon("image"), el("span", { class: "lbl" }, t("Cover"))) : null,
       el("button", { type: "button", class: "btn small ghost", title: t("Falsch erkannt oder falsche Fassung? Neu zuordnen"),
         onclick: () => correctLibraryBook(b) }, icon("pencil"), el("span", { class: "lbl" }, t("Korrigieren")))) : null);
   // the whole row opens the details (the buttons keep their own job)
@@ -878,38 +906,49 @@ async function loadCheck(): Promise<void> {
   } catch (e) { toast(errMsg(e), true); }
 }
 
+/** The findings as short words for the filter chips (the long text is the tooltip). */
+const ISSUE_SHORT: Record<string, () => string> = {
+  chapters: () => t("Kapitelnamen"), chapters_part: () => t("Einzelne Kapitel"), runtime_off: () => t("Laufzeit"),
+  no_chapters: () => t("Ohne Kapitel"), no_cover: () => t("Cover"), no_year: () => t("Jahr"), not_m4b: () => t("Nicht M4B"),
+  no_asin: () => t("Ohne Audible"), no_narrator: () => t("Sprecher"),
+};
+
 function renderCheck(): void {
   const box = document.getElementById("libCheck");
   const c = books.check;
   if (!box || !c) return;
-  const go = el("button", { type: "button", class: "btn small" + (c.running ? "" : " primary"), onclick: async () => {
+  const r = books.ratings;
+  // two small buttons side by side; what they did in one short line
+  const go = el("button", { type: "button", class: "btn small" + (c.running ? "" : " primary"),
+    title: t("Zeigt, wo sich Kapitel, Jahr, Cover oder Zuordnung verbessern lassen – ändert selbst nichts."), onclick: async () => {
     try {
       books.check = await api<LibraryCheck>("POST", "/api/library/check", { on: !c.running });
       toast(books.check.running ? t("Bibliothek wird geprüft – im Hintergrund, ein Buch nach dem anderen") : t("Prüfung angehalten"), "info");
       loadCheck();
     } catch (e) { toast(errMsg(e), true); }
-  } }, c.running ? t("Prüfung anhalten") : c.checked ? t("Erneut prüfen") : t("Bibliothek prüfen"));
-  const note = c.running ? t("Prüft … {done} von {total}", { done: c.done, total: c.total })
-    : c.checked ? t("{n} Bücher geprüft, Zustand im Schnitt {avg} von 100", { n: c.checked, avg: c.average ?? 0 })
-    : t("Zeigt, wo sich Kapitel, Jahr, Cover oder Zuordnung verbessern lassen – ändert selbst nichts.");
-  const chips = c.issues.map((i) => el("button", { type: "button", class: "chip" + (books.libIssue === i.code ? " on" : ""),
-    "aria-pressed": String(books.libIssue === i.code),
-    onclick: () => { books.libIssue = books.libIssue === i.code ? "" : i.code; books.libShown = 100; renderCheck(); loadLibraryBooks(); } },
-    `${i.text} · ${i.count}`));
-  // Audible's listener ratings: separate from the condition – fetched slowly in the background, used for the sort order
-  const r = books.ratings;
-  const rateBtn = r ? el("button", { type: "button", class: "btn small", onclick: async () => {
+  } }, icon("refresh"), c.running ? t("Stopp") : t("Prüfen"));
+  const rateBtn = r ? el("button", { type: "button", class: "btn small",
+    title: t("Holt Bewertung und Laufzeit von Audible – für die Sortierung und den Laufzeit-Befund"), onclick: async () => {
     try {
       books.ratings = await api<LibraryRatings>("POST", "/api/library/ratings", { on: !r.running });
       toast(books.ratings.running ? t("Audible-Daten werden abgefragt – im Hintergrund, langsam") : t("Abfrage angehalten"), "info");
       loadCheck();
     } catch (e) { toast(errMsg(e), true); }
-  } }, r.running ? t("Abfrage anhalten") : r.rated ? t("Audible-Daten aktualisieren") : t("Audible-Daten laden")) : null;
-  const rateNote = r ? (r.running ? t("Audible-Daten … {done} von {total}", { done: r.done, total: r.total })
-    : t("{rated} von {n} Büchern mit Audible-Bewertung und -Laufzeit", { rated: r.rated, n: r.with_asin })) : "";
-  box.replaceChildren(el("div", { class: "row gap wrap" }, go, el("span", { class: "muted small" }, note)),
-    ...(rateBtn ? [el("div", { class: "row gap wrap" }, rateBtn, el("span", { class: "muted small" }, rateNote))] : []),
-    ...(chips.length ? [el("div", { class: "chips" }, chips)] : []));
+  } }, icon("upload"), r.running ? t("Stopp") : t("Audible-Daten")) : null;
+  const parts: string[] = [];
+  if (c.running) parts.push(t("Prüft {done}/{total}", { done: c.done, total: c.total }));
+  else if (c.checked) parts.push(t("{n} geprüft · Ø {avg}", { n: c.checked, avg: c.average ?? 0 }));
+  if (r?.running) parts.push(t("Audible {done}/{total}", { done: r.done, total: r.total }));
+  else if (r?.rated) parts.push(t("{rated}/{n} mit Audible-Daten", { rated: r.rated, n: r.with_asin }));
+  const chips = c.issues.map((i) => {
+    const on = books.libIssue === i.code;
+    return el("button", { type: "button", class: "chip" + (on ? " on" : ""), "aria-pressed": String(on), title: i.text,
+      onclick: () => { books.libIssue = on ? "" : i.code; books.libShown = 100; renderCheck(); loadLibraryBooks(); } },
+      (ISSUE_SHORT[i.code] || (() => i.text))(), el("span", { class: "n" }, String(i.count)));
+  });
+  box.replaceChildren(
+    el("div", { class: "row gap wrap check-row" }, go, ...(rateBtn ? [rateBtn] : []), el("span", { class: "muted small" }, parts.join(" · "))),
+    ...(chips.length ? [el("div", { class: "issue-chips" }, icon("alert"), ...chips)] : []));
 }
 
 /** The bar over the library: how many books are ticked, and the way to the chapter preview. */
@@ -922,11 +961,86 @@ function updateLibBar(): void {
     el("span", {}, plural(n, t("1 Hörbuch ausgewählt"), t("{n} Hörbücher ausgewählt", { n }))),
     el("button", { type: "button", class: "btn small primary", onclick: () => previewChapters([...books.libPicked].map((path) => ({ path, title: path.split("/").pop() || path }))) },
       icon("chapters"), t("Kapitel neu benennen …")),
+    el("button", { type: "button", class: "btn small", title: t("Fehlendes (Jahr, Sprecher, Cover …) ergänzen, wo die Fassung sicher ist"),
+      onclick: () => previewEnrich([...books.libPicked].map((path) => ({ path, title: path.split("/").pop() || path }))) },
+      icon("check"), t("Daten ergänzen …")),
     el("button", { type: "button", class: "btn small ghost", onclick: () => {
       books.libPicked.clear();
       for (const cb of document.querySelectorAll<HTMLInputElement>("#libRows .lib-check input")) cb.checked = false;
       updateLibBar();
     } }, t("Auswahl aufheben")));
+}
+
+/** Choose a picture for a book that has none (or a wrong one): it becomes the cover in its folder and inside the M4B. */
+function pickCover(b: LibraryBook): void {
+  const input = el("input", { type: "file", accept: "image/jpeg,image/png" });
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|png)$/.test(file.type)) { toast(t("Das ist kein JPEG- oder PNG-Bild"), true); return; }
+    try {
+      const res = await fetch(`/api/library/cover?path=${encodeURIComponent(b.path)}`, {
+        method: "PUT", headers: { "X-Requested-With": "Hoerwerk", "Content-Type": "application/octet-stream" }, body: file });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+      toast(t("Cover gespeichert: {title}", { title: b.title || b.path }));
+      loadLibraryBooks();
+    } catch (e) { toast(errMsg(e), true); }
+  });
+  input.click();
+}
+
+interface EnrichChange { field: string; label: string; to: string; image?: boolean }
+interface EnrichPlan { status: string; match?: { title: string; source: string }; changes: EnrichChange[] }
+
+/** What Hörwerk can add to the chosen books where it is sure about the edition – and one click to add it to all. */
+async function previewEnrich(items: { path: string; title: string }[]): Promise<void> {
+  const d = $<HTMLDialogElement>("#enrichDialog");
+  const body = $("#enrichBody");
+  const apply = $<HTMLButtonElement>("#enrichApply");
+  apply.disabled = true;
+  body.replaceChildren(el("p", { class: "muted" }, t("Suche die richtige Fassung …")));
+  if (!d.open) d.showModal();
+  let cancelled = false;
+  d.addEventListener("close", () => { cancelled = true; }, { once: true });
+  const todo: string[] = [];
+  const sections: HTMLElement[] = [];
+  for (const it of items) {
+    if (cancelled) return;
+    const head = el("h3", {}, it.title);
+    let list: HTMLElement | null = null;
+    try {
+      const plan = await api<EnrichPlan>("POST", "/api/library/enrich", { path: it.path, apply: false });
+      if (cancelled) return;
+      const note: Record<string, string> = {
+        complete: t("Nichts zu ergänzen"), unsure: t("Nicht sicher genug – über „Besser“ oder „Korrigieren“ prüfen"),
+        no_m4b: t("Noch keine M4B") };
+      if (plan.changes.length) {
+        head.append(" ", el("span", { class: "muted small" }, t("Fassung: {title}", { title: plan.match?.title || "" })));
+        list = el("ul", { class: "enrich-list" }, plan.changes.map((c) => el("li", {},
+          c.image ? el("img", { class: "enrich-cover", alt: "", src: `/api/cover?u=${encodeURIComponent(c.to)}&w=300` }) : null,
+          el("span", { class: "enrich-label" }, c.label),
+          c.image ? el("span", { class: "plus" }, t("Cover aus dem Shop")) : el("span", { class: "plus" }, c.to))));
+        todo.push(it.path);
+      } else head.append(" ", el("span", { class: "muted small" }, note[plan.status] || ""));
+    } catch (e) { head.append(" ", el("span", { class: "muted small" }, errMsg(e))); }
+    sections.push(el("section", { class: "chap-book" }, head, list));
+  }
+  body.replaceChildren(...sections);
+  apply.disabled = !todo.length;
+  apply.onclick = async () => {
+    apply.disabled = true;
+    let added = 0;
+    for (const [i, path] of todo.entries()) {
+      apply.textContent = t("Ergänze … ({n} von {total})", { n: i + 1, total: todo.length });
+      try { added += (await api<{ added: number }>("POST", "/api/library/enrich", { path })).added; } catch (e) { toast(errMsg(e), true); }
+    }
+    apply.textContent = t("Ergänzen");
+    toast(t("{n} Angaben ergänzt", { n: added }));
+    for (const p of todo) books.libPicked.delete(p);
+    d.close();
+    updateLibBar();
+    loadLibraryBooks();
+  };
 }
 
 interface ChapterRow { from: string; to: string; why: string }
@@ -940,7 +1054,6 @@ async function previewChapters(items: { path: string; title: string }[]): Promis
   const apply = $<HTMLButtonElement>("#chaptersApply");
   apply.disabled = true;
   body.replaceChildren(el("p", { class: "muted" }, t("Lade Vorschau …")));
-  $("#chaptersNote").textContent = t("Links der Name jetzt, rechts der neue – mit dem Grund. Erst „Umbenennung anwenden“ schreibt die neuen Namen in die M4B.");
   if (!d.open) d.showModal();
   let cancelled = false;
   d.addEventListener("close", () => { cancelled = true; }, { once: true });
@@ -955,15 +1068,16 @@ async function previewChapters(items: { path: string; title: string }[]): Promis
       head.append(" ", el("span", { class: "muted small" }, plan.changed
         ? t("{changed} von {total} Kapiteln werden geändert", { changed: plan.changed, total: plan.total })
         : t("schon sauber")));
-      const line = (r: ChapterRow): HTMLElement => el("li", {},
-        el("span", { class: "from" }, r.from), el("span", { class: "arrow", "aria-hidden": "true" }, "→"), el("b", { class: "to" }, r.to),
-        r.why ? el("span", { class: "why" }, r.why) : null);
+      // what was above, what it will be below: the same on a phone and on a wide screen
+      const change = (r: ChapterRow): HTMLElement => el("li", { class: "chap-change" },
+        el("div", { class: "was" }, r.from), el("div", { class: "will" }, r.to));
+      const kept = (r: ChapterRow): HTMLElement => el("li", { class: "chap-kept" }, r.from);
       const changedRows = plan.rows.filter((r) => r.from !== r.to);
       const keptRows = plan.rows.filter((r) => r.from === r.to);
       sections.push(el("section", { class: "chap-book" }, head,
-        changedRows.length ? el("ul", { class: "chap-rows" }, changedRows.map(line)) : null,
+        changedRows.length ? el("ul", { class: "chap-rows" }, changedRows.map(change)) : null,
         keptRows.length ? el("details", {}, el("summary", { class: "muted small" }, t("{n} bleiben unverändert", { n: keptRows.length })),
-          el("ul", { class: "chap-rows" }, keptRows.map(line))) : null));
+          el("ul", { class: "chap-rows" }, keptRows.map(kept))) : null));
       if (plan.changed) todo.push({ path: it.path, changed: plan.changed });
     } catch (e) {
       head.append(" ", el("span", { class: "muted small" }, errMsg(e)));
@@ -1066,6 +1180,7 @@ function updatePathPreview(): void {
 
 function initBooks(): void {
   $("#chaptersCancel").addEventListener("click", () => $<HTMLDialogElement>("#chaptersDialog").close());
+  $("#enrichCancel").addEventListener("click", () => $<HTMLDialogElement>("#enrichDialog").close());
   if (!IS_ADMIN) return;   // family accounts: search, discover, requests
   $("#scanBtn").addEventListener("click", async () => {
     try { await api("POST", "/api/audiobooks/scan"); toast(t("Eingang wird geprüft")); setTimeout(() => pollBooks(true), 800); }

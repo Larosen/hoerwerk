@@ -368,6 +368,18 @@
    "raw_body": false
   },
   {
+   "method": "PUT",
+   "path": "/api/library/cover",
+   "access": "admin",
+   "raw_body": true
+  },
+  {
+   "method": "POST",
+   "path": "/api/library/enrich",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/library/check",
    "access": "admin",

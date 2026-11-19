@@ -199,6 +199,10 @@ pub fn clean_titles<S: AsRef<str>>(names: &[S], known: &[String], lang: &str) ->
         *n = strip_known(n, &known);
     }
     note(&mut reasons, &stage, &out, "book");
+    // what the book's name hid is visible now: "01 - Dune II 01" is a stem with a counter
+    let stage = out.clone();
+    split_glued_numbers(&mut out);
+    note(&mut reasons, &stage, &out, "counter");
     let stage = out.clone();
     strip_shared(&mut out);
     note(&mut reasons, &stage, &out, "shared");
@@ -265,6 +269,8 @@ fn split_glued_numbers(names: &mut [String]) {
         let digits = name.len() - name.trim_end_matches(|c: char| c.is_ascii_digit()).len();
         let (head, tail) = name.split_at(name.len() - digits);
         (1..=4).contains(&digits).then_some(())?;
+        // "Federmann002" (stuck) and "Dune II 01" (a space between) alike
+        let head = head.trim_end();
         head.chars()
             .last()
             .is_some_and(char::is_alphabetic)
@@ -289,9 +295,28 @@ fn split_glued_numbers(names: &mut [String]) {
     // in it …): only the counter is left, and a bare counter becomes "Kapitel N" later
     let stems: std::collections::HashSet<String> = names
         .iter()
-        .filter_map(|x| glued(x).map(|(head, _)| crate::words::match_words(head).join(" ")))
+        .filter_map(|x| {
+            glued(x).map(|(head, _)| {
+                // numbers inside the stem do not count ("01 - Dune II" and "02 - Dune II" are one stem)
+                crate::words::match_words(head)
+                    .into_iter()
+                    .map(|w| {
+                        if w.chars().all(|c| c.is_ascii_digit()) {
+                            "#".to_string()
+                        } else {
+                            w
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            })
+        })
         .collect();
-    let same_stem = stems.len() == 1 && stems.iter().all(|s| !CHAPTER_WORD.is_match(s));
+    // a stem that ends in "Kapitel" / "Teil" … is not ballast: the counter after it makes "Kapitel 3"
+    let same_stem = stems.len() == 1
+        && stems
+            .iter()
+            .all(|s| !s.rsplit(' ').next().is_some_and(|w| CHAPTER_WORD.is_match(w)));
     for name in names.iter_mut() {
         if let Some((head, digits)) = glued(name) {
             *name = if same_stem {
