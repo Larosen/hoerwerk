@@ -192,7 +192,8 @@ test("Bibliothek aufräumen: vier Kacheln mit Zahlen als Filter, Sortierung mit 
   await page.route("**/api/library/check", async (r) => {
     if (r.request().method() === "POST") posts.push("check");
     await r.fulfill({ json: { running: false, done: 2, total: 2, checked: 2, books: 2,
-      tiles: [{ key: "chapters", count: 388 }, { key: "details", count: 120 }, { key: "match", count: 258 }, { key: "lowrated", count: 14 }] } });
+      tiles: [{ key: "chapters", count: 388 }, { key: "details", count: 120 }, { key: "match", count: 258 }, { key: "lowrated", count: 14 }],
+      autofix: { running: false, done: 0, total: 0, settled: 0 } } });
   });
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
@@ -220,6 +221,21 @@ test("Bibliothek aufräumen: vier Kacheln mit Zahlen als Filter, Sortierung mit 
   // one button looks at everything again
   await page.locator("#libTiles").getByRole("button", { name: "Neu prüfen" }).click();
   await expect.poll(() => posts.sort().join()).toBe("check,ratings");
+  expect(errors).toEqual([]);
+});
+
+test("Bibliothek: was Hörwerk selbst zuordnet, steht als Fortschritt neben den Kacheln", async ({ page }) => {
+  const errors = await open(page);
+  const book = { path: "A/Buch", title: "Buch", authors: ["A"], series: null, series_position: null, asin: null, format: "m4b", files: 1 };
+  await page.route("**/api/library/books?*", (r) => r.fulfill({ json: { total: 1, books: [book] } }));
+  await page.route("**/api/library/ratings", (r) => r.fulfill({ json: { running: false, done: 0, total: 0, with_asin: 0, rated: 0 } }));
+  await page.route("**/api/library/check", (r) => r.fulfill({ json: { running: false, done: 0, total: 0, checked: 1, books: 1,
+    tiles: [{ key: "chapters", count: 0 }, { key: "details", count: 0 }, { key: "match", count: 200 }, { key: "lowrated", count: 0 }],
+    autofix: { running: true, done: 3, total: 10, settled: 2 } } }));
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
+  await expect(page.locator("#libTiles")).toContainText("Ordnet zu 3/10");
+  await expect(page.locator("#libTiles").getByRole("button", { name: "Anhalten" })).toBeVisible();   // the ↻ stops it while it runs
   expect(errors).toEqual([]);
 });
 

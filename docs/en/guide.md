@@ -70,8 +70,10 @@ Plex never reads them, Audiobookshelf only when `metadata.json` is missing. Audi
 **To tidy up** (admins): Hörwerk looks at every book once, locally and without changing anything, and shows four tiles
 with a number each – *Chapters* (names repeat the title, say nothing or are missing), *Details* (cover, year or narrator
 missing), *Match* (not linked to Audible, or another edition: the length differs) and *Badly rated* (Audible rating
-below 3.4 with at least 20 votes). A tap shows only those books, a second tap all again. The check and Audible's data
-run by themselves in the background (after every library scan, only what is missing); the ↻ looks at everything again.
+below 3.4 with at least 20 votes). A tap shows only those books, a second tap all again. What Hörwerk can settle by itself it settles first: books without an Audible link are looked up in the background, and where
+the edition is sure (runtime within about 4 % and a fitting title) the ASIN and the missing details including the cover
+are written into the M4B. The tiles show only what stayed open. Switch off with `LIBRARY_AUTOFIX=false`. The check and
+Audible's data run by themselves in the background (after every library scan, only what is missing); the ↻ looks at everything again.
 Sorting is by author, title, date, ★ Audible rating and (admins only) condition; the active key shows an arrow, a
 second tap turns the direction around. Everything else a book offers is in its "⋯" menu.
 

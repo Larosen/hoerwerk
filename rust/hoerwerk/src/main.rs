@@ -4,6 +4,7 @@ mod accounts;
 mod app;
 mod audible;
 mod authlog;
+mod autofix;
 mod chapters;
 mod config;
 mod db;

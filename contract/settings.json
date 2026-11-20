@@ -19,6 +19,7 @@
   "ab_originals": "archive",
   "ab_scan_interval": 60,
   "ab_fallback": true,
+  "library_autofix": true,
   "ab_duplicates": "ask",
   "ab_library_originals": "archive",
   "library_rescan_hours": 6,
@@ -207,6 +208,10 @@
    "key": "ab_threshold",
    "type": "float"
   },
+  "LIBRARY_AUTOFIX": {
+   "key": "library_autofix",
+   "type": "bool"
+  },
   "METADATA_FALLBACK": {
    "key": "ab_fallback",
    "type": "bool"
@@ -248,5 +253,5 @@
    "type": "bool"
   }
  },
- "version": "1.0.17"
+ "version": "1.0.18"
 }

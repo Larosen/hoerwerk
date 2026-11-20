@@ -116,6 +116,8 @@ struct Item {
     asin: String,
     /// length of the M4B in seconds (0 = unknown)
     duration: f64,
+    /// identified as an edition outside Audible (a CD): "no Audible link" is no finding for it
+    other: bool,
 }
 
 /// Audible lists another length than the file has: more than 8 % and 5 minutes apart – most likely another
@@ -130,6 +132,9 @@ impl Item {
     /// data of the book was fetched).
     fn effective(&self, runtimes: &HashMap<String, i64>) -> (i64, Vec<String>) {
         let mut issues = self.issues.clone();
+        if self.other {
+            issues.retain(|i| i != "no_asin");
+        }
         if runtimes.get(&self.asin).is_some_and(|m| runtime_off(self.duration, *m)) {
             issues.push("runtime_off".to_string());
         }
@@ -159,6 +164,7 @@ impl Health {
                         score: v["s"].as_i64().unwrap_or(0),
                         asin: v["a"].as_str().unwrap_or("").to_string(),
                         duration: v["d"].as_f64().unwrap_or(0.0),
+                        other: v["o"].as_bool().unwrap_or(false),
                         issues: v["i"]
                             .as_array()
                             .into_iter()
@@ -197,10 +203,40 @@ impl Health {
     /// Look at one book again now (after its chapters were renamed) so the library shows the new condition.
     pub fn recheck(&self, app: &App, rel: &str) {
         if let Some(entry) = app.library.entry(rel) {
-            let item = check_entry(app, &entry);
-            self.lock().insert(rel.to_string(), item);
+            let mut item = check_entry(app, &entry);
+            let mut items = self.lock();
+            item.other = items.get(rel).is_some_and(|old| old.other);
+            items.insert(rel.to_string(), item);
+            drop(items);
             self.save(&app.db);
         }
+    }
+
+    /// The book was identified as an edition outside Audible (a CD): "no Audible link" is no finding for it any more.
+    pub fn mark_other(&self, app: &App, rel: &str) {
+        if let Some(item) = self.lock().get_mut(rel) {
+            item.other = true;
+        }
+        self.save(&app.db);
+    }
+
+    /// The books whose last look found something the library can try to settle by itself: no Audible link, no cover,
+    /// no year, no narrator (not the ones identified as an edition outside Audible).
+    pub fn needing_help(&self) -> Vec<String> {
+        let mut out: Vec<String> = self
+            .lock()
+            .iter()
+            .filter(|(_, i)| {
+                i.issues.iter().any(|c| match c.as_str() {
+                    "no_asin" => !i.other,
+                    "no_cover" | "no_year" | "no_narrator" => true,
+                    _ => false,
+                })
+            })
+            .map(|(p, _)| p.clone())
+            .collect();
+        out.sort();
+        out
     }
 
     fn save(&self, db: &Db) {
@@ -210,7 +246,7 @@ impl Health {
             .map(|(p, i)| {
                 (
                     p.clone(),
-                    json!({"m": i.mtime, "s": i.score, "i": i.issues, "a": i.asin, "d": i.duration}),
+                    json!({"m": i.mtime, "s": i.score, "i": i.issues, "a": i.asin, "d": i.duration, "o": i.other}),
                 )
             })
             .collect();
@@ -255,7 +291,7 @@ impl Health {
             .chain([json!({"key": "lowrated", "count": low})])
             .collect();
         json!({"running": self.running.load(Ordering::SeqCst), "done": done, "total": total, "checked": n,
-               "books": known.len(), "tiles": tiles})
+               "books": known.len(), "tiles": tiles, "autofix": app.autofix.status()})
     }
 
     pub fn stop(&self) {
@@ -328,6 +364,8 @@ impl Health {
         }
         self.save(&app.db);
         let (done, total) = *self.progress.lock().unwrap_or_else(|p| p.into_inner());
+        // now it is known what is missing: the library tries to settle that by itself
+        app.autofix.start(app);
         text::info(
             "Bibliothek",
             &t(
@@ -361,6 +399,7 @@ fn check_entry(app: &App, entry: &Value) -> Item {
         issues,
         asin: entry["asin"].as_str().unwrap_or("").to_string(),
         duration,
+        other: false,
     }
 }
 
@@ -417,6 +456,21 @@ mod tests {
     }
 
     #[test]
+    fn a_cd_identified_outside_audible_has_no_link_to_wait_for() {
+        let mut item = Item {
+            mtime: 0.0,
+            score: 92,
+            issues: vec!["no_asin".into(), "no_cover".into()],
+            asin: String::new(),
+            duration: 3600.0,
+            other: false,
+        };
+        assert_eq!(item.effective(&HashMap::new()).1, ["no_asin", "no_cover"]);
+        item.other = true; // found at the national library or Apple Music: not an Audible book
+        assert_eq!(item.effective(&HashMap::new()).1, ["no_cover"]);
+    }
+
+    #[test]
     fn another_length_than_audible_lists_is_found() {
         // 10 h file against 10 h 20 min at Audible: rounding, fine; 6 h against 10 h: another recording
         assert!(!runtime_off(36_000.0, 620));
@@ -432,6 +486,7 @@ mod tests {
             issues: vec![],
             asin: "B1".into(),
             duration: 21_600.0,
+            other: false,
         };
         let runtimes: HashMap<String, i64> = [("B1".to_string(), 600)].into();
         assert_eq!(item.effective(&runtimes), (75, vec!["runtime_off".to_string()]));
