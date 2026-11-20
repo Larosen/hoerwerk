@@ -2,8 +2,8 @@
 # no network code, no external libraries, hardened toolchain (docker/build-ffmpeg.sh).
 # Source: official FFmpeg repository (GitHub mirror), release tag pinned to its commit.
 FROM debian:trixie-slim AS ffmpeg
-ARG FFMPEG_VERSION=9.0.2
-ARG FFMPEG_COMMIT=946fcce07b6dcd0331c8cc609192aeff5e1924f8
+ARG FFMPEG_VERSION=9.1
+ARG FFMPEG_COMMIT=74e4393595cf2b5857f0da925c4e0dd74ea306e5
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential nasm pkg-config git ca-certificates \
  && rm -rf /var/lib/apt/lists/*
