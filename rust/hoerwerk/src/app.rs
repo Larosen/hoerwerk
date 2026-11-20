@@ -48,6 +48,8 @@ pub struct App {
     pub health: Arc<crate::health::Health>,
     /// Audible's listener ratings of the library's books
     pub ratings: Arc<crate::ratings::Ratings>,
+    /// the library tidies itself: unmatched books are looked up, gaps filled where the edition is sure
+    pub autofix: Arc<crate::autofix::Autofix>,
     pub free: crate::free::Free,
     pub discover: crate::discover::Discover,
     /// the daily database snapshot: when it last worked, why it last failed ("" = fine), when it last ran
@@ -109,6 +111,7 @@ impl App {
             listening: Listening::default(),
             health: Arc::new(crate::health::Health::new(&db)),
             ratings: Arc::new(crate::ratings::Ratings::new(&db)),
+            autofix: Arc::new(crate::autofix::Autofix::new(&db)),
             free: crate::free::Free::default(),
             discover: crate::discover::Discover::new(true),
             db_backup: Mutex::new((None, String::new(), 0.0)),

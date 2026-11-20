@@ -72,7 +72,10 @@ Dateien danach nicht mehr.
 Kacheln mit je einer Zahl – *Kapitel* (Namen wiederholen den Titel, sagen nichts oder fehlen), *Angaben* (Cover, Jahr oder
 Sprecher fehlen), *Zuordnung* (keine Audible-Verknüpfung oder eine andere Fassung, Laufzeit weicht ab) und *Schlecht
 bewertet* (Audible-Bewertung unter 3,4 bei mindestens 20 Stimmen). Ein Antippen zeigt nur diese Bücher, ein zweites
-wieder alle. Prüfung und Audible-Daten laufen von selbst im Hintergrund (nach jedem Einlesen der Bibliothek, nur was
+wieder alle. Was Hörwerk selbst lösen kann, löst es zuerst: Bücher ohne Audible-Verknüpfung werden im Hintergrund gesucht, und wo die
+Fassung sicher ist (Laufzeit auf etwa 4 % und passender Titel), werden ASIN und fehlende Angaben samt Cover in die M4B
+geschrieben. Die Kacheln zeigen nur, was offen blieb. Abschalten mit `LIBRARY_AUTOFIX=false`. Prüfung und Audible-Daten
+laufen von selbst im Hintergrund (nach jedem Einlesen der Bibliothek, nur was
 fehlt); das ↻ schaut alles neu an. Sortieren geht nach Autor, Titel, Datum, ★ Audible-Bewertung und (nur Admins)
 Zustand; die aktive Taste zeigt einen Pfeil, ein zweites Antippen dreht die Richtung um. Alle weiteren Aktionen eines
 Buchs stehen in seinem „⋯“-Menü.

@@ -130,6 +130,7 @@ Bibliothek schieben.
 | `INBOX_ORIGINALS` | `archive` | Originale danach: `archive` (nach `_fertig`) oder `delete` |
 | `SETTLE_SECONDS` | `120` | So lange muss ein Eingang-Ordner unverändert sein |
 | `SCAN_INTERVAL` | `60` | Sekunden zwischen zwei Prüfungen des Eingangs |
+| `LIBRARY_AUTOFIX` | `true` | Bücher der Bibliothek im Hintergrund selbst zuordnen und ergänzen, wo die Fassung sicher ist |
 | `METADATA_FALLBACK` | `true` | Audnexus, Apple Books, Open Library, die Deutsche Nationalbibliothek und Apple Music (CDs) fragen, wenn Audible nichts Passendes findet |
 | `WRITE_ABS_METADATA` | `true` | `metadata.json` für Audiobookshelf schreiben |
 | `DUPLICATES` | `ask` | Buch schon in der Bibliothek: `ask`, `skip`, `keep` |

@@ -1767,7 +1767,6 @@
  "Angaben": "Details",
  "Audible-Bewertung unter 3,4 bei mindestens 20 Stimmen": "Audible rating below 3.4 with at least 20 votes",
  "Besser suchen": "Look for a better one",
- "Cover, Jahr oder Sprecher fehlen": "Cover, year or narrator missing",
  "Daten ergänzen …": "Complete details …",
  "Eigenes Cover …": "Own cover …",
  "Kapitel neu benennen …": "Rename chapters …",
@@ -1775,9 +1774,15 @@
  "Läuft im Hintergrund – ein Buch nach dem anderen": "Runs in the background – one book at a time",
  "Neu prüfen": "Check again",
  "Neu zuordnen": "Match again",
- "Nicht mit Audible verknüpft oder eine andere Fassung (Laufzeit weicht ab)": "Not linked to Audible or another edition (length differs)",
  "Schlecht bewertet": "Badly rated",
  "Weitere Aktionen": "More actions",
  "Zum Aufräumen": "To tidy up",
- "Zuordnung": "Match"
+ "Zuordnung": "Match",
+ "Automatisch ergänzt: {book} – {n} Angaben (Fassung: {title}, {source})": "Completed automatically: {book} – {n} details (edition: {title}, {source})",
+ "Automatisch zuordnen: keine Antwort aus dem Netz – abgebrochen, später erneut versuchen": "Matching automatically: no answer from the network – stopped, try again later",
+ "Automatisch zuordnen: {done} von {total} Büchern angesehen, {settled} zugeordnet oder ergänzt": "Matching automatically: {done} of {total} books looked at, {settled} matched or completed",
+ "Bücher der Bibliothek im Hintergrund selbst zuordnen und ergänzen, wo die Fassung sicher ist": "Match and complete the library's books by itself in the background where the edition is sure",
+ "Ordnet zu {done}/{total}": "Matching {done}/{total}",
+ "Was Hörwerk nicht selbst ergänzen konnte: Cover, Jahr oder Sprecher fehlen": "What Hörwerk could not complete by itself: cover, year or narrator missing",
+ "Was Hörwerk nicht sicher zuordnen konnte (keine Audible-Verknüpfung) oder eine andere Fassung (Laufzeit weicht ab)": "What Hörwerk could not match for sure (no Audible link) or another edition (length differs)"
 }

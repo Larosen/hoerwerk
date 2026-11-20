@@ -35,7 +35,7 @@ export default defineConfig({
       PORT: String(PORT),
       CONFIG_DIR: `${ROOT}/config`, INBOX_DIR: `${ROOT}/inbox`, LIBRARY_DIR: `${ROOT}/library`,
       // offline and deterministic: files are filed with their own tags, no shop lookups
-      MATCH_MODE: "off", METADATA_FALLBACK: "false", SETTLE_SECONDS: "0", SCAN_INTERVAL: "2",
+      MATCH_MODE: "off", METADATA_FALLBACK: "false", LIBRARY_AUTOFIX: "false", SETTLE_SECONDS: "0", SCAN_INTERVAL: "2",
       DUPLICATES: "ask", AUDIOBOOK_WATCH: "true", LIBRARY_RESCAN_HOURS: "6",
       // the admin account of the tests (older-style variables become the first admin)
       AUTH_USER: "admin", AUTH_PASS: "E2E-Admin-Kaffee-1",

@@ -166,6 +166,7 @@ interface LibraryRatings { running: boolean; done: number; total: number; with_a
 interface LibraryCheck {
   running: boolean; done: number; total: number; checked: number; books: number;
   tiles: { key: string; count: number }[];
+  autofix: { running: boolean; done: number; total: number; settled: number };
 }
 
 /** The sort keys of the library, short, each with the sort word for ascending / descending (a "-" in front reverses).
@@ -920,8 +921,8 @@ async function upgradeLibraryBook(b: LibraryBook): Promise<void> {
 /** The tidy-up tasks as tiles: a number and a word each; a tap shows only those books (a second tap: all again). */
 const TILES: { key: string; label: () => string; hint: () => string }[] = [
   { key: "chapters", label: () => t("Kapitel"), hint: () => t("Kapitelnamen wiederholen den Titel, sagen nichts oder fehlen") },
-  { key: "details", label: () => t("Angaben"), hint: () => t("Cover, Jahr oder Sprecher fehlen") },
-  { key: "match", label: () => t("Zuordnung"), hint: () => t("Nicht mit Audible verknüpft oder eine andere Fassung (Laufzeit weicht ab)") },
+  { key: "details", label: () => t("Angaben"), hint: () => t("Was Hörwerk nicht selbst ergänzen konnte: Cover, Jahr oder Sprecher fehlen") },
+  { key: "match", label: () => t("Zuordnung"), hint: () => t("Was Hörwerk nicht sicher zuordnen konnte (keine Audible-Verknüpfung) oder eine andere Fassung (Laufzeit weicht ab)") },
   { key: "lowrated", label: () => t("Schlecht bewertet"), hint: () => t("Audible-Bewertung unter 3,4 bei mindestens 20 Stimmen") },
 ];
 
@@ -932,12 +933,12 @@ async function loadCheck(): Promise<void> {
     books.ratings = await api<LibraryRatings>("GET", "/api/library/ratings", undefined, { key: "libratings" });
     renderTiles();
     clearTimeout(books.checkTimer);
-    if (books.check.running || books.ratings.running) {
+    const going = (): boolean => !!books.check?.running || !!books.ratings?.running || !!books.check?.autofix.running;
+    if (going()) {
       books.checkTimer = setTimeout(async () => {
-        const was = !!books.check?.running || !!books.ratings?.running;
         await loadCheck();
-        if (was && !books.check?.running && !books.ratings?.running) loadLibraryBooks();   // done: the numbers changed
-      }, 4000);
+        loadLibraryBooks();                                      // the numbers (and the books) change as it goes
+      }, going() && books.check?.autofix.running ? 8000 : 4000);
     }
   } catch (e) { toast(errMsg(e), true); }
 }
@@ -946,8 +947,9 @@ function renderTiles(): void {
   const box = document.getElementById("libTiles");
   const c = books.check;
   if (!box || !c) return;
-  const busy = c.running || !!books.ratings?.running;
+  const busy = c.running || !!books.ratings?.running || c.autofix.running;
   const status = c.running ? t("Prüft {done}/{total}", { done: c.done, total: c.total })
+    : c.autofix.running ? t("Ordnet zu {done}/{total}", { done: c.autofix.done, total: c.autofix.total })
     : books.ratings?.running ? t("Audible {done}/{total}", { done: books.ratings.done, total: books.ratings.total }) : "";
   // one button: look at everything again (check and Audible's data); while it runs it stops
   const again = el("button", { type: "button", class: "icon-btn", "aria-label": busy ? t("Anhalten") : t("Neu prüfen"),

@@ -51,7 +51,7 @@ class Server:
             **os.environ, "PORT": str(self.port), "CONFIG_DIR": self.config, "INBOX_DIR": self.inbox,
             "LIBRARY_DIR": self.library, "AUTH_USER": ADMIN["name"], "AUTH_PASS": ADMIN["password"],
             # offline and deterministic: books are filed with their own tags, no shop lookups
-            "MATCH_MODE": "off", "METADATA_FALLBACK": "false", "SETTLE_SECONDS": "0", "SCAN_INTERVAL": "1",
+            "MATCH_MODE": "off", "METADATA_FALLBACK": "false", "LIBRARY_AUTOFIX": "false", "SETTLE_SECONDS": "0", "SCAN_INTERVAL": "1",
             "DUPLICATES": "ask", "APP_LANGUAGE": "de", "MEDIA_SCAN_DELAY_SECONDS": "1", **(env or {}),
         }
         self.proc: Optional[subprocess.Popen] = None

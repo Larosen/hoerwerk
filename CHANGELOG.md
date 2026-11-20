@@ -3,6 +3,16 @@
 What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`), a GitHub release and an image
 (`ghcr.io/larosen/hoerwerk:1.0.0`); `latest` is always the newest one.
 
+## 1.0.18 – 2026-11-20
+
+- **The library tidies itself first:** books without an Audible link are looked up in the background, and where the
+  edition is beyond doubt (runtime within about 4 % and a fitting title, or title and author near identical) its ASIN
+  and the missing year, narrators, publisher, series, description and cover are written into the M4B – the same as
+  "Daten ergänzen", without anybody asking. A CD found at the national library or Apple Music counts as identified
+  and no longer shows as "not linked". The tiles then show only what Hörwerk could not settle. It runs slowly after
+  every library scan, looks at a book it could not settle again only when its files changed or after two weeks, and
+  can be switched off (`LIBRARY_AUTOFIX=false`). The log names every book it completed.
+
 ## 1.0.17 – 2026-11-19
 
 - **The library page, rebuilt around "what is there and what should I tidy up?":** search with Regal/Liste as two icons; one

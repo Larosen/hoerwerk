@@ -355,6 +355,7 @@ pub async fn check_run(app: Arc<App>, req: Req, _: HashMap<String, String>) -> R
         }
     } else {
         app.health.stop();
+        app.autofix.stop();
     }
     app.audit(
         &req.user_name(),
