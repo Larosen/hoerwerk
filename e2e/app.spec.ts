@@ -1208,7 +1208,8 @@ test("Statistik: Hörer ohne Hörwerk-Konto zählen mit, Audiobookshelf und Plex
   const oma = page.locator(".person", { hasText: "Oma" });
   await expect(oma).toContainText("Audiobookshelf");
   await expect(oma).toContainText("10 h");
-  await expect(oma.locator("a")).toHaveCount(0);                                     // no account page for a listener
+  await expect(oma.locator('a[href^="/stats/"]')).toHaveCount(0);                    // no account page for a listener
+  await expect(oma.getByRole("link", { name: "Zuordnen" })).toHaveAttribute("href", "/settings/users");   // but a way to assign them
   await expect(page.locator(".person", { hasText: "admin" })).toHaveCount(0);       // nothing asked, nothing heard: no card
   await expect(page.locator(".person", { hasText: "Bob" })).toHaveCount(1);
   await expect(page.locator("#statsGenresNote")).toHaveText("der gehörten Hörbücher");
