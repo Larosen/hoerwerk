@@ -158,7 +158,11 @@ fn dir_check(name: &str, path: &Path) -> Value {
     let free = if gb >= 0.0 {
         let tb = gb >= 1024.0;
         let n = format!("{:.1}", if tb { gb / 1024.0 } else { gb });
-        let n = if text::language() == "de" { n.replace('.', ",") } else { n };
+        let n = if text::language() == "de" {
+            n.replace('.', ",")
+        } else {
+            n
+        };
         if tb {
             t("{gb} TB frei", &[("gb", &n)])
         } else {

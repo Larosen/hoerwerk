@@ -425,7 +425,11 @@ pub fn tidy_title(title: &str) -> String {
     let mut t = title.trim().to_string();
     for _ in 0..3 {
         let before = t.clone();
-        t = sub(rx!(r"(?i)\s*[\(\[]\s*(?:un)?gekürzte?(?:\s+(?:lesung|fassung|hörbuchfassung))?\s*[\)\]]\s*$"), &t, "");
+        t = sub(
+            rx!(r"(?i)\s*[\(\[]\s*(?:un)?gekürzte?(?:\s+(?:lesung|fassung|hörbuchfassung))?\s*[\)\]]\s*$"),
+            &t,
+            "",
+        );
         t = sub(rx!(r"(?i)\s*\[[^\]]*\b(?:edition|ausgabe)\b[^\]]*\]\s*\d*\s*$"), &t, "");
         t = sub(rx!(r"\s*\(Ein [^()]*(?:Krimi|Thriller|Roman|Fall)[^()]*\)\s*$"), &t, "");
         if t == before {
