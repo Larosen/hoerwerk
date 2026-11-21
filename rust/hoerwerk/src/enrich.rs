@@ -91,6 +91,18 @@ fn candidate(app: &App, entry: &Value, file: &Path, book: &Value, auto: bool) ->
         return match app.providers.client.product(asin, &region) {
             Ok(p) if crate::health::runtime_off(dur, p["runtime_min"].as_i64().unwrap_or(0)) => Ok(None),
             Ok(p) => Ok(Some(p)),
+            // an "ASIN" the shop does not know (an ISBN in the tag, a book of its own): by itself that is no trouble
+            // with the net – there is just nothing to add, and several of these in a row must not end the whole run
+            Err(e)
+                if auto
+                    && e.0
+                        == t(
+                            "ASIN {asin} im Audible-Shop ({region}) nicht gefunden",
+                            &[("asin", asin), ("region", &region)],
+                        ) =>
+            {
+                Ok(None)
+            }
             Err(e) => Err(e.0),
         };
     }
