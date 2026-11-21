@@ -386,6 +386,12 @@
    "raw_body": false
   },
   {
+   "method": "POST",
+   "path": "/api/library/settle",
+   "access": "admin",
+   "raw_body": false
+  },
+  {
    "method": "GET",
    "path": "/api/library/check",
    "access": "admin",

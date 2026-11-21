@@ -180,6 +180,7 @@ interface LibraryBook {
   path: string; title: string; authors: string[]; names?: string[]; series: string | null;
   series_position: string | null; asin: string | null; format: string; files: number; mtime?: number; cover?: boolean;
   rating?: number; ratings?: number;
+  settled?: boolean;     // an admin said "fine as it is" (or gave it an own cover): Hörwerk leaves it alone
 }
 interface LibraryRatings { running: boolean; done: number; total: number; with_asin: number; rated: number }
 interface LibraryCheck {
@@ -286,6 +287,9 @@ function rowMenu(b: LibraryBook): HTMLElement {
     ] : []),
     [t("Besser suchen"), "refresh", () => { void upgradeLibraryBook(b); }],
     [t("Neu zuordnen"), "pencil", () => { void correctLibraryBook(b); }],
+    b.settled
+      ? [t("Wieder prüfen lassen"), "refresh", () => { void settleBooks([b.path], true); }]
+      : [t("Passt so – nichts vorschlagen"), "check", () => { void settleBooks([b.path], false); }],
   ];
   const menu = el("div", { class: "row-menu", role: "menu", hidden: true }, items.map(([label, ico, run]) =>
     el("button", { type: "button", role: "menuitem", class: "row-menu-item", onclick: () => { closeRowMenus(); run(); } }, icon(ico), label)));
@@ -1033,6 +1037,8 @@ function updateLibBar(): void {
       icon("chapters"), t("Kapitel")),
     el("button", { type: "button", class: "btn small", title: t("Fehlendes (Jahr, Sprecher, Cover …) ergänzen, wo die Fassung sicher ist"),
       onclick: () => previewEnrich(items()) }, icon("check"), t("Ergänzen")),
+    el("button", { type: "button", class: "btn small", title: t("Die Bücher sind so richtig (eigene Aufnahmen, Mitschnitte, Bücher ohne Hörbuch im Handel): Hörwerk schlägt dafür nichts mehr vor und lässt sie in Ruhe"),
+      onclick: () => { void settleBooks([...books.libPicked], false); } }, icon("check"), t("Passt so")),
     el("button", { type: "button", class: "btn small ghost danger", title: t("Ausgewählte Hörbücher löschen"), onclick: () => deleteSelected() },
       icon("x"), t("Löschen")),
     ...(n < books.libMatch ? [all] : []),
@@ -1044,6 +1050,21 @@ function updateLibBar(): void {
 function libraryUrl(o: { ids?: boolean } = {}): string {
   const q = `q=${encodeURIComponent(books.libQuery)}&sort=${books.libSort}&issue=${encodeURIComponent(books.libIssue)}`;
   return o.ids ? `/api/library/books?${q}&ids=1` : `/api/library/books?${q}&limit=${books.libShown}`;
+}
+
+/** "Passt so": these books are right as they are – no match, no missing details are suggested any more, and the
+ *  automatic matching leaves them alone (also when their files change). `undo` takes the decision back. */
+async function settleBooks(paths: string[], undo: boolean): Promise<void> {
+  if (!paths.length) return;
+  if (!undo && paths.length > 1 && !(await confirmBox(t("{n} Hörbücher so belassen? Hörwerk schlägt dafür keine Zuordnung und keine Ergänzung mehr vor und ändert sie nicht von selbst.", { n: paths.length }), t("Passt so")))) return;
+  try {
+    const res = await api<{ changed: number }>("POST", "/api/library/settle", { paths, undo });
+    toast(undo ? t("Wird wieder geprüft") : plural(res.changed, t("1 Hörbuch bleibt, wie es ist"), t("{n} Hörbücher bleiben, wie sie sind", { n: res.changed })));
+    books.libPicked.clear();
+    updateLibBar();
+    loadLibraryBooks();
+    loadCheck();
+  } catch (e) { toast(errMsg(e), true); }
 }
 
 /** Delete the ticked books (moved to `_ersetzt` or deleted, as set for replaced originals) – after asking once. */
@@ -1097,6 +1118,9 @@ async function previewEnrich(items: { path: string; title: string }[]): Promise<
   let cancelled = false;
   d.addEventListener("close", () => { cancelled = true; }, { once: true });
   const todo: string[] = [];
+  const left: string[] = [];          // nothing to add (or nothing sure): can be left as they are
+  const settle = $<HTMLButtonElement>("#enrichSettle");
+  settle.hidden = true;
   const sections: HTMLElement[] = [];
   for (const it of items) {
     if (cancelled) return;
@@ -1106,7 +1130,7 @@ async function previewEnrich(items: { path: string; title: string }[]): Promise<
       const plan = await api<EnrichPlan>("POST", "/api/library/enrich", { path: it.path, apply: false });
       if (cancelled) return;
       const note: Record<string, string> = {
-        complete: t("Nichts zu ergänzen"), unsure: t("Nicht sicher genug – über „Besser“ oder „Korrigieren“ prüfen"),
+        complete: t("Nichts zu ergänzen"), unsure: t("Nicht sicher genug – Hörwerk ändert nichts. Über „Besser“ oder „Korrigieren“ prüfen oder so belassen"),
         no_m4b: t("Noch keine M4B") };
       if (plan.changes.length) {
         head.append(" ", el("span", { class: "muted small" }, t("Fassung: {title}", { title: plan.match?.title || "" })));
@@ -1115,12 +1139,17 @@ async function previewEnrich(items: { path: string; title: string }[]): Promise<
           el("span", { class: "enrich-label" }, c.label),
           c.image ? el("span", { class: "plus" }, t("Cover aus dem Shop")) : el("span", { class: "plus" }, c.to))));
         todo.push(it.path);
-      } else head.append(" ", el("span", { class: "muted small" }, note[plan.status] || ""));
+      } else {
+        head.append(" ", el("span", { class: "muted small" }, note[plan.status] || ""));
+        left.push(it.path);
+      }
     } catch (e) { head.append(" ", el("span", { class: "muted small" }, errMsg(e))); }
     sections.push(el("section", { class: "chap-book" }, head, list));
   }
   body.replaceChildren(...sections);
   apply.disabled = !todo.length;
+  settle.hidden = !left.length;
+  settle.onclick = () => { d.close(); void settleBooks(left, false); };
   apply.onclick = async () => {
     apply.disabled = true;
     let added = 0;

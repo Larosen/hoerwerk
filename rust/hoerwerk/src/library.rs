@@ -72,6 +72,8 @@ pub struct Extra<'a> {
     pub issue: &'a str,
     /// admins only: the order by condition, the tidy-up filter (the rest of the users get the plain library)
     pub admin: bool,
+    /// the books an admin said "fine as it is" about (or gave an own cover): shown as such
+    pub settled: &'a std::collections::HashSet<String>,
 }
 
 pub struct LibraryIndex {
@@ -784,6 +786,9 @@ impl LibraryIndex {
                     b["rating"] = json!(rating);
                     b["ratings"] = json!(count);
                 }
+                if extra.admin && extra.settled.contains(s(&e, "path")) {
+                    b["settled"] = json!(true);
+                }
                 b
             })
             .collect();
@@ -1041,6 +1046,7 @@ mod tests {
                     ratings: &ratings,
                     issue: "",
                     admin: true,
+                    settled: &Default::default(),
                 },
             )["books"]
                 .as_array()
@@ -1065,6 +1071,7 @@ mod tests {
                 ratings: &ratings,
                 issue: "",
                 admin: true,
+                settled: &Default::default(),
             },
         );
         assert_eq!(books["books"][0]["ratings"], 500);

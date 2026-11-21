@@ -94,10 +94,7 @@ fn candidate(app: &App, entry: &Value, file: &Path, book: &Value, auto: bool) ->
             Err(e) => Err(e.0),
         };
     }
-    let hints = json!({
-        "title": entry["title"], "author": entry["authors"].as_array().and_then(|a| a.first()).cloned().unwrap_or(Value::Null),
-        "duration": dur, "query": format!("{} {}", entry["title"].as_str().unwrap_or(""), book["authors"].as_array().and_then(|a| a.first()).and_then(Value::as_str).unwrap_or("")),
-    });
+    let hints = lookup_hints(entry, book, dur);
     let threshold = settings
         .get("ab_threshold")
         .and_then(Value::as_f64)
@@ -107,6 +104,85 @@ fn candidate(app: &App, entry: &Value, file: &Path, book: &Value, auto: bool) ->
     // by itself (nobody looks at the result) only what is beyond doubt: a higher bar than for a book that waits for a look
     let threshold = if auto { threshold.max(AUTO_MIN_SCORE) } else { threshold };
     Ok(audible::auto_match(&ranked, threshold).filter(|m| !auto || sure(m)))
+}
+
+/// What the lookup of an edition is given: title, author and the length of the file.
+fn lookup_hints(entry: &Value, book: &Value, dur: f64) -> Value {
+    json!({
+        "title": entry["title"], "author": entry["authors"].as_array().and_then(|a| a.first()).cloned().unwrap_or(Value::Null),
+        "duration": dur, "query": format!("{} {}", entry["title"].as_str().unwrap_or(""), book["authors"].as_array().and_then(|a| a.first()).and_then(Value::as_str).unwrap_or("")),
+    })
+}
+
+/// The link of a book that was corrected: the ASIN it had, the one it has now, and the edition's title.
+pub struct Retargeted {
+    pub old: String,
+    pub new: String,
+    pub title: String,
+}
+
+/// A book whose Audible link contradicts the file (Audible's length is far off): it is probably another work. When
+/// another edition is beyond doubt – the title fits and the length agrees with the file – the link is corrected
+/// (only the ASIN and what the book lacks; what the book says stays). Anything less sure: the book is left alone.
+pub fn retarget(app: &Arc<App>, rel: &str) -> Result<Option<Retargeted>, String> {
+    let entry = app.library.entry(rel).ok_or_else(|| t("Nicht gefunden", &[]))?;
+    let old = s(&entry, "asin").to_string();
+    if old.is_empty() {
+        return Ok(None);
+    }
+    let folder = app.cfg.library.join(rel);
+    let audio = media::collect_audio(&folder);
+    let [name] = audio.as_slice() else { return Ok(None) };
+    if !name.to_lowercase().ends_with(".m4b") {
+        return Ok(None);
+    }
+    let file = folder.join(name);
+    let mut book = media::read_book(&file);
+    let dur = media::probe_cached(&file)["duration"].as_f64().unwrap_or(0.0);
+    let settings = app.settings();
+    let region = settings
+        .get("ab_region")
+        .and_then(Value::as_str)
+        .filter(|r| !r.is_empty())
+        .unwrap_or("de")
+        .to_string();
+    let threshold = settings
+        .get("ab_threshold")
+        .and_then(Value::as_f64)
+        .filter(|x| *x != 0.0)
+        .unwrap_or(0.8)
+        .max(AUTO_MIN_SCORE);
+    let (ranked, _) = app.providers.lookup(&lookup_hints(&entry, &book, dur), &region, true);
+    let Some(m) = audible::auto_match(&ranked, threshold).filter(|m| retarget_ok(m, &old)) else {
+        return Ok(None);
+    };
+    let new = s(&m, "asin").to_string();
+    book["asin"] = json!(new);
+    for (key, _, value) in gaps(&book, &m) {
+        book[key] = value;
+    }
+    let settings = Value::Object(app.settings());
+    tagger::write_tags(&file, &book, &settings, None)?;
+    if folder.join(tagger::METADATA_FILE).is_file() {
+        let _ = tagger::write_abs_metadata(&folder, &book, &encoder::file_chapters(&file), dur);
+    }
+    app.library.refresh(rel);
+    app.health.recheck(app, rel);
+    Ok(Some(Retargeted {
+        old,
+        new,
+        title: s(&m, "title").to_string(),
+    }))
+}
+
+/// Another edition than the linked one, and one the file really is: its length agrees (within about 4 %, not just
+/// "unknown") and it is sure by the usual rules. Without a length to compare nothing is corrected by itself.
+fn retarget_ok(m: &Value, old_asin: &str) -> bool {
+    let new = s(m, "asin");
+    !new.is_empty()
+        && !new.eq_ignore_ascii_case(old_asin)
+        && m["match"]["duration"].as_f64().is_some_and(|d| d >= 0.9)
+        && sure(m)
 }
 
 /// Score a match needs to be taken over without anybody looking (the setting may only raise it).
@@ -265,6 +341,18 @@ mod tests {
         // no runtime to compare: only a near identical title and author
         assert!(sure(&m(0.97, 0.95, Value::Null)));
         assert!(!sure(&m(0.9, 0.95, Value::Null)));
+    }
+
+    #[test]
+    fn a_link_is_only_corrected_when_the_length_agrees() {
+        let m = |asin: &str, title: f64, duration: Value| json!({"asin": asin, "match": {"title": title, "author": 0.95, "duration": duration}});
+        // another edition whose length fits the file: corrected
+        assert!(retarget_ok(&m("B0NEW00001", 0.9, json!(0.97)), "B0OLD00001"));
+        // the same edition, a length that does not fit, or no length at all: left alone
+        assert!(!retarget_ok(&m("B0OLD00001", 0.9, json!(0.97)), "b0old00001"));
+        assert!(!retarget_ok(&m("B0NEW00001", 0.9, json!(0.6)), "B0OLD00001"));
+        assert!(!retarget_ok(&m("B0NEW00001", 0.99, Value::Null), "B0OLD00001"));
+        assert!(!retarget_ok(&m("", 0.9, json!(0.97)), "B0OLD00001"));
     }
 
     #[test]

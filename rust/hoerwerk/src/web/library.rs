@@ -103,6 +103,7 @@ pub async fn books(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
             ratings: &app.ratings.snapshot(),
             issue,
             admin: req.is_admin(),
+            settled: &app.health.settled_by_hand(),
         },
     ))
 }
@@ -453,8 +454,47 @@ fn set_cover(app: &Arc<App>, rel: &str, folder: &Path, data: Vec<u8>, ctype: &st
     }
     app.library.refresh(rel);
     app.health.recheck(app, rel);
+    // an own picture: this is the admin's own work (a recording or a conference nobody sells, a cover made by hand).
+    // The picture stays, and the book is not matched, completed or flagged by itself – nothing replaces it later
+    app.health.settle(&app.db, rel, &crate::health::SETTLEABLE, "cover");
     crate::mediaservers::request_scans(app);
     Ok(())
+}
+
+/// `POST /api/library/settle {paths, undo}` – the admin says "fine as it is" about books: no match, no details and
+/// no length finding is shown for them any more and the automatic matching leaves them alone. `undo` takes the
+/// decision back. Decided by hand, it stays – also when the files change. Admins.
+pub async fn settle(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
+    let undo = req.get("undo") == &Value::Bool(true);
+    let paths: Vec<String> = req
+        .get("paths")
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|p| p.as_str().map(str::to_string))
+                .take(5000)
+                .collect()
+        })
+        .unwrap_or_default();
+    if paths.is_empty() {
+        return error(400, t("Ungültige Daten", &[]));
+    }
+    let mut changed = 0;
+    for rel in paths.iter().filter(|p| app.library.entry(p).is_some()) {
+        if undo {
+            app.health.unsettle(&app.db, rel);
+        } else {
+            app.health.settle(&app.db, rel, &crate::health::SETTLEABLE, "admin");
+        }
+        changed += 1;
+    }
+    app.audit(
+        &req.user_name(),
+        &req.ip,
+        if undo { "library_unsettled" } else { "library_settled" },
+        &format!("{changed}"),
+    );
+    json_reply(json!({"ok": true, "changed": changed}))
 }
 
 /// `POST /api/library/enrich {path, apply}` – what the book lacks that Hörwerk is sure about (the edition is known by

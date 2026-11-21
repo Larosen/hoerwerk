@@ -21,6 +21,8 @@ const RETRY: f64 = 14.0 * 86400.0;
 const PAUSE: Duration = Duration::from_millis(1500);
 /// Audible and the other sources not answering: this many failures in a row end the run.
 const MAX_FAILS: usize = 5;
+/// Links corrected (looked up online) per round.
+const LINKS_PER_ROUND: usize = 10;
 /// Rewriting the tags of a big M4B can mean copying the whole file: so many books per round, then a rest.
 const BATCH: usize = 40;
 const REST: Duration = Duration::from_secs(180);
@@ -114,8 +116,55 @@ impl Autofix {
             })
     }
 
+    /// Books linked to an Audible edition whose length contradicts the file (probably another work): where another
+    /// edition is beyond doubt (title fits, length agrees) the link is corrected and the change is written to the
+    /// log and the admin trail, so an admin can look at it. Anything less sure is left alone. A few per round.
+    fn correct_links(&self, app: &Arc<App>) {
+        let now = text::now();
+        let todo: Vec<String> = app
+            .health
+            .mismatched(&app.ratings.runtimes())
+            .into_iter()
+            .filter(|rel| {
+                let key = format!("~{rel}");
+                let mtime = app.library.entry(rel).and_then(|e| e["mtime"].as_f64()).unwrap_or(0.0);
+                !self
+                    .lock()
+                    .get(&key)
+                    .is_some_and(|t| (t.mtime - mtime).abs() < 0.001 && now - t.at < RETRY)
+            })
+            .take(LINKS_PER_ROUND)
+            .collect();
+        for rel in todo {
+            if self.stop.load(Ordering::SeqCst) || *app.shutdown.borrow() {
+                break;
+            }
+            while app.pipeline.busy() && !self.stop.load(Ordering::SeqCst) {
+                std::thread::sleep(Duration::from_secs(5));
+            }
+            match enrich::retarget(app, &rel) {
+                Ok(found) => {
+                    if let Some(r) = found {
+                        let msg = t(
+                            "Zuordnung korrigiert: {book} war mit {old} verknüpft, die Datei ist aber „{title}“ ({new}) – die Länge passt",
+                            &[("book", &rel), ("old", &r.old), ("title", &r.title), ("new", &r.new)],
+                        );
+                        text::info("Bibliothek", &msg);
+                        app.audit("Hörwerk", "", "library_relinked", &msg);
+                    }
+                    let mtime = app.library.entry(&rel).and_then(|e| e["mtime"].as_f64()).unwrap_or(0.0);
+                    self.lock().insert(format!("~{rel}"), Tried { mtime, at: text::now() });
+                }
+                Err(_) => break, // no answer from the net: later
+            }
+            std::thread::sleep(PAUSE);
+        }
+        self.save(&app.db);
+    }
+
     /// One round of at most `BATCH` books. True when more are waiting.
     fn run(&self, app: &Arc<App>) -> bool {
+        self.correct_links(app);
         let now = text::now();
         let mut todo: Vec<(String, f64)> = app
             .health
@@ -190,8 +239,19 @@ impl Autofix {
                             if !had_asin && !matches!(source.as_str(), "audible" | "audnexus") {
                                 app.health.mark_other(app, rel);
                             }
+                            // the edition has nothing more to give: year and narrator that are missing stay missing
+                            app.health.settle(&app.db, rel, &["no_year", "no_narrator"], "auto");
                         }
-                        Outcome::Unsure | Outcome::Skipped => {}
+                        // nothing sure enough (a niche work, a recording of one's own, an edition the shop does not
+                        // know) or not one M4B: the book is left alone and does not nag as a finding – looked at
+                        // again after two weeks, or when the admin asks for it
+                        Outcome::Unsure | Outcome::Skipped => {
+                            let mut codes = vec!["no_year", "no_narrator"];
+                            if !had_asin {
+                                codes.push("no_asin");
+                            }
+                            app.health.settle(&app.db, rel, &codes, "auto");
+                        }
                     }
                     self.lock().insert(
                         rel.clone(),
