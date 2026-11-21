@@ -547,6 +547,29 @@ test("Suchen: Deutsch oder Englisch – die Wahl geht mit, jede Kachel zeigt die
   expect(errors).toEqual([]);
 });
 
+test("Suchen: eine lange Trefferliste liegt ganz im Rahmen, die Seitenleiste bleibt beim Scrollen stehen", async ({ page }) => {
+  const books = Array.from({ length: 24 }, (_, i) => ({ asin: `B00LONG${String(i).padStart(3, "0")}`, title: `Der Schimmelreiter ${i}`,
+    authors: ["Theodor Storm"], language: "German", genres: ["Klassiker"], runtime_min: 60 + i, source: "audible" }));
+  await page.route("**/api/search/books", (r) => r.fulfill({ json: { region: "de", books } }));
+  await mockAnyDetail(page);
+  const errors = await open(page);
+  await page.setViewportSize({ width: 1400, height: 800 });
+  await page.locator("nav.tabs").getByRole("link", { name: "Suchen" }).click();
+  await page.locator("#searchQuery").fill("Schimmelreiter");
+  await page.locator("#bookLookupBtn").click();
+  await expect(page.locator("#bookPick .suggestion")).toHaveCount(24);
+  await page.mouse.wheel(0, 5000);
+  const m = await page.evaluate(() => {
+    const bottom = (e: Element | null): number => (e ? e.getBoundingClientRect().bottom + scrollY : 0);
+    const cards = document.querySelectorAll("#bookPick .suggestion");
+    return { panel: bottom(document.querySelector("#viewSearch .search-panel")), last: bottom(cards[cards.length - 1]),
+      bar: document.querySelector(".topbar")!.getBoundingClientRect().top };
+  });
+  expect(m.panel).toBeGreaterThanOrEqual(m.last);       // the frame does not end above the last card
+  expect(m.bar).toBe(0);                                 // the menu on the left did not scroll away
+  expect(errors).toEqual([]);
+});
+
 test("Suchen: nichts gefunden – erst dann die Suche bei den Indexern, ohne Hinweise vorher", async ({ page }) => {
   await page.route("**/api/search/books", (r) => r.fulfill({ json: { region: "de", books: [] } }));
   await page.route("**/api/search/free", (r) => r.fulfill({ json: { books: [] } }));
