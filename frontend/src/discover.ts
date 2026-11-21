@@ -35,6 +35,27 @@ function fmtCount(n: number): string {
   return new Intl.NumberFormat(LANG).format(n);
 }
 
+/** "Hörspiel" / "gekürzt" – what tells six versions of the same title apart. */
+function productionTag(b: Suggestion): HTMLElement | null {
+  const text = `${b.title} ${(b as { subtitle?: string | null }).subtitle || ""} ${b.series || ""}`;
+  if (/h(?:ö|oe)rspiel|full[\s-]?cast|volle[rn]?\s+besetzung|dramati[sz]/i.test(text)) {
+    return el("span", { class: "tag", title: t("Mit Sprecherensemble und Geräuschen, nicht von einer Person gelesen") }, t("Hörspiel"));
+  }
+  return (b.format_type || "").toLowerCase() === "abridged" ? el("span", { class: "tag", title: t("Gekürzte Fassung") }, t("gekürzt")) : null;
+}
+
+/** "Nicht interessiert": the book is not suggested to this account again (kept with the account, not the browser). */
+async function hideSuggestion(b: Suggestion): Promise<void> {
+  if (!b.asin || typeof ME === "undefined" || !ME) return;
+  const list = [...(ME.hidden || []), b.asin.toUpperCase()];
+  try {
+    const res = await api<{ hidden: string[] }>("PUT", "/api/auth/prefs", { hidden: list });
+    ME.hidden = res.hidden;
+    if (discover.last) renderDiscover(discover.last);
+    toast(t("Wird dir nicht mehr vorgeschlagen"));
+  } catch (e) { toast(errMsg(e), true); }
+}
+
 function suggestionCard(b: Suggestion): HTMLLIElement {
   const author = (b.authors || [])[0] || "";
   const facts = [
@@ -58,7 +79,7 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     el("div", { class: "s-body" },
       el("button", { type: "button", class: "s-title", title: t("Details"), onclick: () => showDetail(b) }, b.title),
       el("span", { class: "s-author" }, ...personLinks(b.authors, "author", b)),
-      el("span", { class: "tag-row" }, genreTag(b), langTag(b),
+      el("span", { class: "tag-row" }, genreTag(b), langTag(b), productionTag(b),
         b.announced ? el("span", { class: "tag ok", title: t("Das Hörbuch ist angekündigt, aber noch nicht erschienen") },
           t("erscheint {date}", { date: new Date(b.announced + "T12:00:00").toLocaleDateString(LANG, { dateStyle: "medium" }) }))
         : b.later ? el("span", { class: "tag ok", title: t("Das Hörbuch wurde früher besprochen – das Hörbuch ist erst jetzt erschienen") }, t("jetzt als Hörbuch")) : null),
@@ -70,7 +91,9 @@ function suggestionCard(b: Suggestion): HTMLLIElement {
     // own row across the whole card (under cover and text), so the buttons never squeeze into the text column
     el("div", { class: "s-actions" },
       requestButton(b),
-      b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null));
+      b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null,
+      b.asin && discover.section !== "follows" ? el("button", { type: "button", class: "btn small ghost", title: t("Dieses Hörbuch nicht mehr vorschlagen"),
+        onclick: () => { void hideSuggestion(b); } }, t("Nicht interessiert")) : null));
   return card;
 }
 
@@ -171,7 +194,9 @@ function filtered(items: Suggestion[]): Suggestion[] {
   const { top, sub } = pickedGenre();
   const name = sub?.name || top?.name || "";
   const nowYear = new Date().getFullYear();
+  const hidden = new Set((typeof ME !== "undefined" && ME?.hidden) || []);
   return items.filter((b) => {
+    if (b.asin && hidden.has(b.asin.toUpperCase())) return false;
     if (name && discover.section !== "genre" && !(b.genres || []).includes(name)) return false;
     const min = b.runtime_min || 0;
     if (discover.length === "short" && !(min > 0 && min <= 300)) return false;
