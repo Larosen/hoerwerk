@@ -1441,3 +1441,5 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .row-menu.up { top: auto; bottom: 100%; }
 .lib-sort .chip { padding: 4px 9px; }
 .lib-sort .sort-bar { gap: 5px; }
+
+.detail-danger { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--border); }

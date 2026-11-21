@@ -1648,6 +1648,8 @@
  "NZB an SABnzbd geschickt – „{title}“ wird geladen": "NZB sent to SABnzbd – “{title}” is downloading",
  "NZB-Datei hochladen …": "Upload NZB file …",
  "Selbst gefunden? Die NZB geht an SABnzbd, das Hörbuch wird dieser Anfrage zugeordnet.": "Found it yourself? The NZB goes to SABnzbd, the audiobook is linked to this request.",
+ "Alle {n} Treffer auswählen? Damit lassen sich danach alle auf einmal löschen.": "Select all {n} matches? You can then delete them all at once.",
+ "Alle auswählen": "Select all",
  "das vorhandene Hörbuch liegt im selben Ordner": "the existing audiobook is in the same folder",
  "sieht nach einer anderen Fassung aus (Hörspiel oder andere Sprecher)": "looks like another edition (radio play or other narrators)",
  "Bitte eine .nzb-Datei wählen": "Please choose a .nzb file",

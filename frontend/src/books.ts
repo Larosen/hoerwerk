@@ -997,6 +997,7 @@ function updateLibBar(): void {
   };
   // everything that matches the search and the filter – not only the books loaded so far
   const all = el("button", { type: "button", class: "btn small ghost", onclick: async () => {
+    if (!(await confirmBox(t("Alle {n} Treffer auswählen? Damit lassen sich danach alle auf einmal löschen.", { n: books.libMatch }), t("Alle auswählen")))) return;
     try {
       const res = await api<{ paths: string[] }>("GET", libraryUrl({ ids: true }));
       for (const p of res.paths) books.libPicked.add(p);
