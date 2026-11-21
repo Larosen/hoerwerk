@@ -784,6 +784,11 @@ impl Requests {
                         let _ = app.pipeline.cancel(app, &jid);
                     }
                 }
+                // without a recorded path the book is found by title: that may be a book somebody else added later –
+                // only an admin may remove what was not filed for this very request
+                "available" if files && text_of(&i["path"]).is_empty() && !is_admin(user) => {
+                    problems.push(t("Die Dateien bleiben: Nur ein Admin löscht sie hier", &[]));
+                }
                 "available" if files => {
                     let path = text_of(&i["path"]);
                     let rel = if path.is_empty() {
