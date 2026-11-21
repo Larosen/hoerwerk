@@ -415,7 +415,7 @@ details.log pre { font: 11.5px/1.45 var(--mono); white-space: pre-wrap; margin: 
 .cand-side .row { flex-wrap: wrap; justify-content: flex-end; }
 
 /* Search */
-.search-panel { flex: 1 1 360px; min-height: 320px; }
+.search-panel { flex: 0 0 auto; min-height: 320px; }   /* grows with its results: the page scrolls, the sidebar stays */
 /* Einstellungen → Downloads */
 .dl-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 10px; }
 .dl-tools #dlSpeed { margin-right: auto; }
@@ -433,7 +433,7 @@ table.results .c-act { width: 112px; text-align: right; }
 .rel-meta .tag { margin: 0; }
 .rel-meta a { color: var(--accent); }
 .indexer-rows { display: flex; flex-direction: column; gap: 6px; }
-.indexer-row { display: grid; grid-template-columns: 1fr 2fr 1.4fr 64px auto; gap: 6px; align-items: center; }
+.indexer-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1.4fr) 92px auto; gap: 6px; align-items: center; }
 .indexer-row .row-tools { display: flex; align-items: center; gap: 10px; }
 .indexer-row .row-tools .check { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 .indexer-row .check.first { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
@@ -630,7 +630,7 @@ table.users select { height: 28px; }
 .health-help p { margin: 6px 0 0; }
 .health-action { margin-top: 6px; }
 .health-action a, #sourcesInfo a { color: var(--accent); }
-.lib-status .inline-setting { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; }
+.lib-status .inline-setting, .dialog-body .lib-status label.inline-setting { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; margin: 0; }
 #blockedBox { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 #blockedBox > span small { display: block; line-height: 1.45; margin-top: 2px; }
 .blocked-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -699,7 +699,7 @@ code.secret { font-size: 13px; word-break: break-all; }
 /* Einstellungen & Konto als eigene Seiten */
 a.plain { color: inherit; text-decoration: none; }
 .settings-panel, .account-panel, .stats-panel { overflow: auto; min-height: 300px; }
-.account-panel { width: min(860px, 100%); justify-self: center; }
+.account-panel { width: 100%; }   /* like the other pages; the form inside keeps its readable width */
 .settings-layout.hub { grid-template-columns: minmax(0, 1fr); }
 .settings-layout.hub .sidebar { display: none; }
 .page-body { max-width: 900px; }
@@ -792,7 +792,7 @@ dl.facts dd.bad { color: var(--err); font-weight: 550; }
 .tag-row:empty { display: none; }
 .lang-tag { font-size: 11.5px; font-weight: 600; line-height: 1.5; padding: 0 8px; border-radius: 99px; color: var(--mark-text, #7a5a00);
   background: var(--mark, #fdf0c4); white-space: nowrap; }
-#releasesDialog table.results th:nth-child(4) { width: 28%; }
+#releasesDialog table.results th:nth-child(5) { width: 28%; }   /* the verdict column – the fourth is kbit/s */
 /* Deutsch | Englisch – which edition is searched */
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; flex: none; }
 .seg label { display: inline-flex; cursor: pointer; }
@@ -1177,7 +1177,7 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 @media (display-mode: standalone) { body { overscroll-behavior-y: none; } }
 
 /* The colour of the book (from its cover) tints the card around it – the picture sits in its surroundings, not on top */
-.tint-card:is(li, button, div) { background: color-mix(in srgb, var(--panel), var(--c, var(--panel)) var(--tint)); border-color: color-mix(in srgb, var(--border), var(--c, var(--border)) 32%); transition: background .3s, border-color .3s; }
+.tint-card:is(li, button, div) { background: color-mix(in srgb, var(--panel), var(--c, hsl(30 8% 38%)) var(--tint)); border-color: color-mix(in srgb, var(--border), var(--c, hsl(30 8% 38%)) 32%); transition: background .3s, border-color .3s; }
 @media (prefers-reduced-motion: reduce) { .tint-card { transition: none; } }
 
 /* ===== Details of one audiobook: column (wide) or sheet (narrow) ===== */
@@ -1452,3 +1452,7 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 table.users th, table.users td { padding: 6px 5px; }
 table.users th { white-space: normal; line-height: 1.2; }
 table.users input.quota { width: 56px; }
+
+/* Statistik: the full height of the bars is marked with its value (the bars start at 0) */
+.month-chart .axis-top { position: absolute; top: 18px; left: 0; right: 0; border-top: 1px dashed var(--border); pointer-events: none; }
+.month-chart .axis-top span { position: absolute; left: 0; bottom: 2px; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }

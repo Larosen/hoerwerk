@@ -362,7 +362,7 @@
         <label class="check"><input type="checkbox" name="keep_series_in_title"> „, Band 3“ im Titel lassen</label>
         <label class="check"><input type="checkbox" name="keep_series_in_subtitle"> Serien-Untertitel behalten</label>
       </div>
-      <div class="row gap wrap"><button type="button" id="libraryCleanBtn" class="btn small ghost">desc.txt und reader.txt aufräumen</button>
+      <div class="row gap wrap"><button type="button" id="libraryCleanBtn" class="btn small"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>desc.txt und reader.txt aufräumen</button>
         <span class="muted small">Einmalig: löscht diese Dateien in der Bibliothek, wo metadata.json schon alles enthält (mit Vorschau).</span></div>
       <label>Wartezeit, bis ein Ordner fertig kopiert gilt <small>Sekunden ohne Änderung</small>
         <input name="ab_settle" type="number" min="0" step="1">
@@ -471,7 +471,7 @@
       <table class="users">
         <thead><tr><th>Name</th><th>Rolle</th><th title="Sieht die Anfragen aller Nutzer">Alle Anfragen sehen</th>
           <th title="Anfragen gehen ohne Freigabe los">Ohne Freigabe</th><th title="Darf Releases selbst wählen">Interaktive Suche</th>
-          <th>Monatslimit</th><th>Gesperrt</th><th title="Zweitfaktor (Authenticator-App)">2FA</th><th>Zuletzt da</th><th></th></tr></thead>
+          <th>Monatslimit</th><th>Gesperrt</th><th title="Zweitfaktor (Authenticator-App)">2FA</th><th title="Letzter Besuch in Hörwerk – nicht die letzte Anfrage (die steht unter Statistik)">Zuletzt da</th><th></th></tr></thead>
         <tbody id="userRows"></tbody>
       </table>
     </div>

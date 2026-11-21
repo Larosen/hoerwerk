@@ -115,11 +115,22 @@ function resetStatsParts(): void {
 }
 
 /** Hours heard per month – the same bars as the requests chart, the month with the most in brass. */
+/** The note of a chart plus the explanation of the highlighted month, as sentences. */
+function withPeakHint(note: string): string {
+  const hint = t("Der Monat mit dem höchsten Wert ist farbig hervorgehoben, seine Zahl steht darüber.");
+  return note ? `${note.replace(/[.\s]+$/, "")}. ${hint}` : hint;
+}
+
+/** The scale of a bar chart: a dashed line at the full height of the bars with its value, bars start at the baseline (0). */
+function axisTop(value: string): HTMLElement {
+  return el("div", { class: "axis-top", "aria-hidden": "true" }, el("span", {}, value));
+}
+
 function renderListenChart(rows: ListenMonth[] | undefined, note: string): void {
   const any = (rows || []).some((r) => r.seconds > 0);
   $("#statsListenBox").hidden = !any;
   if (!any || !rows) return;
-  $("#statsListenNote").textContent = note;
+  $("#statsListenNote").textContent = withPeakHint(note);
   const hours = rows.map((r) => r.seconds / 3600);
   const max = Math.max(...hours, 0.01);
   const peak = hours.indexOf(Math.max(...hours));
@@ -131,7 +142,7 @@ function renderListenChart(rows: ListenMonth[] | undefined, note: string): void 
       i === peak && h ? el("span", { class: "peak" }, h < 10 ? h.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) : String(Math.round(h))) : null);
     return el("div", { class: "col", tabindex: "0", title: `${monthName(r.month, true)}: ${fmtListen(r.seconds)}`,
       "aria-label": `${monthName(r.month, true)}: ${fmtListen(r.seconds)}` }, el("div", { class: "plot" }, bar), el("span", { class: "label" }, monthName(r.month)));
-  }));
+  }), axisTop(t("{n} Std.", { n: max < 10 ? max.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) : String(Math.round(max)) })));
 }
 
 /** The genres as one ribbon, the shares in a legend: what was heard when anyone's listening is known, else what was asked for. */
@@ -162,7 +173,8 @@ function personCard(u: UserStats, scale: number): HTMLElement {
       el("b", {}, u.name), u.role === "admin" ? el("span", { class: "muted small" }, "Admin") : null,
       u.listener ? el("span", { class: "muted small", title: t("Hört über Audiobookshelf oder Plex, ohne Hörwerk-Konto") },
         [u.listener.abs ? "Audiobookshelf" : "", u.listener.plex ? "Plex" : ""].filter(Boolean).join(" + ")) : null,
-      el("span", { class: "muted small person-when" }, active ? t("aktiv {when}", { when: fmtDay(active) }) : t("noch nicht aktiv")),
+      el("span", { class: "muted small person-when", title: t("Letzte Anfrage oder letztes Hören – der letzte Besuch steht unter Einstellungen → Konten") },
+        active ? t("aktiv {when}", { when: fmtDay(active) }) : t("noch nicht aktiv")),
       u.id !== null ? icon("chevron") : null),
     el("div", { class: "person-row" }, el("span", { class: "plabel" }, t("angefragt")), bar("req", reqH),
       el("span", { class: "pval" }, u.books ? `${plural(u.books, t("1 Hörbuch"), t("{n} Hörbücher", { n: u.books }))} · ${fmtHours(u.minutes)}` : "–")),
@@ -173,7 +185,8 @@ function personCard(u: UserStats, scale: number): HTMLElement {
   ];
   return el("li", { class: "person" + (u.books || u.listen?.seconds ? "" : " quiet") },
     u.id !== null ? el("a", { href: `/stats/${u.id}`, class: "person-card", title: t("Anfragen und Gehörtes von {name}", { name: u.name }) }, ...body)
-      : el("div", { class: "person-card" }, ...body));
+      : el("div", { class: "person-card" }, ...body,
+        IS_ADMIN && u.listener ? el("a", { href: "/settings/users", class: "btn small ghost", title: t("Einem Hörwerk-Konto zuordnen (Einstellungen → Konten)") }, t("Zuordnen")) : null));
 }
 
 function renderAll(s: StatsAll): void {
@@ -295,14 +308,15 @@ function renderAccount(d: StatsAccount, own: boolean): void {
   $("#statsHeard").replaceChildren(...(d.heard.length ? d.heard.map(heardItem)
     : [el("li", { class: "empty" }, linked ? t("Nichts gehört in diesem Zeitraum.")
       : own ? t("Noch nicht mit Audiobookshelf oder Plex verbunden – das geht unter „Konto“.")
-        : t("Nicht mit Audiobookshelf oder Plex verknüpft (Einstellungen → Konten)."))]));
+        : IS_ADMIN ? el("span", {}, t("Nicht mit Audiobookshelf oder Plex verknüpft – "), el("a", { href: "/settings/users" }, t("Einstellungen → Konten")))
+          : t("Nicht mit Audiobookshelf oder Plex verknüpft."))]));
 }
 
 /** Books per month: thin bars from the baseline, hover or tap shows the numbers. With ``mine``, the own part
  *  of each bar is darker (one series split in two, not two series side by side). */
 function renderMonthChart(months: MonthRow[], head: string, note: string, mine = false): void {
   $("#statsChartHead").textContent = head;
-  $("#statsChartNote").textContent = note;
+  $("#statsChartNote").textContent = withPeakHint(note);
   const max = Math.max(1, ...months.map((m) => m.books));
   const peak = months.reduce((a, b) => (b.books > a.books ? b : a), months[0]);
   const chart = $("#statsChart");
@@ -329,7 +343,7 @@ function renderMonthChart(months: MonthRow[], head: string, note: string, mine =
     for (const ev of ["mouseenter", "focus"]) col.addEventListener(ev, () => show(m, bar));
     for (const ev of ["mouseleave", "blur"]) col.addEventListener(ev, () => { tip.hidden = true; });
     return col;
-  }), tip);
+  }), tip, axisTop(String(max)));
   $("#statsMonthRows").replaceChildren(...months.slice().reverse().map((m) =>
     el("tr", {}, el("td", {}, monthName(m.month, true)),
       el("td", { class: "num" }, mine ? `${m.books} (${m.mine || 0})` : String(m.books)), el("td", { class: "num" }, fmtHours(m.minutes)))));

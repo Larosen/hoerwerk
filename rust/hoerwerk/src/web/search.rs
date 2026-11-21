@@ -341,6 +341,28 @@ pub async fn detail(app: Arc<App>, req: Req, _: Params) -> Reply {
                 .unwrap_or(Value::Null);
             let text: String = book["description"].as_str().unwrap_or("").chars().take(1500).collect();
             item["description"] = json!(text);
+            // admins see what the book is on disk (folder, size, bitrate, number of files)
+            if let (true, Some(path)) = (req.is_admin(), item["owned"]["path"].as_str().map(str::to_string)) {
+                let a = app.clone();
+                let rel = path.clone();
+                let file = blocking(move || {
+                    let full = a.library.root.join(&rel);
+                    let format = a
+                        .library
+                        .entry(&rel)
+                        .map(|e| e["format"].clone())
+                        .unwrap_or(Value::Null);
+                    let mut q = crate::pipeline::Pipeline::quality_of(&full);
+                    if let Some(o) = q.as_object_mut() {
+                        o.insert("format".into(), format);
+                    }
+                    q
+                })
+                .await;
+                if !file.is_null() {
+                    item["owned"]["file"] = file;
+                }
+            }
             crate::text::info(
                 "Details",
                 &format!(

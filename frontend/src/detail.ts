@@ -26,13 +26,21 @@ function detailChip(label: string, run: () => void): HTMLButtonElement {
   return el("button", { type: "button", class: "chip pill", onclick: run }, label);
 }
 
-function detailFacts(b: DetailBook): HTMLElement {
+function detailFacts(b: DetailBook, file?: OwnedFile & { path?: string }): HTMLElement {
   const rows: [string, string][] = [];
   if (b.runtime_min) rows.push([t("Laufzeit"), fmtDuration(b.runtime_min * 60)]);
   if (b.release_date) rows.push([t("Erschienen"), b.release_date.slice(0, 4)]);
   if (b.rating) rows.push([t("Bewertung"), `★ ${b.rating.toFixed(1)} (${fmtCount(b.ratings || 0)})`]);
   if (b.series) rows.push([t("Reihe"), `${b.series} ${b.series_position || ""}`.trim()]);
   if (b.format_type) rows.push([t("Fassung"), b.format_type === "abridged" ? t("Gekürzt") : t("Ungekürzt")]);
+  if (IS_ADMIN && b.owned?.path) {
+    // what the book is on disk (admins only): where, how big, how it sounds
+    rows.push([t("Ordner"), b.owned.path]);
+    if (file) {
+      rows.push([t("Datei"), [file.format ? file.format.toUpperCase() : "", `${file.kbps} kbit/s`, fmtSize(file.size),
+        plural(file.files, t("1 Datei"), t("{n} Dateien", { n: file.files }))].filter(Boolean).join(" · ")]);
+    }
+  }
   return el("dl", { class: "leaders" }, ...rows.map(([k, v]) => el("div", {}, el("dt", {}, k), el("dd", {}, v))));
 }
 
@@ -70,7 +78,7 @@ function renderDetail(book: DetailBook, extra: DetailAnswer | null | "loading"):
     el("div", { class: "tag-row" }, genreTag(b), langTag(b)),
     description ? el("p", { class: "detail-blurb" }, description)
       : extra === null && knownAtAudible(b) ? el("p", { class: "muted small" }, t("Die Beschreibung konnte gerade nicht geladen werden.")) : null,
-    detailFacts(b),
+    detailFacts(b, loaded?.book.owned?.file),
     el("div", { class: "detail-acts" }, requestButton(b),
       b.url ? el("a", { class: "btn small ghost", href: b.url, target: "_blank", rel: "noopener noreferrer" }, "Audible") : null,
     ),

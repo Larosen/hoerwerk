@@ -87,7 +87,8 @@ async function deleteRequest(r: BookRequest): Promise<void> {
   const title = r.book.title;
   const q = r.status === "downloading" ? t("„{title}“: Download abbrechen und Anfrage löschen?", { title })
     : r.status === "processing" ? t("„{title}“: Import abbrechen, Download löschen und Anfrage löschen?", { title })
-      : t("Anfrage „{title}“ löschen?", { title });
+      : r.status === "available" ? t("Anfrage „{title}“ aus der Liste löschen? Das Hörbuch bleibt in der Bibliothek – danach kannst du es zusätzlich löschen.", { title })
+        : t("Anfrage „{title}“ löschen?", { title });
   if (!(await confirmBox(q, t("Löschen")))) return;
   let files = false;
   if (r.status === "available") {
@@ -274,7 +275,7 @@ function requestCard(r: BookRequest): HTMLLIElement {
   }
   if (r.mine || IS_ADMIN) {
     actions.push(el("button", { type: "button", class: "icon-btn", title: ["downloading", "processing"].includes(r.status)
-      ? t("Abbrechen und löschen") : t("Anfrage löschen"), onclick: () => deleteRequest(r) }, icon("x")));
+      ? t("Abbrechen und löschen") : r.status === "available" ? t("Nur die Anfrage löschen – das Hörbuch bleibt") : t("Anfrage löschen"), onclick: () => deleteRequest(r) }, icon("x")));
   }
   const detail = r.status === "declined" && r.reason ? t("Grund: {reason}", { reason: r.reason })
     : r.status === "searching" && r.last_search ? t("Zuletzt gesucht {when} – nichts Passendes ({checked})", { when: fmtAgo(r.last_search),

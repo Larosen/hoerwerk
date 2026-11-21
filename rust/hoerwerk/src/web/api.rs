@@ -855,8 +855,19 @@ async fn prefs_get(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
         "ntfy_topic": p.get("ntfy_topic").cloned().unwrap_or(json!("")),
         "ntfy_server": server,
         "theme": theme_of(&p),
+        "hidden": hidden_of(&p),
     }))
 }
+
+/// Books the account does not want to see again under Entdecken (ASINs, newest last).
+pub fn hidden_of(p: &Map<String, Value>) -> Vec<String> {
+    p.get("hidden")
+        .and_then(Value::as_array)
+        .map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect())
+        .unwrap_or_default()
+}
+
+const HIDDEN_MAX: usize = 500;
 
 /// The colour scheme saved for the account ("auto" until the user picks one).
 pub fn theme_of(p: &Map<String, Value>) -> &'static str {
@@ -876,6 +887,20 @@ async fn prefs_put(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
         }
         p.insert("ntfy_topic".into(), json!(topic));
     }
+    if let Some(list) = req.get("hidden").as_array() {
+        let mut keep: Vec<String> = Vec::new();
+        for v in list {
+            let asin = v.as_str().unwrap_or("").trim().to_uppercase();
+            if (8..=12).contains(&asin.len())
+                && asin.chars().all(|c| c.is_ascii_alphanumeric())
+                && !keep.contains(&asin)
+            {
+                keep.push(asin);
+            }
+        }
+        let skip = keep.len().saturating_sub(HIDDEN_MAX);
+        p.insert("hidden".into(), json!(keep.split_off(skip)));
+    }
     if !req.get("theme").is_null() {
         let theme = req.str("theme");
         if !THEMES.contains(&theme.as_str()) {
@@ -888,7 +913,8 @@ async fn prefs_put(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply
         rusqlite::params![Value::Object(p.clone()).to_string(), req.user_id()],
     );
     json_reply(
-        json!({"ok": true, "ntfy_topic": p.get("ntfy_topic").cloned().unwrap_or(json!("")), "theme": theme_of(&p)}),
+        json!({"ok": true, "ntfy_topic": p.get("ntfy_topic").cloned().unwrap_or(json!("")), "theme": theme_of(&p),
+               "hidden": hidden_of(&p)}),
     )
 }
 

@@ -11,7 +11,7 @@ const LOCALE = LANG === "en" ? "en-GB" : "de-DE";
 
 // Who is signed in (/me.js; null on the login page). The server checks every right again –
 // this only decides what the page shows.
-interface Me { id: number; name: string; role: "admin" | "user"; perms: Record<string, boolean>; quota: number | null; help?: boolean; theme?: string; version?: string }
+interface Me { id: number; name: string; role: "admin" | "user"; perms: Record<string, boolean>; quota: number | null; help?: boolean; theme?: string; version?: string; hidden?: string[] }
 declare const ME: Me | null | undefined;
 const IS_ADMIN = typeof ME !== "undefined" && !!ME && ME.role === "admin";
 if (typeof ME !== "undefined" && ME) document.documentElement.classList.add(IS_ADMIN ? "role-admin" : "role-user");
@@ -73,7 +73,8 @@ interface Book {
   description?: string; source?: string; isbn?: string | null; owned?: Owned | null; other_edition?: OtherEdition | null;
   request_id?: number; request_user?: string; mismatch?: string;
 }
-interface Owned { path: string; title: string; authors: string[]; why: string; count: number }
+interface OwnedFile { kbps: number; duration: number; size: number; files: number; format?: string | null }
+interface Owned { path: string; title: string; authors: string[]; why: string; count: number; file?: OwnedFile }
 /** The same book in the library, but read by someone else – shown as a hint, it does not block a request. */
 interface OtherEdition { title: string; narrators?: string[]; path?: string }
 
@@ -118,7 +119,7 @@ interface UnconvertedBook {
 }
 interface Track { file: string; duration: number; auto: string; filename: string; tag: string }
 
-interface Indexer { id?: string; name?: string; url?: string; categories?: string; enabled?: boolean; preferred?: boolean; apikey_set?: boolean }
+interface Indexer { id?: string; name?: string; url?: string; categories?: string; enabled?: boolean; preferred?: boolean; feed?: boolean; apikey_set?: boolean }
 interface AbsConfig { url: string; library: string; library_name: string; token_set: boolean; configured: boolean; last: string | null }
 interface PlexConfig {
   url: string; section: string; section_name: string; empty_trash: boolean; token_set: boolean; configured: boolean; last: string | null;

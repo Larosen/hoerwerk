@@ -420,10 +420,23 @@ fn opt_str(v: &str) -> Value {
 }
 
 /// Audible catalog product -> flat book used everywhere else.
+/// The genre a category ladder stands for. Audible files the same thriller under "Literatur & Belletristik →
+/// Action & Abenteuer → Krimis & Thriller" or directly under "Krimis & Thriller": a ladder that passes through
+/// "Krimis & Thriller" counts as that genre, so one author is not a thriller writer in one book and a novelist in
+/// the next.
+fn ladder_genre(steps: &[String]) -> &str {
+    match steps.first().map(String::as_str) {
+        Some("Literatur & Belletristik") if steps.iter().any(|s| s == "Krimis & Thriller") => "Krimis & Thriller",
+        Some(first) => first,
+        None => "",
+    }
+}
+
 /// One name per genre: the same shop category is spelled differently by shops, Audiobookshelf and old tags.
 pub fn canonical_genre(name: &str) -> &str {
     match name.trim() {
         "Comedy" | "Humor" | "Comedy and Humor" => "Comedy & Humor",
+        "Children's Audiobooks" | "Children's Audio Books" => "Kinder-Hörbücher",
         other => other,
     }
 }
@@ -472,9 +485,8 @@ pub fn normalize_product(p: &Value, region: &str) -> Value {
             .flatten()
             .filter_map(|x| x["name"].as_str().filter(|n| !n.is_empty()).map(str::to_string))
             .collect();
-        if let Some(first) = steps.first().map(|f| canonical_genre(f).to_string())
-            && !genres.contains(&first)
-        {
+        let first = canonical_genre(ladder_genre(&steps)).to_string();
+        if !first.is_empty() && !genres.contains(&first) {
             genres.push(first);
         }
         for x in steps.iter().skip(1) {
@@ -658,20 +670,30 @@ impl Client {
             return Ok(Vec::new());
         }
         let mut found: Vec<Value> = Vec::new();
-        for page in 1..=PERSON_PAGES {
-            let params = [
-                ("response_groups", RESPONSE_GROUPS.to_string()),
-                ("image_sizes", "500,1024".into()),
-                ("num_results", "50".into()),
-                ("page", page.to_string()),
-                ("products_sort_by", "-ReleaseDate".into()),
-                (field, name.to_string()),
-            ];
-            let data = self.cached(&format!("{}/1.0/catalog/products?{}", api_host(region), form(&params)))?;
-            let raw = data["products"].as_array().map_or(0, Vec::len);
-            found.extend(Self::products(&data["products"], region, false));
-            if raw < 50 {
-                break;
+        // Audible gives at most ~200 hits per search, and its own filter for the person stops early (for Sebastian
+        // Fitzek at 2023: 41 of 66 German titles). So the person's filter and a keyword search – newest first and by
+        // title, which reaches other books when the newest ones fill the page limit – are all read. Books that do not
+        // name the person are dropped below.
+        for (filter, sort) in [
+            (field, "-ReleaseDate"),
+            ("keywords", "-ReleaseDate"),
+            ("keywords", "Title"),
+        ] {
+            for page in 1..=PERSON_PAGES {
+                let params = [
+                    ("response_groups", RESPONSE_GROUPS.to_string()),
+                    ("image_sizes", "500,1024".into()),
+                    ("num_results", "50".into()),
+                    ("page", page.to_string()),
+                    ("products_sort_by", sort.into()),
+                    (filter, name.to_string()),
+                ];
+                let data = self.cached(&format!("{}/1.0/catalog/products?{}", api_host(region), form(&params)))?;
+                let raw = data["products"].as_array().map_or(0, Vec::len);
+                found.extend(Self::products(&data["products"], region, false));
+                if raw < 50 {
+                    break;
+                }
             }
         }
         Ok(person_works(found, field, &want, language, limit))
@@ -2012,6 +2034,27 @@ pub fn auto_match(ranked: &[Value], threshold: f64) -> Option<Value> {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn one_genre_for_one_thriller() {
+        let l = |v: &[&str]| v.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        let thriller = l(&[
+            "Literatur & Belletristik",
+            "Action & Abenteuer",
+            "Krimis & Thriller",
+            "Thriller",
+        ]);
+        assert_eq!(super::ladder_genre(&thriller), "Krimis & Thriller");
+        assert_eq!(
+            super::ladder_genre(&l(&["Krimis & Thriller", "Thriller"])),
+            "Krimis & Thriller"
+        );
+        assert_eq!(
+            super::ladder_genre(&l(&["Literatur & Belletristik", "Horror"])),
+            "Literatur & Belletristik"
+        );
+        assert_eq!(super::canonical_genre("Children's Audiobooks"), "Kinder-Hörbücher");
+    }
+
+    #[test]
     fn tidy_titles() {
         assert_eq!(super::tidy_title("VIEWS (Ungekürzt)"), "VIEWS");
         assert_eq!(super::tidy_title("Messer (Ein Harry-Hole-Krimi 14)"), "Messer");
@@ -2300,6 +2343,8 @@ mod tests {
             url.contains("author=Klara") && url.contains("products_sort_by=-ReleaseDate"),
             "{url}"
         );
+        // the keyword search is asked too: the person's own filter can stop early
+        assert!(seen.lock().unwrap().iter().any(|u| u.contains("keywords=Klara")));
         let narrated = client.by_person("de", "narrator", "Rudi Ruhig", "", 50).unwrap();
         assert_eq!(narrated.len(), 1);
     }

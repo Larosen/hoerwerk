@@ -150,7 +150,26 @@ function renderBooks(): void {
       : d.inbox_ok ? t("Noch keine Hörbücher. Lege einen Ordner in den Eingang.")
         : t("Der Eingangsordner ist nicht eingebunden. In Docker/Unraid einen Pfad auf /inbox mappen.")));
   }
+  // errors that are dealt with: all of them off the list at once (the books and files stay as they are)
+  if (books.filter === "failed" && jobs.length > 1) {
+    list.append(el("li", { class: "uc-bar" },
+      el("span", { class: "muted small" }, plural(jobs.length, t("1 Eintrag"), t("{n} Einträge", { n: jobs.length }))),
+      el("button", { type: "button", class: "btn small ghost", title: t("Nimmt alle Einträge aus der Liste – Dateien und Bibliothek bleiben unberührt"),
+        onclick: () => { void clearTrouble(jobs); } }, icon("check"), t("Alle als erledigt abhaken"))));
+  }
   for (const j of jobs) list.append(bookCard(j));
+}
+
+/** All shown errors off the list (the jobs only: files in the inbox and books in the library stay). */
+async function clearTrouble(jobs: AudiobookJob[]): Promise<void> {
+  if (!(await confirmBox(plural(jobs.length, t("1 Eintrag aus der Liste nehmen? Dateien und Bibliothek bleiben unberührt."),
+    t("{n} Einträge aus der Liste nehmen? Dateien und Bibliothek bleiben unberührt.", { n: jobs.length })), t("Abhaken")))) return;
+  let done = 0;
+  for (const j of jobs) {
+    try { await api("DELETE", `/api/audiobooks/${j.id}`); books.open.delete(j.id); done++; } catch { /* a running job cannot be removed: it stays */ }
+  }
+  toast(plural(done, t("1 Eintrag abgehakt"), t("{n} Einträge abgehakt", { n: done })));
+  pollBooks(true);
 }
 
 // ------------------------------------------------------------------------- //
@@ -539,14 +558,15 @@ function isTrouble(j: AudiobookJob): boolean {
 }
 
 function renderFilter(jobs: AudiobookJob[]): void {
-  const counts: Record<BookFilter, number> = {
+  // null = not loaded yet: no number (a "0" would claim an empty library)
+  const counts: Record<BookFilter, number | null> = {
     all: jobs.length,
     review: jobs.filter((j) => j.status === "review").length,
     active: jobs.filter((j) => isActive(j.status)).length,
     done: jobs.filter((j) => j.status === "done").length,
     failed: jobs.filter(isTrouble).length,
-    unconverted: books.unconverted ? books.unconverted.length : 0,
-    library: books.libTotal ?? 0,
+    unconverted: books.unconverted ? books.unconverted.length : null,
+    library: books.libTotal ?? null,
   };
   $("#bookFilter").replaceChildren(...BOOK_FILTERS.map(([k, label]) => el("button", {
     class: "chip" + (books.filter === k ? " on" : "") + (k === "review" && counts.review ? " attention" : ""),
