@@ -889,7 +889,7 @@ test("Einladung per Link: Admin erstellt, Eingeladene wählt Name und Passwort",
   await ctx.close();
   await page.reload();
   await expect(row).toContainText("Benutzt");
-  await expect(row).toContainText("von Oma");
+  await expect(row).toContainText("angemeldet: Oma");
   // the members list says where Oma came from, and that she was here just now – not "never"
   const member = page.locator("#userRows tr", { hasText: "Oma" });
   await expect(member).toContainText("Über Einladung „Oma“");
