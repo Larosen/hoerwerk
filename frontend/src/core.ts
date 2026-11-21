@@ -73,7 +73,8 @@ interface Book {
   description?: string; source?: string; isbn?: string | null; owned?: Owned | null; other_edition?: OtherEdition | null;
   request_id?: number; request_user?: string; mismatch?: string;
 }
-interface Owned { path: string; title: string; authors: string[]; why: string; count: number }
+interface OwnedFile { kbps: number; duration: number; size: number; files: number; format?: string | null }
+interface Owned { path: string; title: string; authors: string[]; why: string; count: number; file?: OwnedFile }
 /** The same book in the library, but read by someone else – shown as a hint, it does not block a request. */
 interface OtherEdition { title: string; narrators?: string[]; path?: string }
 
