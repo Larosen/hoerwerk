@@ -132,7 +132,7 @@ function renderBooks(): void {
   clear.textContent = books.hideDone ? t("Fertige einblenden") : t("Fertige ausblenden");
   const jobs = d.jobs.filter((j) => books.filter === "all" ? !(books.hideDone && j.status === "done")
     : (books.filter === "active" ? isActive(j.status)
-      : books.filter === "failed" ? ["failed", "cancelled"].includes(j.status) : j.status === books.filter));
+      : books.filter === "failed" ? isTrouble(j) : j.status === books.filter));
   // new in the inbox, not started yet: visible right away, so nobody wonders whether the download arrived
   if (["all", "active"].includes(books.filter)) {
     for (const w of d.waiting) {
@@ -368,7 +368,7 @@ function renderUnconverted(list: HTMLElement): void {
   list.append(bar);
   // the whole library in the background: one book after the other, one core, lowest priority
   const tr = books.trickle;
-  const toggle = el("button", { type: "button", class: "btn small" + (tr?.on ? "" : " primary"),
+  const toggle = el("button", { type: "button", class: "btn small" + (tr?.on ? "" : " primary"), disabled: !tr?.on && tr?.left === 0,
     onclick: async () => {
       try {
         books.trickle = await api<Trickle>("POST", "/api/library/trickle", { on: !tr?.on });
@@ -533,20 +533,25 @@ function renderInbox(d: AudiobooksStatus): void {
   box.replaceChildren(...parts);
 }
 
+/** An error to look at: failed, or stopped by hand – not a double that was dropped on purpose. */
+function isTrouble(j: AudiobookJob): boolean {
+  return j.status === "failed" || (j.status === "cancelled" && !j.duplicate);
+}
+
 function renderFilter(jobs: AudiobookJob[]): void {
   const counts: Record<BookFilter, number> = {
     all: jobs.length,
     review: jobs.filter((j) => j.status === "review").length,
     active: jobs.filter((j) => isActive(j.status)).length,
     done: jobs.filter((j) => j.status === "done").length,
-    failed: jobs.filter((j) => ["failed", "cancelled"].includes(j.status)).length,
+    failed: jobs.filter(isTrouble).length,
     unconverted: books.unconverted ? books.unconverted.length : 0,
     library: books.libTotal ?? 0,
   };
   $("#bookFilter").replaceChildren(...BOOK_FILTERS.map(([k, label]) => el("button", {
     class: "chip" + (books.filter === k ? " on" : "") + (k === "review" && counts.review ? " attention" : ""),
     onclick: () => { books.filter = k; store.set("bookFilter", k); if (k === "unconverted") loadUnconverted(); renderBooks(); },
-  }, `${label} ${counts[k] || ""}`.trim())));
+  }, `${label} ${counts[k] ?? ""}`.trim())));
 }
 
 /** Title and author for the stand-in cover: the match, else "Author - Title" from the folder name. */
@@ -574,7 +579,7 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
       ].filter(Boolean).join(" · ")) : null,
       el("div", { class: "book-msg" }, j.status === "failed" ? j.error || j.message : j.message),
       isActive(j.status) ? el("div", { class: "bar" }, el("i", { style: `width:${pct}%` })) : null,
-      j.status === "done" && j.dest ? el("div", { class: "book-dest" }, "→ ", el("code", {}, j.dest)) : null,
+      j.status === "done" && j.dest && !(j.message || "").includes(j.dest) ? el("div", { class: "book-dest" }, "→ ", el("code", {}, j.dest)) : null,
       j.status === "failed" && j.dest ? el("div", { class: "book-dest" }, "Originale: ", el("code", {}, j.dest)) : null,
     ),
   );
@@ -584,7 +589,7 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
   if (isActive(j.status) || j.status === "review") {
     tools.append(el("button", { class: "btn small ghost", onclick: () => bookAction(j, "cancel") }, t("Abbrechen")));
   }
-  if (["failed", "cancelled"].includes(j.status)) {
+  if (isTrouble(j)) {
     tools.append(el("button", { class: "btn small", onclick: () => bookAction(j, "retry") }, t("Erneut versuchen")));
   }
   if (j.hints?.request_conflict && j.status === "review") {
@@ -992,6 +997,7 @@ function updateLibBar(): void {
   };
   // everything that matches the search and the filter – not only the books loaded so far
   const all = el("button", { type: "button", class: "btn small ghost", onclick: async () => {
+    if (!(await confirmBox(t("Alle {n} Treffer auswählen? Damit lassen sich danach alle auf einmal löschen.", { n: books.libMatch }), t("Alle auswählen")))) return;
     try {
       const res = await api<{ paths: string[] }>("GET", libraryUrl({ ids: true }));
       for (const p of res.paths) books.libPicked.add(p);

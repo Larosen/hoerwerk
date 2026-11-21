@@ -207,8 +207,12 @@ pub fn log(level: &str, source: &str, text: &str) {
 
 /// Into the log the app shows; `echo` = false when the line is printed elsewhere already.
 pub fn log_entry(level: &str, source: &str, text: &str, echo: bool) {
+    use unicode_normalization::UnicodeNormalization;
     let level = if LEVELS.contains(&level) { level } else { "info" };
     let time = now();
+    // file names from macOS-style folders arrive decomposed (u + ¨): shown composed
+    let (source, text): (String, String) = (source.nfc().collect(), text.nfc().collect());
+    let (source, text) = (source.as_str(), text.as_str());
     {
         let mut l = LOG.lock().unwrap_or_else(|p| p.into_inner());
         l.seq += 1;
@@ -378,5 +382,32 @@ mod tests {
         assert!(errors.iter().any(|e| e["text"] == "zwei"));
         assert!(errors.iter().all(|e| e["level"] == "error"));
         assert!(last >= 2);
+    }
+}
+
+/// Text whose UTF-8 bytes were read as Latin-1 ("LoÌ\u{88}sung" for "Lösung" with a decomposed ö, "Ã¤" for "ä"):
+/// old MP3 tags are often written that way. Whatever is not clearly such text stays as it is.
+pub fn repair_mojibake(text: &str) -> String {
+    if text.is_ascii() || text.chars().any(|c| c as u32 > 0xFF) {
+        return text.to_string();
+    }
+    let bytes: Vec<u8> = text.chars().map(|c| c as u32 as u8).collect();
+    match String::from_utf8(bytes) {
+        Ok(fixed) if fixed != text => fixed,
+        _ => text.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod mojibake_tests {
+    use super::repair_mojibake;
+
+    #[test]
+    fn utf8_read_as_latin1_is_repaired() {
+        assert_eq!(repair_mojibake("Schlu\u{cc}\u{88}ssel"), "Schlu\u{308}ssel");
+        assert_eq!(repair_mojibake("Gr\u{c3}\u{b6}\u{c3}\u{9f}e"), "Größe");
+        assert_eq!(repair_mojibake("Größe"), "Größe"); // already right
+        assert_eq!(repair_mojibake("Café"), "Café"); // Latin-1 only, not valid UTF-8: left alone
+        assert_eq!(repair_mojibake("plain"), "plain");
     }
 }

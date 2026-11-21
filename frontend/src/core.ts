@@ -82,7 +82,9 @@ function editionNote(b: { other_edition?: OtherEdition | null; owned?: unknown }
   if (!e || b.owned) return null;
   const who = (e.narrators || []).slice(0, 2).join(", ");
   return el("span", { class: "muted small edition-note", title: e.path || "" },
-    who ? t("Andere Fassung in der Bibliothek (gelesen von {names})", { names: who }) : t("Andere Fassung in der Bibliothek"));
+    e.title ? (who ? t("Andere Fassung in der Bibliothek: „{title}“, gelesen von {names}", { title: e.title, names: who })
+      : t("Andere Fassung in der Bibliothek: „{title}“", { title: e.title }))
+      : who ? t("Andere Fassung in der Bibliothek (gelesen von {names})", { names: who }) : t("Andere Fassung in der Bibliothek"));
 }
 interface Hints { query?: string; title?: string; author?: string; narrator?: string; folder?: string; request_id?: number; request_conflict?: string }
 interface Quality { kbps: number; duration: number; size: number; files: number }
@@ -232,6 +234,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ..
     else if (c != null && c !== false) n.append(typeof c === "number" ? String(c) : c);
   };
   children.forEach(add);
+  // an icon-only button names itself for screen readers by its tooltip
+  if (tag === "button" && n.title && !n.hasAttribute("aria-label") && !(n.textContent || "").trim()) n.setAttribute("aria-label", n.title);
   return n;
 }
 

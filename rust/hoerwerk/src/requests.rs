@@ -784,6 +784,11 @@ impl Requests {
                         let _ = app.pipeline.cancel(app, &jid);
                     }
                 }
+                // without a recorded path the book is found by title: that may be a book somebody else added later –
+                // only an admin may remove what was not filed for this very request
+                "available" if files && text_of(&i["path"]).is_empty() && !is_admin(user) => {
+                    problems.push(t("Die Dateien bleiben: Nur ein Admin löscht sie hier", &[]));
+                }
                 "available" if files => {
                     let path = text_of(&i["path"]);
                     let rel = if path.is_empty() {
@@ -1411,6 +1416,8 @@ impl Requests {
                 .collect()
         };
         let mut activity: Option<Vec<Value>> = None;
+        // after a daily limit reset only a few requests search per round, so they do not all use up the fresh limit at once
+        let mut rested_searches = 0;
         for rid in ids {
             let Some(req) = self.get(app, rid) else { continue };
             if req["status"] != "pending" && req["upgrade"].is_null() && Self::owned(app, &req["book"]) {
@@ -1423,7 +1430,12 @@ impl Requests {
                     // an indexer rested (daily limit): search again right after midnight, not hours later
                     let rested = req["resting"].as_array().is_some_and(|r| !r.is_empty())
                         && crate::text::next_local_midnight(last) + 120.0 <= now();
-                    if rested || last < now() - interval_hours(app) as f64 * 3600.0 {
+                    if rested {
+                        if rested_searches < 2 {
+                            rested_searches += 1;
+                            self.search(app, rid);
+                        }
+                    } else if last < now() - interval_hours(app) as f64 * 3600.0 {
                         self.search(app, rid);
                     }
                 }

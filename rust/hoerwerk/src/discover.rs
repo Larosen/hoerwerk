@@ -744,13 +744,7 @@ fn refresh_with(env: &Arc<dyn Env>, section: &str, genre: &str, wait: bool, seed
                 } else {
                     "Audible".into()
                 };
-                text::warn(
-                    "Entdecken",
-                    &t(
-                        "Entdecken: {source} nicht erreichbar: {error}",
-                        &[("source", &source), ("error", &e)],
-                    ),
-                );
+                text::warn("Entdecken", &unreachable(&source, &e));
                 let mut old = entry(&*env2, &key);
                 old.insert("time".into(), json!(now()));
                 old.insert("error".into(), json!(e));
@@ -944,6 +938,22 @@ fn for_you(env: &dyn Env, seeds: Vec<Value>) -> Vec<Value> {
         .collect()
 }
 
+/// The names a book of this genre may carry: the genre's own and those of its subgenres. Empty = unknown.
+fn genre_names(env: &dyn Env, region: &str, genre: &str) -> HashSet<String> {
+    let mut out = HashSet::new();
+    for g in env.genres(region).unwrap_or_default() {
+        let kids = g["children"].as_array().cloned().unwrap_or_default();
+        if s(&g, "id") == genre {
+            out.insert(s(&g, "name").to_string());
+            out.extend(kids.iter().map(|c| s(c, "name").to_string()));
+        } else if let Some(c) = kids.iter().find(|c| s(c, "id") == genre) {
+            out.insert(s(c, "name").to_string());
+            out.insert(s(&g, "name").to_string()); // books often carry only the parent's name
+        }
+    }
+    out
+}
+
 /// Best sellers, best rated and new releases of a genre; small genres are filled up with books rated just as
 /// well by fewer listeners.
 fn genre_list(env: &dyn Env, genre: &str) -> Result<Vec<Value>, AudibleError> {
@@ -956,12 +966,19 @@ fn genre_list(env: &dyn Env, genre: &str) -> Result<Vec<Value>, AudibleError> {
         ("BestSellers", 2),
         ("AvgRating", 2),
     ];
+    // the shop's category list also holds books of other genres (a romance among the thrillers): only books
+    // whose own genres name this genre or one of its subgenres stay (books without genre data are kept)
+    let wanted = genre_names(env, &region, genre);
     for (n, (sort, page)) in fetches.iter().enumerate() {
         if n >= 3 && strict.len() >= GENRE_MIN {
             break;
         }
         for b in env.genre_products(&region, genre, sort, 50, *page)? {
             let asin = s(&b, "asin");
+            let own = strs(&b["genres"]);
+            if !wanted.is_empty() && !own.is_empty() && !own.iter().any(|g| wanted.contains(g)) {
+                continue;
+            }
             if strict.iter().chain(loose.iter()).any(|x| s(x, "asin") == asin) {
                 continue;
             }
@@ -1024,6 +1041,22 @@ fn reviews_from(env: &dyn Env, source: &str, raw: &[u8], kind: &str) -> Result<V
     Ok(out)
 }
 
+/// The log line for a source that failed. A 429 comes from Audible (the lookups of the reviewed books), not from the
+/// source itself: it says so, because Audible only asks to slow down.
+fn unreachable(source: &str, error: &str) -> String {
+    if error.contains("429") {
+        t(
+            "Entdecken: {source}: Audible bremst gerade (zu viele Anfragen) – die Suche geht später weiter",
+            &[("source", source)],
+        )
+    } else {
+        t(
+            "Entdecken: {source} nicht erreichbar: {error}",
+            &[("source", source), ("error", error)],
+        )
+    }
+}
+
 /// Books of the best-of list PDFs not read yet (each PDF once; a failed one is tried again the next day).
 fn best_lists(env: &dyn Env, page: &str) -> Vec<Value> {
     let mut done = env
@@ -1084,13 +1117,7 @@ fn critics(env: &dyn Env) -> Result<Vec<Value>, String> {
             }
             Err(e) => {
                 errors.push(format!("{source}: {e}"));
-                text::warn(
-                    "Entdecken",
-                    &t(
-                        "Entdecken: {source} nicht erreichbar: {error}",
-                        &[("source", source), ("error", &e)],
-                    ),
-                );
+                text::warn("Entdecken", &unreachable(source, &e));
                 continue;
             }
         };

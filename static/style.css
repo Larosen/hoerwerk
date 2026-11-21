@@ -1441,3 +1441,14 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 .row-menu.up { top: auto; bottom: 100%; }
 .lib-sort .chip { padding: 4px 9px; }
 .lib-sort .sort-bar { gap: 5px; }
+
+.detail-danger { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* Einstellungen: the navigation stays while the page scrolls */
+@media (min-width: 780px) {
+  .settings-layout:not(.hub) > .sidebar { position: sticky; top: 16px; align-self: flex-start; max-height: calc(100dvh - 32px); overflow: auto; }
+}
+/* Konten: compact so "Zuletzt da" and the password button fit */
+table.users th, table.users td { padding: 6px 5px; }
+table.users th { white-space: normal; line-height: 1.2; }
+table.users input.quota { width: 56px; }

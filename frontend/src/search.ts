@@ -67,6 +67,12 @@ function indexerRow(i: Indexer = {}): HTMLDivElement {
 }
 
 /** Fill the form on /settings/downloads and /settings/services with the saved sources. */
+/** The ID of a library (a UUID, a number) says little: its name stands under the field. */
+function showChosenName(input: HTMLInputElement, name?: string): void {
+  input.parentElement?.querySelector(".chosen-name")?.remove();
+  if (name && input.value) input.insertAdjacentElement("afterend", el("small", { class: "muted chosen-name" }, `${t("Gewählt")}: ${name}`));
+}
+
 function fillSources(): void {
   const s: Sources = search.sources || { indexers: [], sab: {}, configured: { indexers: 0, sab: false } };
   $("#indexerRows").replaceChildren(...(s.indexers.length ? s.indexers : [{}]).map((i) => indexerRow(i)));
@@ -79,12 +85,14 @@ function fillSources(): void {
   const abs = s.abs;
   field(f, "abs_url").value = abs?.url || "";
   field(f, "abs_library").value = abs?.library || "";
+  showChosenName(field(f, "abs_library"), abs?.library_name);
   const token = field(f, "abs_token");
   token.value = "";
   token.placeholder = abs?.token_set ? t("Gespeichert – leer lassen") : "API-Token";
   const plex = s.plex;
   field(f, "plex_url").value = plex?.url || "";
   field(f, "plex_section").value = plex?.section || "";
+  showChosenName(field(f, "plex_section"), plex?.section_name);
   field(f, "plex_empty_trash").checked = !!plex?.empty_trash;
   const plexToken = field(f, "plex_token");
   plexToken.value = "";

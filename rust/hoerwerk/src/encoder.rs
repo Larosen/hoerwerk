@@ -573,18 +573,19 @@ pub fn merge_to_m4b(
     if files.is_empty() {
         return fail(t("Keine Audiodateien gefunden", &[]));
     }
-    let paths: Vec<PathBuf> = files.iter().map(|f| folder.join(f)).collect();
-    let infos: Vec<Value> = paths.iter().map(|x| probe_cached(x)).collect();
-    let bad: Vec<&str> = files
-        .iter()
-        .zip(&infos)
-        .filter(|(_, i)| i["sample_rate"].as_i64().unwrap_or(0) == 0)
-        .map(|(f, _)| f.as_str())
-        .take(3)
+    let all_infos: Vec<Value> = files.iter().map(|f| probe_cached(&folder.join(f))).collect();
+    // files without an audio track ("00 - Opening Credits.m4b" that holds only a cover) are left out, not fatal
+    let keep: Vec<usize> = (0..files.len())
+        .filter(|i| all_infos[*i]["sample_rate"].as_i64().unwrap_or(0) != 0)
         .collect();
-    if !bad.is_empty() {
+    if keep.is_empty() {
+        let bad: Vec<&str> = files.iter().map(String::as_str).take(3).collect();
         return fail(t("Keine Tonspur in: {files}", &[("files", &bad.join(", "))]));
     }
+    let files: Vec<String> = keep.iter().map(|i| files[*i].clone()).collect();
+    let files = files.as_slice();
+    let infos: Vec<Value> = keep.iter().map(|i| all_infos[*i].clone()).collect();
+    let paths: Vec<PathBuf> = files.iter().map(|f| folder.join(f)).collect();
     let codecs: HashSet<&str> = infos.iter().map(|i| i["audio_codec"].as_str().unwrap_or("")).collect();
     let shapes: HashSet<(i64, i64)> = infos
         .iter()

@@ -823,7 +823,7 @@ pub fn rel_of(root: &Path, folder: &Path) -> String {
 
 /// Same book, different recording: both sides name their narrators and not one of them is the same person.
 /// Unknown narrators on either side count as the same edition – better ask once too often than download twice.
-fn other_edition(book: &Value, entry: &Value) -> bool {
+pub(crate) fn other_edition(book: &Value, entry: &Value) -> bool {
     // a special production ("mit voller Besetzung", "Full Cast", "Hörspiel") on one side only: another edition,
     // whatever the tags say about narrators (many MP3 books name only the author)
     let marked = |v: &Value, keys: &[&str]| {
