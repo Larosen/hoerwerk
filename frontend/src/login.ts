@@ -49,7 +49,7 @@ async function initInvite(token: string): Promise<void> {
     const inv = await api<{ ok: boolean; note: string; expires: number | null }>("GET", url);
     $("#inviteNote").textContent = inv.expires
       ? t("Der Link gilt bis {date}.", { date: new Date(inv.expires * 1000).toLocaleDateString(LOCALE, { dateStyle: "long" }) }) : "";
-  } catch (e) { showError(errMsg(e)); return; }
+  } catch (e) { showError(errMsg(e)); $("#inviteGoneHint").hidden = false; return; }
   form.hidden = false;
   attachPasswordRules(field(form, "password"), () => field(form, "name").value);
   field(form, "name").focus();
@@ -65,6 +65,7 @@ async function initLogin(): Promise<void> {
   if (invite) { initInvite(invite[1]); return; }
   if (location.pathname.startsWith("/invite/")) {         // a broken or shortened link
     showError(t("Diese Einladung gilt nicht (mehr). Bitte frag nach einem neuen Link."));
+    $("#inviteGoneHint").hidden = false;
     return;
   }
   let st: AuthStatus;

@@ -332,6 +332,12 @@ pub fn probe(path: &Path) -> Value {
             info["cover_codec"] = s["codec_name"].clone();
         }
     }
+    // old MP3 tags: UTF-8 written as Latin-1 reads as "GrÃ¶Ã\u{9f}e"
+    for v in tags.values_mut() {
+        if let Some(text) = v.as_str() {
+            *v = Value::String(crate::text::repair_mojibake(text));
+        }
+    }
     info["tags"] = Value::Object(tags);
     info
 }

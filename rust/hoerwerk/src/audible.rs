@@ -420,6 +420,14 @@ fn opt_str(v: &str) -> Value {
 }
 
 /// Audible catalog product -> flat book used everywhere else.
+/// One name per genre: the same shop category is spelled differently by shops, Audiobookshelf and old tags.
+pub fn canonical_genre(name: &str) -> &str {
+    match name.trim() {
+        "Comedy" | "Humor" | "Comedy and Humor" => "Comedy & Humor",
+        other => other,
+    }
+}
+
 /// A title or series name without shop clutter: "(ungekürzt)", "[German Edition] 1", "(Ein Harry-Hole-Krimi 14)".
 pub fn tidy_title(title: &str) -> String {
     let mut t = title.trim().to_string();
@@ -464,10 +472,10 @@ pub fn normalize_product(p: &Value, region: &str) -> Value {
             .flatten()
             .filter_map(|x| x["name"].as_str().filter(|n| !n.is_empty()).map(str::to_string))
             .collect();
-        if let Some(first) = steps.first()
-            && !genres.contains(first)
+        if let Some(first) = steps.first().map(|f| canonical_genre(f).to_string())
+            && !genres.contains(&first)
         {
-            genres.push(first.clone());
+            genres.push(first);
         }
         for x in steps.iter().skip(1) {
             if !tags.contains(x) {

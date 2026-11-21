@@ -303,7 +303,10 @@ impl Stats {
                 *heard_months.entry(day.chars().take(7).collect()).or_default() += secs.as_f64().unwrap_or(0.0);
             }
             for g in h["genres"].as_array().into_iter().flatten() {
-                let (name, n) = (g["name"].as_str().unwrap_or(""), g["books"].as_i64().unwrap_or(0));
+                let (name, n) = (
+                    crate::audible::canonical_genre(g["name"].as_str().unwrap_or("")),
+                    g["books"].as_i64().unwrap_or(0),
+                );
                 match heard_genres.iter_mut().find(|x| x.0 == name) {
                     Some(e) => e.1 += n,
                     None => heard_genres.push((name.to_string(), n)),
@@ -506,7 +509,7 @@ fn count(s: &mut Acc, row: &Row, minutes: i64) {
         .and_then(|g| g.first())
         .and_then(Value::as_str)
     {
-        s.genre(g);
+        s.genre(crate::audible::canonical_genre(g));
     }
 }
 
