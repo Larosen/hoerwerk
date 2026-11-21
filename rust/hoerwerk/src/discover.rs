@@ -102,6 +102,8 @@ const NONFICTION: [&str; 28] = [
     "Science & Engineering",
 ];
 const HIDDEN_GENRES: [&str; 2] = ["Erotik", "Erotica"];
+/// Audible's children's category (German shop name and the English one some tags carry).
+const KIDS_GENRES: [&str; 2] = ["Kinder-Hörbücher", "Children's Audiobooks"];
 /// Not offered as a genre to pick (its books still appear in their other genres).
 const UNLISTED_GENRES: [&str; 3] = ["LGBT", "LGBTQ+", "LGBTQ"];
 const PT_AUTHOR_DAYS: f64 = 60.0;
@@ -769,6 +771,10 @@ fn good(env: &dyn Env, book: &Value, from_store: bool, chosen_genre: bool, loose
     let flag = |k: &str, default: bool| st.get(k).map_or(default, truthy);
     let genres = strs(&book["genres"]);
     if truthy(&book["is_adult"]) || genres.iter().any(|g| HIDDEN_GENRES.contains(&g.as_str())) {
+        return false;
+    }
+    // children's books are not suggested to match a narrator or a review: they show when that genre is picked
+    if !chosen_genre && genres.iter().any(|g| KIDS_GENRES.contains(&g.as_str())) {
         return false;
     }
     if flag("discover_unabridged", true) && s(book, "format_type").to_lowercase() == "abridged" {
@@ -1776,14 +1782,18 @@ mod tests {
                     shared,
                     book("B8", "Sachbuch", json!({"genres": ["Geschichte"]})),
                     book("B9", "Erotisch", json!({"genres": ["Erotik"]})),
+                    book("B10", "Kinderbuch", json!({"genres": ["Kinder-Hörbücher"]})),
                 ],
             ),
         ]);
         let got = items(&f, "foryou", "");
         assert_eq!(asins(&got), ["B1", "B2"]);
         assert_eq!(got[0]["because"], json!(["Seed Eins", "Seed Zwei"]));
+        // a children's book never matches a narrator or a review (B10 is in the second seed's list)
+        assert!(!asins(&got).contains(&"B10".to_string()));
         lock(&f.settings).insert("discover_nonfiction_store".into(), json!(true));
         assert!(asins(&items(&f, "foryou", "")).contains(&"B8".to_string()));
+        assert!(!asins(&items(&f, "foryou", "")).contains(&"B10".to_string()));
     }
 
     #[test]
