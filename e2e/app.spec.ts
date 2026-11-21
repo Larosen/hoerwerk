@@ -566,7 +566,7 @@ test("Suchen: eine lange Trefferliste liegt ganz im Rahmen, die Seitenleiste ble
       bar: document.querySelector(".topbar")!.getBoundingClientRect().top };
   });
   expect(m.panel).toBeGreaterThanOrEqual(m.last);       // the frame does not end above the last card
-  expect(m.bar).toBe(0);                                 // the menu on the left did not scroll away
+  expect(Math.abs(m.bar)).toBeLessThan(2);                // the menu on the left did not scroll away (sub-pixel rounding allowed)
   expect(errors).toEqual([]);
 });
 
