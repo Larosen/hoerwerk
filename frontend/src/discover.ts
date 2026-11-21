@@ -230,11 +230,11 @@ function renderGenreChips(): void {
   $("#yearFilter").classList.toggle("active", !!discover.year);
   if (panel.hidden) return;
   row.replaceChildren(
-    el("button", { type: "button", class: "chip", "aria-pressed": String(!top), onclick: () => { void selectGenre("", true); } }, t("Alle Genres")),
+    el("button", { type: "button", class: "chip", "aria-pressed": String(!top && discover.section !== "genre"), onclick: () => { void selectGenre("", true); } }, t("Alle Genres")),
     ...discover.genres.map((x) => el("button", {
       type: "button", class: "chip", "aria-pressed": String(x === top),
       onclick: () => { void selectGenre(x === top ? "" : x.id, !x.children.length); },
-    }, x.name + (x.nonfiction ? " · " + t("Sachbuch") : ""))));
+    }, x.name)));
   sub.hidden = !(top && top.children.length);
   if (top && top.children.length) {
     sub.replaceChildren(el("button", { type: "button", class: "chip", "aria-pressed": String(!picked),

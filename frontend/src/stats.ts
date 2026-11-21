@@ -119,7 +119,7 @@ function renderListenChart(rows: ListenMonth[] | undefined, note: string): void 
   const any = (rows || []).some((r) => r.seconds > 0);
   $("#statsListenBox").hidden = !any;
   if (!any || !rows) return;
-  $("#statsListenNote").textContent = note;
+  $("#statsListenNote").textContent = [note, t("Der Monat mit dem höchsten Wert ist farbig hervorgehoben, seine Zahl steht darüber.")].filter(Boolean).join(" ");
   const hours = rows.map((r) => r.seconds / 3600);
   const max = Math.max(...hours, 0.01);
   const peak = hours.indexOf(Math.max(...hours));
@@ -302,7 +302,7 @@ function renderAccount(d: StatsAccount, own: boolean): void {
  *  of each bar is darker (one series split in two, not two series side by side). */
 function renderMonthChart(months: MonthRow[], head: string, note: string, mine = false): void {
   $("#statsChartHead").textContent = head;
-  $("#statsChartNote").textContent = note;
+  $("#statsChartNote").textContent = [note, t("Der Monat mit dem höchsten Wert ist farbig hervorgehoben, seine Zahl steht darüber.")].filter(Boolean).join(" ");
   const max = Math.max(1, ...months.map((m) => m.books));
   const peak = months.reduce((a, b) => (b.books > a.books ? b : a), months[0]);
   const chart = $("#statsChart");
