@@ -847,6 +847,8 @@
  "Ganze Reihe": "Whole series",
  "Höchstens {n} Bände auf einmal": "At most {n} books at once",
  "Keine": "None",
+ "Für Indexer mit Tageslimit: Hörwerk liest einmal täglich die neuesten Einträge und sucht die Anfragen darin, statt jede Anfrage einzeln beim Indexer zu suchen": "For indexers with a daily limit: Hörwerk reads the newest releases once a day and searches the requests in that copy, instead of searching the indexer for every request",
+ "Sammelabruf": "Bulk read",
  "Nur die Anfrage löschen – das Hörbuch bleibt": "Delete only the request – the audiobook stays",
  "Anfrage „{title}“ aus der Liste löschen? Das Hörbuch bleibt in der Bibliothek – danach kannst du es zusätzlich löschen.": "Remove the request “{title}” from the list? The audiobook stays in the library – you can delete it as well afterwards.",
  "Einstellungen → Konten": "Settings → Accounts",

@@ -1,7 +1,7 @@
 //! Search Newznab indexers and send NZBs to SABnzbd – API keys stay on the server:
 //! the UI only sees whether one is set, and NZB links (which embed the indexer key) never leave the backend.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
 
 use rand::Rng;
@@ -503,6 +503,10 @@ pub struct Newznab<'a> {
     get: &'a Getter,
     /// the indexer said this was today's last search (newznab:apilimits)
     used_up: std::sync::atomic::AtomicBool,
+    /// the id of the indexer in the settings (the key of its stored feed)
+    pub id: String,
+    /// feed mode: the indexer is read once a day as a whole (newest releases), the searches run on that copy
+    pub feed: bool,
 }
 
 impl<'a> Newznab<'a> {
@@ -519,7 +523,29 @@ impl<'a> Newznab<'a> {
             },
             get,
             used_up: std::sync::atomic::AtomicBool::new(false),
+            id: String::new(),
+            feed: false,
         }
+    }
+
+    pub fn with_feed(mut self, id: &str, feed: bool) -> Self {
+        self.id = id.into();
+        self.feed = feed;
+        self
+    }
+
+    /// One page of the newest audiobook releases, without a search term (what an RSS reader would read).
+    pub fn feed_page(&self, offset: usize, per_page: usize) -> Result<Vec<Value>> {
+        let cats = self.audiobook_cats();
+        let xml = self.call(&[
+            ("t", "search".into()),
+            ("cat", cats.join(",")),
+            ("limit", per_page.to_string()),
+            ("offset", offset.to_string()),
+            ("extended", "1".into()),
+        ])?;
+        self.note_limit(&xml);
+        Ok(self.scrub(parse_results(&xml, &self.name)?))
     }
 
     /// The last search used up today's limit – no more searches until midnight.
@@ -931,6 +957,22 @@ pub struct Usenet {
     results: Mutex<HashMap<String, Value>>,
 }
 
+/// How often a feed-mode indexer is read, how many pages (and releases per page), how long releases are kept.
+const FEED_EVERY: f64 = 20.0 * 3600.0;
+const FEED_PAGES: usize = 5;
+const FEED_PER_PAGE: usize = 100;
+const FEED_KEEP_DAYS: f64 = 30.0;
+const FEED_MAX: usize = 3000;
+
+/// The words of a title or query for matching: lower case, no accents, split at everything that is not a letter or digit.
+fn feed_words(text: &str) -> Vec<String> {
+    no_accents(&text.to_lowercase())
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
 fn dedupe_key(r: &Value) -> String {
     let title = r["title"].as_str().unwrap_or("").to_lowercase();
     format!(
@@ -1103,6 +1145,7 @@ impl Usenet {
                 indexers.push(json!({"id": id, "name": name, "url": url,
                                      "categories": if cats.is_empty() { DEFAULT_CATEGORIES.to_string() } else { cats },
                                      "enabled": truthy(i.get("enabled"), true), "preferred": preferred,
+                                     "feed": truthy(i.get("feed"), false),
                                      SECRET: if key.is_empty() { text_of(&prev[SECRET]) } else { key }}));
             }
             let sab_new = &new["sab"];
@@ -1153,7 +1196,8 @@ impl Usenet {
                 &text_of(&i[SECRET]),
                 &text_of(&i["categories"]),
                 &*self.get,
-            );
+            )
+            .with_feed(&text_of(&i["id"]), truthy(i.get("feed"), false));
             if truthy(i.get("preferred"), false) && first.is_empty() {
                 first.push(idx);
             } else {
@@ -1279,6 +1323,71 @@ impl Usenet {
         Ok(out)
     }
 
+    /// The stored copy of a feed-mode indexer, brought up to date at most once a day: a few pages of its newest
+    /// releases instead of one search per request (indexers with a daily limit run dry on the searches of many
+    /// open requests; the feed is 1–5 calls a day).
+    fn feed_items(&self, idx: &Newznab<'_>) -> Result<Vec<Value>> {
+        let key = format!("feed:{}", idx.id);
+        let stored = self.db.get(&key).unwrap_or(json!({}));
+        let fetched = stored["fetched"].as_f64().unwrap_or(0.0);
+        let mut items: Vec<Value> = stored["items"].as_array().cloned().unwrap_or_default();
+        if now() - fetched < FEED_EVERY {
+            return Ok(items);
+        }
+        let mut fresh: Vec<Value> = Vec::new();
+        let read = (|| -> Result<()> {
+            for page in 0..FEED_PAGES {
+                let batch = idx.feed_page(page * FEED_PER_PAGE, FEED_PER_PAGE)?;
+                let n = batch.len();
+                let oldest = batch
+                    .iter()
+                    .filter_map(|r| r["published"].as_f64())
+                    .fold(f64::INFINITY, f64::min);
+                fresh.extend(batch);
+                // up to what the last read already had (a day of overlap), or no more pages
+                if n < FEED_PER_PAGE || (fetched > 0.0 && oldest < fetched - 86400.0) {
+                    break;
+                }
+            }
+            Ok(())
+        })();
+        match read {
+            Ok(()) => {}
+            // the limit or a pause is the caller's business; with a stored copy a failed read is not the end of the search
+            Err(e @ UsenetError::RateLimited(..)) => return Err(e),
+            Err(e) if items.is_empty() && fresh.is_empty() => return Err(e),
+            Err(_) => {}
+        }
+        let horizon = now() - FEED_KEEP_DAYS * 86400.0;
+        let mut seen: HashSet<String> = HashSet::new();
+        items = fresh
+            .into_iter()
+            .chain(items)
+            .filter(|r| r["published"].as_f64().is_none_or(|p| p >= horizon))
+            .filter(|r| seen.insert(dedupe_key(r)))
+            .take(FEED_MAX)
+            .collect();
+        let _ = self.db.put(&key, &json!({"fetched": now(), "items": items}));
+        Ok(items)
+    }
+
+    /// A search on the stored feed: every word of the query must be in the release name.
+    fn feed_search(&self, idx: &Newznab<'_>, query: &str, limit: usize) -> Result<Vec<Value>> {
+        let words = feed_words(query);
+        if words.is_empty() {
+            return Ok(Vec::new());
+        }
+        Ok(self
+            .feed_items(idx)?
+            .into_iter()
+            .filter(|r| {
+                let have: HashSet<String> = feed_words(r["title"].as_str().unwrap_or("")).into_iter().collect();
+                words.iter().all(|w| have.contains(w))
+            })
+            .take(limit)
+            .collect())
+    }
+
     fn search_in(
         &self,
         indexers: &[Newznab<'_>],
@@ -1317,7 +1426,12 @@ impl Usenet {
                             if self.paused(&idx.name) > 0.0 {
                                 break;
                             }
-                            match idx.search_with(q, 100, i == 0) {
+                            let searched = if idx.feed {
+                                self.feed_search(idx, q, 100)
+                            } else {
+                                idx.search_with(q, 100, i == 0)
+                            };
+                            match searched {
                                 Ok(r) => {
                                     found.extend(r);
                                     if idx.used_up() {
@@ -1735,6 +1849,49 @@ mod tests {
         );
         u.update_config(&json!({"indexers": [{"name": "A", "url": "https://a.example", "apikey": "k1"}], "sab": {}}));
         u
+    }
+
+    /// An indexer in feed mode is read once (newest releases), however many requests search – and the searches
+    /// run on that copy.
+    #[test]
+    fn feed_mode_reads_the_indexer_once_for_many_searches() {
+        crate::text::set_language("de");
+        let calls = Arc::new(Mutex::new(Vec::<String>::new()));
+        let log = calls.clone();
+        let u = Usenet::with_getter(
+            Db::memory(),
+            Box::new(move |url: &str| {
+                if url.contains("t=caps") {
+                    return Ok(br#"<caps><categories><category id="3000" name="Audio"><subcat id="3030" name="Audiobook"/></category></categories></caps>"#.to_vec());
+                }
+                log.lock().unwrap().push(url.to_string());
+                Ok(br#"<rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/"><channel>
+                  <item><title>Theodor.Storm-Der.Schimmelreiter.GERMAN.AUDIOBOOK</title><link>https://a.example/nzb/1</link><newznab:attr name="size" value="300000000"/><newznab:attr name="category" value="3030"/></item>
+                  <item><title>Max.Frisch-Homo.Faber.GERMAN.AUDIOBOOK</title><link>https://a.example/nzb/2</link><newznab:attr name="size" value="200000000"/><newznab:attr name="category" value="3030"/></item>
+                  </channel></rss>"#
+                    .to_vec())
+            }),
+        );
+        u.update_config(
+            &json!({"indexers": [{"name": "A", "url": "https://a.example", "apikey": "k1", "feed": true}], "sab": {}}),
+        );
+        let hit = u
+            .search("Theodor Storm Schimmelreiter", "", &[], false, 5, false)
+            .unwrap();
+        assert_eq!(hit["results"].as_array().unwrap().len(), 1);
+        assert!(hit["results"][0]["title"].as_str().unwrap().contains("Schimmelreiter"));
+        let other = u.search("Frisch Homo Faber", "", &[], false, 5, false).unwrap();
+        assert_eq!(other["results"].as_array().unwrap().len(), 1);
+        let none = u.search("Unbekannt Buch", "", &[], false, 5, false).unwrap();
+        assert!(none["results"].as_array().unwrap().is_empty());
+        // three searches, one read of the feed – no search term in the call
+        let calls = calls.lock().unwrap();
+        assert_eq!(calls.len(), 1, "{calls:?}");
+        assert!(
+            calls[0].contains("t=search") && !calls[0].contains("q="),
+            "{}",
+            calls[0]
+        );
     }
 
     #[test]

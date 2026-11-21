@@ -60,9 +60,17 @@ function indexerRow(i: Indexer = {}): HTMLDivElement {
           if (other !== e.target) other.checked = false;
         }
       } }), " ", t("Zuerst")),
+    el("label", { class: "check", title: t("Für Indexer mit Tageslimit: Hörwerk liest einmal täglich die neuesten Einträge und sucht die Anfragen darin, statt jede Anfrage einzeln beim Indexer zu suchen") },
+      el("input", { name: "feed", type: "checkbox", checked: !!i.feed }), " ", t("Sammelabruf")),
     el("button", { type: "button", class: "icon-btn", title: t("Weiter nach oben – wird früher gefragt"), onclick: () => row.previousElementSibling?.before(row) }, "↑"),
     el("button", { type: "button", class: "icon-btn", title: t("Entfernen"), onclick: () => row.remove() }, icon("x"))));
   row.dataset.id = i.id || "";
+  // a long name or address is cut off in the field: the full text shows when hovering, the categories get their width
+  for (const input of row.querySelectorAll<HTMLInputElement>("input[name=name], input[name=url]")) {
+    const tip = (): void => { input.title = input.value; };
+    tip();
+    input.addEventListener("input", tip);
+  }
   return row;
 }
 
@@ -114,6 +122,7 @@ async function saveSources(): Promise<void> {
     categories: value(r, "categories").value,
     enabled: value(r, "enabled").checked,
     preferred: value(r, "preferred").checked,
+    feed: value(r, "feed").checked,
   }));
   const sab = { url: field(f, "sab_url").value, apikey: field(f, "sab_apikey").value, category: field(f, "sab_category").value };
   const abs = { url: field(f, "abs_url").value, token: field(f, "abs_token").value, library: field(f, "abs_library").value };
