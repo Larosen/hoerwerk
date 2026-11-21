@@ -27,6 +27,16 @@ const LINKS_PER_ROUND: usize = 10;
 const BATCH: usize = 40;
 const REST: Duration = Duration::from_secs(180);
 
+/// The tool looked at a book and found nothing it is sure about: what is open stays open, but it is no finding to
+/// tidy up (and not looked at again for two weeks).
+fn leave_alone(app: &App, rel: &str, had_asin: bool) {
+    let mut codes = vec!["no_year", "no_narrator"];
+    if !had_asin {
+        codes.push("no_asin");
+    }
+    app.health.settle(&app.db, rel, &codes, "auto");
+}
+
 #[derive(Clone, Copy)]
 struct Tried {
     mtime: f64,
@@ -176,6 +186,14 @@ impl Autofix {
                     .lock()
                     .get(&rel)
                     .is_some_and(|t| (t.mtime - mtime).abs() < 0.001 && now - t.at < RETRY);
+                if fresh {
+                    // looked at lately and still open: there was nothing sure to do – it does not nag as a finding
+                    let had_asin = app
+                        .library
+                        .entry(&rel)
+                        .is_some_and(|e| e["asin"].as_str().is_some_and(|a| !a.is_empty()));
+                    leave_alone(app, &rel, had_asin);
+                }
                 (!fresh).then_some((rel, mtime))
             })
             .collect();
@@ -245,13 +263,7 @@ impl Autofix {
                         // nothing sure enough (a niche work, a recording of one's own, an edition the shop does not
                         // know) or not one M4B: the book is left alone and does not nag as a finding – looked at
                         // again after two weeks, or when the admin asks for it
-                        Outcome::Unsure | Outcome::Skipped => {
-                            let mut codes = vec!["no_year", "no_narrator"];
-                            if !had_asin {
-                                codes.push("no_asin");
-                            }
-                            app.health.settle(&app.db, rel, &codes, "auto");
-                        }
+                        Outcome::Unsure | Outcome::Skipped => leave_alone(app, rel, had_asin),
                     }
                     self.lock().insert(
                         rel.clone(),

@@ -180,6 +180,31 @@ test("Bibliothek: alle auswählen (auch die noch nicht geladenen) und die Auswah
   expect(errors).toEqual([]);
 });
 
+test("Bibliothek: „Passt so“ merkt sich die Entscheidung des Admins, Zurücknehmen geht", async ({ page }) => {
+  const errors = await open(page);
+  const mk = (n: number, settled: boolean) => ({ path: `A/Buch ${n}`, title: `Buch ${n}`, authors: ["A"], series: null, series_position: null, asin: null, format: "m4b", files: 1, settled });
+  await page.route("**/api/library/books?*", (r) => r.fulfill({ json: { total: 2, books: [mk(1, false), mk(2, true)] } }));
+  const posted: unknown[] = [];
+  await page.route("**/api/library/settle", async (r) => { posted.push(r.request().postDataJSON()); await r.fulfill({ json: { ok: true, changed: 1 } }); });
+  await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
+  await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
+  // a book that is not settled: the menu offers "fine as it is"
+  const first = page.locator(".lib-row", { hasText: "Buch 1" });
+  await first.locator(".more").click();
+  await expect(first.getByRole("menuitem", { name: "Wieder prüfen lassen" })).toHaveCount(0);
+  await first.getByRole("menuitem", { name: /Passt so/ }).click();
+  await expect.poll(() => posted.length).toBe(1);
+  expect(posted[0]).toEqual({ paths: ["A/Buch 1"], undo: false });
+  // a settled book: the decision can be taken back
+  const second = page.locator(".lib-row", { hasText: "Buch 2" });
+  await second.locator(".more").click();
+  await expect(second.getByRole("menuitem", { name: /Passt so/ })).toHaveCount(0);
+  await second.getByRole("menuitem", { name: "Wieder prüfen lassen" }).click();
+  await expect.poll(() => posted.length).toBe(2);
+  expect(posted[1]).toEqual({ paths: ["A/Buch 2"], undo: true });
+  expect(errors).toEqual([]);
+});
+
 test("Bibliothek aufräumen: vier Kacheln mit Zahlen als Filter, Sortierung mit Richtung, Bewertung in der Zeile", async ({ page }) => {
   const errors = await open(page);
   const urls: string[] = [];
