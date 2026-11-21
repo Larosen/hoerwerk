@@ -267,8 +267,8 @@ function inviteRow(inv: Invite): HTMLLIElement {
       el("span", { class: "muted small" }, [
         inv.expires ? t("Gültig bis {date}", { date: date(inv.expires) }) : t("Ohne Ablauf"),
         inv.max_uses === 0 ? t("Für beliebig viele Personen") : plural(inv.max_uses, t("Für 1 Person"), t("Für {n} Personen", { n: inv.max_uses })),
-        inv.uses === 0 ? t("Noch niemand angemeldet") : plural(inv.uses, t("1 angemeldet"), t("{n} angemeldet", { n: inv.uses })),
-        inv.used_by.length ? t("von {names}", { names: inv.used_by.map((u) => u.name).join(", ") }) : "",
+        inv.uses === 0 ? t("Noch niemand angemeldet") : inv.used_by.length ? "" : plural(inv.uses, t("1 angemeldet"), t("{n} angemeldet", { n: inv.uses })),
+        inv.used_by.length ? t("angemeldet: {names}", { names: inv.used_by.map((u) => u.name).join(", ") }) : "",
       ].filter(Boolean).join(" · "))),
     el("span", { class: "muted small" }, t("Startrechte: {rights}", { rights: inviteRights(inv) })),
     active ? el("div", { class: "invite-link" }, input,

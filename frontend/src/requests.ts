@@ -79,7 +79,7 @@ function fmtLeft(s: string): string {
 
 function fmtMB(mb: number): string {
   const num = (n: number): string => n.toLocaleString(LOCALE, { maximumFractionDigits: 1 });
-  return mb >= 1024 ? `${num(mb / 1024)} GB` : `${Math.round(mb)} MB`;
+  return mb >= 1024 * 1024 ? `${num(mb / 1024 / 1024)} TB` : mb >= 1024 ? `${num(mb / 1024)} GB` : `${Math.round(mb)} MB`;
 }
 
 /** Delete a request – a running download is stopped, a running import cancelled; a book that is there can go too. */

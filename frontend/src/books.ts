@@ -551,7 +551,7 @@ function renderFilter(jobs: AudiobookJob[]): void {
   $("#bookFilter").replaceChildren(...BOOK_FILTERS.map(([k, label]) => el("button", {
     class: "chip" + (books.filter === k ? " on" : "") + (k === "review" && counts.review ? " attention" : ""),
     onclick: () => { books.filter = k; store.set("bookFilter", k); if (k === "unconverted") loadUnconverted(); renderBooks(); },
-  }, `${label} ${counts[k] || ""}`.trim())));
+  }, `${label} ${counts[k] ?? ""}`.trim())));
 }
 
 /** Title and author for the stand-in cover: the match, else "Author - Title" from the folder name. */
