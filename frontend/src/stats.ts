@@ -173,7 +173,8 @@ function personCard(u: UserStats, scale: number): HTMLElement {
   ];
   return el("li", { class: "person" + (u.books || u.listen?.seconds ? "" : " quiet") },
     u.id !== null ? el("a", { href: `/stats/${u.id}`, class: "person-card", title: t("Anfragen und Gehörtes von {name}", { name: u.name }) }, ...body)
-      : el("div", { class: "person-card" }, ...body));
+      : el("div", { class: "person-card" }, ...body,
+        IS_ADMIN && u.listener ? el("a", { href: "/settings/users", class: "btn small ghost", title: t("Einem Hörwerk-Konto zuordnen (Einstellungen → Konten)") }, t("Zuordnen")) : null));
 }
 
 function renderAll(s: StatsAll): void {
@@ -295,7 +296,8 @@ function renderAccount(d: StatsAccount, own: boolean): void {
   $("#statsHeard").replaceChildren(...(d.heard.length ? d.heard.map(heardItem)
     : [el("li", { class: "empty" }, linked ? t("Nichts gehört in diesem Zeitraum.")
       : own ? t("Noch nicht mit Audiobookshelf oder Plex verbunden – das geht unter „Konto“.")
-        : t("Nicht mit Audiobookshelf oder Plex verknüpft (Einstellungen → Konten)."))]));
+        : IS_ADMIN ? el("span", {}, t("Nicht mit Audiobookshelf oder Plex verknüpft – "), el("a", { href: "/settings/users" }, t("Einstellungen → Konten")))
+          : t("Nicht mit Audiobookshelf oder Plex verknüpft."))]));
 }
 
 /** Books per month: thin bars from the baseline, hover or tap shows the numbers. With ``mine``, the own part
