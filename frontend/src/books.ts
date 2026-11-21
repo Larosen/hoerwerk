@@ -1009,10 +1009,18 @@ function renderTiles(): void {
         loadLibraryBooks();
       } }, el("b", { class: "n" }, String(n)), el("span", { class: "l" }, tile.label()));
   });
+  // "Zuordnung" / "Angaben" open: all of them in one guided round (sure ones in one go, proposals to tick, the rest left)
+  const openTile = c.tiles.find((x) => x.key === books.libIssue);
+  const guided = (books.libIssue === "match" || books.libIssue === "details") && openTile && openTile.count > 0
+    ? el("div", { class: "tiles-guided" },
+      el("button", { type: "button", class: "btn small primary", onclick: () => { void enrichAllShown(); } }, icon("check"),
+        plural(openTile.count, t("Das Buch prüfen …"), t("Alle {n} prüfen …", { n: openTile.count }))),
+      el("span", { class: "muted small" }, t("Sichere Treffer werden auf einmal ergänzt, unsichere als Vorschlag gezeigt, der Rest lässt sich so belassen.")))
+    : null;
   box.replaceChildren(
     el("div", { class: "tiles-head" }, el("span", { class: "tiles-title" }, t("Zum Aufräumen")),
       el("span", { class: "muted small" }, status), again),
-    el("div", { class: "tiles" }, tiles));
+    el("div", { class: "tiles" }, tiles), guided || "");
 }
 
 /** The bar over the library: how many books are ticked, and the way to the chapter preview. */
@@ -1120,61 +1128,105 @@ function pickCover(b: LibraryBook): void {
 }
 
 interface EnrichChange { field: string; label: string; to: string; image?: boolean }
-interface EnrichPlan { status: string; match?: { title: string; source: string }; changes: EnrichChange[] }
+interface EnrichProposal { id: string; title: string; authors?: string[]; narrators?: string[]; source: string; score: number;
+  runtime_min?: number; release_date?: string | null; cover_url?: string | null }
+interface EnrichPlan { status: string; match?: { title: string; source: string }; changes: EnrichChange[]; proposal?: EnrichProposal | null }
 
-/** What Hörwerk can add to the chosen books where it is sure about the edition – and one click to add it to all. */
+const SOURCE_LABEL: Record<string, string> = { audible: "Audible", audnexus: "Audnexus", apple: "Apple Books", applemusic: "Apple Music",
+  dnb: "Deutsche Nationalbibliothek", openlibrary: "Open Library", musicbrainz: "MusicBrainz", bookbeat: "BookBeat", thalia: "Thalia" };
+
+/** Every book of the tidy-up tile that is open (all that match, not only the ones loaded): one guided round. */
+async function enrichAllShown(): Promise<void> {
+  try {
+    const res = await api<{ paths: string[] }>("GET", libraryUrl({ ids: true }));
+    if (!res.paths.length) return;
+    await previewEnrich(res.paths.map((path) => ({ path, title: path.split("/").pop() || path })));
+  } catch (e) { toast(errMsg(e), true); }
+}
+
+/** What Hörwerk can add to the chosen books where it is sure about the edition – one click adds it to all. Where it is
+ *  not sure, its best candidate is shown and can be taken over book by book; the rest can be left as it is. */
 async function previewEnrich(items: { path: string; title: string }[]): Promise<void> {
   const d = $<HTMLDialogElement>("#enrichDialog");
   const body = $("#enrichBody");
   const apply = $<HTMLButtonElement>("#enrichApply");
+  const settle = $<HTMLButtonElement>("#enrichSettle");
   apply.disabled = true;
-  body.replaceChildren(el("p", { class: "muted" }, t("Suche die richtige Fassung …")));
+  settle.hidden = true;
+  const progress = el("p", { class: "muted" }, t("Suche die richtige Fassung …"));
+  const list = el("div", {});
+  body.replaceChildren(progress, list);
   if (!d.open) d.showModal();
   let cancelled = false;
   d.addEventListener("close", () => { cancelled = true; }, { once: true });
-  const todo: string[] = [];
-  const left: string[] = [];          // nothing to add (or nothing sure): can be left as they are
-  const settle = $<HTMLButtonElement>("#enrichSettle");
-  settle.hidden = true;
-  const sections: HTMLElement[] = [];
-  for (const it of items) {
+  const todo: string[] = [];                                   // sure: added in one go
+  const picks = new Map<string, { id: string; box: HTMLInputElement }>();   // not sure: taken over when ticked
+  const left: string[] = [];                                   // nothing to add (or nothing sure): can be left as they are
+  const refresh = (): void => {
+    const chosen = [...picks.values()].filter((p) => p.box.checked).length;
+    apply.disabled = !todo.length && !chosen;
+    const rest = left.filter((p) => !picks.get(p)?.box.checked);
+    settle.hidden = !rest.length;
+  };
+  const note: Record<string, string> = {
+    complete: t("Nichts zu ergänzen"), unsure: t("Nicht sicher genug – Hörwerk ändert nichts. Über „Besser“ oder „Korrigieren“ prüfen oder so belassen"),
+    no_m4b: t("Noch keine M4B") };
+  for (const [i, it] of items.entries()) {
     if (cancelled) return;
+    if (items.length > 1) progress.textContent = t("Prüfe {n} von {total} …", { n: i + 1, total: items.length });
     const head = el("h3", {}, it.title);
-    let list: HTMLElement | null = null;
+    let detail: HTMLElement | null = null;
     try {
       const plan = await api<EnrichPlan>("POST", "/api/library/enrich", { path: it.path, apply: false });
       if (cancelled) return;
-      const note: Record<string, string> = {
-        complete: t("Nichts zu ergänzen"), unsure: t("Nicht sicher genug – Hörwerk ändert nichts. Über „Besser“ oder „Korrigieren“ prüfen oder so belassen"),
-        no_m4b: t("Noch keine M4B") };
       if (plan.changes.length) {
         head.append(" ", el("span", { class: "muted small" }, t("Fassung: {title}", { title: plan.match?.title || "" })));
-        list = el("ul", { class: "enrich-list" }, plan.changes.map((c) => el("li", {},
+        detail = el("ul", { class: "enrich-list" }, plan.changes.map((c) => el("li", {},
           c.image ? el("img", { class: "enrich-cover", alt: "", src: `/api/cover?u=${encodeURIComponent(c.to)}&w=300` }) : null,
           el("span", { class: "enrich-label" }, c.label),
           c.image ? el("span", { class: "plus" }, t("Cover aus dem Shop")) : el("span", { class: "plus" }, c.to))));
         todo.push(it.path);
+      } else if (plan.proposal) {
+        // not sure: the best candidate, to take over or not
+        const p = plan.proposal;
+        const box = el("input", { type: "checkbox", onchange: refresh });
+        picks.set(it.path, { id: p.id, box });
+        left.push(it.path);
+        head.append(" ", el("span", { class: "muted small" }, t("Nicht sicher – Vorschlag:")));
+        detail = el("label", { class: "check enrich-proposal" }, box,
+          p.cover_url ? el("img", { class: "enrich-cover", alt: "", src: `/api/cover?u=${encodeURIComponent(p.cover_url)}&w=300` }) : null,
+          el("span", {}, el("b", {}, p.title), " ",
+            el("span", { class: "muted small" }, [(p.authors || []).slice(0, 2).join(", "), SOURCE_LABEL[p.source] || p.source,
+              p.runtime_min ? fmtDuration(p.runtime_min * 60) : "", (p.release_date || "").slice(0, 4),
+              t("Treffer {n} %", { n: p.score })].filter(Boolean).join(" · ")),
+            " ", el("span", { class: "small" }, t("übernehmen"))));
       } else {
         head.append(" ", el("span", { class: "muted small" }, note[plan.status] || ""));
         left.push(it.path);
       }
     } catch (e) { head.append(" ", el("span", { class: "muted small" }, errMsg(e))); }
-    sections.push(el("section", { class: "chap-book" }, head, list));
+    list.append(el("section", { class: "chap-book" }, head, detail));
+    refresh();
   }
-  body.replaceChildren(...sections);
-  apply.disabled = !todo.length;
-  settle.hidden = !left.length;
-  settle.onclick = () => { d.close(); void settleBooks(left, false); };
+  progress.textContent = items.length > 1 ? plural(items.length, t("1 Hörbuch geprüft."), t("{n} Hörbücher geprüft.", { n: items.length })) : "";
+  refresh();
+  settle.onclick = () => { d.close(); void settleBooks(left.filter((p) => !picks.get(p)?.box.checked), false); };
   apply.onclick = async () => {
     apply.disabled = true;
-    let added = 0;
-    for (const [i, path] of todo.entries()) {
-      apply.textContent = t("Ergänze … ({n} von {total})", { n: i + 1, total: todo.length });
+    const chosen = [...picks.entries()].filter(([, p]) => p.box.checked);
+    const total = todo.length + chosen.length;
+    let added = 0, done = 0;
+    for (const path of todo) {
+      apply.textContent = t("Ergänze … ({n} von {total})", { n: ++done, total });
       try { added += (await api<{ added: number }>("POST", "/api/library/enrich", { path })).added; } catch (e) { toast(errMsg(e), true); }
+    }
+    for (const [path, p] of chosen) {
+      apply.textContent = t("Ergänze … ({n} von {total})", { n: ++done, total });
+      try { added += (await api<{ added: number }>("POST", "/api/library/enrich", { path, pick: p.id })).added; } catch (e) { toast(errMsg(e), true); }
     }
     apply.textContent = t("Ergänzen");
     toast(t("{n} Angaben ergänzt", { n: added }));
-    for (const p of todo) books.libPicked.delete(p);
+    for (const p of [...todo, ...chosen.map(([path]) => path)]) books.libPicked.delete(p);
     d.close();
     updateLibBar();
     loadLibraryBooks();

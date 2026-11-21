@@ -509,9 +509,13 @@ pub async fn enrich(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Repl
         return r;
     }
     let apply = req.get("apply") != &Value::Bool(false);
+    // the admin took over a proposed edition (its ASIN or id)
+    let pick = req.str("pick");
     let (a, r) = (app.clone(), rel.clone());
     let done = tokio::task::spawn_blocking(move || {
-        if apply {
+        if apply && !pick.is_empty() {
+            crate::enrich::apply_pick(&a, &r, &pick).map(|n| json!({"added": n}))
+        } else if apply {
             crate::enrich::apply(&a, &r).map(|n| json!({"added": n}))
         } else {
             crate::enrich::plan(&a, &r)

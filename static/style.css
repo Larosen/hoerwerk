@@ -1460,3 +1460,6 @@ table.users input.quota { width: 56px; }
 /* a confirmation that needs a word typed (deleting many books) */
 .typed-confirm .confirm-word { font-family: var(--mono); letter-spacing: .08em; }
 .typed-confirm .confirm-input { width: 100%; margin-top: 4px; text-transform: uppercase; }
+
+.tiles-guided { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+.enrich-proposal { display: flex; align-items: center; gap: 10px; white-space: normal; }

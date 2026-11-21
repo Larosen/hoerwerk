@@ -225,7 +225,9 @@ pub fn plan(app: &App, rel: &str) -> Result<Value, String> {
     }
     let book = media::read_book(&file);
     let Some(m) = candidate(app, &entry, &file, &book, false)? else {
-        return Ok(json!({"status": "unsure", "changes": []}));
+        // not sure: the best candidate is shown, the admin decides whether to take it over
+        let proposal = proposal_of(&ranked_for(app, &entry, &book, &file));
+        return Ok(json!({"status": "unsure", "changes": [], "proposal": proposal}));
     };
     let mut changes: Vec<Value> = gaps(&book, &m)
         .into_iter()
@@ -294,47 +296,137 @@ fn apply_inner(app: &Arc<App>, rel: &str, auto: bool) -> Result<Outcome, String>
     if !name.to_lowercase().ends_with(".m4b") {
         return Ok(Outcome::Skipped);
     }
-    let mut book = media::read_book(&file);
+    let book = media::read_book(&file);
     let Some(m) = candidate(app, &entry, &file, &book, auto)? else {
         return Ok(Outcome::Unsure);
     };
-    let mut added = 0;
-    for (key, _, new) in gaps(&book, &m) {
-        book[key] = new;
-        added += 1;
-    }
-    let mut cover: Option<Vec<u8>> = None;
-    if entry["cover"] != true
-        && !s(&m, "cover_url").is_empty()
-        && let Ok(Some(c)) = audible::fetch_image(s(&m, "cover_url"))
-    {
-        cover = Some(c);
-        added += 1;
-    }
+    let (added, book) = fill_from(app, rel, &entry, &folder, &file, book, &m, false)?;
     if added == 0 {
         return Ok(Outcome::Complete {
             source: s(&m, "source").to_string(),
         });
     }
-    let settings = Value::Object(app.settings());
-    // the tags are rewritten in place: same file, same place in the library; the picture stays when there is no new one
-    tagger::write_tags(&file, &book, &settings, cover.clone())?;
-    if let Some(c) = &cover {
-        let settings = app.settings();
-        let _ = tagger::write_sidecars(&folder, &book, &settings, Some(c));
-    }
-    if folder.join(tagger::METADATA_FILE).is_file() {
-        let dur = media::probe_cached(&file)["duration"].as_f64().unwrap_or(0.0);
-        let _ = tagger::write_abs_metadata(&folder, &book, &encoder::file_chapters(&file), dur);
-    }
-    app.library.refresh(rel);
-    app.health.recheck(app, rel);
     Ok(Outcome::Added {
         n: added,
         source: s(&m, "source").to_string(),
         asin: !s(&book, "asin").is_empty(),
         title: s(&m, "title").to_string(),
     })
+}
+
+/// Write what the edition `m` has and the book lacks (and a missing cover) into the book's M4B and metadata.json:
+/// (how many things were added, the book as written). `take_asin`: the admin chose this edition – its ASIN replaces
+/// the one the book had (a wrong link); otherwise an ASIN is only filled in where there is none.
+#[allow(clippy::too_many_arguments)]
+fn fill_from(
+    app: &Arc<App>,
+    rel: &str,
+    entry: &Value,
+    folder: &Path,
+    file: &Path,
+    mut book: Value,
+    m: &Value,
+    take_asin: bool,
+) -> Result<(usize, Value), String> {
+    let mut added = 0;
+    if take_asin && !s(m, "asin").is_empty() && !s(&book, "asin").eq_ignore_ascii_case(s(m, "asin")) {
+        book["asin"] = json!(s(m, "asin"));
+        added += 1;
+    }
+    for (key, _, new) in gaps(&book, m) {
+        book[key] = new;
+        added += 1;
+    }
+    let mut cover: Option<Vec<u8>> = None;
+    if entry["cover"] != true
+        && !s(m, "cover_url").is_empty()
+        && let Ok(Some(c)) = audible::fetch_image(s(m, "cover_url"))
+    {
+        cover = Some(c);
+        added += 1;
+    }
+    if added == 0 {
+        return Ok((0, book));
+    }
+    let settings = Value::Object(app.settings());
+    // the tags are rewritten in place: same file, same place in the library; the picture stays when there is no new one
+    tagger::write_tags(file, &book, &settings, cover.clone())?;
+    if let Some(c) = &cover {
+        let settings = app.settings();
+        let _ = tagger::write_sidecars(folder, &book, &settings, Some(c));
+    }
+    if folder.join(tagger::METADATA_FILE).is_file() {
+        let dur = media::probe_cached(file)["duration"].as_f64().unwrap_or(0.0);
+        let _ = tagger::write_abs_metadata(folder, &book, &encoder::file_chapters(file), dur);
+    }
+    app.library.refresh(rel);
+    app.health.recheck(app, rel);
+    Ok((added, book))
+}
+
+/// All editions the lookup finds for a book, best first (also the ones below any threshold).
+fn ranked_for(app: &App, entry: &Value, book: &Value, file: &Path) -> Vec<Value> {
+    let region = app
+        .settings()
+        .get("ab_region")
+        .and_then(Value::as_str)
+        .filter(|r| !r.is_empty())
+        .unwrap_or("de")
+        .to_string();
+    let dur = media::probe_cached(file)["duration"].as_f64().unwrap_or(0.0);
+    app.providers.lookup(&lookup_hints(entry, book, dur), &region, true).0
+}
+
+/// The id a candidate is picked by: its ASIN, else the source's own id ("dnb:…", "apple:…").
+fn pick_id(m: &Value) -> String {
+    let asin = s(m, "asin");
+    if asin.is_empty() {
+        s(m, "id").to_string()
+    } else {
+        asin.to_string()
+    }
+}
+
+/// The best candidate for a book Hörwerk is not sure about – shown to the admin to take over or not (only when it
+/// is at least a plausible match).
+fn proposal_of(ranked: &[Value]) -> Option<Value> {
+    let m = ranked.first()?;
+    let score = m["match"]["score"].as_f64().unwrap_or(0.0);
+    (score >= PROPOSAL_MIN && !pick_id(m).is_empty()).then(|| {
+        json!({"id": pick_id(m), "title": m["title"], "authors": m["authors"], "narrators": m["narrators"],
+               "source": m["source"], "asin": m["asin"], "score": (score * 100.0).round(), "runtime_min": m["runtime_min"],
+               "release_date": m["release_date"], "cover_url": m["cover_url"]})
+    })
+}
+
+/// Below this a candidate is not worth showing at all.
+const PROPOSAL_MIN: f64 = 0.5;
+
+/// The admin took over a proposed edition (`pick` = its ASIN or id): it is written into the book like a sure match,
+/// its ASIN replacing a wrong one. Returns how many things were added.
+pub fn apply_pick(app: &Arc<App>, rel: &str, pick: &str) -> Result<usize, String> {
+    let entry = app.library.entry(rel).ok_or_else(|| t("Nicht gefunden", &[]))?;
+    let folder = app.cfg.library.join(rel);
+    let audio = media::collect_audio(&folder);
+    let [name] = audio.as_slice() else {
+        return Err(t("Daten ergänzen geht nur bei einer einzelnen M4B", &[]));
+    };
+    if !name.to_lowercase().ends_with(".m4b") {
+        return Err(t("Daten ergänzen geht nur bei einer einzelnen M4B", &[]));
+    }
+    let file = folder.join(name);
+    let book = media::read_book(&file);
+    let ranked = ranked_for(app, &entry, &book, &file);
+    let m = ranked
+        .iter()
+        .find(|m| pick_id(m).eq_ignore_ascii_case(pick))
+        .cloned()
+        .ok_or_else(|| t("Der Vorschlag ist nicht mehr zu finden – bitte neu prüfen", &[]))?;
+    let (added, _) = fill_from(app, rel, &entry, &folder, &file, book, &m, true)?;
+    if added > 0 {
+        crate::mediaservers::request_scans(app);
+    }
+    Ok(added)
 }
 
 #[cfg(test)]
