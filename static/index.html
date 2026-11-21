@@ -544,7 +544,7 @@
       <label class="check"><input type="checkbox" id="dlHideDone"> Fertige ausblenden</label>
       <button id="dlClear" class="btn small" type="button" title="Fertige und fehlgeschlagene Downloads aus dem Verlauf entfernen">Fertige aufräumen</button>
     </div>
-    <ul id="dlList" class="job-list dl-list"><li class="empty">–</li></ul>
+    <ul id="dlList" class="job-list dl-list"><li class="empty">Lade …</li></ul>
     <p class="muted small">Nur die Hörbuch-Kategorie. Aufräumen entfernt Einträge aus dem SABnzbd-Verlauf, die Dateien bleiben.</p>
     </div>
     <div class="dialog-body page-body" data-page="logs">
@@ -883,7 +883,7 @@
     <div class="person-follow">
       <div class="row gap wrap">
         <button type="button" class="btn small primary" id="personFollow">Folgen</button>
-        <label class="check"><input type="checkbox" id="personAuto" checked> Neue Hörbücher automatisch anfragen</label>
+        <label class="check"><input type="checkbox" id="personAuto"> Neue Hörbücher automatisch anfragen (sonst nur Hinweis unter Entdecken → Gefolgt)</label>
       </div>
       <p class="muted small" id="personFollowState"></p>
     </div>
@@ -893,7 +893,7 @@
         <label><input type="radio" name="personLang" value="en"><span>Englisch</span></label>
         <label><input type="radio" name="personLang" value=""><span>Alle</span></label>
       </div>
-      <button type="button" class="btn small" id="personAll">Alle fehlenden</button><button type="button" class="btn small" id="personNone">Keine</button>
+      <button type="button" class="btn small" id="personAll">Alle fehlenden</button><button type="button" class="btn small" id="personNone">Auswahl leeren</button>
     </div>
     <p class="muted small" id="personInfo"></p>
     <div id="personBooks" class="series-volumes"></div>

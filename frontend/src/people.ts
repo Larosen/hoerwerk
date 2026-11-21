@@ -47,7 +47,7 @@ async function openPerson(kind: PersonKind, name: string, language: string): Pro
   const count = (): void => {
     const n = rows.filter((r) => r.cb.checked).length;
     ok.disabled = !n;
-    ok.textContent = plural(n, t("1 Hörbuch anfragen"), t("{n} Hörbücher anfragen", { n }));
+    ok.textContent = n ? plural(n, t("1 Hörbuch anfragen"), t("{n} Hörbücher anfragen", { n })) : t("Anfragen");
   };
   const showFollow = (): void => {
     const f = res?.follow;

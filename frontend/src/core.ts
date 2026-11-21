@@ -232,6 +232,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = {}, ..
     else if (c != null && c !== false) n.append(typeof c === "number" ? String(c) : c);
   };
   children.forEach(add);
+  // an icon-only button names itself for screen readers by its tooltip
+  if (tag === "button" && n.title && !n.hasAttribute("aria-label") && !(n.textContent || "").trim()) n.setAttribute("aria-label", n.title);
   return n;
 }
 
