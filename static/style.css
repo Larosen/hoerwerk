@@ -1456,3 +1456,7 @@ table.users input.quota { width: 56px; }
 /* Statistik: the full height of the bars is marked with its value (the bars start at 0) */
 .month-chart .axis-top { position: absolute; top: 18px; left: 0; right: 0; border-top: 1px dashed var(--border); pointer-events: none; }
 .month-chart .axis-top span { position: absolute; left: 0; bottom: 2px; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* a confirmation that needs a word typed (deleting many books) */
+.typed-confirm .confirm-word { font-family: var(--mono); letter-spacing: .08em; }
+.typed-confirm .confirm-input { width: 100%; margin-top: 4px; text-transform: uppercase; }

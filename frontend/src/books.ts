@@ -216,6 +216,8 @@ function renderLibrary(list: HTMLElement): void {
   q.addEventListener("input", () => {
     books.libQuery = q.value;
     books.libShown = 100;
+    books.libPicked.clear();          // a selection belongs to what was shown: another search starts empty
+    updateLibBar();
     clearTimeout(books.libTimer);
     books.libTimer = setTimeout(loadLibraryBooks, 250);
   });
@@ -997,6 +999,9 @@ function renderTiles(): void {
     return el("button", { type: "button", class: "tile" + (on ? " on" : "") + (n || on ? "" : " none"), "aria-pressed": String(on), title: tile.hint(),
       onclick: () => {
         books.libIssue = on ? "" : tile.key;
+        // a selection belongs to the list it was made in: another tile starts empty (no 119 out of 111)
+        books.libPicked.clear();
+        updateLibBar();
         // badly rated: the worst first
         if (!on && tile.key === "lowrated") { books.libSort = "rating"; store.set("librarySort", books.libSort); books.drawSort?.(); }
         books.libShown = 100;
@@ -1039,8 +1044,10 @@ function updateLibBar(): void {
       onclick: () => previewEnrich(items()) }, icon("check"), t("Ergänzen")),
     el("button", { type: "button", class: "btn small", title: t("Die Bücher sind so richtig (eigene Aufnahmen, Mitschnitte, Bücher ohne Hörbuch im Handel): Hörwerk schlägt dafür nichts mehr vor und lässt sie in Ruhe"),
       onclick: () => { void settleBooks([...books.libPicked], false); } }, icon("check"), t("Passt so")),
-    el("button", { type: "button", class: "btn small ghost danger", title: t("Ausgewählte Hörbücher löschen"), onclick: () => deleteSelected() },
-      icon("x"), t("Löschen")),
+    // (nearly) the whole library ticked: no delete button – that is a click nobody means
+    nearlyAll(n) ? el("span", { class: "muted small", title: t("Mehr als 80 % der Bibliothek ausgewählt – Löschen geht nur für kleinere Auswahlen") }, t("Löschen gesperrt"))
+      : el("button", { type: "button", class: "btn small ghost danger", title: t("Ausgewählte Hörbücher löschen"), onclick: () => deleteSelected() },
+        icon("x"), t("Löschen")),
     ...(n < books.libMatch ? [all] : []),
     el("button", { type: "button", class: "btn small ghost", title: t("Auswahl aufheben"), "aria-label": t("Auswahl aufheben"),
       onclick: () => { books.libPicked.clear(); tick(false); updateLibBar(); } }, icon("x")));
@@ -1050,6 +1057,12 @@ function updateLibBar(): void {
 function libraryUrl(o: { ids?: boolean } = {}): string {
   const q = `q=${encodeURIComponent(books.libQuery)}&sort=${books.libSort}&issue=${encodeURIComponent(books.libIssue)}`;
   return o.ids ? `/api/library/books?${q}&ids=1` : `/api/library/books?${q}&limit=${books.libShown}`;
+}
+
+/** More than 20 books and more than 80 % of the library: too close to "everything" to offer deleting (a small
+ *  library can still be emptied on purpose). */
+function nearlyAll(n: number): boolean {
+  return n > 20 && books.libTotal !== null && n >= books.libTotal * 0.8;
 }
 
 /** "Passt so": these books are right as they are – no match, no missing details are suggested any more, and the
@@ -1070,11 +1083,13 @@ async function settleBooks(paths: string[], undo: boolean): Promise<void> {
 /** Delete the ticked books (moved to `_ersetzt` or deleted, as set for replaced originals) – after asking once. */
 async function deleteSelected(): Promise<void> {
   const paths = [...books.libPicked];
-  if (!paths.length) return;
-  if (!(await confirmBox(plural(paths.length,
+  if (!paths.length || nearlyAll(paths.length)) return;
+  const question = plural(paths.length,
     t("1 Hörbuch aus der Bibliothek löschen? Je nach Einstellung landet es unter _ersetzt im Eingang oder wird gelöscht."),
-    t("{n} Hörbücher aus der Bibliothek löschen? Je nach Einstellung landen sie unter _ersetzt im Eingang oder werden gelöscht.", { n: paths.length })),
-    t("Löschen")))) return;
+    t("{n} Hörbücher aus der Bibliothek löschen? Je nach Einstellung landen sie unter _ersetzt im Eingang oder werden gelöscht.", { n: paths.length }));
+  // more than ten: a word has to be typed – one click must never empty a shelf
+  const sure = paths.length > 10 ? await confirmTyped(question, t("Löschen")) : await confirmBox(question, t("Löschen"));
+  if (!sure) return;
   try {
     const res = await api<{ deleted: number; failed: { path: string; error: string }[] }>("POST", "/api/library/delete", { paths });
     toast(plural(res.deleted, t("1 Hörbuch gelöscht"), t("{n} Hörbücher gelöscht", { n: res.deleted })), res.failed.length ? true : undefined);
@@ -1163,6 +1178,7 @@ async function previewEnrich(items: { path: string; title: string }[]): Promise<
     d.close();
     updateLibBar();
     loadLibraryBooks();
+    loadCheck();                      // the tile counts follow what was just completed
   };
 }
 

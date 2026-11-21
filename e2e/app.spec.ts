@@ -153,13 +153,13 @@ test("Bibliothek: eigenes Cover hochladen, Daten für die Auswahl ergänzen", as
   expect(errors).toEqual([]);
 });
 
-test("Bibliothek: alle auswählen (auch die noch nicht geladenen) und die Auswahl löschen", async ({ page }) => {
+test("Bibliothek: alle auswählen (auch die noch nicht geladenen) – dann ist Löschen gesperrt; viele löschen nur mit einem Wort", async ({ page }) => {
   const errors = await open(page);
   const mk = (n: number) => ({ path: `A/Buch ${n}`, title: `Buch ${n}`, authors: ["A"], series: null, series_position: null, asin: null, format: "m4b", files: 1 });
   await page.route("**/api/library/books?*", (r) => {
     const url = new URL(r.request().url());
     if (url.searchParams.get("ids") === "1") return r.fulfill({ json: { total: 250, paths: Array.from({ length: 250 }, (_, i) => `A/Buch ${i + 1}`) } });
-    return r.fulfill({ json: { total: 250, books: [mk(1), mk(2)] } });
+    return r.fulfill({ json: { total: 250, books: Array.from({ length: 12 }, (_, i) => mk(i + 1)) } });
   });
   let deleted: string[] = [];
   await page.route("**/api/library/delete", async (r) => {
@@ -168,14 +168,28 @@ test("Bibliothek: alle auswählen (auch die noch nicht geladenen) und die Auswah
   });
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
-  await page.locator("#libBar").getByRole("button", { name: "Alle (250)" }).click();      // all matches, not just the two shown
+  await page.locator("#libBar").getByRole("button", { name: "Alle (250)" }).click();      // all matches, not just the ones shown
   await expect(page.locator("#confirmText")).toContainText("Alle 250 Treffer auswählen?");  // asked once before
   await page.locator("#confirmOk").click();
   await expect(page.locator("#libBar .sel-n")).toHaveText("250");
-  await expect(page.locator(".lib-row .lib-check input:checked")).toHaveCount(2);
+  // the whole library: no delete button at all
+  await expect(page.locator("#libBar").getByRole("button", { name: "Löschen" })).toHaveCount(0);
+  await expect(page.locator("#libBar")).toContainText("Löschen gesperrt");
+  await page.locator("#libBar").getByRole("button", { name: "Auswahl aufheben" }).click();
+  // twelve books: deleting needs the word that is asked for
+  for (const cb of await page.locator(".lib-row .lib-check input").all()) await cb.check();
+  await expect(page.locator("#libBar .sel-n")).toHaveText("12");
   await page.locator("#libBar").getByRole("button", { name: "Löschen" }).click();
-  await page.locator("#confirmDialog").getByRole("button", { name: "Löschen" }).click();
-  await expect.poll(() => deleted.length).toBe(250);
+  const dialog = page.locator("dialog.typed-confirm");
+  await expect(dialog).toBeVisible();
+  const ok = dialog.getByRole("button", { name: "Löschen" });
+  await expect(ok).toBeDisabled();
+  await dialog.locator("input").fill("falsch");
+  await expect(ok).toBeDisabled();
+  const word = (await dialog.locator(".confirm-word").textContent()) || "";
+  await dialog.locator("input").fill(word.toLowerCase());                                   // upper or lower case: the same word
+  await ok.click();
+  await expect.poll(() => deleted.length).toBe(12);
   await expect(page.locator("#libBar .sel-n")).toHaveCount(0);                              // selection cleared
   expect(errors).toEqual([]);
 });
