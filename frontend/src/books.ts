@@ -558,14 +558,15 @@ function isTrouble(j: AudiobookJob): boolean {
 }
 
 function renderFilter(jobs: AudiobookJob[]): void {
-  const counts: Record<BookFilter, number> = {
+  // null = not loaded yet: no number (a "0" would claim an empty library)
+  const counts: Record<BookFilter, number | null> = {
     all: jobs.length,
     review: jobs.filter((j) => j.status === "review").length,
     active: jobs.filter((j) => isActive(j.status)).length,
     done: jobs.filter((j) => j.status === "done").length,
     failed: jobs.filter(isTrouble).length,
-    unconverted: books.unconverted ? books.unconverted.length : 0,
-    library: books.libTotal ?? 0,
+    unconverted: books.unconverted ? books.unconverted.length : null,
+    library: books.libTotal ?? null,
   };
   $("#bookFilter").replaceChildren(...BOOK_FILTERS.map(([k, label]) => el("button", {
     class: "chip" + (books.filter === k ? " on" : "") + (k === "review" && counts.review ? " attention" : ""),
