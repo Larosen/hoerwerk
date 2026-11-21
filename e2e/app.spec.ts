@@ -169,6 +169,8 @@ test("Bibliothek: alle auswählen (auch die noch nicht geladenen) und die Auswah
   await page.locator("nav.tabs").getByRole("link", { name: /Hörbücher/ }).click();
   await page.locator("#bookFilter").getByRole("button", { name: /Bibliothek/ }).click();
   await page.locator("#libBar").getByRole("button", { name: "Alle (250)" }).click();      // all matches, not just the two shown
+  await expect(page.locator("#confirmText")).toContainText("Alle 250 Treffer auswählen?");  // asked once before
+  await page.locator("#confirmOk").click();
   await expect(page.locator("#libBar .sel-n")).toHaveText("250");
   await expect(page.locator(".lib-row .lib-check input:checked")).toHaveCount(2);
   await page.locator("#libBar").getByRole("button", { name: "Löschen" }).click();
