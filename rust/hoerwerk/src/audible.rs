@@ -420,6 +420,21 @@ fn opt_str(v: &str) -> Value {
 }
 
 /// Audible catalog product -> flat book used everywhere else.
+/// A title or series name without shop clutter: "(ungekürzt)", "[German Edition] 1", "(Ein Harry-Hole-Krimi 14)".
+pub fn tidy_title(title: &str) -> String {
+    let mut t = title.trim().to_string();
+    for _ in 0..3 {
+        let before = t.clone();
+        t = sub(rx!(r"(?i)\s*[\(\[]\s*(?:un)?gekürzte?(?:\s+(?:lesung|fassung|hörbuchfassung))?\s*[\)\]]\s*$"), &t, "");
+        t = sub(rx!(r"(?i)\s*\[[^\]]*\b(?:edition|ausgabe)\b[^\]]*\]\s*\d*\s*$"), &t, "");
+        t = sub(rx!(r"\s*\(Ein [^()]*(?:Krimi|Thriller|Roman|Fall)[^()]*\)\s*$"), &t, "");
+        if t == before {
+            break;
+        }
+    }
+    if t.is_empty() { title.trim().to_string() } else { t }
+}
+
 pub fn normalize_product(p: &Value, region: &str) -> Value {
     let names: Vec<String> = p["authors"]
         .as_array()
@@ -486,9 +501,9 @@ pub fn normalize_product(p: &Value, region: &str) -> Value {
         .collect();
     let asin = s(p, "asin");
     json!({
-        "id": p["asin"], "asin": p["asin"], "title": s(p, "title").trim(),
+        "id": p["asin"], "asin": p["asin"], "title": tidy_title(s(p, "title")),
         "subtitle": opt_str(s(p, "subtitle").trim()), "authors": authors, "translators": translators, "narrators": narrators,
-        "series": series["title"], "series_asin": series["asin"], "series_position": series_position(&series["sequence"]),
+        "series": series["title"].as_str().map_or(Value::Null, |x| json!(tidy_title(x))), "series_asin": series["asin"], "series_position": series_position(&series["sequence"]),
         "all_series": series_list.iter().map(|x| json!({"name": x["title"], "position": series_position(&x["sequence"])})).collect::<Vec<_>>(),
         "publisher": p["publisher_name"], "release_date": opt_str(&release), "language": capitalize(s(p, "language")),
         "runtime_min": num(&p["runtime_length_min"]) as i64, "format_type": p["format_type"], "genres": genres, "tags": tags,
@@ -1984,6 +1999,14 @@ pub fn auto_match(ranked: &[Value], threshold: f64) -> Option<Value> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn tidy_titles() {
+        assert_eq!(super::tidy_title("VIEWS (Ungekürzt)"), "VIEWS");
+        assert_eq!(super::tidy_title("Messer (Ein Harry-Hole-Krimi 14)"), "Messer");
+        assert_eq!(super::tidy_title("Reihe [German Edition] 1"), "Reihe");
+        assert_eq!(super::tidy_title("Der Schimmelreiter"), "Der Schimmelreiter");
+    }
+
     const DNB_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/"><numberOfRecords>3</numberOfRecords><records>
 <record><recordData><record xmlns="http://www.loc.gov/MARC21/slim">
