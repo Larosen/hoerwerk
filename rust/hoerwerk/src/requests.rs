@@ -909,17 +909,20 @@ impl Requests {
 
     /// (judged releases, queries asked, errors). A typed query is searched as it is (in all spellings);
     /// otherwise round by round – broader only while nothing fits.
-    fn find(app: &App, req: &Value, query: Option<&str>) -> Result<Found, UsenetError> {
+    /// `direct`: the indexers are asked themselves (a new request, the release window). False for the repeated
+    /// search of an old request: indexers in feed mode are then searched on their daily copy.
+    fn find(app: &App, req: &Value, query: Option<&str>, direct: bool) -> Result<Found, UsenetError> {
         let res = match query {
-            Some(q) => app.usenet.search(q, "", &[], true, 6, false)?,
+            Some(q) => app.usenet.search_mode(q, "", &[], true, 6, false, direct)?,
             None => {
                 let fits = |found: &[Value]| Self::judge(app, req, found).iter().any(|r| r["verdict"]["ok"] == true);
-                app.usenet.search_stages(
+                app.usenet.search_stages_mode(
                     &releases::search_stages(&req["book"]),
                     &fits,
                     "",
                     releases::SEARCH_BUDGET,
                     false,
+                    direct,
                 )?
             }
         };
@@ -946,7 +949,7 @@ impl Requests {
         let typed = cut(query.trim(), 200);
         let typed = (!typed.is_empty()).then_some(typed);
         let (mut ranked, queries, errors, resting) =
-            Self::find(app, &req, typed.as_deref()).map_err(|e| RequestError {
+            Self::find(app, &req, typed.as_deref(), true).map_err(|e| RequestError {
                 message: e.to_string(),
                 status: 502,
             })?;
@@ -1039,7 +1042,10 @@ impl Requests {
             self.editions_of(app, &mut req);
             req = self.save(app, &req, None, "");
         }
-        let (ranked, queries, errors, resting) = match Self::find(app, &req, None) {
+        // the first search of a request asks the indexers themselves (an older book is not in their newest releases);
+        // the repeated ones search the daily copy of the indexers in feed mode
+        let direct = req["last_search"].is_null();
+        let (ranked, queries, errors, resting) = match Self::find(app, &req, None, direct) {
             Ok(x) => x,
             Err(e) => {
                 text::warn(
@@ -1416,6 +1422,14 @@ impl Requests {
                 .collect()
         };
         let mut activity: Option<Vec<Value>> = None;
+        // the daily read of the indexers in feed mode (one read each, not one search per request): the time of the
+        // newest copy – every old request is searched on it once, a few per round
+        let feed_at = if ids.is_empty() {
+            0.0
+        } else {
+            app.usenet.refresh_feeds()
+        };
+        let mut fresh_feed_searches = 0;
         // after a daily limit reset only a few requests search per round, so they do not all use up the fresh limit at once
         let mut rested_searches = 0;
         for rid in ids {
@@ -1430,12 +1444,17 @@ impl Requests {
                     // an indexer rested (daily limit): search again right after midnight, not hours later
                     let rested = req["resting"].as_array().is_some_and(|r| !r.is_empty())
                         && crate::text::next_local_midnight(last) + 120.0 <= now();
+                    // an old request (searched before) meets a copy of the indexers that is newer than its last search
+                    let new_copy = last > 0.0 && feed_at > last;
                     if rested {
                         if rested_searches < 2 {
                             rested_searches += 1;
                             self.search(app, rid);
                         }
                     } else if last < now() - interval_hours(app) as f64 * 3600.0 {
+                        self.search(app, rid);
+                    } else if new_copy && fresh_feed_searches < FEED_SEARCHES_PER_ROUND {
+                        fresh_feed_searches += 1;
                         self.search(app, rid);
                     }
                 }
@@ -1676,6 +1695,9 @@ impl Requests {
         n
     }
 }
+
+/// Old requests searched on a fresh daily copy of the indexers per round (the rest follows in the next rounds).
+const FEED_SEARCHES_PER_ROUND: usize = 20;
 
 pub fn interval_hours(app: &App) -> i64 {
     app.settings()

@@ -958,7 +958,7 @@ pub struct Usenet {
 }
 
 /// How often a feed-mode indexer is read, how many pages (and releases per page), how long releases are kept.
-const FEED_EVERY: f64 = 20.0 * 3600.0;
+const FEED_EVERY: f64 = 24.0 * 3600.0;
 const FEED_PAGES: usize = 5;
 const FEED_PER_PAGE: usize = 100;
 const FEED_KEEP_DAYS: f64 = 30.0;
@@ -1283,6 +1283,8 @@ impl Usenet {
     /// Search for the query (plus `extra`), in all umlaut spellings (`variants` = false: exactly these). With a
     /// preferred indexer only that one is asked – the others follow when it found nothing, or at once with
     /// `everywhere`. The answer names who was asked (`asked`) and who was not needed (`skipped`).
+    /// A search somebody asked for (the search page, the release window, a new request): every indexer is asked
+    /// itself, also the ones in feed mode.
     pub fn search(
         &self,
         query: &str,
@@ -1291,6 +1293,22 @@ impl Usenet {
         variants: bool,
         limit: usize,
         everywhere: bool,
+    ) -> Result<Value> {
+        self.search_mode(query, language, extra, variants, limit, everywhere, true)
+    }
+
+    /// `direct` false: the repeated search for an old request – indexers in feed mode are not asked, their daily
+    /// copy is searched instead.
+    #[allow(clippy::too_many_arguments)]
+    pub fn search_mode(
+        &self,
+        query: &str,
+        language: &str,
+        extra: &[String],
+        variants: bool,
+        limit: usize,
+        everywhere: bool,
+        direct: bool,
     ) -> Result<Value> {
         let mut tiers = self.tiers();
         if tiers.is_empty() {
@@ -1308,7 +1326,7 @@ impl Usenet {
         let mut it = tiers.into_iter();
         while let Some(tier) = it.next() {
             asked.extend(names(&tier));
-            out = self.search_in(&tier, query, language, extra, variants, limit)?;
+            out = self.search_in(&tier, query, language, extra, variants, limit, direct)?;
             errors.extend(out["errors"].as_array().cloned().unwrap_or_default());
             resting.extend(out["resting"].as_array().cloned().unwrap_or_default());
             if out["results"].as_array().is_some_and(|r| !r.is_empty()) {
@@ -1371,6 +1389,39 @@ impl Usenet {
         Ok(items)
     }
 
+    /// The daily read of all indexers in feed mode: each one whose copy is a day old (or missing) is read once – the
+    /// newest releases of its audiobook categories, a few pages – and the time of the newest read is returned (0 =
+    /// no indexer in feed mode). The caller then searches its old requests on the fresh copies. An indexer that is
+    /// resting or answers with an error is asked again later (an hour after a failure), not at every call.
+    pub fn refresh_feeds(&self) -> f64 {
+        let mut newest = 0.0f64;
+        for idx in self.tiers().into_iter().flatten().filter(|i| i.feed) {
+            let key = format!("feed:{}", idx.id);
+            let fetched = |me: &Self| me.db.get(&key).and_then(|v| v["fetched"].as_f64()).unwrap_or(0.0);
+            if self.paused(&idx.name) <= 0.0 {
+                match self.feed_items(&idx) {
+                    Ok(_) => {
+                        if idx.used_up() {
+                            self.pause(&idx.name, UNTIL_MIDNIGHT);
+                        }
+                    }
+                    Err(UsenetError::RateLimited(_, wait)) => self.pause(&idx.name, wait),
+                    Err(UsenetError::Failed(e)) => {
+                        crate::text::warn("Indexer", &e);
+                        if fetched(self) == 0.0 {
+                            // nothing read yet: try again in an hour, not every few minutes
+                            let _ = self
+                                .db
+                                .put(&key, &json!({"fetched": now() - FEED_EVERY + 3600.0, "items": []}));
+                        }
+                    }
+                }
+            }
+            newest = newest.max(fetched(self));
+        }
+        newest
+    }
+
     /// A search on the stored feed: every word of the query must be in the release name.
     fn feed_search(&self, idx: &Newznab<'_>, query: &str, limit: usize) -> Result<Vec<Value>> {
         let words = feed_words(query);
@@ -1388,6 +1439,7 @@ impl Usenet {
             .collect())
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn search_in(
         &self,
         indexers: &[Newznab<'_>],
@@ -1396,6 +1448,7 @@ impl Usenet {
         extra: &[String],
         variants: bool,
         limit: usize,
+        direct: bool,
     ) -> Result<Value> {
         let mut queries: Vec<String> = Vec::new();
         for q in std::iter::once(query.to_string()).chain(extra.iter().filter(|e| !e.trim().is_empty()).cloned()) {
@@ -1426,7 +1479,7 @@ impl Usenet {
                             if self.paused(&idx.name) > 0.0 {
                                 break;
                             }
-                            let searched = if idx.feed {
+                            let searched = if idx.feed && !direct {
                                 self.feed_search(idx, q, 100)
                             } else {
                                 idx.search_with(q, 100, i == 0)
@@ -1546,6 +1599,19 @@ impl Usenet {
         budget: usize,
         everywhere: bool,
     ) -> Result<Value> {
+        self.search_stages_mode(stages, fits, language, budget, everywhere, true)
+    }
+
+    /// Like `search_stages`; with `direct` false the indexers in feed mode are searched on their daily copy.
+    pub fn search_stages_mode(
+        &self,
+        stages: &[Vec<String>],
+        fits: &dyn Fn(&[Value]) -> bool,
+        language: &str,
+        budget: usize,
+        everywhere: bool,
+        direct: bool,
+    ) -> Result<Value> {
         let mut tiers = self.tiers();
         if tiers.is_empty() {
             return fail(t("Noch kein Indexer eingerichtet", &[]));
@@ -1563,7 +1629,7 @@ impl Usenet {
         let mut it = tiers.into_iter();
         while let Some(tier) = it.next() {
             who.extend(names(&tier));
-            let res = self.stages_in(&tier, stages, fits, language, budget, &mut results)?;
+            let res = self.stages_in(&tier, stages, fits, language, budget, &mut results, direct)?;
             rounds += res.0;
             for e in res.1 {
                 if !errors.contains(&e) {
@@ -1593,6 +1659,7 @@ impl Usenet {
     }
 
     /// The rounds on one group of indexers; results are added to `results`.
+    #[allow(clippy::too_many_arguments)]
     fn stages_in(
         &self,
         indexers: &[Newznab<'_>],
@@ -1601,6 +1668,7 @@ impl Usenet {
         language: &str,
         budget: usize,
         results: &mut Vec<(String, Value)>,
+        direct: bool,
     ) -> Result<Rounds> {
         let mut errors: Vec<String> = Vec::new();
         let mut resting: Vec<String> = Vec::new();
@@ -1617,7 +1685,7 @@ impl Usenet {
             if todo.is_empty() {
                 continue;
             }
-            let res = self.search_in(indexers, &todo[0], language, &todo[1..], false, todo.len())?;
+            let res = self.search_in(indexers, &todo[0], language, &todo[1..], false, todo.len(), direct)?;
             rounds += 1;
             asked.extend(todo);
             for e in res["errors"].as_array().into_iter().flatten().filter_map(Value::as_str) {
@@ -1876,13 +1944,17 @@ mod tests {
             &json!({"indexers": [{"name": "A", "url": "https://a.example", "apikey": "k1", "feed": true}], "sab": {}}),
         );
         let hit = u
-            .search("Theodor Storm Schimmelreiter", "", &[], false, 5, false)
+            .search_mode("Theodor Storm Schimmelreiter", "", &[], false, 5, false, false)
             .unwrap();
         assert_eq!(hit["results"].as_array().unwrap().len(), 1);
         assert!(hit["results"][0]["title"].as_str().unwrap().contains("Schimmelreiter"));
-        let other = u.search("Frisch Homo Faber", "", &[], false, 5, false).unwrap();
+        let other = u
+            .search_mode("Frisch Homo Faber", "", &[], false, 5, false, false)
+            .unwrap();
         assert_eq!(other["results"].as_array().unwrap().len(), 1);
-        let none = u.search("Unbekannt Buch", "", &[], false, 5, false).unwrap();
+        let none = u
+            .search_mode("Unbekannt Buch", "", &[], false, 5, false, false)
+            .unwrap();
         assert!(none["results"].as_array().unwrap().is_empty());
         // three searches, one read of the feed – no search term in the call
         let calls = calls.lock().unwrap();
@@ -1892,6 +1964,56 @@ mod tests {
             "{}",
             calls[0]
         );
+    }
+
+    /// The daily read: one read of the newest releases per indexer in feed mode, however often it is called; old
+    /// requests are then searched on that copy without a call, a new request asks the indexer itself.
+    #[test]
+    fn the_daily_read_is_one_call_and_a_new_request_asks_the_indexer_itself() {
+        crate::text::set_language("de");
+        let calls = Arc::new(Mutex::new(Vec::<String>::new()));
+        let log = calls.clone();
+        let u = Usenet::with_getter(
+            Db::memory(),
+            Box::new(move |url: &str| {
+                if url.contains("t=caps") {
+                    return Ok(br#"<caps><categories><category id="3000" name="Audio"><subcat id="3030" name="Audiobook"/></category></categories></caps>"#.to_vec());
+                }
+                log.lock().unwrap().push(url.to_string());
+                // the feed has a new release; asked for a title, the indexer knows an older one as well
+                let item = if url.contains("q=") {
+                    r#"<item><title>Max.Frisch-Stiller.GERMAN.AUDIOBOOK</title><link>https://a.example/nzb/9</link><newznab:attr name="size" value="100000000"/><newznab:attr name="category" value="3030"/></item>"#
+                } else {
+                    r#"<item><title>Theodor.Storm-Der.Schimmelreiter.GERMAN.AUDIOBOOK</title><link>https://a.example/nzb/1</link><newznab:attr name="size" value="300000000"/><newznab:attr name="category" value="3030"/></item>"#
+                };
+                Ok(format!(r#"<rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/"><channel>{item}</channel></rss>"#).into_bytes())
+            }),
+        );
+        u.update_config(
+            &json!({"indexers": [{"name": "A", "url": "https://a.example", "apikey": "k1", "feed": true}], "sab": {}}),
+        );
+        // no indexer in feed mode: nothing to read
+        let plain = Usenet::with_getter(Db::memory(), Box::new(|_: &str| Ok(Vec::new())));
+        plain
+            .update_config(&json!({"indexers": [{"name": "B", "url": "https://b.example", "apikey": "k"}], "sab": {}}));
+        assert_eq!(plain.refresh_feeds(), 0.0);
+        // the daily read: once, however often it is asked, and the time of the copy is known
+        let first = u.refresh_feeds();
+        assert!(first > 0.0);
+        assert_eq!(u.refresh_feeds(), first);
+        assert_eq!(calls.lock().unwrap().len(), 1, "{:?}", calls.lock().unwrap());
+        // an old request: searched on the copy – no call
+        let old = u
+            .search_mode("Storm Schimmelreiter", "", &[], false, 5, false, false)
+            .unwrap();
+        assert_eq!(old["results"].as_array().unwrap().len(), 1);
+        assert_eq!(calls.lock().unwrap().len(), 1);
+        // a new request: the indexer is asked itself, with the title
+        let new = u.search("Frisch Stiller", "", &[], false, 5, false).unwrap();
+        assert_eq!(new["results"].as_array().unwrap().len(), 1);
+        let calls = calls.lock().unwrap();
+        assert_eq!(calls.len(), 2);
+        assert!(calls[1].contains("q=Frisch"), "{}", calls[1]);
     }
 
     #[test]
