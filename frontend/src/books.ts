@@ -132,7 +132,7 @@ function renderBooks(): void {
   clear.textContent = books.hideDone ? t("Fertige einblenden") : t("Fertige ausblenden");
   const jobs = d.jobs.filter((j) => books.filter === "all" ? !(books.hideDone && j.status === "done")
     : (books.filter === "active" ? isActive(j.status)
-      : books.filter === "failed" ? ["failed", "cancelled"].includes(j.status) : j.status === books.filter));
+      : books.filter === "failed" ? isTrouble(j) : j.status === books.filter));
   // new in the inbox, not started yet: visible right away, so nobody wonders whether the download arrived
   if (["all", "active"].includes(books.filter)) {
     for (const w of d.waiting) {
@@ -533,13 +533,18 @@ function renderInbox(d: AudiobooksStatus): void {
   box.replaceChildren(...parts);
 }
 
+/** An error to look at: failed, or stopped by hand – not a double that was dropped on purpose. */
+function isTrouble(j: AudiobookJob): boolean {
+  return j.status === "failed" || (j.status === "cancelled" && !j.duplicate);
+}
+
 function renderFilter(jobs: AudiobookJob[]): void {
   const counts: Record<BookFilter, number> = {
     all: jobs.length,
     review: jobs.filter((j) => j.status === "review").length,
     active: jobs.filter((j) => isActive(j.status)).length,
     done: jobs.filter((j) => j.status === "done").length,
-    failed: jobs.filter((j) => ["failed", "cancelled"].includes(j.status)).length,
+    failed: jobs.filter(isTrouble).length,
     unconverted: books.unconverted ? books.unconverted.length : 0,
     library: books.libTotal ?? 0,
   };
@@ -584,7 +589,7 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
   if (isActive(j.status) || j.status === "review") {
     tools.append(el("button", { class: "btn small ghost", onclick: () => bookAction(j, "cancel") }, t("Abbrechen")));
   }
-  if (["failed", "cancelled"].includes(j.status)) {
+  if (isTrouble(j)) {
     tools.append(el("button", { class: "btn small", onclick: () => bookAction(j, "retry") }, t("Erneut versuchen")));
   }
   if (j.hints?.request_conflict && j.status === "review") {
