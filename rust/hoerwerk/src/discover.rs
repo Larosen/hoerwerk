@@ -944,6 +944,22 @@ fn for_you(env: &dyn Env, seeds: Vec<Value>) -> Vec<Value> {
         .collect()
 }
 
+/// The names a book of this genre may carry: the genre's own and those of its subgenres. Empty = unknown.
+fn genre_names(env: &dyn Env, region: &str, genre: &str) -> HashSet<String> {
+    let mut out = HashSet::new();
+    for g in env.genres(region).unwrap_or_default() {
+        let kids = g["children"].as_array().cloned().unwrap_or_default();
+        if s(&g, "id") == genre {
+            out.insert(s(&g, "name").to_string());
+            out.extend(kids.iter().map(|c| s(c, "name").to_string()));
+        } else if let Some(c) = kids.iter().find(|c| s(c, "id") == genre) {
+            out.insert(s(c, "name").to_string());
+            out.insert(s(&g, "name").to_string()); // books often carry only the parent's name
+        }
+    }
+    out
+}
+
 /// Best sellers, best rated and new releases of a genre; small genres are filled up with books rated just as
 /// well by fewer listeners.
 fn genre_list(env: &dyn Env, genre: &str) -> Result<Vec<Value>, AudibleError> {
@@ -956,12 +972,19 @@ fn genre_list(env: &dyn Env, genre: &str) -> Result<Vec<Value>, AudibleError> {
         ("BestSellers", 2),
         ("AvgRating", 2),
     ];
+    // the shop's category list also holds books of other genres (a romance among the thrillers): only books
+    // whose own genres name this genre or one of its subgenres stay (books without genre data are kept)
+    let wanted = genre_names(env, &region, genre);
     for (n, (sort, page)) in fetches.iter().enumerate() {
         if n >= 3 && strict.len() >= GENRE_MIN {
             break;
         }
         for b in env.genre_products(&region, genre, sort, 50, *page)? {
             let asin = s(&b, "asin");
+            let own = strs(&b["genres"]);
+            if !wanted.is_empty() && !own.is_empty() && !own.iter().any(|g| wanted.contains(g)) {
+                continue;
+            }
             if strict.iter().chain(loose.iter()).any(|x| s(x, "asin") == asin) {
                 continue;
             }
