@@ -744,13 +744,7 @@ fn refresh_with(env: &Arc<dyn Env>, section: &str, genre: &str, wait: bool, seed
                 } else {
                     "Audible".into()
                 };
-                text::warn(
-                    "Entdecken",
-                    &t(
-                        "Entdecken: {source} nicht erreichbar: {error}",
-                        &[("source", &source), ("error", &e)],
-                    ),
-                );
+                text::warn("Entdecken", &unreachable(&source, &e));
                 let mut old = entry(&*env2, &key);
                 old.insert("time".into(), json!(now()));
                 old.insert("error".into(), json!(e));
@@ -1047,6 +1041,22 @@ fn reviews_from(env: &dyn Env, source: &str, raw: &[u8], kind: &str) -> Result<V
     Ok(out)
 }
 
+/// The log line for a source that failed. A 429 comes from Audible (the lookups of the reviewed books), not from the
+/// source itself: it says so, because Audible only asks to slow down.
+fn unreachable(source: &str, error: &str) -> String {
+    if error.contains("429") {
+        t(
+            "Entdecken: {source}: Audible bremst gerade (zu viele Anfragen) – die Suche geht später weiter",
+            &[("source", source)],
+        )
+    } else {
+        t(
+            "Entdecken: {source} nicht erreichbar: {error}",
+            &[("source", source), ("error", error)],
+        )
+    }
+}
+
 /// Books of the best-of list PDFs not read yet (each PDF once; a failed one is tried again the next day).
 fn best_lists(env: &dyn Env, page: &str) -> Vec<Value> {
     let mut done = env
@@ -1107,13 +1117,7 @@ fn critics(env: &dyn Env) -> Result<Vec<Value>, String> {
             }
             Err(e) => {
                 errors.push(format!("{source}: {e}"));
-                text::warn(
-                    "Entdecken",
-                    &t(
-                        "Entdecken: {source} nicht erreichbar: {error}",
-                        &[("source", source), ("error", &e)],
-                    ),
-                );
+                text::warn("Entdecken", &unreachable(source, &e));
                 continue;
             }
         };

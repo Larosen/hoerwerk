@@ -579,7 +579,7 @@ function bookCard(j: AudiobookJob): HTMLLIElement {
       ].filter(Boolean).join(" · ")) : null,
       el("div", { class: "book-msg" }, j.status === "failed" ? j.error || j.message : j.message),
       isActive(j.status) ? el("div", { class: "bar" }, el("i", { style: `width:${pct}%` })) : null,
-      j.status === "done" && j.dest ? el("div", { class: "book-dest" }, "→ ", el("code", {}, j.dest)) : null,
+      j.status === "done" && j.dest && !(j.message || "").includes(j.dest) ? el("div", { class: "book-dest" }, "→ ", el("code", {}, j.dest)) : null,
       j.status === "failed" && j.dest ? el("div", { class: "book-dest" }, "Originale: ", el("code", {}, j.dest)) : null,
     ),
   );

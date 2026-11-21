@@ -44,7 +44,10 @@ function renderBench(): void {
   $("#workbenchCount").textContent = items.length ? String(items.length) : "";
   $("#workbenchHead").setAttribute("href", items[0]?.href || (IS_ADMIN ? "/books" : "/requests"));
   if (!items.length) {
-    $("#workbenchList").replaceChildren(el("li", { class: "wb-empty muted small" }, t("Gerade nichts in Arbeit")));
+    const trouble = IS_ADMIN && books.data ? books.data.jobs.filter(isTrouble).length : 0;
+    $("#workbenchList").replaceChildren(el("li", { class: "wb-empty muted small" }, t("Gerade nichts in Arbeit")),
+      ...(trouble ? [el("li", { class: "wb-more" }, el("a", { href: "/books", onclick: () => { books.filter = "failed"; store.set("bookFilter", "failed"); } },
+        plural(trouble, t("1 Fehler"), t("{n} Fehler", { n: trouble }))))] : []));
     return;
   }
   const shown = items.slice(0, BENCH_MAX);
