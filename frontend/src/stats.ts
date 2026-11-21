@@ -115,11 +115,22 @@ function resetStatsParts(): void {
 }
 
 /** Hours heard per month – the same bars as the requests chart, the month with the most in brass. */
+/** The note of a chart plus the explanation of the highlighted month, as sentences. */
+function withPeakHint(note: string): string {
+  const hint = t("Der Monat mit dem höchsten Wert ist farbig hervorgehoben, seine Zahl steht darüber.");
+  return note ? `${note.replace(/[.\s]+$/, "")}. ${hint}` : hint;
+}
+
+/** The scale of a bar chart: a dashed line at the full height of the bars with its value, bars start at the baseline (0). */
+function axisTop(value: string): HTMLElement {
+  return el("div", { class: "axis-top", "aria-hidden": "true" }, el("span", {}, value));
+}
+
 function renderListenChart(rows: ListenMonth[] | undefined, note: string): void {
   const any = (rows || []).some((r) => r.seconds > 0);
   $("#statsListenBox").hidden = !any;
   if (!any || !rows) return;
-  $("#statsListenNote").textContent = [note, t("Der Monat mit dem höchsten Wert ist farbig hervorgehoben, seine Zahl steht darüber.")].filter(Boolean).join(" ");
+  $("#statsListenNote").textContent = withPeakHint(note);
   const hours = rows.map((r) => r.seconds / 3600);
   const max = Math.max(...hours, 0.01);
   const peak = hours.indexOf(Math.max(...hours));
@@ -131,7 +142,7 @@ function renderListenChart(rows: ListenMonth[] | undefined, note: string): void 
       i === peak && h ? el("span", { class: "peak" }, h < 10 ? h.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) : String(Math.round(h))) : null);
     return el("div", { class: "col", tabindex: "0", title: `${monthName(r.month, true)}: ${fmtListen(r.seconds)}`,
       "aria-label": `${monthName(r.month, true)}: ${fmtListen(r.seconds)}` }, el("div", { class: "plot" }, bar), el("span", { class: "label" }, monthName(r.month)));
-  }));
+  }), axisTop(t("{n} Std.", { n: max < 10 ? max.toLocaleString(LOCALE, { maximumFractionDigits: 1 }) : String(Math.round(max)) })));
 }
 
 /** The genres as one ribbon, the shares in a legend: what was heard when anyone's listening is known, else what was asked for. */
@@ -304,7 +315,7 @@ function renderAccount(d: StatsAccount, own: boolean): void {
  *  of each bar is darker (one series split in two, not two series side by side). */
 function renderMonthChart(months: MonthRow[], head: string, note: string, mine = false): void {
   $("#statsChartHead").textContent = head;
-  $("#statsChartNote").textContent = [note, t("Der Monat mit dem höchsten Wert ist farbig hervorgehoben, seine Zahl steht darüber.")].filter(Boolean).join(" ");
+  $("#statsChartNote").textContent = withPeakHint(note);
   const max = Math.max(1, ...months.map((m) => m.books));
   const peak = months.reduce((a, b) => (b.books > a.books ? b : a), months[0]);
   const chart = $("#statsChart");
@@ -331,7 +342,7 @@ function renderMonthChart(months: MonthRow[], head: string, note: string, mine =
     for (const ev of ["mouseenter", "focus"]) col.addEventListener(ev, () => show(m, bar));
     for (const ev of ["mouseleave", "blur"]) col.addEventListener(ev, () => { tip.hidden = true; });
     return col;
-  }), tip);
+  }), tip, axisTop(String(max)));
   $("#statsMonthRows").replaceChildren(...months.slice().reverse().map((m) =>
     el("tr", {}, el("td", {}, monthName(m.month, true)),
       el("td", { class: "num" }, mine ? `${m.books} (${m.mine || 0})` : String(m.books)), el("td", { class: "num" }, fmtHours(m.minutes)))));

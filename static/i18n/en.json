@@ -847,6 +847,7 @@
  "Ganze Reihe": "Whole series",
  "Höchstens {n} Bände auf einmal": "At most {n} books at once",
  "Keine": "None",
+ "{n} Std.": "{n} h",
  "Für Indexer mit Tageslimit: Hörwerk liest einmal täglich die neuesten Einträge und sucht die Anfragen darin, statt jede Anfrage einzeln beim Indexer zu suchen": "For indexers with a daily limit: Hörwerk reads the newest releases once a day and searches the requests in that copy, instead of searching the indexer for every request",
  "Sammelabruf": "Bulk read",
  "Nur die Anfrage löschen – das Hörbuch bleibt": "Delete only the request – the audiobook stays",
