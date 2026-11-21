@@ -108,6 +108,22 @@ pub fn judge(entry: &Value, book: &Value, chapters: &[Chapter], duration: f64, n
     out.into_iter().map(str::to_string).collect()
 }
 
+/// The findings a person (or the tool, when it is sure there is nothing to do) can settle for a book: what is
+/// settled is not shown, not offered for tidying up and not touched by the automatic matching.
+pub const SETTLEABLE: [&str; 5] = ["no_asin", "runtime_off", "no_cover", "no_year", "no_narrator"];
+const SETTLED_KEY: &str = "library_settled";
+/// What the tool settled by itself (nothing sure to add) is looked at again after this long – new releases appear;
+/// what an admin or an uploaded cover settled stays.
+const AUTO_SETTLED_FOR: f64 = 14.0 * 86400.0;
+
+/// A decision about a book: which findings are settled, by whom ("admin", "cover", "auto") and when.
+#[derive(Clone)]
+struct Settled {
+    codes: Vec<String>,
+    why: String,
+    at: f64,
+}
+
 #[derive(Clone)]
 struct Item {
     mtime: f64,
@@ -130,7 +146,7 @@ pub fn runtime_off(duration_s: f64, audible_min: i64) -> bool {
 impl Item {
     /// Score and findings including the online one: the length compared with Audible's (known once the Audible
     /// data of the book was fetched).
-    fn effective(&self, runtimes: &HashMap<String, i64>) -> (i64, Vec<String>) {
+    fn effective(&self, runtimes: &HashMap<String, i64>, settled: &[String]) -> (i64, Vec<String>) {
         let mut issues = self.issues.clone();
         if self.other {
             issues.retain(|i| i != "no_asin");
@@ -138,12 +154,14 @@ impl Item {
         if runtimes.get(&self.asin).is_some_and(|m| runtime_off(self.duration, *m)) {
             issues.push("runtime_off".to_string());
         }
+        issues.retain(|i| !settled.contains(i));
         (score_of(&issues), issues)
     }
 }
 
 pub struct Health {
     items: Mutex<HashMap<String, Item>>,
+    settled: Mutex<HashMap<String, Settled>>,
     running: AtomicBool,
     stop: AtomicBool,
     progress: Mutex<(usize, usize)>,
@@ -175,8 +193,27 @@ impl Health {
                 );
             }
         }
+        let mut settled = HashMap::new();
+        if let Some(map) = db.get(SETTLED_KEY).as_ref().and_then(Value::as_object) {
+            for (path, v) in map {
+                settled.insert(
+                    path.clone(),
+                    Settled {
+                        codes: v["c"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|x| x.as_str().map(str::to_string))
+                            .collect(),
+                        why: v["w"].as_str().unwrap_or("admin").to_string(),
+                        at: v["t"].as_f64().unwrap_or(0.0),
+                    },
+                );
+            }
+        }
         Health {
             items: Mutex::new(items),
+            settled: Mutex::new(settled),
             running: AtomicBool::new(false),
             stop: AtomicBool::new(false),
             progress: Mutex::new((0, 0)),
@@ -187,12 +224,94 @@ impl Health {
         self.items.lock().unwrap_or_else(|p| p.into_inner())
     }
 
+    fn lock_settled(&self) -> std::sync::MutexGuard<'_, HashMap<String, Settled>> {
+        self.settled.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
+    /// The findings that are settled for a book right now (what the tool settled by itself runs out after a while).
+    fn settled_codes(&self, rel: &str) -> Vec<String> {
+        match self.lock_settled().get(rel) {
+            Some(s) if s.why != "auto" || text::now() - s.at < AUTO_SETTLED_FOR => s.codes.clone(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// The books a person decided about.
+    pub fn settled_by_hand(&self) -> std::collections::HashSet<String> {
+        self.lock_settled()
+            .iter()
+            .filter(|(_, s)| s.why != "auto" && !s.codes.is_empty())
+            .map(|(p, _)| p.clone())
+            .collect()
+    }
+
+    /// Settle findings of a book. `why`: "admin" (said so), "cover" (uploaded an own cover: the book is the
+    /// admin's own work) or "auto" (the tool looked and has nothing sure to add). A decision by hand is never
+    /// replaced by an automatic one, only widened.
+    pub fn settle(&self, db: &Db, rel: &str, codes: &[&str], why: &str) {
+        {
+            let mut all = self.lock_settled();
+            let entry = all.entry(rel.to_string()).or_insert_with(|| Settled {
+                codes: Vec::new(),
+                why: why.to_string(),
+                at: text::now(),
+            });
+            for c in codes {
+                if !entry.codes.iter().any(|x| x == c) {
+                    entry.codes.push((*c).to_string());
+                }
+            }
+            if why != "auto" || entry.why == "auto" {
+                entry.why = if why == "auto" {
+                    entry.why.clone()
+                } else {
+                    why.to_string()
+                };
+            }
+            entry.at = text::now();
+        }
+        self.save_settled(db);
+    }
+
+    /// The book is to be looked at again like any other (an admin took the decision back).
+    pub fn unsettle(&self, db: &Db, rel: &str) {
+        self.lock_settled().remove(rel);
+        self.save_settled(db);
+    }
+
+    fn save_settled(&self, db: &Db) {
+        let map: serde_json::Map<String, Value> = self
+            .lock_settled()
+            .iter()
+            .map(|(p, s)| (p.clone(), json!({"c": s.codes, "w": s.why, "t": s.at})))
+            .collect();
+        let _ = db.put(SETTLED_KEY, &Value::Object(map));
+    }
+
+    /// Books whose Audible length contradicts the file and that nobody settled: the file is probably another work
+    /// than the linked edition.
+    pub fn mismatched(&self, runtimes: &HashMap<String, i64>) -> Vec<String> {
+        let mut out: Vec<String> = self
+            .lock()
+            .iter()
+            .filter(|(p, i)| {
+                i.effective(runtimes, &self.settled_codes(p))
+                    .1
+                    .iter()
+                    .any(|c| c == "runtime_off")
+            })
+            .map(|(p, _)| p.clone())
+            .collect();
+        out.sort();
+        out
+    }
+
     /// path -> (score, findings) of the books looked at so far; `runtimes` (asin -> Audible's minutes) adds the
     /// online finding where Audible's data is known.
     pub fn snapshot(&self, runtimes: &HashMap<String, i64>) -> HashMap<String, (i64, Vec<String>)> {
         self.lock()
             .iter()
-            .map(|(p, i)| (p.clone(), i.effective(runtimes)))
+            .map(|(p, i)| (p.clone(), i.effective(runtimes, &self.settled_codes(p))))
             .collect()
     }
 
@@ -226,12 +345,16 @@ impl Health {
         let mut out: Vec<String> = self
             .lock()
             .iter()
-            .filter(|(_, i)| {
-                i.issues.iter().any(|c| match c.as_str() {
-                    "no_asin" => !i.other,
-                    "no_cover" | "no_year" | "no_narrator" => true,
-                    _ => false,
-                })
+            .filter(|(p, i)| {
+                let settled = self.settled_codes(p);
+                i.issues
+                    .iter()
+                    .filter(|c| !settled.contains(c))
+                    .any(|c| match c.as_str() {
+                        "no_asin" => !i.other,
+                        "no_cover" | "no_year" | "no_narrator" => true,
+                        _ => false,
+                    })
             })
             .map(|(p, _)| p.clone())
             .collect();
@@ -265,8 +388,9 @@ impl Health {
         let runtimes = app.ratings.runtimes();
         let mut counts: HashMap<&str, usize> = HashMap::new();
         let mut n = 0;
-        for (_, i) in items.iter().filter(|(p, _)| known.contains(*p)) {
-            let (_, issues) = i.effective(&runtimes);
+        for (p, i) in items.iter().filter(|(p, _)| known.contains(*p)) {
+            let settled = self.settled_codes(p);
+            let (_, issues) = i.effective(&runtimes, &settled);
             n += 1;
             for g in ["chapters", "details", "match"] {
                 if in_group(&issues, g) {
@@ -465,9 +589,56 @@ mod tests {
             duration: 3600.0,
             other: false,
         };
-        assert_eq!(item.effective(&HashMap::new()).1, ["no_asin", "no_cover"]);
+        assert_eq!(item.effective(&HashMap::new(), &[]).1, ["no_asin", "no_cover"]);
         item.other = true; // found at the national library or Apple Music: not an Audible book
-        assert_eq!(item.effective(&HashMap::new()).1, ["no_cover"]);
+        assert_eq!(item.effective(&HashMap::new(), &[]).1, ["no_cover"]);
+    }
+
+    #[test]
+    fn what_is_settled_is_not_a_finding_any_more() {
+        let item = Item {
+            mtime: 0.0,
+            score: 60,
+            issues: vec!["no_asin".into(), "no_cover".into(), "no_year".into(), "chapters".into()],
+            asin: String::new(),
+            duration: 3600.0,
+            other: false,
+        };
+        // "fine as it is": the match and the details are settled, the chapters are another task
+        let settled: Vec<String> = SETTLEABLE.iter().map(|c| c.to_string()).collect();
+        assert_eq!(item.effective(&HashMap::new(), &settled).1, ["chapters"]);
+        // a length that contradicts Audible is settled as well
+        let mut runtimes = HashMap::new();
+        let with_asin = Item {
+            asin: "B0X".into(),
+            issues: vec![],
+            ..item.clone()
+        };
+        runtimes.insert("B0X".to_string(), 600);
+        assert_eq!(with_asin.effective(&runtimes, &[]).1, ["runtime_off"]);
+        assert!(with_asin.effective(&runtimes, &settled).1.is_empty());
+    }
+
+    #[test]
+    fn a_decision_by_hand_stays_and_one_by_the_tool_runs_out() {
+        let db = Db::memory();
+        let health = Health::new(&db);
+        health.settle(&db, "A/Buch", &["no_asin"], "auto");
+        assert_eq!(health.settled_codes("A/Buch"), ["no_asin"]);
+        assert!(!health.settled_by_hand().contains("A/Buch"));
+        // the tool's own decision runs out after two weeks
+        health.lock_settled().get_mut("A/Buch").unwrap().at -= 15.0 * 86400.0;
+        assert!(health.settled_codes("A/Buch").is_empty());
+        // an admin's stays, and the tool cannot take it over or shorten it
+        health.settle(&db, "A/Buch", &["no_asin", "no_year"], "admin");
+        health.settle(&db, "A/Buch", &["no_narrator"], "auto");
+        health.lock_settled().get_mut("A/Buch").unwrap().at -= 400.0 * 86400.0;
+        assert_eq!(health.settled_codes("A/Buch"), ["no_asin", "no_year", "no_narrator"]);
+        assert!(health.settled_by_hand().contains("A/Buch"));
+        // it survives a restart
+        assert!(Health::new(&db).settled_by_hand().contains("A/Buch"));
+        health.unsettle(&db, "A/Buch");
+        assert!(health.settled_codes("A/Buch").is_empty());
     }
 
     #[test]
@@ -489,8 +660,8 @@ mod tests {
             other: false,
         };
         let runtimes: HashMap<String, i64> = [("B1".to_string(), 600)].into();
-        assert_eq!(item.effective(&runtimes), (75, vec!["runtime_off".to_string()]));
-        assert_eq!(item.effective(&HashMap::new()), (100, vec![]));
+        assert_eq!(item.effective(&runtimes, &[]), (75, vec!["runtime_off".to_string()]));
+        assert_eq!(item.effective(&HashMap::new(), &[]), (100, vec![]));
     }
 
     #[test]

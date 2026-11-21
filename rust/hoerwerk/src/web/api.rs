@@ -137,6 +137,7 @@ fn handler_for(method: &str, path: &str) -> Handler {
         ("GET", "/api/library/check") => h!(super::library::check_status),
         ("POST", "/api/library/check") => h!(super::library::check_run),
         ("POST", "/api/library/enrich") => h!(super::library::enrich),
+        ("POST", "/api/library/settle") => h!(super::library::settle),
         ("GET", "/api/library/ratings") => h!(super::library::ratings_status),
         ("POST", "/api/library/ratings") => h!(super::library::ratings_run),
         ("POST", "/api/upload") => h!(super::upload::start),
