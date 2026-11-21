@@ -368,7 +368,7 @@ function renderUnconverted(list: HTMLElement): void {
   list.append(bar);
   // the whole library in the background: one book after the other, one core, lowest priority
   const tr = books.trickle;
-  const toggle = el("button", { type: "button", class: "btn small" + (tr?.on ? "" : " primary"),
+  const toggle = el("button", { type: "button", class: "btn small" + (tr?.on ? "" : " primary"), disabled: !tr?.on && tr?.left === 0,
     onclick: async () => {
       try {
         books.trickle = await api<Trickle>("POST", "/api/library/trickle", { on: !tr?.on });

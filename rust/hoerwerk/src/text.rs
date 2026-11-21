@@ -207,8 +207,12 @@ pub fn log(level: &str, source: &str, text: &str) {
 
 /// Into the log the app shows; `echo` = false when the line is printed elsewhere already.
 pub fn log_entry(level: &str, source: &str, text: &str, echo: bool) {
+    use unicode_normalization::UnicodeNormalization;
     let level = if LEVELS.contains(&level) { level } else { "info" };
     let time = now();
+    // file names from macOS-style folders arrive decomposed (u + ¨): shown composed
+    let (source, text): (String, String) = (source.nfc().collect(), text.nfc().collect());
+    let (source, text) = (source.as_str(), text.as_str());
     {
         let mut l = LOG.lock().unwrap_or_else(|p| p.into_inner());
         l.seq += 1;

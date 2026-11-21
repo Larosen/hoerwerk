@@ -1649,6 +1649,7 @@
  "NZB-Datei hochladen …": "Upload NZB file …",
  "Selbst gefunden? Die NZB geht an SABnzbd, das Hörbuch wird dieser Anfrage zugeordnet.": "Found it yourself? The NZB goes to SABnzbd, the audiobook is linked to this request.",
  "das vorhandene Hörbuch liegt im selben Ordner": "the existing audiobook is in the same folder",
+ "sieht nach einer anderen Fassung aus (Hörspiel oder andere Sprecher)": "looks like another edition (radio play or other narrators)",
  "Bitte eine .nzb-Datei wählen": "Please choose a .nzb file",
  "Doppel aus der Bibliothek entfernt: {path}": "Second copy removed from the library: {path}",
  "Doppel blieb in der Bibliothek: {error}": "Second copy stayed in the library: {error}",

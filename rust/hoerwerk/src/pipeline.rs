@@ -1669,9 +1669,20 @@ impl Pipeline {
                 let rel = rel_to(&source, &real(&self.library));
                 let kept = s(&dup, "path");
                 let inside = kept == rel || kept.starts_with(&format!("{}/", rel.trim_end_matches('/')));
+                // a reading next to a radio play (or another narrator) is another edition, never a double
+                let other = app
+                    .library
+                    .entry(&rel)
+                    .zip(app.library.entry(kept))
+                    .is_some_and(|(own, kept)| crate::library::other_edition(&own, &kept));
                 let result = if inside || rel.is_empty() {
                     Err(PipeError::Refused(t(
                         "das vorhandene Hörbuch liegt im selben Ordner",
+                        &[],
+                    )))
+                } else if other {
+                    Err(PipeError::Refused(t(
+                        "sieht nach einer anderen Fassung aus (Hörspiel oder andere Sprecher)",
                         &[],
                     )))
                 } else {
