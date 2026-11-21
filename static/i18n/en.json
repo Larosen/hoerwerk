@@ -848,6 +848,8 @@
  "Ganze Reihe": "Whole series",
  "Höchstens {n} Bände auf einmal": "At most {n} books at once",
  "Keine": "None",
+ "Andere Fassung in der Bibliothek: „{title}“, gelesen von {names}": "Other edition in the library: “{title}”, read by {names}",
+ "Andere Fassung in der Bibliothek: „{title}“": "Other edition in the library: “{title}”",
  "Auswahl leeren": "Clear selection",
  "Neue Hörbücher automatisch anfragen (sonst nur Hinweis unter Entdecken → Gefolgt)": "Request new audiobooks automatically (otherwise only a note under Discover → Following)",
  "Kommt mit dem Paket „{release}“": "Comes with the pack “{release}”",
