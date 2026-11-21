@@ -1177,7 +1177,7 @@ a.person-card:hover { border-color: var(--accent); background: var(--panel-2); }
 @media (display-mode: standalone) { body { overscroll-behavior-y: none; } }
 
 /* The colour of the book (from its cover) tints the card around it – the picture sits in its surroundings, not on top */
-.tint-card:is(li, button, div) { background: color-mix(in srgb, var(--panel), var(--c, var(--panel)) var(--tint)); border-color: color-mix(in srgb, var(--border), var(--c, var(--border)) 32%); transition: background .3s, border-color .3s; }
+.tint-card:is(li, button, div) { background: color-mix(in srgb, var(--panel), var(--c, hsl(30 8% 38%)) var(--tint)); border-color: color-mix(in srgb, var(--border), var(--c, hsl(30 8% 38%)) 32%); transition: background .3s, border-color .3s; }
 @media (prefers-reduced-motion: reduce) { .tint-card { transition: none; } }
 
 /* ===== Details of one audiobook: column (wide) or sheet (narrow) ===== */
