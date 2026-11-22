@@ -1117,6 +1117,27 @@ pub fn rank(books: &[Value], hints: &Value) -> Vec<Value> {
     out
 }
 
+/// Rank candidates, those found by the ISBN first: the number names the very book, so its score is raised (as long as
+/// the title is not something else entirely) and `match.isbn` is set.
+pub fn rank_with_isbn(books: &[Value], hints: &Value) -> Vec<Value> {
+    let mut out = rank(books, hints);
+    for b in out.iter_mut().filter(|b| b["isbn_hit"] == true) {
+        let title = b["match"]["title"].as_f64().unwrap_or(0.0);
+        let unnamed = s(hints, "title").is_empty() && s(hints, "query").is_empty();
+        if title >= ISBN_TITLE_MIN || unnamed {
+            b["match"]["isbn"] = json!(true);
+            let score = sc(b).max(ISBN_SCORE);
+            b["match"]["score"] = json!(score);
+        }
+    }
+    out.sort_by(|a, b| sc(b).partial_cmp(&sc(a)).unwrap_or(std::cmp::Ordering::Equal));
+    out
+}
+
+/// A hit by ISBN counts as this score – above every threshold – when its title fits at least this well.
+const ISBN_SCORE: f64 = 0.97;
+pub const ISBN_TITLE_MIN: f64 = 0.6;
+
 /// The top candidate if it is confident and clearly ahead of the runner-up.
 pub fn best_match(ranked: &[Value], threshold: f64) -> Option<Value> {
     let top = ranked.first()?;
@@ -1349,7 +1370,7 @@ fn host_ok(url: &str) -> bool {
     url.to_lowercase().starts_with("https://")
         && matches!(
             hostname(url).to_lowercase().as_str(),
-            "api.audnex.us" | "itunes.apple.com" | "openlibrary.org" | "services.dnb.de"
+            "api.audnex.us" | "itunes.apple.com" | "openlibrary.org" | "services.dnb.de" | "musicbrainz.org"
         )
 }
 
@@ -1659,6 +1680,39 @@ pub fn from_itunes_album(d: &Value, runtime_min: i64) -> Value {
     )
 }
 
+/// A MusicBrainz release (a CD, found by its barcode) as a candidate; `runtime_min` is the sum of its tracks.
+pub fn from_musicbrainz(r: &Value, runtime_min: i64) -> Value {
+    let id = s(r, "id");
+    let authors: Vec<String> = r["artist-credit"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|a| {
+            a["name"]
+                .as_str()
+                .or_else(|| a["artist"]["name"].as_str())
+                .map(str::to_string)
+        })
+        .filter(|n| !n.is_empty() && !n.eq_ignore_ascii_case("various artists"))
+        .collect();
+    let label = r["label-info"]
+        .as_array()
+        .and_then(|l| l.first())
+        .and_then(|l| l["label"]["name"].as_str())
+        .unwrap_or("");
+    let date: String = s(r, "date").chars().take(10).collect();
+    book(
+        "musicbrainz",
+        json!({
+            "id": format!("musicbrainz:{id}"), "title": s(r, "title").trim(), "authors": authors.into_iter().take(4).collect::<Vec<_>>(),
+            "publisher": opt_str(label), "release_date": opt_str(&date), "runtime_min": runtime_min,
+            "cover_url": if id.is_empty() { Value::Null } else { json!(format!("https://coverartarchive.org/release/{id}/front-500")) },
+            "url": if id.is_empty() { Value::Null } else { json!(format!("https://musicbrainz.org/release/{id}")) },
+            "isbn": opt_str(s(r, "barcode")),
+        }),
+    )
+}
+
 fn itunes_country(region: &str) -> &'static str {
     match region {
         "de" => "de",
@@ -1704,6 +1758,137 @@ impl Default for Providers {
 }
 
 impl Providers {
+    /// Everything the sources that know ISBNs and barcodes have for one ISBN-13 (also the EAN on a CD): the German
+    /// National Library (audio media), Apple Books, Apple Music (the CD's barcode), MusicBrainz (CDs by barcode)
+    /// and Open Library. Each hit carries `isbn_hit` – it was found by the number, not by the title.
+    pub fn by_isbn(&self, isbn13: &str, region: &str) -> (Vec<Value>, Vec<String>) {
+        let mut found: Vec<Value> = Vec::new();
+        let mut notes: Vec<String> = Vec::new();
+        let country = itunes_country(region);
+        let mut take = |name: &str, hits: Result<Vec<Value>>, found: &mut Vec<Value>| match hits {
+            Ok(h) => {
+                if !h.is_empty() {
+                    notes.push(t(
+                        "{n} Treffer bei {source} (ISBN)",
+                        &[("n", &h.len().to_string()), ("source", name)],
+                    ));
+                }
+                found.extend(h.into_iter().map(|mut b| {
+                    b["isbn_hit"] = json!(true);
+                    if s(&b, "isbn").is_empty() {
+                        b["isbn"] = json!(isbn13);
+                    }
+                    b
+                }));
+            }
+            Err(e) => notes.push(format!("{name}: {e}")),
+        };
+        if self.fallbacks.contains(&"dnb") {
+            let params = [
+                ("version", "1.1".to_string()),
+                ("operation", "searchRetrieve".into()),
+                ("query", format!("num={isbn13}")),
+                ("recordSchema", "MARC21-xml".into()),
+                ("maximumRecords", "5".into()),
+            ];
+            let hits = (self.get_text)(&format!("https://services.dnb.de/sru/dnb?{}", form(&params)))
+                .and_then(|x| parse_dnb(&x));
+            take("Deutsche Nationalbibliothek", hits, &mut found);
+        }
+        if self.fallbacks.contains(&"apple") {
+            let hits = (self.get)(&format!(
+                "https://itunes.apple.com/lookup?isbn={isbn13}&country={country}"
+            ))
+            .map(|d| {
+                d["results"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|r| !s(r, "collectionName").is_empty() || !s(r, "trackName").is_empty())
+                    .map(|r| {
+                        let mut r = r.clone();
+                        if s(&r, "collectionName").is_empty() {
+                            r["collectionName"] = r["trackName"].clone();
+                        }
+                        from_itunes(&r)
+                    })
+                    .collect()
+            });
+            take("Apple Books", hits, &mut found);
+        }
+        if self.fallbacks.contains(&"applemusic") {
+            // the album and its tracks in one answer: the runtime is the sum of the tracks
+            let hits = (self.get)(&format!(
+                "https://itunes.apple.com/lookup?upc={isbn13}&entity=song&country={country}"
+            ))
+            .map(|d| {
+                let all = d["results"].as_array().cloned().unwrap_or_default();
+                let secs: f64 = all
+                    .iter()
+                    .filter(|r| r["wrapperType"] == "track")
+                    .filter_map(|r| r["trackTimeMillis"].as_f64())
+                    .sum::<f64>()
+                    / 1000.0;
+                all.iter()
+                    .filter(|r| r["wrapperType"] == "collection" && !s(r, "collectionName").is_empty())
+                    .map(|r| from_itunes_album(r, (secs / 60.0).round() as i64))
+                    .collect()
+            });
+            take("Apple Music", hits, &mut found);
+        }
+        // MusicBrainz knows many audiobook CDs by their barcode; the runtime needs a second call (its tracks)
+        let mb = (self.get)(&format!(
+            "https://musicbrainz.org/ws/2/release/?query=barcode:{isbn13}&fmt=json&limit=3"
+        ))
+        .map(|d| {
+            d["releases"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .take(2)
+                .map(|r| {
+                    let ms: f64 = (self.get)(&format!(
+                        "https://musicbrainz.org/ws/2/release/{}?inc=recordings&fmt=json",
+                        s(r, "id")
+                    ))
+                    .map(|full| {
+                        full["media"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .flat_map(|m| m["tracks"].as_array().cloned().unwrap_or_default())
+                            .filter_map(|tr| tr["length"].as_f64())
+                            .sum()
+                    })
+                    .unwrap_or(0.0);
+                    from_musicbrainz(r, (ms / 60000.0).round() as i64)
+                })
+                .collect()
+        });
+        take("MusicBrainz", mb, &mut found);
+        if self.fallbacks.contains(&"openlibrary") {
+            let params = [
+                ("isbn", isbn13.to_string()),
+                ("limit", "3".into()),
+                (
+                    "fields",
+                    "key,title,subtitle,author_name,first_publish_year,cover_i,isbn".into(),
+                ),
+            ];
+            let hits = (self.get)(&format!("https://openlibrary.org/search.json?{}", form(&params))).map(|d| {
+                d["docs"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|x| !s(x, "title").is_empty())
+                    .map(from_openlibrary)
+                    .collect()
+            });
+            take("Open Library", hits, &mut found);
+        }
+        (found, notes)
+    }
+
     fn apple(&self, hints: &Value, region: &str) -> Result<Vec<Value>> {
         let ta = [s(hints, "title"), s(hints, "author")]
             .into_iter()
@@ -1902,6 +2087,31 @@ impl Providers {
 
     /// (ranked candidates, notes for the job log, Audible failed)
     pub fn lookup_full(&self, hints: &Value, region: &str, enabled: bool) -> (Vec<Value>, Vec<String>, bool) {
+        // an ISBN (also an ISBN-10 in the ASIN field, the EAN of a CD): the sources that know the number first – a hit
+        // there is that very book, whatever the title search says
+        if let Some(isbn13) =
+            crate::isbn::find_in(&[s(hints, "isbn")]).or_else(|| crate::isbn::in_asin(s(hints, "asin")))
+            && enabled
+        {
+            let (hits, mut notes) = self.by_isbn(&isbn13, region);
+            let mut plain = hints.clone();
+            if crate::isbn::in_asin(s(hints, "asin")).is_some() {
+                plain["asin"] = Value::Null; // not an Audible ASIN: Audible is searched by title
+            }
+            let (others, more, failed) = self.lookup_full_titles(&plain, region, enabled);
+            notes.extend(more);
+            if hits.is_empty() {
+                return (others, notes, failed);
+            }
+            let mut all = hits;
+            all.extend(others);
+            return (rank_with_isbn(&all, hints), notes, false);
+        }
+        self.lookup_full_titles(hints, region, enabled)
+    }
+
+    /// The lookup by title, author and length (Audible first, the other sources when Audible has nothing convincing).
+    fn lookup_full_titles(&self, hints: &Value, region: &str, enabled: bool) -> (Vec<Value>, Vec<String>, bool) {
         let mut notes = Vec::new();
         let (ranked, failed) = match lookup(&self.client, hints, region, 10) {
             Ok(r) => (r, false),
@@ -2115,6 +2325,63 @@ mod tests {
         assert_eq!((s(b, "source"), b["runtime_min"].as_i64()), ("applemusic", Some(63)));
         assert!(s(b, "cover_url").ends_with("/1400x1400bb.jpg"), "{}", s(b, "cover_url"));
         assert_eq!(b["match"]["duration"].as_f64(), Some(1.0));
+    }
+
+    /// A CD known by its ISBN (here an ISBN-10 in the ASIN field): the sources that know the number are asked, the
+    /// title search of Audible finds something else – the hit by number wins, and only when its title fits.
+    #[test]
+    fn a_book_with_an_isbn_is_found_by_the_number() {
+        let asked = std::sync::Arc::new(Mutex::new(Vec::<String>::new()));
+        let log = asked.clone();
+        let providers = Providers {
+            client: Client::new(Box::new(|url| {
+                assert!(
+                    !url.contains("/products/3866100981"),
+                    "no Audible product call for an ISBN: {url}"
+                );
+                Ok(
+                    json!({"products": [{"asin": "B0OTHER001", "title": "Weltgeschichte in 90 Minuten", "authors": [{"name": "Jemand"}],
+                                        "language": "german", "runtime_length_min": 90}]}),
+                )
+            })),
+            get: Box::new(move |url| {
+                log.lock().unwrap().push(url.to_string());
+                if url.contains("musicbrainz.org/ws/2/release/?query=barcode:9783866100985") {
+                    Ok(
+                        json!({"releases": [{"id": "mb-1", "title": "Eine kurze Weltgeschichte für junge Leser",
+                        "artist-credit": [{"name": "Ernst H. Gombrich"}], "date": "2005", "barcode": "9783866100985",
+                        "label-info": [{"label": {"name": "Hörverlag"}}]}]}),
+                    )
+                } else if url.contains("musicbrainz.org/ws/2/release/mb-1") {
+                    Ok(json!({"media": [{"tracks": [{"length": 3_600_000}, {"length": 1_800_000}]}]}))
+                } else {
+                    Ok(json!({"results": [], "docs": []}))
+                }
+            }),
+            get_text: Box::new(|_| Ok("<x/>".to_string())),
+            fallbacks: vec!["apple", "applemusic", "openlibrary"],
+        };
+        let hints = json!({"title": "Eine kurze Weltgeschichte für junge Leser", "author": "Gombrich", "asin": "3866100981",
+                           "duration": 5400.0});
+        let (ranked, notes) = providers.lookup(&hints, "de", true);
+        let top = &ranked[0];
+        assert_eq!(s(top, "source"), "musicbrainz", "{notes:?}");
+        assert_eq!(top["match"]["isbn"], json!(true));
+        assert_eq!(
+            (top["runtime_min"].as_i64(), s(top, "publisher")),
+            (Some(90), "Hörverlag")
+        );
+        assert!(crate::enrich::sure(top));
+        // the number was asked where numbers are known: Apple (book and CD barcode), MusicBrainz, Open Library
+        let asked = asked.lock().unwrap();
+        assert!(asked.iter().any(|u| u.contains("lookup?isbn=9783866100985")));
+        assert!(asked.iter().any(|u| u.contains("lookup?upc=9783866100985")));
+        assert!(asked.iter().any(|u| u.contains("search.json?isbn=9783866100985")));
+        // a hit by number whose title is something else entirely is not taken for the book
+        let wrong = json!({"title": "Ganz anderes Buch", "authors": ["X"], "isbn_hit": true, "runtime_min": 0, "source": "openlibrary"});
+        let ranked = rank_with_isbn(&[wrong], &json!({"title": "Eine kurze Weltgeschichte für junge Leser"}));
+        assert_ne!(ranked[0]["match"]["isbn"], json!(true));
+        assert!(!crate::enrich::sure(&ranked[0]));
     }
 
     #[test]

@@ -1308,6 +1308,7 @@ impl Pipeline {
         hints["title"] = json!("");
         hints["author"] = json!("");
         hints["asin"] = json!(audible::find_asin(&[query]));
+        hints["isbn"] = json!(crate::isbn::find_in(&[query])); // an ISBN typed or pasted into the search
         let found = app
             .providers
             .search(&hints, region, sbool(&app.settings(), "ab_fallback", true))
@@ -1330,9 +1331,33 @@ impl Pipeline {
     /// Book data from an Audible/BookBeat/Thalia link becomes the top candidate. Blocking.
     pub fn add_link(&self, app: &Arc<App>, id: &str, url: &str) -> Res<(JobRef, Value)> {
         let slot = self.need(id)?;
-        let book = crate::links::fetch(url, &app.providers.client).map_err(|e| PipeError::Refused(e.0))?;
+        let book = if let Some(isbn) = crate::links::amazon_isbn(url) {
+            // an Amazon link of a book or CD: its ISBN is looked up at the sources that know ISBNs
+            let mut hints = slot.lock().hints.clone();
+            hints["isbn"] = json!(isbn);
+            let region = slot
+                .lock()
+                .region
+                .clone()
+                .unwrap_or_else(|| sval(&app.settings(), "ab_region", "de"));
+            let (hits, _) = app.providers.by_isbn(&isbn, &region);
+            audible::rank_with_isbn(&hits, &hints)
+                .into_iter()
+                .next()
+                .ok_or_else(|| {
+                    PipeError::Refused(t(
+                        "Zur ISBN {isbn} aus dem Amazon-Link hat keine Quelle etwas gefunden",
+                        &[("isbn", &isbn)],
+                    ))
+                })?
+        } else {
+            crate::links::fetch(url, &app.providers.client).map_err(|e| PipeError::Refused(e.0))?
+        };
         let hints = slot.lock().hints.clone();
-        let book = audible::rank(&[book], &hints).into_iter().next().unwrap_or(Value::Null);
+        let book = audible::rank_with_isbn(&[book], &hints)
+            .into_iter()
+            .next()
+            .unwrap_or(Value::Null);
         let cid = candidate_id(&book);
         {
             let mut j = slot.lock();
@@ -2352,6 +2377,9 @@ impl Pipeline {
             "query": query, "title": if album.is_empty() { String::new() } else { audible::clean_query(&album) },
             "author": if various { String::new() } else { author.clone() }, "narrator": narrator,
             "asin": audible::find_asin(&[s(&tags, "asin"), s(&tags, "audible_asin"), &name]), "duration": duration, "folder": folder_name,
+            // an ISBN in the tags (or an ISBN-10 in the ASIN tag, the barcode of a CD): looked up by the number first
+            "isbn": crate::isbn::find_in(&[s(&tags, "isbn"), s(&tags, "barcode"), s(&tags, "upc"), s(&tags, "ean")])
+                .or_else(|| crate::isbn::in_asin(s(&tags, "asin"))),
         });
         let mut notes: Vec<String> = Vec::new();
         if let Some(why) = order_doubt(&files, &infos) {

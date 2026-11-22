@@ -21,6 +21,7 @@ mod health;
 mod htmlent;
 mod http;
 mod invites;
+mod isbn;
 mod library;
 mod links;
 mod listening;

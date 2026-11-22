@@ -727,6 +727,43 @@ function confirmBox(text: string, okLabel = "OK"): Promise<boolean> {
   });
 }
 
+/** Words that are the same in German and English – one is asked for before a big deletion (it changes each time,
+ *  so it cannot be typed out of habit). */
+const CONFIRM_WORDS = ["ALARM", "RADIO", "HOTEL", "TAXI", "PIANO", "TOTAL"];
+
+/** A confirmation that needs a word to be typed (for what cannot be undone easily, like deleting many books). */
+function confirmTyped(text: string, okLabel: string): Promise<boolean> {
+  const word = CONFIRM_WORDS[Math.floor(Math.random() * CONFIRM_WORDS.length)];
+  return new Promise((resolve) => {
+    let settled = false;
+    const input = el("input", { type: "text", autocomplete: "off", autocapitalize: "characters", spellcheck: "false",
+      "aria-label": t("Bestätigungswort"), class: "confirm-input" });
+    const ok = el("button", { type: "button", class: "btn primary danger", disabled: true }, okLabel);
+    const cancel = el("button", { type: "button", class: "btn ghost" }, t("Abbrechen"));
+    const d = el("dialog", { class: "typed-confirm" }, el("div", { class: "dialog-body" },
+      el("p", {}, text),
+      el("p", {}, t("Zum Bestätigen dieses Wort eintippen:"), " ", el("b", { class: "confirm-word" }, word)),
+      input,
+      el("div", { class: "dialog-actions" }, cancel, ok)));
+    const done = (yes: boolean): void => {
+      if (settled) return;
+      settled = true;
+      if (d.open) d.close();
+      d.remove();
+      resolve(yes);
+    };
+    const fits = (): boolean => input.value.trim().toUpperCase() === word;
+    input.addEventListener("input", () => { ok.disabled = !fits(); });
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter" && fits()) { e.preventDefault(); done(true); } });
+    ok.addEventListener("click", () => done(true));
+    cancel.addEventListener("click", () => done(false));
+    d.addEventListener("close", () => done(false));
+    document.body.append(d);
+    d.showModal();
+    input.focus();
+  });
+}
+
 function fmtDuration(sec: number | null | undefined): string {
   if (!sec) return "–";
   const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);

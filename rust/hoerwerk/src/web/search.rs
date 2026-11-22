@@ -234,7 +234,8 @@ pub async fn books(app: Arc<App>, req: Req, _: Params) -> Reply {
         return error(400, t("Ungültige Daten", &[]));
     }
     let cq = audible::clean_query(&query);
-    let hints = json!({"query": if cq.is_empty() { query.clone() } else { cq }, "asin": audible::find_asin(&[&query])});
+    let hints = json!({"query": if cq.is_empty() { query.clone() } else { cq }, "asin": audible::find_asin(&[&query]),
+                       "isbn": crate::isbn::find_in(&[&query])});
     let fallback = app
         .settings()
         .get("ab_fallback")
