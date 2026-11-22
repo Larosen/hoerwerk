@@ -239,7 +239,12 @@ pub fn plan(app: &App, rel: &str) -> Result<Value, String> {
     let Some(m) = candidate(app, &entry, &file, &book, false)? else {
         // not sure: the best candidate is shown, the admin decides whether to take it over
         let proposal = proposal_of(&ranked_for(app, &entry, &book, &file));
-        return Ok(json!({"status": "unsure", "changes": [], "proposal": proposal}));
+        // what the book itself says, to compare with the proposal
+        let dur = media::probe_cached(&file)["duration"].as_f64().unwrap_or(0.0);
+        let current = json!({"authors": entry["authors"], "narrators": entry["narrators"],
+                             "year": s(&book, "release_date").chars().take(4).collect::<String>(),
+                             "runtime_min": (dur / 60.0).round() as i64});
+        return Ok(json!({"status": "unsure", "changes": [], "proposal": proposal, "current": current}));
     };
     let mut changes: Vec<Value> = gaps(&book, &m)
         .into_iter()
@@ -405,7 +410,7 @@ fn proposal_of(ranked: &[Value]) -> Option<Value> {
     let m = ranked.first()?;
     let score = m["match"]["score"].as_f64().unwrap_or(0.0);
     (score >= PROPOSAL_MIN && !pick_id(m).is_empty()).then(|| {
-        json!({"id": pick_id(m), "title": m["title"], "authors": m["authors"], "narrators": m["narrators"],
+        json!({"id": pick_id(m), "duration_fit": m["match"]["duration"], "title": m["title"], "authors": m["authors"], "narrators": m["narrators"],
                "source": m["source"], "asin": m["asin"], "score": (score * 100.0).round(), "runtime_min": m["runtime_min"],
                "release_date": m["release_date"], "cover_url": m["cover_url"]})
     })
@@ -435,6 +440,13 @@ pub fn apply_pick(app: &Arc<App>, rel: &str, pick: &str) -> Result<usize, String
         .cloned()
         .ok_or_else(|| t("Der Vorschlag ist nicht mehr zu finden – bitte neu prüfen", &[]))?;
     let (added, _) = fill_from(app, rel, &entry, &folder, &file, book, &m, true)?;
+    // the admin chose this edition: what it does not have cannot be filled from it – the book leaves the tiles
+    app.health.settle(
+        &app.db,
+        rel,
+        &["no_asin", "runtime_off", "no_year", "no_narrator"],
+        "admin",
+    );
     if added > 0 {
         crate::mediaservers::request_scans(app);
     }

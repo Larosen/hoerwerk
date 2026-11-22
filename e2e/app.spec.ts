@@ -550,7 +550,8 @@ test("Entdecken: Genres eingeklappt, Haupt- und Unterkategorie wählen und wiede
   await panel.getByRole("button", { name: "Antike" }).click();
   await expect(cards).toContainText("Buch aus 11");
   await page.locator("#genreToggle").click();
-  await panel.getByRole("button", { name: "Alle Genres" }).click();
+  await expect(panel.getByRole("button", { name: "Alle Genres" })).toHaveCount(0);   // one genre at a time here
+  await page.locator("#genreClear").click();
   await expect(page.locator("#discoverList")).toContainText("Genre wählen.");
   expect(asked).not.toContain("");
   expect(errors).toEqual([]);

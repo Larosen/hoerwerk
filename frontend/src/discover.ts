@@ -230,7 +230,9 @@ function renderGenreChips(): void {
   $("#yearFilter").classList.toggle("active", !!discover.year);
   if (panel.hidden) return;
   row.replaceChildren(
-    el("button", { type: "button", class: "chip", "aria-pressed": String(!top && discover.section !== "genre"), onclick: () => { void selectGenre("", true); } }, t("Alle Genres")),
+    // "Nach Genre" is one genre at a time: there "Alle Genres" would only empty the list
+    discover.section === "genre" ? ""
+      : el("button", { type: "button", class: "chip", "aria-pressed": String(!top), onclick: () => { void selectGenre("", true); } }, t("Alle Genres")),
     ...discover.genres.map((x) => el("button", {
       type: "button", class: "chip", "aria-pressed": String(x === top),
       onclick: () => { void selectGenre(x === top ? "" : x.id, !x.children.length); },

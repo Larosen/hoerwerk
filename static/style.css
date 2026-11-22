@@ -1463,3 +1463,4 @@ table.users input.quota { width: 56px; }
 
 .tiles-guided { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
 .enrich-proposal { display: flex; align-items: center; gap: 10px; white-space: normal; }
+.enrich-current { display: block; margin-top: 2px; }
