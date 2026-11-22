@@ -1129,8 +1129,10 @@ function pickCover(b: LibraryBook): void {
 
 interface EnrichChange { field: string; label: string; to: string; image?: boolean }
 interface EnrichProposal { id: string; title: string; authors?: string[]; narrators?: string[]; source: string; score: number;
-  runtime_min?: number; release_date?: string | null; cover_url?: string | null }
-interface EnrichPlan { status: string; match?: { title: string; source: string }; changes: EnrichChange[]; proposal?: EnrichProposal | null }
+  runtime_min?: number; release_date?: string | null; cover_url?: string | null; duration_fit?: number | null }
+interface EnrichCurrent { authors?: string[]; narrators?: string[]; year?: string; runtime_min?: number }
+interface EnrichPlan { status: string; match?: { title: string; source: string }; changes: EnrichChange[]; proposal?: EnrichProposal | null;
+  current?: EnrichCurrent }
 
 const SOURCE_LABEL: Record<string, string> = { audible: "Audible", audnexus: "Audnexus", apple: "Apple Books", applemusic: "Apple Music",
   dnb: "Deutsche Nationalbibliothek", openlibrary: "Open Library", musicbrainz: "MusicBrainz", bookbeat: "BookBeat", thalia: "Thalia" };
@@ -1189,7 +1191,9 @@ async function previewEnrich(items: { path: string; title: string }[]): Promise<
       } else if (plan.proposal) {
         // not sure: the best candidate, to take over or not
         const p = plan.proposal;
-        const box = el("input", { type: "checkbox", onchange: refresh });
+        const cur = plan.current || {};
+        // practically certain (title, author and length all fit): ticked already
+        const box = el("input", { type: "checkbox", onchange: refresh, checked: p.score >= 95 && (p.duration_fit ?? 0) >= 0.9 });
         picks.set(it.path, { id: p.id, box });
         left.push(it.path);
         head.append(" ", el("span", { class: "muted small" }, t("Nicht sicher – Vorschlag:")));
@@ -1199,7 +1203,9 @@ async function previewEnrich(items: { path: string; title: string }[]): Promise<
             el("span", { class: "muted small" }, [(p.authors || []).slice(0, 2).join(", "), SOURCE_LABEL[p.source] || p.source,
               p.runtime_min ? fmtDuration(p.runtime_min * 60) : "", (p.release_date || "").slice(0, 4),
               t("Treffer {n} %", { n: p.score })].filter(Boolean).join(" · ")),
-            " ", el("span", { class: "small" }, t("übernehmen"))));
+            el("span", { class: "muted small enrich-current" }, t("Dieses Buch:"), " ",
+              [(cur.authors || []).slice(0, 2).join(", "), (cur.narrators || []).slice(0, 1).join(", "), cur.year || "",
+                cur.runtime_min ? fmtDuration(cur.runtime_min * 60) : ""].filter(Boolean).join(" · ") || "–")));
       } else {
         head.append(" ", el("span", { class: "muted small" }, note[plan.status] || ""));
         left.push(it.path);
@@ -1215,17 +1221,17 @@ async function previewEnrich(items: { path: string; title: string }[]): Promise<
     apply.disabled = true;
     const chosen = [...picks.entries()].filter(([, p]) => p.box.checked);
     const total = todo.length + chosen.length;
-    let added = 0, done = 0;
+    let added = 0, done = 0, failed = 0;
     for (const path of todo) {
       apply.textContent = t("Ergänze … ({n} von {total})", { n: ++done, total });
-      try { added += (await api<{ added: number }>("POST", "/api/library/enrich", { path })).added; } catch (e) { toast(errMsg(e), true); }
+      try { added += (await api<{ added: number }>("POST", "/api/library/enrich", { path })).added; } catch (e) { failed++; toast(errMsg(e), true); }
     }
     for (const [path, p] of chosen) {
       apply.textContent = t("Ergänze … ({n} von {total})", { n: ++done, total });
-      try { added += (await api<{ added: number }>("POST", "/api/library/enrich", { path, pick: p.id })).added; } catch (e) { toast(errMsg(e), true); }
+      try { added += (await api<{ added: number }>("POST", "/api/library/enrich", { path, pick: p.id })).added; } catch (e) { failed++; toast(errMsg(e), true); }
     }
     apply.textContent = t("Ergänzen");
-    toast(t("{n} Angaben ergänzt", { n: added }));
+    toast(t("{n} Angaben ergänzt", { n: added }) + (failed ? " · " + t("{n} nicht möglich", { n: failed }) : ""), failed ? true : undefined);
     for (const p of [...todo, ...chosen.map(([path]) => path)]) books.libPicked.delete(p);
     d.close();
     updateLibBar();
@@ -1244,56 +1250,59 @@ async function previewChapters(items: { path: string; title: string }[]): Promis
   const body = $("#chaptersBody");
   const apply = $<HTMLButtonElement>("#chaptersApply");
   apply.disabled = true;
-  body.replaceChildren(el("p", { class: "muted" }, t("Lade Vorschau …")));
+  const progress = el("p", { class: "muted" }, t("Lade Vorschau …"));
+  const list = el("div", {});
+  body.replaceChildren(progress, list);
   if (!d.open) d.showModal();
-  let cancelled = false;
-  d.addEventListener("close", () => { cancelled = true; }, { once: true });
+  let stop = false;
+  d.addEventListener("close", () => { stop = true; }, { once: true });
   const todo: { path: string; changed: number }[] = [];
-  const sections: HTMLElement[] = [];
-  for (const it of items) {
-    if (cancelled) return;
+  const SHOWN = 4;          // a few "now → new" per book are enough to judge
+  apply.onclick = () => {
+    // renaming runs on in the background, one book after the other – the window may close, the page stays usable
+    stop = true;
+    d.close();
+    void renameChapters([...todo]);
+  };
+  for (const [i, it] of items.entries()) {
+    if (stop) return;
+    if (items.length > 1) progress.textContent = t("Vorschau {n} von {total} … – Umbenennen geht schon für die gezeigten", { n: i + 1, total: items.length });
     const head = el("h3", {}, it.title);
+    let rows: HTMLElement | null = null;
     try {
       const plan = await api<ChapterPlan>("POST", "/api/library/chapters", { path: it.path, apply: false });
-      if (cancelled) return;
+      if (stop) return;
       head.append(" ", el("span", { class: "muted small" }, plan.changed
         ? t("{changed} von {total} Kapiteln werden geändert", { changed: plan.changed, total: plan.total })
         : t("schon sauber")));
-      // what was above, what it will be below: the same on a phone and on a wide screen
-      const change = (r: ChapterRow): HTMLElement => el("li", { class: "chap-change" },
-        el("div", { class: "was" }, r.from), el("div", { class: "will" }, r.to));
-      const kept = (r: ChapterRow): HTMLElement => el("li", { class: "chap-kept" }, r.from);
       const changedRows = plan.rows.filter((r) => r.from !== r.to);
-      const keptRows = plan.rows.filter((r) => r.from === r.to);
-      sections.push(el("section", { class: "chap-book" }, head,
-        changedRows.length ? el("ul", { class: "chap-rows" }, changedRows.map(change)) : null,
-        keptRows.length ? el("details", {}, el("summary", { class: "muted small" }, t("{n} bleiben unverändert", { n: keptRows.length })),
-          el("ul", { class: "chap-rows" }, keptRows.map(kept))) : null));
-      if (plan.changed) todo.push({ path: it.path, changed: plan.changed });
-    } catch (e) {
-      head.append(" ", el("span", { class: "muted small" }, errMsg(e)));
-      sections.push(el("section", { class: "chap-book" }, head));
-    }
+      if (changedRows.length) {
+        rows = el("ul", { class: "chap-rows" }, changedRows.slice(0, SHOWN).map((r) => el("li", { class: "chap-change" },
+          el("div", { class: "was" }, r.from), el("div", { class: "will" }, r.to))),
+        changedRows.length > SHOWN ? el("li", { class: "muted small" }, t("… und {n} weitere", { n: changedRows.length - SHOWN })) : null);
+        todo.push({ path: it.path, changed: plan.changed });
+      }
+    } catch (e) { head.append(" ", el("span", { class: "muted small" }, errMsg(e))); }
+    list.append(el("section", { class: "chap-book" }, head, rows));
+    apply.disabled = !todo.length;
   }
-  body.replaceChildren(...sections);
-  apply.disabled = !todo.length;
-  apply.onclick = async () => {
-    apply.disabled = true;
-    let changed = 0;
-    for (const [i, x] of todo.entries()) {
-      apply.textContent = t("Benenne um … ({n} von {total})", { n: i + 1, total: todo.length });
-      try {
-        const r = await api<{ changed: number }>("POST", "/api/library/chapters", { path: x.path });
-        changed += r.changed;
-      } catch (e) { toast(errMsg(e), true); }
-    }
-    apply.textContent = t("Umbenennung anwenden");
-    toast(t("{n} Kapitelnamen umbenannt", { n: changed }));
-    for (const x of todo) books.libPicked.delete(x.path);
-    d.close();
-    updateLibBar();
-    loadLibraryBooks();
-  };
+  progress.textContent = items.length > 1 ? plural(items.length, t("1 Hörbuch geprüft."), t("{n} Hörbücher geprüft.", { n: items.length })) : "";
+}
+
+/** Rename the chapters of the books in the background, one after the other (a toast at the end). */
+async function renameChapters(todo: { path: string; changed: number }[]): Promise<void> {
+  if (!todo.length) return;
+  toast(plural(todo.length, t("Kapitel von 1 Hörbuch werden im Hintergrund umbenannt"), t("Kapitel von {n} Hörbüchern werden im Hintergrund umbenannt", { n: todo.length })), "info");
+  let changed = 0;
+  for (const x of todo) {
+    try { changed += (await api<{ changed: number }>("POST", "/api/library/chapters", { path: x.path }, { button: false, timeout: 600_000 })).changed; }
+    catch (e) { toast(errMsg(e), true); }
+    books.libPicked.delete(x.path);
+  }
+  toast(t("{n} Kapitelnamen umbenannt", { n: changed }));
+  updateLibBar();
+  loadLibraryBooks();
+  loadCheck();
 }
 
 /** Any book of the library back for a correction – also when its import is long gone from the list. */

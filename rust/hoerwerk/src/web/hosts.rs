@@ -40,14 +40,6 @@ fn home_name(name: &str) -> bool {
     !n.is_empty() && (!n.contains('.') || HOME_SUFFIXES.iter().any(|s| n.ends_with(s)))
 }
 
-/// Is this the address of the own network (an IP, localhost, a name without a dot, .local/.lan …)? A public name such
-/// as "hoerwerk.example.de" never is – a proxy in the own network may hide that a visitor comes from outside.
-pub fn is_home_host(header: &str) -> bool {
-    let name = host_name(header);
-    let name = name.trim_end_matches('.');
-    LOOPBACK.contains(&name) || is_ip(name) || home_name(name)
-}
-
 pub fn allowed_with(
     header: &str,
     configured: &std::collections::HashSet<String>,
@@ -119,22 +111,5 @@ mod tests {
         assert!(allowed_with("hb.example.de", &list, "", false));
         assert!(!allowed_with("example.de.evil.example", &list, "", false));
         assert!(!allowed_with("hoerbuecher.other.de", &list, "", true)); // an explicit list is exact
-    }
-
-    #[test]
-    fn only_the_own_network_counts_as_home() {
-        for h in [
-            "localhost:8080",
-            "192.168.1.5:8080",
-            "[::1]:8080",
-            "tower",
-            "nas.local",
-            "hoerwerk.lan:8080",
-        ] {
-            assert!(is_home_host(h), "{h}");
-        }
-        for h in ["hoerwerk.example.de", "hoerwerk.welteins.de:443", ""] {
-            assert!(!is_home_host(h), "{h}");
-        }
     }
 }

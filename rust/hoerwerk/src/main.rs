@@ -95,7 +95,7 @@ fn first_account(app: &mut App) {
     text::warn(
         "Anmeldung",
         &t(
-            "Noch kein Konto: Admin im Browser anlegen. Von außerhalb des Heimnetzes braucht es den Einrichtungs-Code {code}.",
+            "Noch kein Konto: Admin im Browser anlegen, mit dem Einrichtungs-Code {code}. Er gilt bis zum nächsten Neustart.",
             &[("code", &app.setup_code)],
         ),
     );
