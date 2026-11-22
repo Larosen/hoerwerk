@@ -36,8 +36,8 @@ and errors. Filter by level or text, follow it live, download it as a file. The 
 
 ## Accounts and access from outside
 
-Without signing in Hörwerk only shows the login page. On the **first visit** you create the admin account (directly
-from the home network; from outside the setup code from `docker logs hoerwerk` is needed). If you had
+Without signing in Hörwerk only shows the login page. On the **first visit** you create the admin account (with the
+setup code from `docker logs hoerwerk`; it is created anew on every start until an account exists). If you had
 `AUTH_USER`/`AUTH_PASS` set, they become the admin account automatically.
 
 * **Accounts** (*Settings → Accounts*, `/settings/users`, admins only): create family accounts (generate an initial password and pass it on), role,

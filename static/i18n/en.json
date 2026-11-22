@@ -482,7 +482,7 @@
  "Neues Passwort für {name}: {pw} – bitte weitergeben. Alle Geräte von {name} werden abgemeldet.": "New password for {name}: {pw} – please pass it on. All of {name}'s devices will be signed out.",
  "Neues Passwort setzen": "Set a new password",
  "Neues Passwort wiederholen": "Repeat new password",
- "Noch kein Konto: Admin im Browser anlegen. Von außerhalb des Heimnetzes braucht es den Einrichtungs-Code {code}.": "No account yet: create the admin in the browser. From outside the home network the setup code {code} is needed.",
+ "Noch kein Konto: Admin im Browser anlegen, mit dem Einrichtungs-Code {code}. Er gilt bis zum nächsten Neustart.": "No account yet: create the admin in the browser with the setup code {code}. It is valid until the next restart.",
  "Nutzer": "User",
  "Ohne Freigabe": "No approval",
  "Passwort erzeugen": "Generate password",

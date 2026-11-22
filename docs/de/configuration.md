@@ -36,8 +36,8 @@ Dieselben Zeilen stehen im Container-Protokoll (`docker logs hoerwerk`).
 
 ## Konten und Zugriff von außen
 
-Ohne Anmeldung zeigt Hörwerk nur die Login-Seite. Beim **ersten Aufruf** legst du das Admin-Konto an (aus dem
-Heimnetz direkt; von außen braucht es den Einrichtungs-Code aus `docker logs hoerwerk`). Wer bisher
+Ohne Anmeldung zeigt Hörwerk nur die Login-Seite. Beim **ersten Aufruf** legst du das Admin-Konto an (mit dem
+Einrichtungs-Code aus `docker logs hoerwerk`; er wird bei jedem Start neu erzeugt, bis es ein Konto gibt). Wer bisher
 `AUTH_USER`/`AUTH_PASS` gesetzt hatte, bekommt daraus automatisch das Admin-Konto.
 
 * **Konten** (*Einstellungen → Konten*, `/settings/users`, nur für Admins): Familienkonten anlegen (Startpasswort erzeugen und weitergeben),

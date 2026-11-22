@@ -257,18 +257,6 @@ fn session_failed() -> Reply {
     )
 }
 
-fn home(req: &Req) -> bool {
-    // not behind a proxy, not under a public name, and from the own network: only then no setup code is needed
-    !req.proxied
-        && req.home_host
-        && req.ip.parse::<std::net::IpAddr>().is_ok_and(|ip| match ip {
-            std::net::IpAddr::V4(v4) => v4.is_private() || v4.is_loopback() || v4.is_link_local(),
-            std::net::IpAddr::V6(v6) => {
-                v6.is_loopback() || (v6.segments()[0] & 0xfe00) == 0xfc00 || (v6.segments()[0] & 0xffc0) == 0xfe80
-            }
-        })
-}
-
 // -- system ---------------------------------------------------------------------------
 
 async fn logs(_: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
@@ -426,14 +414,14 @@ use futures_util::StreamExt;
 // -- accounts -------------------------------------------------------------------------
 async fn auth_status(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
     let setup = app.accounts.count(&app.db) == 0;
-    json_reply(json!({"setup": setup, "setup_code": setup && !home(&req), "user": req.user.as_ref().map(me)}))
+    json_reply(json!({"setup": setup, "setup_code": setup, "user": req.user.as_ref().map(me)}))
 }
 
 async fn setup(app: Arc<App>, req: Req, _: HashMap<String, String>) -> Reply {
     if app.accounts.count(&app.db) > 0 {
         return error(409, t("Es gibt schon ein Konto – bitte anmelden", &[]));
     }
-    if !home(&req) && req.str("code").trim().to_uppercase() != app.setup_code {
+    if req.str("code").trim().to_uppercase() != app.setup_code {
         authlog::event(
             "login_failed",
             &[
