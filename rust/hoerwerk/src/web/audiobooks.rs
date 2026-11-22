@@ -109,8 +109,10 @@ pub async fn search(app: Arc<App>, req: Req, p: Params) -> Reply {
     if query.to_lowercase().starts_with("http://") || query.to_lowercase().starts_with("https://") {
         return error(
             400,
-            t("Bitte einen Link von Audible, BookBeat oder Thalia einfügen", &[])
-                + " (Rust-Backend: noch nicht umgesetzt)",
+            t(
+                "Bitte einen Link von Audible, BookBeat, Thalia oder Amazon (mit ISBN) einfügen",
+                &[],
+            ) + " (Rust-Backend: noch nicht umgesetzt)",
         );
     }
     let r = match region(&app, &req) {
@@ -133,7 +135,10 @@ pub async fn link(app: Arc<App>, req: Req, p: Params) -> Reply {
     if !crate::links::is_link(&url) {
         return error(
             400,
-            t("Bitte einen Link von Audible, BookBeat oder Thalia einfügen", &[]),
+            t(
+                "Bitte einen Link von Audible, BookBeat, Thalia oder Amazon (mit ISBN) einfügen",
+                &[],
+            ),
         );
     }
     let (a, id) = (app.clone(), p["job_id"].clone());

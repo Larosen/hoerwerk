@@ -25,6 +25,7 @@ fn fields() -> Vec<(&'static str, String)> {
         ("language", t("Sprache", &[])),
         ("description", t("Beschreibung", &[])),
         ("asin", "ASIN".to_string()),
+        ("isbn", "ISBN".to_string()),
     ]
 }
 
@@ -86,7 +87,8 @@ fn candidate(app: &App, entry: &Value, file: &Path, book: &Value, auto: bool) ->
         .to_string();
     let dur = media::probe_cached(file)["duration"].as_f64().unwrap_or(0.0);
     let asin = entry["asin"].as_str().unwrap_or("");
-    if !asin.is_empty() {
+    // an ISBN in the ASIN field is no Audible link: the book is looked up by its ISBN, title and length instead
+    if !asin.is_empty() && crate::isbn::in_asin(asin).is_none() {
         // the edition is known: the book's own ASIN – unless the length says the file is another recording
         return match app.providers.client.product(asin, &region) {
             Ok(p) if crate::health::runtime_off(dur, p["runtime_min"].as_i64().unwrap_or(0)) => Ok(None),
@@ -120,7 +122,13 @@ fn candidate(app: &App, entry: &Value, file: &Path, book: &Value, auto: bool) ->
 
 /// What the lookup of an edition is given: title, author and the length of the file.
 fn lookup_hints(entry: &Value, book: &Value, dur: f64) -> Value {
+    // an ISBN in the tag – or an ISBN-10 that was written into the ASIN field
+    let isbn = crate::isbn::find_in(&[s(book, "isbn"), s(entry, "isbn")])
+        .or_else(|| crate::isbn::in_asin(s(entry, "asin")))
+        .map_or(Value::Null, |i| json!(i));
     json!({
+        // no ASIN: the lookup is to find the edition by title and length (a linked one may be the wrong one)
+        "isbn": isbn,
         "title": entry["title"], "author": entry["authors"].as_array().and_then(|a| a.first()).cloned().unwrap_or(Value::Null),
         "duration": dur, "query": format!("{} {}", entry["title"].as_str().unwrap_or(""), book["authors"].as_array().and_then(|a| a.first()).and_then(Value::as_str).unwrap_or("")),
     })
@@ -205,6 +213,10 @@ const AUTO_MIN_SCORE: f64 = 0.85;
 pub fn sure(m: &Value) -> bool {
     let x = &m["match"];
     let (title, author) = (x["title"].as_f64().unwrap_or(0.0), x["author"].as_f64().unwrap_or(0.0));
+    // found by the book's own ISBN (and the title fits): that is the book – unless its length says otherwise
+    if x["isbn"] == true && title >= audible::ISBN_TITLE_MIN {
+        return x["duration"].as_f64().is_none_or(|d| d >= 0.5);
+    }
     match x["duration"].as_f64() {
         Some(d) => d >= 0.9 && title >= 0.8,
         None => title >= 0.95 && author >= 0.9,

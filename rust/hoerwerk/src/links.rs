@@ -27,6 +27,20 @@ fn host(url: &str) -> String {
     netloc.split(':').next().unwrap_or("").to_lowercase()
 }
 
+/// The ISBN in an Amazon link ("…/dp/3866100981", "…/gp/product/…"): Amazon's own pages are not read (they answer
+/// automated requests with a captcha), but for books and audiobook CDs the ten characters are the ISBN-10.
+pub fn amazon_isbn(url: &str) -> Option<String> {
+    let h = host(url);
+    if !rx::is_match(rx!(r"(?:^|\.)amazon\.(de|com|co\.uk|at|fr|it|es|nl|ca)$"), &h) {
+        return None;
+    }
+    let m = rx::search(
+        rx!(r"/(?:dp|gp/product|ASIN|exec/obidos/ASIN)/([0-9]{9}[0-9Xx])(?:[/?#]|$)"),
+        url,
+    )?;
+    crate::isbn::normalize(&m[1])
+}
+
 pub fn shop_of(url: &str) -> Option<&'static str> {
     let h = host(url);
     if rx::is_match(
