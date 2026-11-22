@@ -43,7 +43,7 @@ automatisieren möchten.
   passende Hörbücher vor; dazu kommen Tipps von Kritikern (Perlentaucher, Deutschlandfunk Kultur). Ein Tipp auf ein Hörbuch zeigt
   die Beschreibung und *Ähnlich wie …* – was Hörer dieses Hörbuchs auch gehört haben –, und jede Karte trägt die Farbe ihres Covers.
 - **Drei Farbwelten und eine App auf dem Home-Bildschirm.** Hell (Papier), Dunkel (Abend) und OLED (echtes Schwarz); auf iPhone und iPad
-  läuft Hörwerk im Vollbild wie eine App ([Anleitung, englisch](docs/iphone-app.md)).
+  läuft Hörwerk im Vollbild wie eine App ([Anleitung](docs/iphone-app.md)).
 - **Klein und abgesichert.** Ein Rust-Programm, eigenes schlankes ffmpeg in einer Sandbox, Zweitfaktor, signierte Images.
 
 | Anfragen mit Fortschritt | Entdecken |
@@ -77,8 +77,6 @@ Sicherheitsupdates neu gebaut, mit cosign signiert.
 - **amd64 und arm64** (Raspberry Pi, NAS mit Apple-Chip): ein Tag, Docker wählt den passenden. Auf echter Hardware wurde bisher nur amd64 ausprobiert; arm64 wird in der CI bei jeder Änderung geprüft.
 
 ## Dokumentation
-
-Die Oberfläche gibt es auf Deutsch und Englisch; die ausführliche Dokumentation ist auf Englisch.
 
 | | |
 |---|---|

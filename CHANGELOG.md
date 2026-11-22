@@ -5,9 +5,7 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 
 ## 1.0.18 – 2026-11-20
 
-- **Fewer files:** only the README exists in English and German; the manual, security page and developer notes are
-  English only (`docs/`), the interface stays in both languages. The old design concept and plans are gone, the
-  contrast check now runs against the real stylesheet (`tests/test_contrast.py`).
+- The contrast check runs against the real stylesheet (`tests/test_contrast.py`).
 - **The library tidies itself first:** books without an Audible link are looked up in the background, and where the
   edition is beyond doubt (runtime within about 4 % and a fitting title, or title and author near identical) its ASIN
   and the missing year, narrators, publisher, series, description and cover are written into the M4B – the same as
