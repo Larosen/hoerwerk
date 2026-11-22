@@ -9,7 +9,7 @@ with every book ending up as a clean, tagged M4B. Ideas and votes are welcome as
   the image for arm64 as well (Raspberry Pi, Apple-silicon NAS); Prometheus metrics (`/api/metrics`); indexers from Prowlarr; settings export/import for moving to a new server.
 - **1.0** – the first release, with a new look, "Werkstatt & Regal": three colour schemes (light, dark, OLED – per account or per device), sidebar on iPad and
   Mac, tab bar on the iPhone, the library as a shelf, progress as a waveform, a log you can narrow to 15 or 60 minutes, and Hörwerk
-  as an app on the iPhone home screen ([guide](en/iphone-app.md)). Design notes: [docs/design](design/KONZEPT.md).
+  as an app on the iPhone home screen ([guide](iphone-app.md)).
 
 Development versions before 1.0:
 

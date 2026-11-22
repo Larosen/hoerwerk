@@ -1,40 +1,40 @@
-# Hörbuch-Jobs: Zustände, Übergänge, Neustart
+# Audiobook jobs: states, transitions, restart
 
-Diese Datei ist die Spezifikation des Job-Lebenslaufs (umgesetzt in `rust/hoerwerk/src/pipeline.rs` und
-`engine.rs`). Jeder Übergang, der hier nicht steht, ist ein Fehler.
+This file is the specification of the job life cycle (implemented in `rust/hoerwerk/src/pipeline.rs` and
+`engine.rs`). Any transition not listed here is a bug.
 
-## Begriffe
+## Terms
 
-Ein **Job** ist ein Hörbuch auf dem Weg vom Eingang (oder aus der Bibliothek) in die Bibliothek. Er hat:
+A **job** is an audiobook on its way from the inbox (or from the library) into the library. It has:
 
-- **`status`**: das, was die Oberfläche zeigt.
-- **`stage`**: die Stufe, die als Nächstes läuft oder gerade läuft.
+- **`status`**: what the interface shows.
+- **`stage`**: the step that runs next or is running now.
 
-| stage | Warteschlange | status während der Arbeit | Inhalt |
+| stage | queue | status while working | what it does |
 |---|---|---|---|
-| `prepare` | `io` | `matching` | Dateien prüfen, Hinweise sammeln, Treffer suchen (Shop, Inhalt, Anfragen) |
-| `convert` | `encode` | `converting` | M4B mit Kapiteln bauen (oder übernehmen) |
-| `finish` | `io` | `tagging` | Duplikat prüfen, Tags und Cover schreiben, ablegen, Quelle wegräumen |
+| `prepare` | `io` | `matching` | check files, collect hints, look for matches (shop, content, requests) |
+| `convert` | `encode` | `converting` | build the M4B with chapters (or take it over) |
+| `finish` | `io` | `tagging` | check for duplicates, write tags and cover, file it, clear the source away |
 
-**Endzustände:**
+**Final states:**
 
-| status | Bedeutung |
+| status | meaning |
 |---|---|
-| `done` | Abgelegt. `dest` ist die M4B in der Bibliothek. |
-| `review` | Wartet auf eine Entscheidung: kein oder unsicherer Treffer, oder ein Duplikat. |
-| `failed` | Fehler, `error` sagt warum. Lässt sich erneut versuchen. |
-| `cancelled` | Abgebrochen oder übersprungen. |
+| `done` | Filed. `dest` is the M4B in the library. |
+| `review` | Waiting for a decision: no match or an uncertain one, or a duplicate. |
+| `failed` | Error, `error` says why. Can be retried. |
+| `cancelled` | Cancelled or skipped. |
 
-`queued` heißt: Die Stufe `stage` wartet auf einen freien Platz in ihrer Warteschlange.
+`queued` means: the step `stage` is waiting for a free slot in its queue.
 
-## Übergänge
+## Transitions
 
 ```text
                 ┌──────────── retry / reopen / choose / manual ────────────┐
                 ▼                                                          │
- (neu) ──► queued[prepare] ──► matching ──► queued[convert] ──► converting ─┤
+ (new) ──► queued[prepare] ──► matching ──► queued[convert] ──► converting ─┤
                                   │                                  │      │
-                                  │ Band schon vorhanden             │ kein Treffer
+                                  │ volume already there             │ no match
                                   ▼                                  ▼      │
                               cancelled                     review[finish] ─┘
                                                                      │ choose / manual
@@ -43,75 +43,75 @@ Ein **Job** ist ein Hörbuch auf dem Weg vom Eingang (oder aus der Bibliothek) i
                                         ▼
                                      tagging ──► done
                                         │
-                                        ├─► review   (Duplikat, Einstellung „fragen“)
-                                        └─► cancelled (Duplikat, Einstellung „überspringen“)
+                                        ├─► review   (duplicate, setting "ask")
+                                        └─► cancelled (duplicate, setting "skip")
 
- jede Arbeitsstufe ──► failed      (Fehler)
- jede Arbeitsstufe ──► cancelled   (Abbruch durch den Nutzer)
- queued / review   ──► cancelled   (Abbruch, ohne dass gerade etwas läuft)
+ any working step ──► failed      (error)
+ any working step ──► cancelled   (cancelled by the user)
+ queued / review  ──► cancelled   (cancelled while nothing is running)
 ```
 
-| von | nach | Auslöser | Bedingung / Wirkung |
+| from | to | trigger | condition / effect |
 |---|---|---|---|
-| – | `queued` (prepare) | neuer Ordner im Eingang, Upload, „Umwandeln“ aus der Bibliothek | Ordner ist vollständig (keine Änderung seit `SETTLE_SECONDS`) |
-| `queued` | `matching` / `converting` / `tagging` | ein Worker nimmt den Schritt | **Nur ein Worker je Job.** Der Wechsel geschieht unter Sperre und nur aus `queued`. |
-| `matching` | `queued` (convert) | Treffer gefunden oder keiner nötig | – |
-| `matching` | `cancelled` | dieser Band einer Reihe ist schon in der Bibliothek | – |
-| `converting` | `queued` (finish) | M4B fertig, Treffer bekannt | – |
-| `converting` | `review` (finish) | M4B fertig, kein Treffer | – |
-| `tagging` | `done` | abgelegt | `dest` gesetzt, Quelle nach `_fertig` oder gelöscht, Arbeitsordner weg |
-| `tagging` | `review` | Duplikat und `ab_duplicates=ask` | `duplicate` ist gesetzt |
-| `tagging` | `cancelled` | Duplikat und `ab_duplicates=skip` | Quelle weggeräumt |
-| `review` | `queued` (finish) | Treffer gewählt (`choose`) oder eigene Angaben (`manual`) | – |
-| `review` | `queued` | Duplikat entschieden (`replace`/`keep`) | – |
-| `failed`, `review` | `queued` | `retry` | Stufe `finish`, wenn die M4B noch existiert, sonst `prepare` |
-| `done` | `review` (finish) | `reopen` (aus der Bibliothek zurückholen) | – |
-| jede Arbeitsstufe | `failed` | Ausnahme | `error` gesetzt, Arbeitsordner bleibt bis zum Retry |
-| jede Arbeitsstufe | `cancelled` | Nutzer bricht ab | ffmpeg wird sofort beendet, Arbeitsordner weg |
-| `queued`, `review` | `cancelled` | Nutzer bricht ab | wartender Schritt aus der Warteschlange entfernt |
-| `done`, `failed`, `cancelled` | (entfernt) | „Erledigte entfernen“ bzw. Löschen | – |
+| – | `queued` (prepare) | new folder in the inbox, upload, "Convert" from the library | folder is complete (no change for `SETTLE_SECONDS`) |
+| `queued` | `matching` / `converting` / `tagging` | a worker takes the step | **Only one worker per job.** The change happens under a lock and only from `queued`. |
+| `matching` | `queued` (convert) | match found or none needed | – |
+| `matching` | `cancelled` | this volume of a series is already in the library | – |
+| `converting` | `queued` (finish) | M4B ready, match known | – |
+| `converting` | `review` (finish) | M4B ready, no match | – |
+| `tagging` | `done` | filed | `dest` set, source moved to `_fertig` or deleted, work folder gone |
+| `tagging` | `review` | duplicate and `ab_duplicates=ask` | `duplicate` is set |
+| `tagging` | `cancelled` | duplicate and `ab_duplicates=skip` | source cleared away |
+| `review` | `queued` (finish) | match picked (`choose`) or own details (`manual`) | – |
+| `review` | `queued` | duplicate decided (`replace`/`keep`) | – |
+| `failed`, `review` | `queued` | `retry` | stage `finish` if the M4B still exists, otherwise `prepare` |
+| `done` | `review` (finish) | `reopen` (fetch back from the library) | – |
+| any working step | `failed` | exception | `error` set, work folder kept until the retry |
+| any working step | `cancelled` | user cancels | ffmpeg is stopped at once, work folder gone |
+| `queued`, `review` | `cancelled` | user cancels | waiting step removed from the queue |
+| `done`, `failed`, `cancelled` | (removed) | "Remove finished" or delete | – |
 
-## Neustart und Herunterfahren
+## Restart and shutdown
 
-| Zustand beim Ende | Nach dem Start |
+| state at shutdown | after the start |
 |---|---|
-| `queued`, `matching`, `converting`, `tagging` | `queued` in derselben `stage`: der Schritt läuft neu. Eine fertige M4B im Arbeitsordner wird wiederverwendet. |
-| Ablegen unterbrochen (Ablage-Journal `filing` gesetzt) | Liegt die M4B vollständig in der Bibliothek (Name und Größe stimmen), ist der Job `done` und die alte Fassung wird archiviert bzw. gelöscht. Sonst kommt die zur Seite gestellte alte Fassung zurück, und der Job ist `queued[finish]`. Halbe Kopien (`.hw-part-*`) werden entfernt. |
-| `docker stop` (SIGTERM) | Laufendes ffmpeg endet sofort. Der Job ist `queued` (nicht `cancelled`) mit Meldung „Beim Beenden unterbrochen“. |
-| Endzustände | unverändert |
+| `queued`, `matching`, `converting`, `tagging` | `queued` in the same `stage`: the step runs again. A finished M4B in the work folder is reused. |
+| filing interrupted (filing journal `filing` set) | If the M4B is complete in the library (name and size match), the job is `done` and the old edition is archived or deleted. Otherwise the old edition that was set aside comes back and the job is `queued[finish]`. Half copies (`.hw-part-*`) are removed. |
+| `docker stop` (SIGTERM) | A running ffmpeg ends at once. The job is `queued` (not `cancelled`) with the message "interrupted on shutdown". |
+| final states | unchanged |
 
-**Start:** Kein Job wird bearbeitet, bevor die Bibliothek einmal vollständig eingelesen ist (Duplikat-Prüfung).
-Ist sie nicht lesbar, wartet Hörwerk und versucht es jede Minute neu.
+**Start:** no job is worked on before the library has been read completely once (duplicate check).
+If it cannot be read, Hörwerk waits and tries again every minute.
 
-## Garantien (getestet)
+## Guarantees (tested)
 
-- Ein Job läuft nie in zwei Workern zugleich, auch wenn er mehrfach eingereiht wird.
+- A job never runs in two workers at once, even if it is queued several times.
   Test: `engine.rs` `one_step_per_job_at_a_time`.
-- Eine M4B erscheint in der Bibliothek nur vollständig (atomares Verschieben, auch über Plattengrenzen).
+- An M4B only appears in the library complete (atomic move, also across disks).
   Test: `filing.rs` `moves_whole_files_also_across_disks`.
-- Ein Neustart verliert keinen Job und legt keinen doppelt ab; Herunterfahren stellt laufende Jobs zurück.
-  Tests: `contract/test_contract.py` `Lifecycle.test_interrupted_job_is_finished_after_a_restart` und
+- A restart loses no job and files none twice; shutdown puts running jobs back.
+  Tests: `contract/test_contract.py` `Lifecycle.test_interrupted_job_is_finished_after_a_restart` and
   `test_sigterm_ends_in_order`.
-- Ein Abbruch erreicht ffmpeg in jedem Moment, auch beim Start, samt Kindprozessen.
+- A cancel reaches ffmpeg at any moment, also during start-up, child processes included.
   Test: `encoder.rs` `runner_kills_a_cancelled_process`.
 
-## Persistenz
+## Persistence
 
-Ein Job ist eine Zeile in der Tabelle `jobs` (siehe `contract/schema.sql`):
+A job is one row in the table `jobs` (see `contract/schema.sql`):
 
-- Spalten `id`, `kind='audiobook'`, `status`, `source`, `created`, `updated`;
-- Spalte `data` mit allen Feldern als JSON.
+- columns `id`, `kind='audiobook'`, `status`, `source`, `created`, `updated`;
+- column `data` with all fields as JSON.
 
-Bekannte Felder in `data` (`struct Job` in `rust/hoerwerk/src/pipeline.rs`):
+Known fields in `data` (`struct Job` in `rust/hoerwerk/src/pipeline.rs`):
 
-| Gruppe | Felder |
+| group | fields |
 |---|---|
-| Herkunft | `id`, `source`, `rel`, `name`, `origin` |
-| Zustand | `status`, `stage`, `message`, `progress`, `log`, `error`, `created`, `updated` |
-| Dateien | `files`, `duration`, `m4b`, `cover`, `dest`, `converted_info` |
-| Erkennung | `hints`, `candidates`, `match`, `region` |
-| Duplikat | `duplicate`, `dup_decision` |
-| Kapitel | `chapter_names`, `rename_files` |
-| Sonstiges | `pack`, `filing` |
+| origin | `id`, `source`, `rel`, `name`, `origin` |
+| state | `status`, `stage`, `message`, `progress`, `log`, `error`, `created`, `updated` |
+| files | `files`, `duration`, `m4b`, `cover`, `dest`, `converted_info` |
+| matching | `hints`, `candidates`, `match`, `region` |
+| duplicate | `duplicate`, `dup_decision` |
+| chapters | `chapter_names`, `rename_files` |
+| other | `pack`, `filing` |
 
-Unbekannte Felder werden beim Lesen ignoriert. So bleiben ältere und neuere Datenbanken lesbar.
+Unknown fields are ignored when reading, so older and newer databases stay readable.

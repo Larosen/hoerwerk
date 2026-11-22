@@ -27,7 +27,7 @@ class Docs(unittest.TestCase):
                          "CHANGELOG.md needs a section for this version (the release notes come from it)")
 
     def test_security_pages_name_this_version(self):
-        for name, word in (("SECURITY.md", "version"), ("SECURITY.de.md", "Version")):
+        for name, word in (("SECURITY.md", "version"),):
             head = "\n".join(read(name).splitlines()[:8])
             self.assertIn(f"**{word} {self.minor}**", head, f"{name}: look it through and name {self.minor}")
 

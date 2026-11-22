@@ -1,6 +1,6 @@
 # Audiobooks: from inbox to library
 
-[← README](../../README.md) · **English** · [Deutsch](../de/guide.md)
+[← README](../README.md)
 
 ### From inbox to library
 

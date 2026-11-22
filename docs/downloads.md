@@ -1,6 +1,6 @@
 # Downloads, free audiobooks, discover and requests
 
-[← README](../../README.md) · **English** · [Deutsch](../de/downloads.md)
+[← README](../README.md)
 
 ## Downloads with SABnzbd
 
