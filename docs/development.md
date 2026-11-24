@@ -1,6 +1,6 @@
 # Development
 
-[← README](../../README.md) · **English** · [Deutsch](../de/development.md)
+[← README](../README.md)
 
 The server is a single Rust program (`rust/hoerwerk`), plus `hw-run` (the jail for ffmpeg) and `hw-tags` (M4B
 tags). The UI is TypeScript (`frontend/src`), compiled to `static/`.

@@ -1,6 +1,6 @@
 # Notifications, accounts, configuration and security
 
-[← README](../../README.md) · **English** · [Deutsch](../de/configuration.md)
+[← README](../README.md)
 
 ## Notifications (ntfy)
 
@@ -68,7 +68,7 @@ setup code from `docker logs hoerwerk`; it is created anew on every start until 
    under IP addresses, home-network names and this address (protection against DNS rebinding). More names go into
    `ALLOWED_HOSTS`. In Pangolin, set the health check path to `/api/health`.
 4. **CrowdSec:** every failed login is in `/config/logs/auth.log` with its IP. Parser, scenarios and examples for
-   Vector or the CrowdSec agent are in [contrib/crowdsec](../../contrib/crowdsec/README.md). Hörwerk itself blocks an IP for
+   Vector or the CrowdSec agent are in [contrib/crowdsec](../contrib/crowdsec/README.md). Hörwerk itself blocks an IP for
    15 minutes after 5 failures; CrowdSec then bans it right at the VPS.
 
 ## Configuration
@@ -105,7 +105,7 @@ Settings, presets, history, the audiobook list, the library index and all creden
 
 **Backup, pinning a version, going back:** `/config` is all Hörwerk needs backed up (your audiobooks live in your own
 library share). Every version is its own image – `ghcr.io/larosen/hoerwerk:1.0.0` instead of `:latest` stays on that
-version (it still gets the weekly security rebuild); what changed is in the [changelog](../../CHANGELOG.md). To go back, set
+version (it still gets the weekly security rebuild); what changed is in the [changelog](../CHANGELOG.md). To go back, set
 the older tag and start the container again; if the database was changed by the newer version, put a backup copy from
 before the update in place. Books that Hörwerk replaced are not deleted but moved to `_ersetzt` in the inbox – move the
 folder back into the library to restore one.
@@ -163,7 +163,7 @@ SABnzbd, the optional indexer, Audiobookshelf, Plex and ntfy are set up in the i
 
 ## Security
 
-Short version – details, tests and component versions in [SECURITY.md](../../SECURITY.md):
+Short version – details, tests and component versions in [SECURITY.md](../SECURITY.md):
 
 * Accounts with login; on the internet only behind a reverse proxy with HTTPS (e.g. Pangolin) and with
   `TRUSTED_PROXIES`. Failed logins are in `/config/logs/auth.log` with their IP – ready for CrowdSec.

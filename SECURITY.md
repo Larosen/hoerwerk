@@ -1,7 +1,5 @@
 # Security
 
-**English** · [Deutsch](SECURITY.de.md)
-
 Applies to **version 1.0** (last full security review: 30 Oct 2026; what changed since is in the
 [changelog](CHANGELOG.md), and the protections below are checked by the tests on every change). Hörwerk processes
 files from foreign sources (downloads via SABnzbd), queries external services (Audible, Audnexus, BookBeat, Thalia,

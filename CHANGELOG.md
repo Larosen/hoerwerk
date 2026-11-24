@@ -5,6 +5,7 @@ What changed in each version of Hörwerk. Every version is also a tag (`v1.0.0`)
 
 ## 1.0.18 – 2026-11-20
 
+- The contrast check runs against the real stylesheet (`tests/test_contrast.py`).
 - **The library tidies itself first:** books without an Audible link are looked up in the background, and where the
   edition is beyond doubt (runtime within about 4 % and a fitting title, or title and author near identical) its ASIN
   and the missing year, narrators, publisher, series, description and cover are written into the M4B – the same as
@@ -292,7 +293,7 @@ request, follow and discover audiobooks. Earlier numbers (7.x) were development 
 - **The colour of a book:** cards, requests and the detail column take a tone from the cover – read from the picture, a cloth tone; without a cover
   from the tone of the stand-in tile. Online covers go through a cache on the server (`/api/cover`, public https hosts only), so the browser no longer
   asks the shops' image servers.
-- **iPhone app:** Hörwerk can be put on the home screen and then runs full screen ([guide](docs/en/iphone-app.md)); manifest and icons are
+- **iPhone app:** Hörwerk can be put on the home screen and then runs full screen ([guide](docs/iphone-app.md)); manifest and icons are
   served without signing in, nothing else is.
 - **License:** [PolyForm Noncommercial 1.0.0](LICENSE) – free for personal and other noncommercial use. The licenses of all Rust libraries are in
   `THIRD-PARTY-LICENSES.md` and in the image under `/licenses`.
@@ -341,7 +342,7 @@ request, follow and discover audiobooks. Earlier numbers (7.x) were development 
 - Fixed: the server could freeze for good when a new folder arrived in the inbox at the very moment another book
   started its next step (two parts waiting for each other). Found while filing eight books at once; there is a test
   for exactly that now.
-- The README is a short overview with a demo; the manual moved to `docs/en/` and `docs/de/`.
+- The README is a short overview with a demo; the manual moved to `docs/` and `docs/de/`.
 - English UI: the button says "Request" (not "Requests"), and quotation marks follow the language.
 
 ## 7.17.1 – 2026-11-12

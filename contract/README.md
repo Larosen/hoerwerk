@@ -1,25 +1,25 @@
-# API-Vertrag
+# API contract
 
-Was der Hörwerk-Server (`rust/hoerwerk`) erfüllen muss. Geprüft wird nur von außen über HTTP und die Ordner, ohne
-einen Import der Anwendung. Entstanden mit Hörwerk 7.13 (damals Python): Was 7.13 tat, ist der Maßstab.
+What the Hörwerk server (`rust/hoerwerk`) has to fulfil. It is tested only from the outside, over HTTP and the folders,
+without importing the application. Written against Hörwerk 7.13 (then in Python): what 7.13 did is the yardstick.
 
-| Datei | Inhalt |
+| file | content |
 |---|---|
-| `routes.json` | Alle 98 API-Routen mit Methode, Pfad und Zugriff (`public` / `user` / `admin`) – der Server liest sie beim Bauen |
-| `settings.json` | Einstellungen: Standardwerte, erlaubte Werte, Umgebungsvariablen, Version – der Server liest sie beim Bauen |
-| `schema.sql` | Das Datenbank-Schema (Tabellen, Indizes, `user_version`) |
-| `fixtures/hoerwerk-7.13.db` | Eine Datenbank aus 7.13, die jede neue Version unverändert übernehmen muss |
-| `golden/` | Die Antworten von 7.13 auf knifflige Eingaben – die Rust-Unit-Tests prüfen dagegen: M4B-Tags eines Buchs (`book.json` → `tags.json`, gelesen mit `read_tags.py`; zurückgelesen `read.json`), Namen und Titel (`words.json`), Releases und Indexer (`releases.json`), Shop-Daten und Treffer (`audible.json`), Rezensionen, Feeds und Bestenlisten-PDFs (`discover.json`) |
-| `test_contract.py` | Die Tests: Zugriff, Sicherheit, Konten, Einladungen, Einstellungen, Anfragen, Eingang → Bibliothek, Upload, Live-Updates, Herunterfahren und Neustart, Schema, alte Datenbank |
-| `test_tags.py` | Der Tag-Schreiber `hw-tags` gegen `golden/` |
-| `../docs/JOBS.md` | Job-Zustände, Übergänge und das Verhalten bei einem Neustart |
+| `routes.json` | All API routes with method, path and access (`public` / `user` / `admin`) – the server reads it at build time |
+| `settings.json` | Settings: defaults, allowed values, environment variables, version – the server reads it at build time |
+| `schema.sql` | The database schema (tables, indexes, `user_version`) |
+| `fixtures/hoerwerk-7.13.db` | A database from 7.13 that every new version has to take over unchanged |
+| `golden/` | The answers of 7.13 to tricky input – the Rust unit tests check against them: M4B tags of a book (`book.json` → `tags.json`, read with `read_tags.py`; read back `read.json`), names and titles (`words.json`), releases and indexers (`releases.json`), shop data and matches (`audible.json`), reviews, feeds and bestseller PDFs (`discover.json`) |
+| `test_contract.py` | The tests: access, security, accounts, invitations, settings, requests, inbox → library, upload, live updates, shutdown and restart, schema, old database |
+| `test_tags.py` | The tag writer `hw-tags` against `golden/` |
+| `../docs/JOBS.md` | Job states, transitions and the behaviour on a restart |
 
 ```sh
 (cd rust && cargo build --release)
 pip install -r requirements-dev.txt
-cd contract && python3 -m unittest discover -s .          # gegen rust/target/release/hoerwerk
-HW_SERVER_CMD=/pfad/zu/hoerwerk python3 -m unittest discover -s .
+cd contract && python3 -m unittest discover -s .          # against rust/target/release/hoerwerk
+HW_SERVER_CMD=/path/to/hoerwerk python3 -m unittest discover -s .
 ```
 
-Die Golden Files und das Fixture sind eingefroren. Wer eine Regel bewusst ändert, passt die Datei von Hand an und
-schreibt im Commit, warum.
+The golden files and the fixture are frozen. Whoever changes a rule on purpose edits the file by hand and
+says why in the commit.

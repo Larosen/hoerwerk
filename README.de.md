@@ -43,7 +43,7 @@ automatisieren möchten.
   passende Hörbücher vor; dazu kommen Tipps von Kritikern (Perlentaucher, Deutschlandfunk Kultur). Ein Tipp auf ein Hörbuch zeigt
   die Beschreibung und *Ähnlich wie …* – was Hörer dieses Hörbuchs auch gehört haben –, und jede Karte trägt die Farbe ihres Covers.
 - **Drei Farbwelten und eine App auf dem Home-Bildschirm.** Hell (Papier), Dunkel (Abend) und OLED (echtes Schwarz); auf iPhone und iPad
-  läuft Hörwerk im Vollbild wie eine App ([Anleitung](docs/de/iphone-app.md)).
+  läuft Hörwerk im Vollbild wie eine App ([Anleitung](docs/iphone-app.md)).
 - **Klein und abgesichert.** Ein Rust-Programm, eigenes schlankes ffmpeg in einer Sandbox, Zweitfaktor, signierte Images.
 
 | Anfragen mit Fortschritt | Entdecken |
@@ -80,12 +80,12 @@ Sicherheitsupdates neu gebaut, mit cosign signiert.
 
 | | |
 |---|---|
-| [Hörbücher](docs/de/guide.md) | Eingang, Hochladen, Zuordnung, Doppelte, Kapitel, Fassungen, Audiobookshelf und Plex |
-| [Downloads, Entdecken, Anfragen](docs/de/downloads.md) | SABnzbd und Indexer, LibriVox, Vorschläge, Anfragen der Familie |
-| [Konfiguration](docs/de/configuration.md) | Konten, Zugriff von außen, Benachrichtigungen, Variablen, Backup |
-| [Hörwerk als App](docs/de/iphone-app.md) | auf den Home-Bildschirm von iPhone und iPad legen, Schritt für Schritt |
-| [Sicherheit](SECURITY.de.md) | wovor Hörwerk schützt und wie das getestet wird |
-| [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Entwicklung](docs/de/development.md) | |
+| [Hörbücher](docs/guide.md) | Eingang, Hochladen, Zuordnung, Doppelte, Kapitel, Fassungen, Audiobookshelf und Plex |
+| [Downloads, Entdecken, Anfragen](docs/downloads.md) | SABnzbd und Indexer, LibriVox, Vorschläge, Anfragen der Familie |
+| [Konfiguration](docs/configuration.md) | Konten, Zugriff von außen, Benachrichtigungen, Variablen, Backup |
+| [Hörwerk als App](docs/iphone-app.md) | auf den Home-Bildschirm von iPhone und iPad legen, Schritt für Schritt |
+| [Sicherheit](SECURITY.md) | wovor Hörwerk schützt und wie das getestet wird |
+| [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Entwicklung](docs/development.md) | |
 
 > Hörwerk verwaltet Audiodateien, die du nutzen darfst – eigene Käufe, eigene Aufnahmen oder gemeinfreie Werke.
 > Es enthält keine Medien und steht in keiner Verbindung zu Audible, Amazon, Apple, LibriVox oder anderen genannten

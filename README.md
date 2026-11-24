@@ -42,7 +42,7 @@ process.
   matching books, and it picks up tips from critics (Perlentaucher, Deutschlandfunk Kultur). A tap on an audiobook shows its
   description and *Similar to …* – what listeners of that book also listened to – and every card takes the colour of its cover.
 - **Three colour schemes, and an app on the home screen.** Light (paper), dark (evening) and OLED (true black); on the iPhone and iPad
-  Hörwerk runs full screen like an app ([how to](docs/en/iphone-app.md)).
+  Hörwerk runs full screen like an app ([how to](docs/iphone-app.md)).
 - **Small and locked down.** One Rust program, its own minimal ffmpeg in a sandbox, two-factor login, signed images.
 
 | Requests with live progress | Discover |
@@ -79,12 +79,12 @@ security updates, signed with cosign.
 
 | | |
 |---|---|
-| [Audiobooks](docs/en/guide.md) | inbox, upload, matching, duplicates, chapters, editions, Audiobookshelf and Plex |
-| [Downloads, discover, requests](docs/en/downloads.md) | SABnzbd and indexers, LibriVox, suggestions, family requests |
-| [Configuration](docs/en/configuration.md) | accounts, access from outside, notifications, variables, backup |
-| [Hörwerk as an app](docs/en/iphone-app.md) | put it on the iPhone and iPad home screen, step by step |
+| [Audiobooks](docs/guide.md) | inbox, upload, matching, duplicates, chapters, editions, Audiobookshelf and Plex |
+| [Downloads, discover, requests](docs/downloads.md) | SABnzbd and indexers, LibriVox, suggestions, family requests |
+| [Configuration](docs/configuration.md) | accounts, access from outside, notifications, variables, backup |
+| [Hörwerk as an app](docs/iphone-app.md) | put it on the iPhone and iPad home screen, step by step |
 | [Security](SECURITY.md) | what Hörwerk protects against and how that is tested |
-| [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Development](docs/en/development.md) | |
+| [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Development](docs/development.md) | |
 
 > Hörwerk organises audio you are entitled to use – your own purchases, your own recordings or public-domain works.
 > It ships no media and is not affiliated with Audible, Amazon, Apple, LibriVox or any other service named here.

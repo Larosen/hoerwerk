@@ -1,5 +1,5 @@
 /* Hörwerk – "Werkstatt & Regal": warm papers instead of neutral greys, one green for action, one brass for "new".
-   Three colour worlds (all text pairs ≥ 4.5:1, see docs/design/check_contrast.py):
+   Three colour worlds (all text pairs ≥ 4.5:1, checked by tests/test_contrast.py):
    Hell = Papier · Dunkel = Abend (espresso, not grey) · OLED = Nacht (true black, hairlines instead of fills). */
 :root, :root[data-theme="light"] {
   --bg: #F3EDE0;

@@ -1,12 +1,12 @@
 # Hörwerk as an app on the iPhone
 
-[← README](../../README.md) · **English** · [Deutsch](../de/iphone-app.md)
+[← README](../README.md)
 
 Hörwerk can be put on the home screen of an iPhone or iPad. It then starts full screen, without an address bar and with
 its own icon – like an app, but without the App Store. It is the same page as in the browser, so there is never an update
 to install.
 
-![The four steps in Safari](../screenshots/en/iphone-app.png)
+![The four steps in Safari](screenshots/en/iphone-app.png)
 
 *Schematic view of the steps in Safari (iPhone, iOS 17/18). Hörwerk's interface is the real one, the iOS menus are redrawn.*
 
