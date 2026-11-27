@@ -40,3 +40,15 @@ against the source and against the finished Docker image.
 | Discover | `discover.rs`, `pdftext.rs`, `trusted_authors.txt`, `frontend/src/discover.ts` |
 | Interface | `frontend/src/*.ts`, `static/index.html`, `static/style.css`, `static/i18n/en.json`; E2E tests in `e2e/` |
 | API contract | `contract/` (routes, schema, settings, golden files, tests) |
+
+## README screenshots
+
+`scripts/screenshots/shoot.mjs` makes the screenshots and the demo GIF in `docs/screenshots/en` and `docs/screenshots/de`.
+It starts the real server and shows a demo library in the browser: public-domain books (`books.mjs`) with cover art
+that the script draws itself (`covers.mjs`). No real cover art is used.
+
+```bash
+npm run build && (cd rust && cargo build --release) && node scripts/screenshots/shoot.mjs
+```
+
+It needs ffmpeg for the GIF. Set `PW_CHROMIUM` to use another Chromium binary.

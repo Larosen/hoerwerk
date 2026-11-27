@@ -8,7 +8,7 @@
 
 [English](README.md) · **Deutsch**
 
-![Ein Ordner mit MP3s landet im Eingang und wird zu einer M4B in der Bibliothek](docs/screenshots/de/demo.gif)
+![Der Rundgang: eine volle Bibliothek, eine Anfrage kommt an, Vorschläge mit Details](docs/screenshots/de/demo.gif)
 
 ## Warum Hörwerk?
 
@@ -52,6 +52,8 @@ automatisieren möchten.
 
 ![Bibliothek](docs/screenshots/de/library.png)
 
+<p align="center"><img src="docs/screenshots/de/phone-requests.png" width="300" alt="Anfragen auf dem Handy"></p>
+
 ## Schnellstart
 
 **Unraid:** *Docker → Add Container*, als Template
@@ -89,7 +91,7 @@ Sicherheitsupdates neu gebaut, mit cosign signiert.
 
 > Hörwerk verwaltet Audiodateien, die du nutzen darfst – eigene Käufe, eigene Aufnahmen oder gemeinfreie Werke.
 > Es enthält keine Medien und steht in keiner Verbindung zu Audible, Amazon, Apple, LibriVox oder anderen genannten
-> Diensten. Die Hörbücher in den Screenshots sind gemeinfreie Klassiker mit ausgedachten Covern.
+> Diensten. Die Hörbücher in den Screenshots sind gemeinfreie Klassiker mit eigens gezeichneten Covern.
 
 ## Entstehung
 
