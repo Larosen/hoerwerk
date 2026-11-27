@@ -36,8 +36,10 @@ RUN cargo build --release --locked -p hw-run -p hoerwerk && ./target/release/hw-
 FROM debian:trixie-slim
 # Debian's security updates first (the base image is only rebuilt every few weeks; fixes like the one for
 # zlib arrive in between), then tini for clean signal handling, CA certificates for HTTPS (Audible,
-# indexers, ntfy), time zones for TZ
-RUN apt-get update \
+# indexers, ntfy), time zones for TZ. APT_REFRESH (the CI passes today's date) keeps a cached layer from
+# hiding fixes published since the last build.
+ARG APT_REFRESH=none
+RUN echo "apt refresh: $APT_REFRESH" && apt-get update \
  && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends tini ca-certificates tzdata \
  && rm -rf /var/lib/apt/lists/*
