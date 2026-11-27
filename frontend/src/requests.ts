@@ -6,7 +6,7 @@
 type RequestStatus = "pending" | "searching" | "downloading" | "processing" | "available" | "declined" | "failed";
 interface BookRequest {
   id: number; book: Book; status: RequestStatus; created: number; updated: number; user?: string; mine: boolean;
-  reason?: string; release?: string; error?: string | null; last_search?: number | null; found?: number; seen?: number;
+  reason?: string; release?: string; error?: string | null; last_search?: number | null; found?: number; done?: number | null; seen?: number;
   history?: { time: number; text: string }[]; blocked?: string[]; attempts?: number; group?: RequestGroup | null;
   live?: RequestLive | null; resting?: string[] | null;
   /** a better release for a book that is there: which one and how it sounds now */
@@ -292,11 +292,46 @@ function requestCard(r: BookRequest): HTMLLIElement {
       r.upgrade ? el("span", { class: "muted small" }, t("Vorhanden: {have} – automatisch nur ein klar besseres Release, im Releases-Fenster zählt deine Wahl",
         { have: haveLabel(r.upgrade.have) })) : null,
       el("span", { class: "req-line" }, el("span", { class: `rtag req-${r.status}` }, REQ_STATUS[r.status]()),
-        r.user && !r.mine ? el("span", { class: "muted small" }, t("von {name}", { name: r.user })) : null,
-        el("span", { class: "muted small" }, fmtAgo(r.created))),
+        el("span", { class: "muted small" }, requestedText(r))),
+      foundText(r) ? el("span", { class: "muted small" }, foundText(r)) : null,
       liveInfo(r),
       detail ? el("span", { class: "muted small req-detail", title: detail }, detail) : null),
     actions.length ? el("div", { class: "s-actions" }, ...actions) : null);
+}
+
+/** "Angefragt am … von …": who asked (visible to those who see everyone's requests) and when. */
+function requestedText(r: BookRequest): string {
+  const when = fmtAgo(r.created);
+  if (!r.user) return t("Angefragt {when}", { when });
+  return t("Angefragt {when} von {name}", { when, name: r.mine ? t("dir") : r.user });
+}
+
+/** When an available request's book arrived – older requests without the field: the last history entry. */
+function doneTime(r: BookRequest): number | null {
+  if (r.status !== "available") return null;
+  if (r.done) return r.done;
+  const h = r.history || [];
+  return h.length ? h[h.length - 1].time : r.updated;
+}
+
+/** A span of time, short: "12 min", "5 h", "3 Tage". */
+function fmtSpan(s: number): string {
+  if (s < 3600) return t("{n} min", { n: Math.max(1, Math.round(s / 60)) });
+  if (s < 2 * 86400) return t("{n} h", { n: Math.round(s / 3600) });
+  return t("{n} Tage", { n: Math.round(s / 86400) });
+}
+
+function foundText(r: BookRequest): string {
+  const done = doneTime(r);
+  if (!done) return "";
+  return t("Gefunden {when} (nach {span})", { when: fmtAgo(done), span: fmtSpan(Math.max(0, done - r.created)) });
+}
+
+/** A series: when its last volume arrived, once all are there. */
+function groupFoundText(members: BookRequest[]): string {
+  if (!members.every((m) => m.status === "available")) return "";
+  const last = members.reduce((a, m) => (doneTime(m) || 0) > (doneTime(a) || 0) ? m : a);
+  return foundText(last);
 }
 
 async function decide(r: BookRequest, what: "approve" | "decline" | "retry"): Promise<void> {
@@ -346,8 +381,8 @@ function groupCard(members: BookRequest[]): HTMLLIElement {
       el("span", { class: "tag-row" }, el("span", { class: "series-tag" }, icon("books"), t("Reihe")), langTag(b), genreTag(b)),
       el("span", { class: "req-line" }, ...order.filter((s) => counts.get(s)).map((s) =>
         el("span", { class: `rtag req-${s}` }, `${REQ_STATUS[s]()}: ${counts.get(s)}`)),
-        first.user && !first.mine ? el("span", { class: "muted small" }, t("von {name}", { name: first.user })) : null,
-        el("span", { class: "muted small" }, fmtAgo(first.created))),
+        el("span", { class: "muted small" }, requestedText(first))),
+      groupFoundText(members) ? el("span", { class: "muted small" }, groupFoundText(members)) : null,
       ...members.filter((m) => m.live).slice(0, 3).map((m) => liveInfo(m, volumeLabel(m.book) || m.book.title))),
     vols,
     actions.length ? el("div", { class: "s-actions" }, ...actions) : null);

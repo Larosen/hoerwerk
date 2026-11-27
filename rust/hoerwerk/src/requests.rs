@@ -270,6 +270,10 @@ impl Requests {
             hist.push(json!({"time": now(), "text": note}));
             data.insert("history".into(), json!(hist));
         }
+        // when the book arrived in the library (the request's "found" time; later saves keep it)
+        if status == "available" && req["status"] != "available" {
+            data.insert("done".into(), json!(now()));
+        }
         let id = req["id"].as_i64().unwrap_or(0);
         let _ = app.db.lock().execute(
             "UPDATE requests SET status=?, updated=?, data=? WHERE id=?",
@@ -1760,6 +1764,7 @@ pub fn summary(req: &Value, user: &Value, sees_all: bool) -> Value {
         "status",
         "created",
         "updated",
+        "done",
         "reason",
         "release",
         "error",

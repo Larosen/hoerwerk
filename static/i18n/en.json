@@ -609,7 +609,6 @@
  "gekürzte Fassung": "abridged edition",
  "gesperrt (Download oder Import ging schief)": "blocked (download or import went wrong)",
  "kbit/s": "kbit/s",
- "von {name}": "by {name}",
  "z. B. eva-hoerbuecher": "e.g. eva-audiobooks",
  "zu groß für {h} h Laufzeit ({kbps} kbit/s)": "too big for {h} h runtime ({kbps} kbit/s)",
  "zu klein für {h} h Laufzeit ({kbps} kbit/s)": "too small for {h} h runtime ({kbps} kbit/s)",
@@ -1851,5 +1850,10 @@
  "Bücher der Bibliothek im Hintergrund selbst zuordnen und ergänzen, wo die Fassung sicher ist": "Match and complete the library's books by itself in the background where the edition is sure",
  "Ordnet zu {done}/{total}": "Matching {done}/{total}",
  "Was Hörwerk nicht selbst ergänzen konnte: Cover, Jahr oder Sprecher fehlen": "What Hörwerk could not complete by itself: cover, year or narrator missing",
- "Was Hörwerk nicht sicher zuordnen konnte (keine Audible-Verknüpfung) oder eine andere Fassung (Laufzeit weicht ab)": "What Hörwerk could not match for sure (no Audible link) or another edition (length differs)"
+ "Was Hörwerk nicht sicher zuordnen konnte (keine Audible-Verknüpfung) oder eine andere Fassung (Laufzeit weicht ab)": "What Hörwerk could not match for sure (no Audible link) or another edition (length differs)",
+ "Angefragt {when}": "Requested {when}",
+ "Angefragt {when} von {name}": "Requested {when} by {name}",
+ "dir": "you",
+ "{n} h": "{n} h",
+ "Gefunden {when} (nach {span})": "Found {when} (after {span})"
 }
