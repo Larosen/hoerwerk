@@ -13,3 +13,4 @@ playwright-report/
 e2e/.run/
 sbom.spdx.json
 rust/target/
+scripts/screenshots/.art/

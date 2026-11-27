@@ -8,7 +8,7 @@
 
 **English** · [Deutsch](README.de.md)
 
-![A folder of MP3s lands in the inbox and becomes one M4B in the library](docs/screenshots/en/demo.gif)
+![The tour: a full library, a request that arrives, suggestions with details](docs/screenshots/en/demo.gif)
 
 ## Why Hörwerk?
 
@@ -44,6 +44,8 @@ Hörwerk is for self-hosters who keep audiobooks on a NAS or server. It does all
 | ![Requests](docs/screenshots/en/requests.png) | ![Discover](docs/screenshots/en/discover.png) |
 
 ![Library](docs/screenshots/en/library.png)
+
+<p align="center"><img src="docs/screenshots/en/phone-requests.png" width="300" alt="Requests on the phone"></p>
 
 ## Quick start
 
@@ -86,7 +88,7 @@ We build it again each week for security updates. Cosign signs it.
 
 > Use Hörwerk only for audio that you have the right to use: your purchases, your recordings or public-domain works.
 > Hörwerk contains no media. It has no connection to Audible, Amazon, Apple, LibriVox or other services in this text.
-> The books in the screenshots are public-domain classics with invented covers.
+> The books in the screenshots are public-domain classics. Their covers use public-domain artwork ([credits](docs/screenshots/CREDITS.md)).
 
 ## How it came about
 
