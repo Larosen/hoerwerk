@@ -340,7 +340,78 @@ fn simple(status: u16, message: &str) -> Response<Body> {
     )
 }
 
-fn static_file(app: &App, rel: &str) -> Response<Body> {
+/// A file of the UI, kept in memory with its gzip form (the files only change with a new image).
+struct StaticEntry {
+    stamp: (std::time::SystemTime, u64),
+    etag: String,
+    ctype: String,
+    raw: Bytes,
+    gz: Option<Bytes>,
+}
+
+static STATIC_CACHE: std::sync::LazyLock<std::sync::Mutex<HashMap<std::path::PathBuf, Arc<StaticEntry>>>> =
+    std::sync::LazyLock::new(|| std::sync::Mutex::new(HashMap::new()));
+
+/// Text worth compressing: HTML, CSS, scripts, JSON, SVG.
+fn compressible(ctype: &str) -> bool {
+    ctype.starts_with("text/") || ctype.contains("javascript") || ctype.contains("json") || ctype.contains("svg")
+}
+
+fn gzip(data: &[u8]) -> Option<Bytes> {
+    use std::io::Write;
+    let mut enc = flate2::write::GzEncoder::new(Vec::with_capacity(data.len() / 3), flate2::Compression::best());
+    enc.write_all(data).ok()?;
+    let out = enc.finish().ok()?;
+    (out.len() < data.len()).then(|| Bytes::from(out))
+}
+
+/// Static content for the browser: revalidated on each load (`no-cache` + ETag, so a new version shows at once),
+/// answered with 304 when unchanged, and sent gzip-compressed when the browser takes it.
+/// Pages (HTML) stay `no-store`: after signing out, Back shows no page from the cache.
+fn cacheable(h: &HeaderMap, ctype: &str, etag: &str, raw: &Bytes, gz: Option<&Bytes>) -> Response<Body> {
+    let page = ctype.starts_with("text/html");
+    let mut extra = vec![("Vary".to_string(), "Accept-Encoding".to_string())];
+    if page {
+        extra.push(("Cache-Control".into(), "no-store".into()));
+    } else {
+        extra.push(("Cache-Control".into(), "private, no-cache".into()));
+        extra.push(("ETag".into(), etag.to_string()));
+    }
+    let unchanged = !page
+        && header_str(h, "if-none-match")
+            .split(',')
+            .any(|t| t.trim().trim_start_matches("W/") == etag);
+    if unchanged {
+        return respond(StatusCode::NOT_MODIFIED, ctype, Bytes::new(), &extra, false);
+    }
+    let takes_gzip = header_str(h, "accept-encoding")
+        .split(',')
+        .any(|e| e.split(';').next().map(str::trim) == Some("gzip"));
+    match gz {
+        Some(z) if takes_gzip => {
+            extra.push(("Content-Encoding".into(), "gzip".into()));
+            respond(StatusCode::OK, ctype, z.clone(), &extra, false)
+        }
+        _ => respond(StatusCode::OK, ctype, raw.clone(), &extra, false),
+    }
+}
+
+/// Generated script (i18n.js): same caching as a file, the ETag from its content.
+fn cacheable_text(h: &HeaderMap, ctype: &str, text: String) -> Response<Body> {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut hasher);
+    let etag = format!("\"g{:x}\"", hasher.finish());
+    let raw = Bytes::from(text);
+    let gz = if header_str(h, "if-none-match").contains(&etag) {
+        None
+    } else {
+        gzip(&raw)
+    };
+    cacheable(h, ctype, &etag, &raw, gz.as_ref())
+}
+
+fn static_file(app: &App, rel: &str, h: &HeaderMap) -> Response<Body> {
     let decoded = percent_encoding::percent_decode_str(rel)
         .decode_utf8_lossy()
         .into_owned();
@@ -353,17 +424,51 @@ fn static_file(app: &App, rel: &str) -> Response<Body> {
         Ok(p) if p.starts_with(&root) && p.is_file() => p,
         _ => return simple(404, &t("Nicht gefunden", &[])),
     };
-    let mut ctype = mime_guess::from_path(&full)
-        .first_or_octet_stream()
-        .essence_str()
-        .to_string();
-    if ctype.starts_with("text/") || ctype.ends_with("javascript") {
-        ctype.push_str("; charset=utf-8");
-    }
-    match std::fs::read(&full) {
-        Ok(data) => respond(StatusCode::OK, &ctype, Bytes::from(data), &[], false),
-        Err(_) => simple(404, &t("Nicht gefunden", &[])),
-    }
+    let Ok(meta) = std::fs::metadata(&full) else {
+        return simple(404, &t("Nicht gefunden", &[]));
+    };
+    let stamp = (meta.modified().unwrap_or(std::time::UNIX_EPOCH), meta.len());
+    let cached = STATIC_CACHE
+        .lock()
+        .ok()
+        .and_then(|c| c.get(&full).filter(|e| e.stamp == stamp).cloned());
+    let entry = match cached {
+        Some(e) => e,
+        None => {
+            let Ok(data) = std::fs::read(&full) else {
+                return simple(404, &t("Nicht gefunden", &[]));
+            };
+            let mut ctype = mime_guess::from_path(&full)
+                .first_or_octet_stream()
+                .essence_str()
+                .to_string();
+            if ctype.starts_with("text/") || ctype.ends_with("javascript") {
+                ctype.push_str("; charset=utf-8");
+            }
+            let nanos = stamp
+                .0
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0);
+            let gz = if compressible(&ctype) && data.len() > 1024 {
+                gzip(&data)
+            } else {
+                None
+            };
+            let e = Arc::new(StaticEntry {
+                stamp,
+                etag: format!("\"{:x}-{:x}\"", stamp.1, nanos),
+                ctype,
+                raw: Bytes::from(data),
+                gz,
+            });
+            if let Ok(mut c) = STATIC_CACHE.lock() {
+                c.insert(full, e.clone());
+            }
+            e
+        }
+    };
+    cacheable(h, &entry.ctype, &entry.etag, &entry.raw, entry.gz.as_ref())
 }
 
 fn redirect(to: &str) -> Response<Body> {
@@ -488,19 +593,13 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
     let session = |app: &App| app.accounts.session_user(&app.db, &token, &conn.ip);
     if reading {
         match path.as_str() {
-            "/favicon.ico" => return static_file(&app, "icon.png"),
+            "/favicon.ico" => return static_file(&app, "icon.png", h),
             // the installed app (iPhone home screen): the browser asks for these before anyone is signed in
-            "/manifest.webmanifest" => return static_file(&app, "manifest.webmanifest"),
-            "/apple-touch-icon.png" => return static_file(&app, "apple-touch-icon.png"),
+            "/manifest.webmanifest" => return static_file(&app, "manifest.webmanifest", h),
+            "/apple-touch-icon.png" => return static_file(&app, "apple-touch-icon.png", h),
             "/i18n.js" => {
                 let data = json!({"lang": crate::text::language(), "text": crate::text::catalog_json()});
-                return respond(
-                    StatusCode::OK,
-                    "text/javascript; charset=utf-8",
-                    Bytes::from(format!("const I18N = {data};\n")),
-                    &[],
-                    false,
-                );
+                return cacheable_text(h, "text/javascript; charset=utf-8", format!("const I18N = {data};\n"));
             }
             "/me.js" => {
                 // "help": whether the "So funktioniert's" boxes are shown (Einstellungen → Allgemein)
@@ -538,11 +637,11 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
                     false,
                 );
             }
-            return static_file(&app, rel);
+            return static_file(&app, rel, h);
         }
         if path.starts_with("/invite/") {
             // a broken or shortened link opens the page too – it says the invitation does not hold, not raw JSON
-            return static_file(&app, "login.html");
+            return static_file(&app, "login.html", h);
         }
         if path == "/" || path == "/login" {
             let signed_in = session(&app).is_some();
@@ -552,7 +651,7 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
             if path == "/login" && signed_in {
                 return redirect("/");
             }
-            return static_file(&app, if path == "/" { "index.html" } else { "login.html" });
+            return static_file(&app, if path == "/" { "index.html" } else { "login.html" }, h);
         }
         if let Some(access) = page_access(&path) {
             let Some(user) = session(&app) else {
@@ -564,7 +663,7 @@ async fn handle(app: Arc<App>, peer: SocketAddr, req: Request) -> Response<Body>
             if access == "admin" && user["role"] != "admin" {
                 return redirect("/");
             }
-            return static_file(&app, "index.html");
+            return static_file(&app, "index.html", h);
         }
     }
     if !reading && !same_origin(h) {

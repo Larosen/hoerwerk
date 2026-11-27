@@ -210,6 +210,18 @@ class Security(ContractTest):
         self.assertEqual((h["x-content-type-options"], h["x-frame-options"], h["referrer-policy"]),
                          ("nosniff", "DENY", "no-referrer"))
 
+    def test_static_files_compressed_and_revalidated(self):
+        import gzip as gz
+        # style.css: in the repository (the scripts only exist after the TypeScript build)
+        status, h, body = self.server.request("GET", "/static/style.css", headers={"Accept-Encoding": "gzip"})
+        self.assertEqual((status, h.get("content-encoding"), h["cache-control"]), (200, "gzip", "private, no-cache"))
+        self.assertIn(b":root", gz.decompress(body))
+        status, _, body = self.server.request("GET", "/static/style.css", headers={"If-None-Match": h["etag"]})
+        self.assertEqual((status, body), (304, b""))
+        # app scripts stay behind the login; pages are never cached
+        self.assertEqual(self.server.request("GET", "/static/books.js")[0], 401)
+        self.assertEqual(self.server.request("GET", "/login")[1]["cache-control"], "no-store")
+
     def test_session_cookie(self):
         status, h, _ = self.server.request("POST", "/api/auth/login", ADMIN, headers=OWN)
         self.assertEqual(status, 200)
