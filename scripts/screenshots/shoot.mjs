@@ -194,12 +194,12 @@ for (const lang of ["en", "de"]) {
   await shot(page, 4);
   for (const p of [0.7, 0.78, 0.86, 0.93, 0.99]) {
     state.progress = p;
-    await page.evaluate(() => loadRequests());
+    await page.evaluate(() => Promise.all([loadRequests(), pollBench()]));   // the workbench in the sidebar too
     await settle(page, 300);
     await shot(page, 2);
   }
   state.arrived = true;
-  await page.evaluate(() => loadRequests());
+  await page.evaluate(() => Promise.all([loadRequests(), pollBench()]));   // the workbench in the sidebar too
   await covered(page);
   await shot(page, 7);
   await page.goto(`${BASE}/discover`);
