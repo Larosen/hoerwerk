@@ -78,7 +78,8 @@ jobs:
       - run: cargo test --release --locked
       - name: Licenses, advisories and sources of every crate
         run: |
-          cargo install --locked cargo-deny@0.20.2
+          # the cached binary counts only in the pinned version
+          cargo deny --version 2>/dev/null | grep -qx "cargo-deny 0.20.2" || cargo install --locked --force cargo-deny@0.20.2
           cargo deny check
 
   # The API contract (contract/): black-box tests against the server with the system ffmpeg; the tag writer against
