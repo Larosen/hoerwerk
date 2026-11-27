@@ -144,6 +144,9 @@ const requests = {
   releases: [] as JudgedRelease[],          // the open release window's list (re-sorted without searching again)
   timer: undefined as number | undefined,
   openGroups: new Set<string>(),            // series cards whose volume list is unfolded (survives the refresh)
+  person: store.get<string>("requestPerson", ""), // only this person's requests ("" = everyone)
+  seenBefore: store.get<number>("requestsSeen", 0), // last visit: what arrived after it is "Neu"
+  marked: false,
 };
 
 /** Same key as the server (bookrequests.book_key): ASIN, else title words + author surname. */
@@ -258,7 +261,29 @@ async function openSeries(b: Book): Promise<void> {
   }, { once: true });
 }
 
+/** Arrived after the last visit. */
+function isNew(r: BookRequest): boolean {
+  const done = doneTime(r);
+  return !!done && !!requests.seenBefore && done > requests.seenBefore;
+}
+
+/** A finished request: one short row – cover, title, who and when, delete. */
+function compactCard(r: BookRequest): HTMLLIElement {
+  const b = r.book;
+  const author = (b.authors || [])[0] || "";
+  return el("li", { class: "request req-compact tint-card req-available" },
+    coverFor(b.cover_url, b.title, author, "cover"),
+    el("div", { class: "s-body" },
+      el("b", { class: "s-title", title: b.title }, isNew(r) ? el("span", { class: "rtag req-new" }, t("Neu")) : null, b.title),
+      el("span", { class: "s-author" }, ...personLinks(b.authors, "author", b)),
+      el("span", { class: "muted small" }, foundText(r)),
+      el("span", { class: "muted small" }, requestedText(r))),
+    r.mine || IS_ADMIN ? el("button", { type: "button", class: "icon-btn", title: t("Nur die Anfrage löschen – das Hörbuch bleibt"),
+      "aria-label": t("Anfrage löschen"), onclick: () => deleteRequest(r) }, icon("x")) : null);
+}
+
 function requestCard(r: BookRequest): HTMLLIElement {
+  if (r.status === "available" && !r.upgrade) return compactCard(r);
   const b = r.book;
   const author = (b.authors || [])[0] || "";
   const last = (r.history || [])[(r.history || []).length - 1];
@@ -415,23 +440,32 @@ function renderRequests(): void {
   const badge = $("#requestBadge");
   badge.hidden = !d.pending;
   badge.textContent = String(d.pending || "");
+  if (!requests.marked) { requests.marked = true; store.set("requestsSeen", Math.floor(Date.now() / 1000)); }
+  const people = d.sees_all ? [...new Set(d.items.map((r) => r.user).filter((u): u is string => !!u))].sort() : [];
+  if (requests.person && !people.includes(requests.person)) requests.person = "";
+  const all = requests.person ? d.items.filter((r) => r.user === requests.person) : d.items;
   const chips = $("#requestFilter");
   chips.replaceChildren(...Object.entries(REQ_FILTERS).map(([key, [label, states]]) => {
-    const n = states.length ? d.items.filter((r) => states.includes(r.status)).length : d.items.length;
+    const n = states.length ? all.filter((r) => states.includes(r.status)).length : all.length;
     return el("button", { type: "button", class: "chip" + (requests.filter === key ? " on" : ""), onclick: () => {
       requests.filter = key; store.set("requestFilter", key); renderRequests();
     } }, label(), " ", el("span", { class: "n" }, String(n)));
   }));
   const q = d.quota;
-  $("#requestQuota").textContent = q.limit === null ? t("Du kannst unbegrenzt anfragen.")
-    : t("Diesen Monat noch {left} von {limit} Anfragen frei.", { left: q.left ?? 0, limit: q.limit });
+  const waits = all.map((r) => (doneTime(r) || 0) - r.created).filter((s) => s > 0).sort((a, b) => a - b);
+  $("#requestQuota").textContent = [q.limit === null ? t("Du kannst unbegrenzt anfragen.")
+    : t("Diesen Monat noch {left} von {limit} Anfragen frei.", { left: q.left ?? 0, limit: q.limit }),
+  waits.length ? t("Meist gefunden nach {span}", { span: fmtSpan(waits[Math.floor(waits.length / 2)]) }) : ""].filter(Boolean).join(" · ");
   const states = REQ_FILTERS[requests.filter]?.[1] || [];
+  renderRequestTools(people, all);
   // a series is one card – shown when one of its volumes fits the filter
   const groups = new Map<string, BookRequest[]>();
-  for (const r of d.items) if (r.group?.id) groups.set(r.group.id, [...(groups.get(r.group.id) || []), r]);
+  for (const r of all) if (r.group?.id) groups.set(r.group.id, [...(groups.get(r.group.id) || []), r]);
   const seen = new Set<string>();
   const cards: HTMLLIElement[] = [];
-  for (const r of d.items) {
+  // finished ones: the latest arrival first
+  const list = requests.filter === "available" ? [...all].sort((a, b) => (doneTime(b) || 0) - (doneTime(a) || 0)) : all;
+  for (const r of list) {
     const gid = r.group?.id;
     if (gid && seen.has(gid)) continue;
     const members = gid ? groups.get(gid)! : [r];
@@ -443,6 +477,45 @@ function renderRequests(): void {
   $("#requestList").replaceChildren(...(items.length ? items
     : [el("li", { class: "empty" }, d.items.length ? t("Nichts in dieser Ansicht.")
       : t("Noch keine Anfragen. Such ein Hörbuch unter „Suchen“ oder stöbere in „Entdecken“."))]));
+}
+
+/** Person filter (for those who see everyone) and "clear the finished ones". */
+function renderRequestTools(people: string[], all: BookRequest[]): void {
+  const tools: HTMLElement[] = [];
+  if (people.length > 1) {
+    const sel = el("select", { "aria-label": t("Person"), onchange: () => {
+      requests.person = sel.value; store.set("requestPerson", sel.value); renderRequests();
+    } }, el("option", { value: "" }, t("Alle Personen")), ...people.map((p) => el("option", { value: p }, p))) as HTMLSelectElement;
+    sel.value = requests.person;
+    tools.push(el("label", { class: "filter-select" }, sel));
+  }
+  const done = all.filter((r) => r.status === "available" && (r.mine || IS_ADMIN));
+  if (requests.filter === "available" && done.length > 1) {
+    tools.push(el("button", { type: "button", class: "btn small ghost", onclick: () => clearAvailable(done) }, icon("x"), t("Liste leeren")));
+  }
+  $("#requestTools").replaceChildren(...tools);
+}
+
+/** Remove finished requests from the list – the audiobooks stay. A series goes at once when all its volumes are there. */
+async function clearAvailable(done: BookRequest[]): Promise<void> {
+  if (!(await confirmBox(t("{n} fertige Anfragen aus der Liste löschen? Die Hörbücher bleiben.", { n: done.length }), t("Löschen")))) return;
+  const all = requests.data?.items || [];
+  const calls: string[] = [];
+  const groups = new Set<string>();
+  for (const r of done) {
+    const gid = r.group?.id;
+    if (!gid) { calls.push(`/api/requests/${r.id}`); continue; }
+    if (groups.has(gid) || !all.filter((m) => m.group?.id === gid).every((m) => m.status === "available")) continue;
+    groups.add(gid);
+    calls.push(`/api/requests/${r.id}?group=1`);
+  }
+  let failed = 0;
+  for (let i = 0; i < calls.length; i += 4) {               // a few at a time: fast, without flooding the server
+    const res = await Promise.allSettled(calls.slice(i, i + 4).map((u) => api("DELETE", u)));
+    failed += res.filter((x) => x.status === "rejected").length;
+  }
+  toast(failed ? t("{n} Anfragen nicht gelöscht", { n: failed }) : t("Liste geleert"), !!failed);
+  loadRequests();
 }
 
 async function loadRequests(): Promise<void> {

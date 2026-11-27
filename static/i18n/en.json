@@ -1855,5 +1855,12 @@
  "Angefragt {when} von {name}": "Requested {when} by {name}",
  "dir": "you",
  "{n} h": "{n} h",
- "Gefunden {when} (nach {span})": "Found {when} (after {span})"
+ "Gefunden {when} (nach {span})": "Found {when} (after {span})",
+ "Person": "Person",
+ "Alle Personen": "Everyone",
+ "Liste leeren": "Clear list",
+ "{n} fertige Anfragen aus der Liste löschen? Die Hörbücher bleiben.": "Remove {n} finished requests from the list? The audiobooks stay.",
+ "{n} Anfragen nicht gelöscht": "{n} requests not removed",
+ "Liste geleert": "List cleared",
+ "Meist gefunden nach {span}": "Usually found after {span}"
 }
