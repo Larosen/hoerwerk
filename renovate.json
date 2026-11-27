@@ -4,15 +4,33 @@
     "config:recommended",
     "helpers:pinGitHubActionDigests"
   ],
-  "description": "Updates for Hörwerk. Small ones merge themselves once the whole CI (tests, audits, Trivy, click-through tests against the image) is green; major versions wait for a person.",
+  "description": "Updates for Hörwerk. Renovate looks for updates around the clock; small ones merge themselves once the whole CI (tests, audits, Trivy, click-through tests against the image) is green; major versions wait for a person.",
   "timezone": "Europe/Berlin",
   "schedule": [
-    "before 6am on monday"
+    "at any time"
+  ],
+  "automergeSchedule": [
+    "at any time"
   ],
   "dependencyDashboard": {
     "enabled": true
   },
   "prConcurrentLimit": 5,
+  "prHourlyLimit": 0,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": [
+      "at any time"
+    ]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": [
+      "before 6am on monday"
+    ]
+  },
   "packageRules": [
     {
       "description": "Patch, minor, pins and digests: merged by Renovate itself after green CI (no GitHub auto-merge needed)",

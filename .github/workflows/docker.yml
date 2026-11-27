@@ -166,6 +166,9 @@ jobs:
           node-version: "26"
           cache: npm
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
+      - name: Today (refreshes the cached apt layer once a day)
+        id: day
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
           context: .
@@ -174,6 +177,8 @@ jobs:
           # own cache scope, apart from the release build's
           cache-from: type=gha,scope=ci
           cache-to: type=gha,mode=max,scope=ci
+          build-args: |
+            APT_REFRESH=${{ steps.day.outputs.date }}
       - name: Vulnerabilities in the image (critical/high with a fix available block the release)
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/.trivyignore:/.trivyignore:ro" \
@@ -208,6 +213,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4
+      - name: Today (refreshes the cached apt layer once a day)
+        id: day
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
           context: .
@@ -215,6 +223,8 @@ jobs:
           tags: hoerwerk:arm64
           cache-from: type=gha,scope=ci-arm64
           cache-to: type=gha,mode=max,scope=ci-arm64
+          build-args: |
+            APT_REFRESH=${{ steps.day.outputs.date }}
       - name: Architecture, jail and ffmpeg inside the image
         run: |
           docker run --rm --entrypoint /usr/local/bin/hw-run hoerwerk:arm64 --status
@@ -273,6 +283,9 @@ jobs:
             org.opencontainers.image.licenses=PolyForm-Noncommercial-1.0.0
           images: |
             ghcr.io/${{ github.repository_owner }}/hoerwerk
+      - name: Today (refreshes the cached apt layer once a day)
+        id: day
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         id: build
         with:
@@ -283,6 +296,7 @@ jobs:
           pull: true
           no-cache: ${{ github.event_name == 'schedule' }}
           build-args: |
+            APT_REFRESH=${{ steps.day.outputs.date }}
             COMMIT=${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
           # pushed by digest only (no tag yet) to both image names
