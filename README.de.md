@@ -91,7 +91,7 @@ Sicherheitsupdates neu gebaut, mit cosign signiert.
 
 > Hörwerk verwaltet Audiodateien, die du nutzen darfst – eigene Käufe, eigene Aufnahmen oder gemeinfreie Werke.
 > Es enthält keine Medien und steht in keiner Verbindung zu Audible, Amazon, Apple, LibriVox oder anderen genannten
-> Diensten. Die Hörbücher in den Screenshots sind gemeinfreie Klassiker mit eigens gezeichneten Covern.
+> Diensten. Die Hörbücher in den Screenshots sind gemeinfreie Klassiker, ihre Cover nutzen gemeinfreie Kunstwerke ([Nachweise](docs/screenshots/CREDITS.md)).
 
 ## Entstehung
 

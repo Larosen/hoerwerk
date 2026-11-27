@@ -2,8 +2,8 @@
 //
 //   npm run build && (cd rust && cargo build --release) && node scripts/screenshots/shoot.mjs
 //
-// The library, requests and suggestions are mocked in the browser: public-domain books with own cover art
-// (covers.mjs). Needs ffmpeg for the GIF. PW_CHROMIUM: another Chromium binary.
+// The library, requests and suggestions are mocked in the browser: public-domain books, their covers made of
+// public-domain artwork from Wikimedia Commons (art.mjs, credits in docs/screenshots/CREDITS.md) and own typography. Needs ffmpeg for the GIF. PW_CHROMIUM: another Chromium binary.
 import { spawn, execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { chromium } from "@playwright/test";
 import { BOOKS } from "./books.mjs";
 import { renderCovers } from "./covers.mjs";
+import { creditsMarkdown, fetchArt } from "./art.mjs";
 
 const PORT = 8097;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -33,7 +34,9 @@ for (let i = 0; i < 60; i++) {
 }
 
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
-const covers = await renderCovers(browser, BOOKS);
+const art = await fetchArt(BOOKS);
+writeFileSync("docs/screenshots/CREDITS.md", creditsMarkdown(BOOKS, art));
+const covers = await renderCovers(browser, BOOKS, art);
 const byTitle = (t) => BOOKS.find((b) => b.title === t);
 const coverUrl = (b) => `https://covers.invalid/${b.id}.png`;
 

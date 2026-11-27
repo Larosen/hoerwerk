@@ -116,13 +116,53 @@ export function coverSvg(b, size = 600) {
 </svg>`;
 }
 
-/** All covers as PNG buffers (id → Buffer), drawn in the browser with the system fonts. */
-export async function renderCovers(browser, books) {
+/** A cover with a public-domain picture: three layouts like classic book series, the palette sets band and frame. */
+export function artCoverHtml(b, dataUrl) {
+  const p = PALETTES[b.palette % PALETTES.length];
+  const lines = wrap(b.title, b.title.length > 22 ? 18 : 15);
+  const fs = lines.length > 2 ? 44 : lines.length > 1 ? 52 : 62;
+  const title = lines.map(esc).join("<br>");
+  const author = esc(b.author.toUpperCase());
+  const img = (pos = "center 30%") => `<img src="${dataUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:${pos}">`;
+  const base = `width:600px;height:600px;position:relative;overflow:hidden;font-family:${SERIF};`;
+  const grain = `<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.10),transparent 60%),radial-gradient(ellipse at 80% 90%,rgba(0,0,0,.25),transparent 60%);mix-blend-mode:soft-light"></div>`;
+  const layout = b.palette % 3;
+  if (layout === 0) {          // picture above, a coloured band with the title below
+    return `<div style="${base}background:${p.bg}">
+      <div style="position:absolute;left:0;right:0;top:0;height:372px">${img()}${grain}</div>
+      <div style="position:absolute;left:0;right:0;top:372px;height:6px;background:${p.acc}"></div>
+      <div style="position:absolute;left:0;right:0;top:378px;bottom:0;background:${p.bg};display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:0 36px">
+        <div style="font:600 17px/1 ${SANS};letter-spacing:6px;color:${p.acc};margin-bottom:16px">${author}</div>
+        <div style="font-weight:700;font-size:${fs * 0.86}px;line-height:1.05;color:${p.ink}">${title}</div>
+      </div></div>`;
+  }
+  if (layout === 1) {          // a cloth-coloured cover with the picture set into a frame
+    return `<div style="${base}background:linear-gradient(160deg,${p.bg2},${p.bg})">
+      <div style="position:absolute;inset:18px;border:2px solid ${p.acc};opacity:.7"></div>
+      <div style="position:absolute;left:0;right:0;top:44px;text-align:center;font-weight:700;font-size:${fs * 0.8}px;line-height:1.05;color:${p.ink};padding:0 40px">${title}</div>
+      <div style="position:absolute;left:92px;right:92px;top:${lines.length > 1 ? 168 : 128}px;bottom:84px;box-shadow:0 0 0 6px ${p.ink},0 0 0 8px ${p.acc},0 18px 30px rgba(0,0,0,.35)">${img()}</div>
+      <div style="position:absolute;left:0;right:0;bottom:36px;text-align:center;font:600 16px/1 ${SANS};letter-spacing:6px;color:${p.ink};opacity:.9">${author}</div>
+    </div>`;
+  }
+  return `<div style="${base}background:#111">${img("center 40%")}
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,transparent 26%,transparent 50%,rgba(0,0,0,.82) 100%)"></div>
+    <div style="position:absolute;left:0;right:0;top:34px;text-align:center;font:600 17px/1 ${SANS};letter-spacing:7px;color:#f4ead6">${author}</div>
+    <div style="position:absolute;left:40px;right:40px;bottom:46px;text-align:center;font-weight:700;font-size:${fs}px;line-height:1.02;color:#fbf3e2;text-shadow:0 2px 16px rgba(0,0,0,.6)">${title}
+      <div style="width:70px;height:4px;background:${p.acc};margin:18px auto 0"></div></div>
+  </div>`;
+}
+
+/** All covers as PNG buffers (id → Buffer): with a picture where art.mjs found one, else drawn. */
+export async function renderCovers(browser, books, art = {}) {
+  const { readFileSync } = await import("node:fs");
   const page = await browser.newPage({ viewport: { width: 600, height: 600 } });
   const out = new Map();
   for (const b of books) {
-    await page.setContent(`<html><body style="margin:0">${coverSvg(b)}</body></html>`);
-    out.set(b.id, await page.locator("svg").screenshot({ type: "png" }));
+    const a = art[b.id];
+    const html = a ? artCoverHtml(b, "data:image/jpeg;base64," + readFileSync(a.path).toString("base64")) : coverSvg(b);
+    await page.setContent(`<html><body style="margin:0">${html}</body></html>`);
+    await page.waitForFunction(() => [...document.images].every((i) => i.complete));
+    out.set(b.id, await page.locator("body > *").first().screenshot({ type: "png" }));
   }
   await page.close();
   return out;

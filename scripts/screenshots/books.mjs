@@ -1,6 +1,52 @@
 // The demo library of the README screenshots: public-domain works only (authors dead for more than 70 years).
-// Covers are drawn by covers.mjs – no real cover art is used.
+// Covers: public-domain artwork (art.mjs) with own typography (covers.mjs) – no modern cover art.
 // motif: crime, gothic, sea, west, space, fairy, deco, frame, mountain, city, rose, letter
+
+/** Search words for a public-domain picture on Wikimedia Commons (art.mjs). */
+const ART = {
+ "Eine Studie in Scharlachrot": "Beeton's Christmas Annual 1887 A Study in Scarlet",
+ "Das Zeichen der Vier": "Sidney Paget Speckled Band",
+ "Der Hund der Baskervilles": "Sidney Paget Hound of the Baskervilles hound",
+ "Das Tal der Furcht": "Sidney Paget Sherlock Holmes Strand Magazine",
+ "Winnetou I": "Sascha Schneider Winnetou I",
+ "Winnetou II": "Sascha Schneider Winnetou II",
+ "Winnetou III": "Sascha Schneider Winnetou III",
+ "Reise um die Erde in 80 Tagen": "Around the World in Eighty Days Neuville Benett elephant",
+ "20.000 Meilen unter dem Meer": "20000 Leagues Under the Sea Neuville",
+ "Reise zum Mittelpunkt der Erde": "Journey to the Center of the Earth Riou",
+ "Dracula": "Dracula 1901 Constable cover",
+ "Frankenstein": "Frankenstein 1831 frontispiece Holst",
+ "Die Verwandlung": "Photochrom Prague Old Town",
+ "Der Process": "Lesser Ury Berlin street night",
+ "Effi Briest": "Krøyer Summer Evening on Skagen Beach",
+ "Faust": "Delacroix Faust Mephistopheles lithograph",
+ "Die Leiden des jungen Werther": "Caspar David Friedrich moonrise sea",
+ "Die Räuber": "Carl Blechen gorge",
+ "Der Schimmelreiter": "Aivazovsky storm sea night",
+ "Der Sandmann": "Fuseli The Nightmare 1781",
+ "Kinder- und Hausmärchen": "Otto Ubbelohde Grimm Rotkäppchen",
+ "Die schönsten Märchen": "Vilhelm Pedersen Andersen",
+ "Die Schatzinsel": "N. C. Wyeth Treasure Island",
+ "Dr. Jekyll und Mr. Hyde": "Grimshaw London night",
+ "Die Zeitmaschine": "Robida Le Vingtième Siècle",
+ "Der Krieg der Welten": "Alvim Corrêa War of the Worlds",
+ "Stolz und Vorurteil": "Hugh Thomson Pride and Prejudice",
+ "Emma": "C. E. Brock Emma Austen",
+ "Jane Eyre": "Jane Eyre Edmund Garrett",
+ "Eine Weihnachtsgeschichte": "John Leech Christmas Carol Fezziwig",
+ "Oliver Twist": "George Cruikshank Oliver Twist",
+ "Anna Karenina": "Kramskoi Portrait of an Unknown Woman 1883",
+ "Schuld und Sühne": "Photochrom Saint Petersburg",
+ "Alice im Wunderland": "Tenniel Mad Tea Party coloured",
+ "Pinocchio": "Carlo Chiostri Pinocchio",
+ "Heidi": "Ferdinand Hodler Eiger Mönch Jungfrau",
+ "Buddenbrooks": "Photochrom Lübeck",
+ "Der Zauberberg": "Kirchner Davos winter",
+ "Moby Dick": "Garneray whale fishery",
+ "Die Abenteuer des Tom Sawyer": "True Williams Tom Sawyer",
+ "Der Untergang des Hauses Usher": "Harry Clarke Usher 1919 Tales of Mystery",
+ "Nils Holgersson": "Bruno Liljefors wild geese"
+};
 
 export const BOOKS = [
   ["Arthur Conan Doyle", "Eine Studie in Scharlachrot", "Sherlock Holmes", "1", "crime", 0, "Krimi"],
@@ -46,5 +92,5 @@ export const BOOKS = [
   ["Edgar Allan Poe", "Der Untergang des Hauses Usher", null, null, "gothic", 6, "Klassiker"],
   ["Selma Lagerlöf", "Nils Holgersson", null, null, "sky", 4, "Kinder"],
 ].map(([author, title, series, pos, motif, palette, genre], i) => ({
-  id: `b${String(i + 1).padStart(2, "0")}`, author, title, series, pos, motif, palette, genre,
+  id: `b${String(i + 1).padStart(2, "0")}`, author, title, series, pos, motif, palette, genre, art: ART[title],
 }));

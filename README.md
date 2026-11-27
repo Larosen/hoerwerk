@@ -88,7 +88,7 @@ We build it again each week for security updates. Cosign signs it.
 
 > Use Hörwerk only for audio that you have the right to use: your purchases, your recordings or public-domain works.
 > Hörwerk contains no media. It has no connection to Audible, Amazon, Apple, LibriVox or other services in this text.
-> The books in the screenshots are public-domain classics. Hörwerk draws their covers itself for the demo.
+> The books in the screenshots are public-domain classics. Their covers use public-domain artwork ([credits](docs/screenshots/CREDITS.md)).
 
 ## How it came about
 

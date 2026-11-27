@@ -1,0 +1,49 @@
+# Pictures in the screenshots
+
+The covers of the demo library combine public-domain artwork from Wikimedia Commons with Hörwerk's own typography.
+The books are public-domain works. `scripts/screenshots/shoot.mjs` makes the screenshots.
+
+| Book | Artist | Licence | Source |
+|---|---|---|---|
+| Eine Studie in Scharlachrot | David Henry Friston (1887-12) | Public domain | [A Study in Scarlet from Beeton's Christmas Annual 1887.jpg](https://commons.wikimedia.org/wiki/File:A_Study_in_Scarlet_from_Beeton%27s_Christmas_Annual_1887.jpg) |
+| Das Zeichen der Vier | Sidney Paget (1892) | Public domain | [Sidney Paget - The Adventure of the Speckled Band 01.jpg](https://commons.wikimedia.org/wiki/File:Sidney_Paget_-_The_Adventure_of_the_Speckled_Band_01.jpg) |
+| Der Hund der Baskervilles | Sidney Paget (1860-1908) (1902) | Public domain | [Houn-42 - Frontispiece (Hound of Baskervilles).jpg](https://commons.wikimedia.org/wiki/File:Houn-42_-_Frontispiece_(Hound_of_Baskervilles).jpg) |
+| Das Tal der Furcht | Sidney Paget (1860 - 1908) (1904) | Public domain | [Sherlock Holmes - The Adventure of the Abbey Grange - Sidney Paget.jpg](https://commons.wikimedia.org/wiki/File:Sherlock_Holmes_-_The_Adventure_of_the_Abbey_Grange_-_Sidney_Paget.jpg) |
+| Winnetou I | Sascha Schneider (between 1904 and 1905) | Public domain | [Sascha Schneider Empor zum Licht 07 Winnetou I.jpg](https://commons.wikimedia.org/wiki/File:Sascha_Schneider_Empor_zum_Licht_07_Winnetou_I.jpg) |
+| Winnetou II | Sascha Schneider (1905) | Public domain | [Karl May Winnetou II Schneider 001.jpg](https://commons.wikimedia.org/wiki/File:Karl_May_Winnetou_II_Schneider_001.jpg) |
+| Winnetou III | Sascha Schneider (between 1904 and 1905) | Public domain | [Sascha Schneider Empor zum Licht 09 Winnetou III.jpg](https://commons.wikimedia.org/wiki/File:Sascha_Schneider_Empor_zum_Licht_09_Winnetou_III.jpg) |
+| Reise um die Erde in 80 Tagen | Alphonse de Neuville (1835-1885) and/or Léon Benett (1838-1917) (1872) | Public domain | ['Around the World in Eighty Days' by Neuville and Benett 18.jpg](https://commons.wikimedia.org/wiki/File:%27Around_the_World_in_Eighty_Days%27_by_Neuville_and_Benett_18.jpg) |
+| 20.000 Meilen unter dem Meer | Alphonse de Neuville / Édouard Riou (1870) | Public domain | [Giant squid twenty thousand leagues under the sea.jpg](https://commons.wikimedia.org/wiki/File:Giant_squid_twenty_thousand_leagues_under_the_sea.jpg) |
+| Reise zum Mittelpunkt der Erde | Édouard Riou (1864) | Public domain | ['Journey to the Center of the Earth' by Édouard Riou 16.jpg](https://commons.wikimedia.org/wiki/File:%27Journey_to_the_Center_of_the_Earth%27_by_%C3%89douard_Riou_16.jpg) |
+| Dracula | AnonymousUnknown author (1901) | Public domain | [Dracula Archibald Constable and Company 1901.jpg](https://commons.wikimedia.org/wiki/File:Dracula_Archibald_Constable_and_Company_1901.jpg) |
+| Frankenstein | Theodor von Holst (1831) | Public domain | [Frontispiece to Frankenstein 1831.jpg](https://commons.wikimedia.org/wiki/File:Frontispiece_to_Frankenstein_1831.jpg) |
+| Die Verwandlung | ? (between 1890 and 1900) | Public domain | [National Theatre, Prague, Bohemia, Austro-Hungary WDL2630.png](https://commons.wikimedia.org/wiki/File:National_Theatre,_Prague,_Bohemia,_Austro-Hungary_WDL2630.png) |
+| Der Process | Lesser Ury (circa 1920) | Public domain | [Lesser Ury - Nächtliche Strassenszene, Berlin (1920).jpg](https://commons.wikimedia.org/wiki/File:Lesser_Ury_-_N%C3%A4chtliche_Strassenszene,_Berlin_(1920).jpg) |
+| Effi Briest | Peder Severin Krøyer (1899) | Public domain | [P S Krøyer 1899 - Sommeraften ved Skagens strand. Kunstneren og hans hustru.jpg](https://commons.wikimedia.org/wiki/File:P_S_Kr%C3%B8yer_1899_-_Sommeraften_ved_Skagens_strand._Kunstneren_og_hans_hustru.jpg) |
+| Faust | Print made by: Eugène Delacroix Printed by: Villain (1827) | Public domain | [Méphistophélès apparaissant à Faust (Mephistopheles appearing to Faust) (BM 1924,1014.7.6).jpg](https://commons.wikimedia.org/wiki/File:M%C3%A9phistoph%C3%A9l%C3%A8s_apparaissant_%C3%A0_Faust_(Mephistopheles_appearing_to_Faust)_(BM_1924,1014.7.6).jpg) |
+| Die Leiden des jungen Werther | Caspar David Friedrich (1822) | Public domain | [Caspar David Friedrich - Mondaufgang am Meer - Google Art Project.jpg](https://commons.wikimedia.org/wiki/File:Caspar_David_Friedrich_-_Mondaufgang_am_Meer_-_Google_Art_Project.jpg) |
+| Die Räuber | Carl Blechen (1831) | Public domain | [Carl Blechen - Schlucht bei Amalfi - Google Art Project.jpg](https://commons.wikimedia.org/wiki/File:Carl_Blechen_-_Schlucht_bei_Amalfi_-_Google_Art_Project.jpg) |
+| Der Schimmelreiter | Ivan Aivazovsky (before 1866) | Public domain | [Storm at Sea on a Moonlit Night (Aivazovsky).jpg](https://commons.wikimedia.org/wiki/File:Storm_at_Sea_on_a_Moonlit_Night_(Aivazovsky).jpg) |
+| Der Sandmann | Thomas Burke (artist), after Henry Fuseli (Johann Heinrich Füssli) (1783) | Public domain | [Thomas Burke The Nightmare engraving.jpg](https://commons.wikimedia.org/wiki/File:Thomas_Burke_The_Nightmare_engraving.jpg) |
+| Kinder- und Hausmärchen | Otto Ubbelohde (1909) | Public domain | [Otto Ubbelohde - Rotkäppchen 2.jpg](https://commons.wikimedia.org/wiki/File:Otto_Ubbelohde_-_Rotk%C3%A4ppchen_2.jpg) |
+| Die schönsten Märchen | Vilhelm Pedersen (1905) | Public domain | [Vilhelm Pedersen Fem fra en Ærtebælg Andersen 01.jpg](https://commons.wikimedia.org/wiki/File:Vilhelm_Pedersen_Fem_fra_en_%C3%86rteb%C3%A6lg_Andersen_01.jpg) |
+| Die Schatzinsel | N. C. Wyeth (1911) | Public domain | [N. C. Wyeth - Treasure Island - The Hostage.jpg](https://commons.wikimedia.org/wiki/File:N._C._Wyeth_-_Treasure_Island_-_The_Hostage.jpg) |
+| Dr. Jekyll und Mr. Hyde | John Atkinson Grimshaw (2016-12-05) | Public domain | [John Atkinson Grimshaw - Night vigil.jpg](https://commons.wikimedia.org/wiki/File:John_Atkinson_Grimshaw_-_Night_vigil.jpg) |
+| Die Zeitmaschine | Albert Robida (1883) | Public domain | [Robida - Le vingtième siècle - cover.jpg](https://commons.wikimedia.org/wiki/File:Robida_-_Le_vingti%C3%A8me_si%C3%A8cle_-_cover.jpg) |
+| Der Krieg der Welten | Henrique Alvim Corrêa (1906) | Public domain | [The War of the Worlds by Henrique Alvim Corrêa, original graphic 15.jpg](https://commons.wikimedia.org/wiki/File:The_War_of_the_Worlds_by_Henrique_Alvim_Corr%C3%AAa,_original_graphic_15.jpg) |
+| Stolz und Vorurteil | Hugh Thomson (February 1894) | Public domain | [Houghton Typ 805.94.8320 - Pride and Prejudice, 1894, Hugh Thomson - superior dancing.jpg](https://commons.wikimedia.org/wiki/File:Houghton_Typ_805.94.8320_-_Pride_and_Prejudice,_1894,_Hugh_Thomson_-_superior_dancing.jpg) |
+| Emma | C. E. Brock (died 1938) (1909) | Public domain | [Emma CE Brock 1909 Vol III Chapter III.jpg](https://commons.wikimedia.org/wiki/File:Emma_CE_Brock_1909_Vol_III_Chapter_III.jpg) |
+| Jane Eyre | Edmund H. Garrett (1890) | Public domain | [Edmund Henry Garrett - Illustration for Jane Eyre.png](https://commons.wikimedia.org/wiki/File:Edmund_Henry_Garrett_-_Illustration_for_Jane_Eyre.png) |
+| Eine Weihnachtsgeschichte | John Leech (29 August 1817 – 29 October 1864 in London) (2013-03-24 12:59:04) | Public domain | [A Christmas Carol, Mr Fezziwig's Ball, by John Leech.jpg](https://commons.wikimedia.org/wiki/File:A_Christmas_Carol,_Mr_Fezziwig%27s_Ball,_by_John_Leech.jpg) |
+| Oliver Twist | George Cruikshank (circa 1837) | Public domain | [George Cruikshank Oliver Twist.gif](https://commons.wikimedia.org/wiki/File:George_Cruikshank_Oliver_Twist.gif) |
+| Anna Karenina | Ivan Kramskoi (1883) | Public domain | [Kramskoy Portrait of a Woman.jpg](https://commons.wikimedia.org/wiki/File:Kramskoy_Portrait_of_a_Woman.jpg) |
+| Schuld und Sühne | Photochrom Print Collection (between 1890 and 1900) | Public domain | [Alexander's Column, St. Petersburg, Russia-LCCN2001697508.jpg](https://commons.wikimedia.org/wiki/File:Alexander%27s_Column,_St._Petersburg,_Russia-LCCN2001697508.jpg) |
+| Alice im Wunderland | John Tenniel (1890) | Public domain | [John Tenniel - Illustration from The Nursery Alice (1890) - c03757 07.jpg](https://commons.wikimedia.org/wiki/File:John_Tenniel_-_Illustration_from_The_Nursery_Alice_(1890)_-_c03757_07.jpg) |
+| Pinocchio | Carlo Chiostri (1902) | Public domain | [Le avventure di Pinocchio-pag007.jpg](https://commons.wikimedia.org/wiki/File:Le_avventure_di_Pinocchio-pag007.jpg) |
+| Heidi | Ferdinand Hodler (1908) | Public domain | [Hodler - Eiger, Mönch und Jungfrau über dem Nebelmeer - 1908.jpg](https://commons.wikimedia.org/wiki/File:Hodler_-_Eiger,_M%C3%B6nch_und_Jungfrau_%C3%BCber_dem_Nebelmeer_-_1908.jpg) |
+| Buddenbrooks | ? (between 1890 and 1900) | Public domain | [General view, Lubeck, Germany-LCCN2002713934.tif](https://commons.wikimedia.org/wiki/File:General_view,_Lubeck,_Germany-LCCN2002713934.tif) |
+| Der Zauberberg | Ernst Ludwig Kirchner (Executed circa 1926) | Public domain | [Ernst ludwig kirchner davos im winter d6358278125007).jpg](https://commons.wikimedia.org/wiki/File:Ernst_ludwig_kirchner_davos_im_winter_d6358278125007).jpg) |
+| Moby Dick | Ambroise Louis Garneray (early 1800's) | Public domain | [Pesche De La Baleine Garneray.jpg](https://commons.wikimedia.org/wiki/File:Pesche_De_La_Baleine_Garneray.jpg) |
+| Die Abenteuer des Tom Sawyer | True Williams, Mark Twain (1876) | Public domain | [Adventures of Tom Sawyer-pg040.png](https://commons.wikimedia.org/wiki/File:Adventures_of_Tom_Sawyer-pg040.png) |
+| Der Untergang des Hauses Usher | Edgar Allan Poe | Public domain | [MU KPB 036 Tales of Mystery and Imagination by Edgar Allan Poe (page 149 crop).jpg](https://commons.wikimedia.org/wiki/File:MU_KPB_036_Tales_of_Mystery_and_Imagination_by_Edgar_Allan_Poe_(page_149_crop).jpg) |
+| Nils Holgersson | Bruno Liljefors (1927) | Public domain | [Bruno Liljefors - Wild Geese 1927.jpg](https://commons.wikimedia.org/wiki/File:Bruno_Liljefors_-_Wild_Geese_1927.jpg) |
