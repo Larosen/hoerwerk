@@ -212,10 +212,11 @@ class Security(ContractTest):
 
     def test_static_files_compressed_and_revalidated(self):
         import gzip as gz
-        status, h, body = self.server.request("GET", "/static/core.js", headers={"Accept-Encoding": "gzip"})
+        # style.css: in the repository (the scripts only exist after the TypeScript build)
+        status, h, body = self.server.request("GET", "/static/style.css", headers={"Accept-Encoding": "gzip"})
         self.assertEqual((status, h.get("content-encoding"), h["cache-control"]), (200, "gzip", "private, no-cache"))
-        self.assertIn(b"function", gz.decompress(body))
-        status, _, body = self.server.request("GET", "/static/core.js", headers={"If-None-Match": h["etag"]})
+        self.assertIn(b":root", gz.decompress(body))
+        status, _, body = self.server.request("GET", "/static/style.css", headers={"If-None-Match": h["etag"]})
         self.assertEqual((status, body), (304, b""))
         # app scripts stay behind the login; pages are never cached
         self.assertEqual(self.server.request("GET", "/static/books.js")[0], 401)
